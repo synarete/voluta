@@ -73,7 +73,7 @@ static void mkfs_create_setup_fs_env(void)
 	const struct voluta_fs_args args = {
 		.fsname = voluta_globals.mkfs_name,
 		.volume = voluta_globals.mkfs_volume,
-		.passph = voluta_globals.mkfs_passphrase,
+		.passwd = voluta_globals.mkfs_passphrase,
 		.encrypted = voluta_globals.mkfs_encrypted,
 		.vsize = voluta_globals.mkfs_volume_size,
 		.uid = getuid(),

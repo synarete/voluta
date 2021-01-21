@@ -344,7 +344,7 @@ int voluta_decrypt_buf(const struct voluta_cipher *ci,
 static void passphrase_setup(struct voluta_passphrase *pp,
 			     const void *pass, size_t passlen)
 {
-	memset(pp, 0, sizeof(*pp));
+	voluta_memzero(pp, sizeof(*pp));
 	if (passlen > 0) {
 		memcpy(pp->pass, pass, passlen);
 	}
@@ -368,7 +368,7 @@ int voluta_passphrase_setup(struct voluta_passphrase *pp, const void *pass)
 
 void voluta_passphrase_reset(struct voluta_passphrase *pp)
 {
-	voluta_getentropy(pp->pass, sizeof(pp->pass));
+	voluta_memzero(pp, sizeof(*pp));
 	pp->passlen = 0;
 }
 

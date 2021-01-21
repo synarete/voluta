@@ -48,7 +48,7 @@ _voluta_clone() {
   fi
 }
 
-_voluta_archive() {
+_voluta_export() {
   local cur prev words cword
   _init_completion || return
 
@@ -57,7 +57,7 @@ _voluta_archive() {
   fi
 }
 
-_voluta_restore() {
+_voluta_import() {
   local cur prev words cword
   _init_completion || return
 
@@ -95,11 +95,11 @@ _voluta_subcmd() {
     "clone")
       _voluta_clone
       ;;
-    "archive")
-      _voluta_archive
+    "export")
+      _voluta_export
       ;;
-    "restore")
-      _voluta_restore
+    "import")
+      _voluta_import
       ;;
     "show")
       _voluta_show
@@ -115,7 +115,7 @@ _voluta_main() {
     COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
   else
     COMPREPLY+=( $(compgen -W 'mkfs mount umount query' -- "$cur") )
-    COMPREPLY+=( $(compgen -W 'clone archive restore show' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'clone show export import' -- "$cur") )
   fi
 }
 

@@ -23,7 +23,6 @@ bool voluta_vtype_isnormal(enum voluta_vtype vtype)
 	bool ret;
 
 	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 		ret = false;
@@ -53,7 +52,6 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATABK:
 		ret = true;
 		break;
-	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 	case VOLUTA_VTYPE_ITNODE:
@@ -73,8 +71,6 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 size_t voluta_vtype_size(enum voluta_vtype vtype)
 {
 	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
-		return sizeof(struct voluta_super_block);
 	case VOLUTA_VTYPE_HSMAP:
 		return sizeof(struct voluta_hspace_map);
 	case VOLUTA_VTYPE_AGMAP:
@@ -143,10 +139,10 @@ static loff_t lba_by_ag(size_t ag_index, size_t bn)
 
 static loff_t hsmap_lba_by_index(size_t hs_index)
 {
-	const loff_t hsm_lba = VOLUTA_LBA_HSM0 + (loff_t)(hs_index - 1);
+	const loff_t hsm_lba = (loff_t)(VOLUTA_LBA_SB + hs_index);
 
 	voluta_assert_gt(hs_index, 0);
-	voluta_assert_lt(hsm_lba, VOLUTA_NAG_PREFIX_META * VOLUTA_NBK_IN_AG);
+	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_AG);
 
 	return hsm_lba;
 }
@@ -154,24 +150,33 @@ static loff_t hsmap_lba_by_index(size_t hs_index)
 size_t voluta_hs_index_of_ag(size_t ag_index)
 {
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_PREFIX_META;
+	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
 
-	/* XXX */
-	voluta_assert_ge(ag_index, 1);
-	if (ag_index == 1) {
-		return 1;
-	}
-	return ((ag_index - nag_prefix) / nag_in_hs) + 1;
+	return (ag_index / (nag_prefix + nag_in_hs)) + 1;
 }
 
 size_t voluta_ag_index_by_hs(size_t hs_index, size_t ag_slot)
 {
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_PREFIX_META;
+	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
 
 	voluta_assert_gt(hs_index, 0);
 
-	return ((hs_index - 1) * nag_in_hs) + ag_slot + nag_prefix;
+	return nag_prefix + ((hs_index - 1) * nag_in_hs) + ag_slot;
+}
+
+size_t voluta_ag_index_to_hs_slot(size_t ag_index)
+{
+	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
+	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
+
+	voluta_assert_ge(ag_index, nag_prefix);
+	return (ag_index - nag_prefix) % nag_in_hs;
+}
+
+size_t voluta_size_to_ag_count(size_t nbytes)
+{
+	return nbytes / VOLUTA_AG_SIZE;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -196,15 +201,15 @@ size_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
 			enum voluta_vtype vtype, loff_t off)
 {
-	if (!off_isnull(off)) {
-		vaddr->len = (unsigned int)vtype_size(vtype);
-		vaddr->lba = off_to_lba(off);
-	} else {
-		vaddr->len = (unsigned int)vtype_size(vtype);
-		vaddr->lba = VOLUTA_LBA_NULL;
-	}
 	vaddr->vtype = vtype;
-	vaddr->off = off;
+	vaddr->len = (uint32_t)vtype_size(vtype);
+	if (!off_isnull(off)) {
+		vaddr->lba = off_to_lba(off);
+		vaddr->off = off;
+	} else {
+		vaddr->lba = VOLUTA_LBA_NULL;
+		vaddr->off = VOLUTA_OFF_NULL;
+	}
 }
 
 void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
@@ -235,14 +240,6 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void voluta_vaddr_of_super(struct voluta_vaddr *vaddr)
-{
-	const loff_t lba = VOLUTA_LBA_SUPER;
-	const loff_t off = lba_to_off(lba);
-
-	vaddr_setup(vaddr, VOLUTA_VTYPE_SUPER, off);
-}
 
 void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, size_t hs_index)
 {
@@ -279,20 +276,31 @@ void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off)
 {
 	const uint64_t uoff = (uint64_t)off;
 
-	voluta_assert_eq(uoff & 0xFFL, 0);
-
-	va->lo = cpu_to_le32((uint32_t)(uoff >> 8));
-	va->me = cpu_to_le16((uint16_t)(uoff >> 40));
-	va->hi = (uint8_t)(uoff >> 56);
+	if (!off_isnull(off)) {
+		voluta_assert_eq(uoff & 0xFFL, 0);
+		va->lo = cpu_to_le32((uint32_t)(uoff >> 8));
+		va->me = cpu_to_le16((uint16_t)(uoff >> 40));
+		va->hi = (uint8_t)(uoff >> 56);
+	} else {
+		va->lo = cpu_to_le32(UINT32_MAX);
+		va->me = cpu_to_le16(UINT16_MAX);
+		va->hi = UINT8_MAX;
+	}
 }
 
 loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va)
 {
+	loff_t off;
 	const uint64_t lo = le32_to_cpu(va->lo);
 	const uint64_t me = le16_to_cpu(va->me);
 	const uint64_t hi = va->hi;
 
-	return (loff_t)((lo << 8) | (me << 40) | (hi << 56));
+	if ((lo == UINT32_MAX) && (me == UINT16_MAX) && (hi == UINT8_MAX)) {
+		off = VOLUTA_OFF_NULL;
+	} else {
+		off = (loff_t)((lo << 8) | (me << 40) | (hi << 56));
+	}
+	return off;
 }
 
 void voluta_vaddr64_set(struct voluta_vaddr64 *va,
@@ -394,9 +402,6 @@ static bool vi_isdatabk(const struct voluta_vnode_info *vi)
 
 void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
 {
-	voluta_assert_not_null(vi);
-	voluta_assert(vi_isdata(vi));
-
 	return vi_isdatabk(vi) ? vi->vu.db->dat : vi->vu.db4->dat;
 }
 
@@ -483,8 +488,6 @@ int voluta_verify_off(loff_t off)
 static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 {
 	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
-		return voluta_verify_super_block(&view->u.sb);
 	case VOLUTA_VTYPE_HSMAP:
 		return voluta_verify_uspace_map(&view->u.hsm);
 	case VOLUTA_VTYPE_AGMAP:

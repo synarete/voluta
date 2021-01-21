@@ -324,13 +324,13 @@ static void voluta_dump_panic_msg(const char *file, int line,
 	const char *es = " ";
 	const char *name = voluta_basename(file);
 
-	log_err("%s", es);
+	log_crit("%s", es);
 	if (errnum) {
-		log_err("%s:%d: %s %d", name, line, msg, errnum);
+		log_crit("%s:%d: %s %d", name, line, msg, errnum);
 	} else {
-		log_err("%s:%d: %s", name, line, msg);
+		log_crit("%s:%d: %s", name, line, msg);
 	}
-	log_err("%s", es);
+	log_crit("%s", es);
 }
 
 __attribute__((__noreturn__))

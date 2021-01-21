@@ -348,6 +348,17 @@ struct voluta_archiver_obj {
 	struct voluta_archiver  arc;
 };
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static size_t arm_nents(const struct voluta_meta_block4 *arm)
+{
+	return le64_to_cpu(arm->m_ar_nents);
+}
+
+static void arm_set_nents(struct voluta_meta_block4 *arm, size_t nents)
+{
+	arm->m_ar_nents = cpu_to_le64(nents);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -469,7 +480,8 @@ static void calc_hash_of(const struct voluta_mdigest *md, const void *dat,
 	voluta_sha256_of(md, dat, len, out_hash);
 }
 
-static const struct voluta_mdigest *arc_md(const struct voluta_archiver *arc)
+static const struct voluta_mdigest *
+arc_mdigest(const struct voluta_archiver *arc)
 {
 	return &arc->ar_crypto->md;
 }
@@ -477,9 +489,7 @@ static const struct voluta_mdigest *arc_md(const struct voluta_archiver *arc)
 static void arc_calc_hash(const struct voluta_archiver *arc, const void *dat,
 			  size_t len, struct voluta_hash256 *out_hash)
 {
-	const struct voluta_mdigest *md = arc_md(arc);
-
-	calc_hash_of(md, dat, len, out_hash);
+	calc_hash_of(arc_mdigest(arc), dat, len, out_hash);
 }
 
 static void arc_setup_bref(const struct voluta_archiver *arc,
@@ -542,7 +552,7 @@ static size_t spec_size_of(size_t nents)
 {
 	size_t size;
 	const size_t nbks = spec_nents_to_nbks(nents);
-	const struct voluta_ar_metaspec *spec = NULL;
+	const struct voluta_ar_spec *spec = NULL;
 	const size_t nbks_head = ARRAY_SIZE(spec->ar_brefs);
 
 	size = sizeof(*spec);
@@ -555,7 +565,7 @@ static size_t spec_size_of(size_t nents)
 static size_t spec_nents_of(size_t size)
 {
 	size_t nents;
-	const struct voluta_ar_metaspec *spec = NULL;
+	const struct voluta_ar_spec *spec = NULL;
 	const size_t nbks_head = ARRAY_SIZE(spec->ar_brefs);
 
 	nents = nbks_head;
@@ -565,26 +575,26 @@ static size_t spec_nents_of(size_t size)
 	return nents;
 }
 
-static struct voluta_ar_metaspec *
+static struct voluta_ar_spec *
 spec_new(struct voluta_qalloc *qal, size_t nents)
 {
-	struct voluta_ar_metaspec *spec;
+	struct voluta_ar_spec *spec;
 
 	spec = voluta_qalloc_zalloc(qal, spec_size_of(nents));
 	return spec;
 }
 
 static void spec_del(struct voluta_qalloc *qal,
-		     struct voluta_ar_metaspec *spec, size_t nents)
+		     struct voluta_ar_spec *spec, size_t nents)
 {
 	voluta_qalloc_free(qal, spec, spec_size_of(nents));
 }
 
-static struct voluta_ar_metaspec *
+static struct voluta_ar_spec *
 spec_xclone(struct voluta_qalloc *qal,
-	    const struct voluta_ar_metaspec *spec, size_t nents, size_t xnents)
+	    const struct voluta_ar_spec *spec, size_t nents, size_t xnents)
 {
-	struct voluta_ar_metaspec *xspec;
+	struct voluta_ar_spec *xspec;
 
 	xspec = spec_new(qal, xnents);
 	if (xspec != NULL) {
@@ -594,7 +604,7 @@ spec_xclone(struct voluta_qalloc *qal,
 }
 
 static struct voluta_ar_blobref *
-spec_bref_at(const struct voluta_ar_metaspec *spec, size_t ent_index)
+spec_bref_at(const struct voluta_ar_spec *spec, size_t ent_index)
 {
 	const struct voluta_ar_blobref *bref = NULL;
 	const size_t nbrefs = ARRAY_SIZE(spec->ar_brefs[0].ar_bref);
@@ -605,7 +615,7 @@ spec_bref_at(const struct voluta_ar_metaspec *spec, size_t ent_index)
 	return unconst(bref);
 }
 
-static void spec_append_bref(struct voluta_ar_metaspec *spec, size_t ent_index,
+static void spec_append_bref(struct voluta_ar_spec *spec, size_t ent_index,
 			     const struct voluta_ar_blobref *bref)
 {
 	struct voluta_ar_blobref *dst_bref = spec_bref_at(spec, ent_index);
@@ -699,16 +709,33 @@ static void arc_fini_blob(struct voluta_archiver *arc)
 	}
 }
 
+static void arc_setup_rands(const struct voluta_archiver *arc)
+{
+	struct voluta_ar_spec *spec = arc->ar_spec;
+
+	for (size_t i = 0; i < ARRAY_SIZE(spec->ar_rand); ++i) {
+		voluta_rb_setup(&spec->ar_rand[i], arc_mdigest(arc));
+	}
+}
+
 static int arc_init_spec(struct voluta_archiver *arc, size_t nents)
 {
+	size_t size;
+	struct voluta_ar_spec *spec;
+
 	arc->ar_spec_nents = 0;
 	arc->ar_spec_nents_max = spec_nents_max(nents);
-	arc->ar_spec = spec_new(arc->ar_qalloc, arc->ar_spec_nents_max);
 
-	if (arc->ar_spec == NULL) {
+	spec = spec_new(arc->ar_qalloc, arc->ar_spec_nents_max);
+	if (spec == NULL) {
 		return -ENOMEM;
 	}
-	voluta_zb_setup_archive(&arc->ar_spec->ar_zb, spec_size_of(nents));
+	arc->ar_spec = spec;
+
+	size = spec_size_of(nents);
+	voluta_zb_init(&spec->ar_zero, VOLUTA_ZTYPE_ARCHIVE, size);
+	arm_set_nents(&spec->ar_meta, nents);
+	arc_setup_rands(arc);
 	return 0;
 }
 
@@ -853,7 +880,7 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 	int err = 0;
 	struct voluta_kdf_pair kdf;
 	struct voluta_passphrase passph;
-	const struct voluta_mdigest *md = arc_md(arc);
+	const struct voluta_mdigest *md = arc_mdigest(arc);
 
 	if (arc->ar_args.passph == NULL) {
 		return 0;
@@ -862,7 +889,7 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	voluta_zb_kdf(&arc->ar_spec->ar_zb, &kdf);
+	voluta_zb_kdf(&arc->ar_spec->ar_zero, &kdf);
 	err = voluta_derive_iv_key(&passph, &kdf, md, &arc->ar_iv_key);
 	if (err) {
 		return err;
@@ -874,7 +901,7 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 static int arc_require_room(struct voluta_archiver *arc)
 {
 	size_t xnents;
-	struct voluta_ar_metaspec *xspec;
+	struct voluta_ar_spec *xspec;
 
 	if (arc->ar_spec_nents < arc->ar_spec_nents_max) {
 		return 0;
@@ -895,7 +922,7 @@ static int arc_append_bref(struct voluta_archiver *arc,
 			   const struct voluta_ar_blobref *bref)
 {
 	int err;
-	struct voluta_ar_metaspec *spec = arc->ar_spec;
+	struct voluta_ar_spec *spec = arc->ar_spec;
 
 	err = arc_require_room(arc);
 	if (err) {
@@ -956,15 +983,15 @@ static int arc_export_blobs(struct voluta_archiver *arc, loff_t vsize)
 
 static int arc_export_spec(const struct voluta_archiver *arc, loff_t vsize)
 {
+	size_t spec_size;
 	const char *name = arc->ar_args.arcname;
-	struct voluta_ar_metaspec *spec = arc->ar_spec;
-	struct voluta_zero_block *zb = &spec->ar_zb;
-	const size_t spec_size = spec_size_of(arc->ar_spec_nents);
+	struct voluta_ar_spec *spec = arc->ar_spec;
 
-	voluta_zb_setup_archive(zb, (size_t)vsize);
-	voluta_zb_set_randfill(zb, arc_md(arc));
-	voluta_zb_set_arc_nents(zb, arc->ar_spec_nents);
+	voluta_zb_set_size(&spec->ar_zero, (size_t)vsize);
+	arm_set_nents(&spec->ar_meta, arc->ar_spec_nents);
+	arc_setup_rands(arc);
 
+	spec_size = spec_size_of(arc->ar_spec_nents);
 	return bstore_store_root(arc->ar_bstore, name, spec, spec_size);
 }
 
@@ -1069,13 +1096,27 @@ static int arc_reinit_spec(struct voluta_archiver *arc, size_t nents)
 	return arc_init_spec(arc, nents);
 }
 
+static int arc_check_rands(const struct voluta_archiver *arc)
+{
+	int err;
+	const struct voluta_ar_spec *spec = arc->ar_spec;
+
+	for (size_t i = 0; i < ARRAY_SIZE(spec->ar_rand); ++i) {
+		err = voluta_rb_check(&spec->ar_rand[i], arc_mdigest(arc));
+		if (err) {
+			return err;
+		}
+	}
+	return 0;
+}
+
 static int arc_import_spec(struct voluta_archiver *arc)
 {
 	int err;
 	size_t asize;
 	size_t nents;
-	const struct voluta_zero_block *zb = NULL;
 	const char *name = arc->ar_args.arcname;
+	struct voluta_ar_spec *spec = arc->ar_spec;
 
 	err = bstore_stat_root(arc->ar_bstore, name, &asize);
 	if (err) {
@@ -1089,20 +1130,22 @@ static int arc_import_spec(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	err = bstore_load_root(arc->ar_bstore, name, arc->ar_spec, asize);
+	err = bstore_load_root(arc->ar_bstore, name, spec, asize);
 	if (err) {
 		return err;
 	}
-	zb = &arc->ar_spec->ar_zb;
-	err = voluta_zb_check_archive(zb);
+	err = voluta_zb_check(&spec->ar_zero);
 	if (err) {
 		return err;
 	}
-	err = voluta_zb_check_archive(zb);
+	if (voluta_zb_type(&spec->ar_zero) != VOLUTA_ZTYPE_ARCHIVE) {
+		return -EINVAL;
+	}
+	err = arc_check_rands(arc);
 	if (err) {
 		return err;
 	}
-	nents = voluta_zb_arc_nents(zb);
+	nents = arm_nents(&spec->ar_meta);
 	if (nents > arc->ar_spec_nents_max) {
 		return -EFSCORRUPTED;
 	}

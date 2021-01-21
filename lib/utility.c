@@ -145,7 +145,7 @@ void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* monotonic clock */
+/* time */
 void voluta_mclock_now(struct timespec *ts)
 {
 	int err;
@@ -174,6 +174,30 @@ void voluta_mclock_dur(const struct timespec *start, struct timespec *dur)
 
 	voluta_mclock_now(&now);
 	mclock_dif(start, &now, dur);
+}
+
+time_t voluta_time_now(void)
+{
+	return time(NULL);
+}
+
+void voluta_ts_copy(struct timespec *dst, const struct timespec *src)
+{
+	dst->tv_sec = src->tv_sec;
+	dst->tv_nsec = src->tv_nsec;
+}
+
+int voluta_ts_gettime(struct timespec *ts, bool realtime)
+{
+	int err = 0;
+
+	if (realtime) {
+		err = voluta_sys_clock_gettime(CLOCK_REALTIME, ts);
+	} else {
+		ts->tv_sec = time(NULL);
+		ts->tv_nsec = 0;
+	}
+	return err;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -435,25 +459,6 @@ const char *voluta_basename(const char *path)
 	return (name == NULL) ? path : (name + 1);
 }
 
-void voluta_ts_copy(struct timespec *dst, const struct timespec *src)
-{
-	dst->tv_sec = src->tv_sec;
-	dst->tv_nsec = src->tv_nsec;
-}
-
-int voluta_ts_gettime(struct timespec *ts, bool realtime)
-{
-	int err = 0;
-
-	if (realtime) {
-		err = voluta_sys_clock_gettime(CLOCK_REALTIME, ts);
-	} else {
-		ts->tv_sec = time(NULL);
-		ts->tv_nsec = 0;
-	}
-	return err;
-}
-
 /* Optimal prime-value for hash-table of n-elements */
 static const size_t voluta_primes[] = {
 	13UL,
@@ -499,6 +504,3 @@ size_t voluta_hash_prime(size_t lim)
 	}
 	return p;
 }
-
-
-

@@ -163,7 +163,7 @@ static void ut_prep_tests(struct ut_env *ute)
 	err = voluta_fse_term(ute->fse);
 	voluta_assert_ok(err);
 
-	err = voluta_fse_load(ute->fse);
+	err = voluta_fse_reload(ute->fse);
 	voluta_assert_ok(err);
 }
 
@@ -357,7 +357,7 @@ static void ute_init_passphrase(struct ut_env *ute)
 	const char *pass = ut_make_passphrase(ute);
 
 	ute->ar_args.passph = pass;
-	ute->fs_args.passph = pass;
+	ute->fs_args.passwd = pass;
 }
 
 static void ute_init(struct ut_env *ute)

@@ -35,9 +35,9 @@ static int namestr_to_hash(const struct voluta_inode_info *dir_ii,
 			   uint64_t *out_hash);
 
 static bool dir_hasflag(const struct voluta_inode_info *dir_ii,
-			enum voluta_dir_flags mask)
+			enum voluta_dirf mask)
 {
-	const enum voluta_dir_flags flags = voluta_dir_flags(dir_ii);
+	const enum voluta_dirf flags = voluta_dir_flags(dir_ii);
 
 	return ((flags & mask) == mask);
 }
@@ -1844,8 +1844,8 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
 static void fill_query_inode(const struct voluta_inode_info *ii,
 			     struct voluta_ioc_query *qry)
 {
-	const enum voluta_inode_flags iflags = voluta_ii_flags(ii);
-	const enum voluta_dir_flags dirflags =
+	const enum voluta_inodef iflags = voluta_ii_flags(ii);
+	const enum voluta_dirf dirflags =
 		ii_isdir(ii) ? voluta_dir_flags(ii) : 0;
 
 	qry->u.inode.iflags = (int32_t)iflags;
@@ -2093,7 +2093,7 @@ static int name_to_hash(const struct voluta_inode_info *dir_ii,
 {
 	int err;
 	const struct voluta_mdigest *md = ii_mdigest_of(dir_ii);
-	const enum voluta_dir_flags flags = voluta_dir_flags(dir_ii);
+	const enum voluta_dirf flags = voluta_dir_flags(dir_ii);
 
 	if (flags & VOLUTA_DIRF_HASH_SHA256) {
 		*out_hash = namehash_by_sha256(md, name, nlen);

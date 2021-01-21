@@ -1144,11 +1144,9 @@ int voluta_qalloc_fiovec(const struct voluta_qalloc *qal,
 	const void *base;
 
 	base = qalloc_base_of(qal, ptr, len);
-	if (base == NULL) {
+	if ((base == NULL) || (base > ptr)) {
 		return -ERANGE;
 	}
-	voluta_assert(base <= ptr);
-
 	fiov->off = qalloc_ptr_to_off(qal, ptr);
 	fiov->len = len;
 	fiov->mm = ptr;

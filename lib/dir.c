@@ -321,9 +321,8 @@ static struct voluta_dir_entry *
 de_next_safe(const struct voluta_dir_entry *de,
 	     const struct voluta_dir_entry *end)
 {
-	struct voluta_dir_entry *next = de_next(de);
+	const struct voluta_dir_entry *next = de_next(de);
 
-	voluta_assert(next <= end);
 	return (next < end) ? next : NULL;
 }
 
@@ -402,7 +401,6 @@ de_scan(const struct voluta_dir_entry *de, const struct voluta_dir_entry *beg,
 
 	while (itr < end) {
 		if (de_isactive(itr)) {
-			voluta_assert(de_isvalid(itr));
 			doff = de_doffset(itr, beg, node_index);
 			if (doff >= pos) {
 				return itr;
@@ -429,7 +427,6 @@ de_insert_at(struct voluta_dir_entry *de, const struct voluta_dir_entry *end,
 		next_new = de_next(de);
 		de_reset(next_new, nents_new, nents);
 		if (next_old != NULL) {
-			voluta_assert(de_isactive(next_old));
 			de_set_nprev(next_old, nents_new);
 		}
 	}
@@ -757,13 +754,13 @@ static void dis_set_htree_root(struct voluta_dir_ispec *dis, loff_t off)
 	dis->d_root = cpu_to_off(off);
 }
 
-static enum voluta_dir_flags dis_flags(const struct voluta_dir_ispec *dis)
+static enum voluta_dirf dis_flags(const struct voluta_dir_ispec *dis)
 {
 	return le32_to_cpu(dis->d_flags);
 }
 
 static void dis_set_flags(struct voluta_dir_ispec *dis,
-			  enum voluta_dir_flags f)
+			  enum voluta_dirf f)
 {
 	dis->d_flags = cpu_to_le32((uint32_t)f);
 }
@@ -842,7 +839,7 @@ size_t voluta_dir_ndentries(const struct voluta_inode_info *dir_ii)
 	return dir_ndents(dir_ii);
 }
 
-enum voluta_dir_flags voluta_dir_flags(const struct voluta_inode_info *dir_ii)
+enum voluta_dirf voluta_dir_flags(const struct voluta_inode_info *dir_ii)
 {
 	return dis_flags(dir_ispec_of(dir_ii));
 }

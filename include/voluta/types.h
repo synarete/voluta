@@ -260,7 +260,6 @@ struct voluta_bk_info {
 
 /* vnode */
 union voluta_vnode_u {
-	struct voluta_super_block       *sb;
 	struct voluta_hspace_map        *hsm;
 	struct voluta_agroup_map        *agm;
 	struct voluta_itable_tnode      *itn;
@@ -379,11 +378,6 @@ struct voluta_itable_info {
 	size_t it_ninodes_max;
 };
 
-struct voluta_ino_set {
-	size_t cnt;
-	ino_t ino[VOLUTA_ITNODE_NENTS];
-};
-
 /* operations counters */
 struct voluta_oper_stat {
 	size_t op_iopen_max;
@@ -400,16 +394,14 @@ struct voluta_encbuf {
 
 /* super-block in-memory info */
 struct voluta_sb_info {
-	struct voluta_namebuf           sb_fs_name;
-	struct voluta_uuid              sb_fs_uuid;
-	struct voluta_ucred             sb_owner;
-	struct voluta_crypto            sb_crypto;
-	struct voluta_zero_block       *sb_zb;
+	struct voluta_super_block     *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_pstore           *sb_pstore;
 	struct voluta_encbuf           *sb_encbuf;
-	struct voluta_vnode_info       *sb_vi;
+	struct voluta_uuid              sb_fs_uuid;
+	struct voluta_ucred             sb_owner;
+	struct voluta_crypto            sb_crypto;
 	struct voluta_space_info        sb_spi;
 	struct voluta_itable_info       sb_iti;
 	struct voluta_oper_stat         sb_ops;
@@ -486,7 +478,7 @@ struct voluta_fs_args {
 	const char *mountp;
 	const char *volume;
 	const char *fsname;
-	const char *passph;
+	const char *passwd;
 	loff_t vsize;
 	uid_t  uid;
 	gid_t  gid;
@@ -509,7 +501,7 @@ struct voluta_fs_env {
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
 	struct voluta_pstore           *pstore;
-	struct voluta_zero_block       *zb;
+	struct voluta_super_block     *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;
 	const char *volume_path;
@@ -568,7 +560,7 @@ struct voluta_archiver {
 	struct voluta_crypto           *ar_crypto;
 	struct voluta_bstore           *ar_bstore;
 	struct voluta_ar_blob          *ar_blob;
-	struct voluta_ar_metaspec      *ar_spec;
+	struct voluta_ar_spec          *ar_spec;
 	size_t ar_spec_nents;
 	size_t ar_spec_nents_max;
 };

@@ -128,23 +128,17 @@ static void fse_fini_cache(struct voluta_fs_env *fse)
 	}
 }
 
-static int fse_init_zb(struct voluta_fs_env *fse)
+static int fse_init_sb(struct voluta_fs_env *fse)
 {
-	struct voluta_zero_block *zb;
-
-	zb = voluta_zb_new(fse->qalloc, VOLUTA_ZTYPE_VOLUME);
-	if (zb == NULL) {
-		return -ENOMEM;
-	}
-	fse->zb = zb;
-	return 0;
+	fse->sb = voluta_sb_new(fse->qalloc, VOLUTA_ZTYPE_VOLUME);
+	return (fse->sb == NULL) ? -ENOMEM : 0;
 }
 
-static void fse_fini_zb(struct voluta_fs_env *fse)
+static void fse_fini_sb(struct voluta_fs_env *fse)
 {
-	if (fse->zb != NULL) {
-		voluta_zb_del(fse->zb, fse->qalloc);
-		fse->zb = NULL;
+	if (fse->sb != NULL) {
+		voluta_sb_del(fse->sb, fse->qalloc);
+		fse->sb = NULL;
 	}
 }
 
@@ -153,7 +147,7 @@ static int fse_init_sbi(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbi;
 
-	err = voluta_sbi_init(sbi, fse->zb, fse->cache, fse->pstore);
+	err = voluta_sbi_init(sbi, fse->sb, fse->cache, fse->pstore);
 	if (err) {
 		return err;
 	}
@@ -230,7 +224,7 @@ static int fse_init(struct voluta_fs_env *fse, size_t memwant)
 	if (err) {
 		return err;
 	}
-	err = fse_init_zb(fse);
+	err = fse_init_sb(fse);
 	if (err) {
 		return err;
 	}
@@ -249,7 +243,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 {
 	fse_fini_fuseq(fse);
 	fse_fini_sbi(fse);
-	fse_fini_zb(fse);
+	fse_fini_sb(fse);
 	fse_fini_pstore(fse);
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
@@ -293,6 +287,11 @@ void voluta_fse_del(struct voluta_fs_env *fse)
 	voluta_burnstack();
 }
 
+static void fse_relax_cache(struct voluta_fs_env *fse)
+{
+	voluta_cache_relax(fse->cache, VOLUTA_F_BRINGUP);
+}
+
 static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 {
 	int err;
@@ -308,6 +307,11 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 	return 0;
 }
 
+static loff_t fse_pstore_size(const struct voluta_fs_env *fse)
+{
+	return fse->pstore->ps_size;
+}
+
 static int fse_reload_space(struct voluta_fs_env *fse)
 {
 	int err;
@@ -315,12 +319,12 @@ static int fse_reload_space(struct voluta_fs_env *fse)
 	loff_t vsize;
 	loff_t psize;
 
-	zsize = (loff_t)voluta_zb_size(fse->zb);
+	zsize = (loff_t)voluta_zb_size(&fse->sb->s_zero);
 	err = voluta_calc_vsize(zsize, 0, &vsize);
 	if (err) {
 		return err;
 	}
-	psize = fse->pstore->ps_size;
+	psize = fse_pstore_size(fse);
 	if (psize > vsize) {
 		log_err("illegal volume: vsize=%lu psize=%ld", vsize, psize);
 		return -EINVAL;
@@ -332,7 +336,7 @@ static int fse_reload_space(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_load_meta(struct voluta_fs_env *fse)
+static int fse_reload_meta(struct voluta_fs_env *fse)
 {
 	int err;
 	struct voluta_sb_info *sbi = sbi_of(fse);
@@ -341,18 +345,19 @@ static int fse_load_meta(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_load_super(sbi);
+	err = voluta_adjust_super(sbi);
 	if (err) {
 		return err;
 	}
-	err = voluta_load_spmaps(sbi);
+	err = voluta_reload_spmaps(sbi);
 	if (err) {
 		return err;
 	}
-	err = voluta_load_itable(sbi);
+	err = voluta_reload_itable(sbi);
 	if (err) {
 		return err;
 	}
+	fse_relax_cache(fse);
 	return 0;
 }
 
@@ -425,12 +430,17 @@ static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
 	return err;
 }
 
+static int fse_flush_dirty(const struct voluta_fs_env *fse, bool drop_caches)
+{
+	return commit_dirty_now(fse->sbi, drop_caches);
+}
+
 static int voluta_fse_shut(struct voluta_fs_env *fse)
 {
 	int err;
 	struct voluta_sb_info *sbi = sbi_of(fse);
 
-	err = commit_dirty_now(sbi, false);
+	err = fse_flush_dirty(fse, false);
 	if (err) {
 		return err;
 	}
@@ -438,7 +448,7 @@ static int voluta_fse_shut(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = commit_dirty_now(sbi, true);
+	err = fse_flush_dirty(fse, true);
 	if (err) {
 		return err;
 	}
@@ -486,7 +496,7 @@ void voluta_fse_halt(struct voluta_fs_env *fse, int signum)
 
 int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 {
-	return commit_dirty_now(fse->sbi, true);
+	return fse_flush_dirty(fse, true);
 }
 static void fse_update_owner(struct voluta_fs_env *fse)
 {
@@ -548,7 +558,7 @@ int voluta_fse_setargs(struct voluta_fs_env *fse,
 	fse_update_mnt_flags(fse);
 
 	if (args->encrypted) {
-		err = voluta_passphrase_setup(&passph, args->passph);
+		err = voluta_passphrase_setup(&passph, args->passwd);
 		if (err) {
 			return err;
 		}
@@ -576,118 +586,84 @@ void voluta_fse_stats(const struct voluta_fs_env *fse,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static const struct voluta_mdigest *fse_mdigest(const struct voluta_fs_env
-		*fse)
+static const struct voluta_crypto *fse_crypto(const struct voluta_fs_env *fse)
 {
-	return &fse->sbi->sb_crypto.md;
+	return &fse->sbi->sb_crypto;
 }
 
-static const struct voluta_cipher *fse_cipher(const struct voluta_fs_env *fse)
+static const struct voluta_mdigest *
+fse_mdigest(const struct voluta_fs_env *fse)
 {
-	return &fse->sbi->sb_crypto.ci;
+	return &fse_crypto(fse)->md;
 }
 
-static int fse_setup_zb(struct voluta_fs_env *fse)
+static int fse_encrypt_sb(struct voluta_fs_env *fse)
 {
-	const loff_t vsize = fse->sbi->sb_spi.sp_size;
-	const struct voluta_mdigest *md = &fse->sbi->sb_crypto.md;
-	struct voluta_zero_block *zb = fse->zb;
-
-	voluta_zb_set_size(zb, (size_t)vsize);
-	voluta_zb_set_randfill(zb, md);
-	voluta_zb_set_name(zb, fse->args.fsname);
-	return 0;
+	return !fse->args.encrypted ? 0 :
+	       voluta_sb_encrypt(fse->sb, fse_crypto(fse), fse->args.passwd);
 }
 
-static int fse_encrypt_zb(struct voluta_fs_env *fse)
+static int fse_save_sb(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_kdf_pair kdf;
-	struct voluta_iv_key iv_key;
-	struct voluta_passphrase passph;
-	struct voluta_zero_block *zb = fse->zb;
+	const struct voluta_super_block *sb = fse->sb;
 
-	if (!fse->args.encrypted) {
-		return 0;
-	}
-	err = voluta_passphrase_setup(&passph, fse->args.passph);
+	err = voluta_pstore_write(fse->pstore, 0, sizeof(*sb), sb);
 	if (err) {
-		return err;
-	}
-	voluta_zb_kdf(zb, &kdf);
-	err = voluta_derive_iv_key(&passph, &kdf, fse_mdigest(fse), &iv_key);
-	if (err) {
-		return err;
-	}
-	err = voluta_zb_encrypt_meta(zb, fse_cipher(fse), &iv_key);
-	if (err) {
-		return err;
-	}
-	voluta_zb_set_encrypted(zb);
-	voluta_passphrase_reset(&passph);
-	return 0;
-}
-
-static int fse_save_zb(struct voluta_fs_env *fse)
-{
-	int err;
-	const struct voluta_zero_block *zb = fse->zb;
-
-	err = voluta_pstore_write(fse->pstore, 0, sizeof(*zb), zb);
-	if (err) {
-		log_err("write zb failed: err=%d", err);
+		log_err("write sb failed: err=%d", err);
 		return err;
 	}
 	return 0;
 }
 
-static int fse_store_zb(struct voluta_fs_env *fse)
+static int fse_store_sb(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_zb_check_volume(fse->zb);
+	err = voluta_sb_check_volume(fse->sb);
 	if (err) {
 		return err;
 	}
-	err = fse_encrypt_zb(fse);
+	err = voluta_sb_check_rand(fse->sb, fse_mdigest(fse));
 	if (err) {
 		return err;
 	}
-	err = fse_save_zb(fse);
+	err = fse_encrypt_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_save_sb(fse);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fse_load_zb(struct voluta_fs_env *fse)
+static int fse_load_sb(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_zero_block *zb = fse->zb;
+	struct voluta_super_block *sb = fse->sb;
 
-	err = voluta_pstore_read(fse->pstore, 0, sizeof(*zb), zb);
+	err = voluta_pstore_read(fse->pstore, 0, sizeof(*sb), sb);
 	if (err) {
-		log_err("read zb failed: err=%d", err);
+		log_err("read sb failed: err=%d", err);
 		return err;
 	}
-	err = voluta_zb_check_volume(zb);
+	err = voluta_sb_check_volume(sb);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fse_decrypt_zb(struct voluta_fs_env *fse)
+static int fse_decrypt_sb(struct voluta_fs_env *fse)
 {
 	int err;
-	bool zb_enc;
-	enum voluta_zb_flags zbf;
-	struct voluta_kdf_pair kdf;
-	struct voluta_iv_key iv_key;
-	struct voluta_passphrase passph;
+	int zb_enc;
+	enum voluta_zbf zbf;
 
-	zbf = voluta_zb_flags(fse->zb);
-	zb_enc = voluta_zb_is_encrypted(fse->zb);
+	zbf = voluta_zb_flags(&fse->sb->s_zero);
+	zb_enc = zbf & VOLUTA_ZBF_ENCRYPTED;
 	if (zb_enc && !fse->args.encrypted) {
 		log_err("encrypted zb: flags=0x%x", zbf);
 		return -ENOKEY;
@@ -699,57 +675,49 @@ static int fse_decrypt_zb(struct voluta_fs_env *fse)
 	if (!zb_enc) {
 		return 0;
 	}
-	err = voluta_passphrase_setup(&passph, fse->args.passph);
+	err = voluta_sb_decrypt(fse->sb, fse_crypto(fse), fse->args.passwd);
 	if (err) {
-		return err;
-	}
-	voluta_zb_kdf(fse->zb, &kdf);
-	err = voluta_derive_iv_key(&passph, &kdf, fse_mdigest(fse), &iv_key);
-	if (err) {
-		return err;
-	}
-	err = voluta_zb_decrypt_meta(fse->zb, fse_cipher(fse), &iv_key);
-	if (err) {
+		log_err("decrypt sb tail failed: err=%d", err);
 		return err;
 	}
 	return 0;
 }
 
-static int fse_recheck_zb(struct voluta_fs_env *fse)
+static int fse_recheck_sb(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_zb_check_volume(fse->zb);
+	err = voluta_sb_check_volume(fse->sb);
 	if (err) {
 		return err;
 	}
-	err = voluta_zb_check_randfill(fse->zb, fse_mdigest(fse));
+	err = voluta_sb_check_rand(fse->sb, fse_mdigest(fse));
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fse_stage_zb(struct voluta_fs_env *fse)
+static int fse_stage_sb(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = fse_load_zb(fse);
+	err = fse_load_sb(fse);
 	if (err) {
 		return err;
 	}
-	err = fse_decrypt_zb(fse);
+	err = fse_decrypt_sb(fse);
 	if (err) {
 		return err;
 	}
-	err = fse_recheck_zb(fse);
+	err = fse_recheck_sb(fse);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-int voluta_fse_load(struct voluta_fs_env *fse)
+int voluta_fse_reload(struct voluta_fs_env *fse)
 {
 	int err;
 
@@ -757,11 +725,11 @@ int voluta_fse_load(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_stage_zb(fse);
+	err = fse_stage_sb(fse);
 	if (err) {
 		return err;
 	}
-	err = fse_load_meta(fse);
+	err = fse_reload_meta(fse);
 	if (err) {
 		return err;
 	}
@@ -777,7 +745,7 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_stage_zb(fse);
+	err = fse_stage_sb(fse);
 	if (err) {
 		fse_close_pstore(fse);
 		return err;
@@ -789,12 +757,13 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int format_root_inode(struct voluta_sb_info *sbi,
-			     const struct voluta_oper *op)
+static int fse_format_rootdir(const struct voluta_fs_env *fse,
+			      const struct voluta_oper *op)
 {
 	int err;
 	const mode_t mode = S_IFDIR | 0755;
 	struct voluta_inode_info *root_ii = NULL;
+	struct voluta_sb_info *sbi = fse->sbi;
 
 	err = voluta_create_inode(sbi, op, mode, VOLUTA_INO_NULL, 0, &root_ii);
 	if (err) {
@@ -805,36 +774,28 @@ static int format_root_inode(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int format_filesystem(struct voluta_sb_info *sbi,
-			     const struct voluta_oper *op)
+static int fse_format_fs_meta(const struct voluta_fs_env *fse,
+			      const struct voluta_oper *op)
 {
 	int err;
 
-	err = voluta_format_super(sbi);
+	err = voluta_adjust_super(fse->sbi);
 	if (err) {
 		return err;
 	}
-	err = voluta_format_spmaps(sbi);
+	err = voluta_format_spmaps(fse->sbi);
 	if (err) {
 		return err;
 	}
-	err = voluta_format_itable(sbi);
+	err = voluta_format_itable(fse->sbi);
 	if (err) {
 		return err;
 	}
-	err = commit_dirty_now(sbi, false);
+	err = fse_flush_dirty(fse, false);
 	if (err) {
 		return err;
 	}
-	err = format_root_inode(sbi, op);
-	if (err) {
-		return err;
-	}
-	err = commit_dirty_now(sbi, true);
-	if (err) {
-		return err;
-	}
-	err = voluta_load_spmaps(sbi);
+	err = fse_format_rootdir(fse, op);
 	if (err) {
 		return err;
 	}
@@ -842,7 +803,25 @@ static int format_filesystem(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int fse_prepare_volume(struct voluta_fs_env *fse)
+static int fse_setup_sb(struct voluta_fs_env *fse,
+			const struct voluta_oper *op)
+{
+	size_t vol_size;
+	size_t ag_count;
+	struct voluta_super_block *sb = fse->sb;
+
+	vol_size = (size_t)fse->args.vsize;
+	ag_count = voluta_size_to_ag_count((size_t)vol_size);
+	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
+	voluta_sb_setup_ivks(sb);
+	voluta_sb_setup_rand(sb, fse_mdigest(fse));
+	voluta_sb_set_ag_count(sb, ag_count);
+	voluta_zb_set_size(&sb->s_zero, vol_size);
+	return 0;
+}
+
+static int fse_prepare_volume(struct voluta_fs_env *fse,
+			      const struct voluta_oper *op)
 {
 	int err;
 
@@ -854,7 +833,7 @@ static int fse_prepare_volume(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_setup_zb(fse);
+	err = fse_setup_sb(fse, op);
 	if (err) {
 		return err;
 	}
@@ -876,19 +855,19 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_prepare_volume(fse);
+	err = fse_prepare_volume(fse, &op);
 	if (err) {
 		return err;
 	}
-	err = format_filesystem(fse->sbi, &op);
+	err = fse_format_fs_meta(fse, &op);
 	if (err) {
 		return err;
 	}
-	err = commit_dirty_now(fse->sbi, false);
+	err = fse_flush_dirty(fse, true);
 	if (err) {
 		return err;
 	}
-	err = fse_store_zb(fse);
+	err = fse_store_sb(fse);
 	if (err) {
 		return err;
 	}
@@ -901,7 +880,7 @@ int voluta_fse_serve(struct voluta_fs_env *fse)
 	const char *volume = fse->args.volume;
 	const char *mntpath = fse->args.mountp;
 
-	err = voluta_fse_load(fse);
+	err = voluta_fse_reload(fse);
 	if (err) {
 		log_err("load-fs error: %s %d", volume, err);
 		return err;

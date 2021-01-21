@@ -1337,11 +1337,9 @@ void ut_drop_caches_fully(struct ut_env *ute)
 	struct voluta_fs_stats st;
 
 	ut_sync_drop(ute);
-
-	/* Expects only super-block */
 	voluta_fse_stats(ute->fse, &st);
-	ut_expect_eq(st.ncache_blocks, 1);
-	ut_expect_eq(st.ncache_vnodes, 1);
+	ut_expect_eq(st.ncache_blocks, 0);
+	ut_expect_eq(st.ncache_vnodes, 0);
 	ut_expect_eq(st.ncache_inodes, 0);
 }
 
@@ -1395,7 +1393,7 @@ static void ut_reload_fs_ok(struct ut_env *ute)
 	err = voluta_fse_term(ute->fse);
 	ut_expect_ok(err);
 
-	err = voluta_fse_load(ute->fse);
+	err = voluta_fse_reload(ute->fse);
 	ut_expect_ok(err);
 }
 

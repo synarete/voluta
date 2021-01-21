@@ -78,7 +78,7 @@ static void mount_setup_check_mntpoint(void)
 
 static void mount_setup_check_volume(void)
 {
-	enum voluta_zb_flags zbf;
+	enum voluta_zbf zbf;
 	const char *pass = NULL;
 	const char *path = NULL;
 
@@ -168,7 +168,7 @@ static void mount_create_setup_env(void)
 		.umask = 0022,
 		.mountp = voluta_globals.mount_point_real,
 		.volume = voluta_globals.mount_volume_real,
-		.passph = voluta_globals.mount_passphrase,
+		.passwd = voluta_globals.mount_passphrase,
 		.encrypted = voluta_globals.mount_encrypted,
 		.lazytime = voluta_globals.mount_lazytime,
 		.noexec = voluta_globals.mount_noexec,

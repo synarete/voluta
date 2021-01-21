@@ -14,6 +14,8 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <sys/types.h>
+#include <sys/mount.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -1986,14 +1988,12 @@ void voluta_ii_dirtify(struct voluta_inode_info *ii)
 	voluta_vi_dirtify(ii_vi(ii));
 }
 
-static bool vi_isronly(const struct voluta_vnode_info *vi)
-{
-	return !voluta_is_wlayer(vi_sbi(vi), vi_vaddr(vi));
-}
-
 bool voluta_ii_isrdonly(const struct voluta_inode_info *ii)
 {
-	return vi_isronly(ii_vi(ii));
+	const unsigned long ms_mask = MS_RDONLY;
+	const struct voluta_sb_info *sbi = ii_sbi(ii);
+
+	return ((sbi->sb_ms_flags & ms_mask) == ms_mask);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

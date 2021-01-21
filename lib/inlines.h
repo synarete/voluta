@@ -68,7 +68,7 @@ static inline bool ino_isnull(ino_t ino)
 
 static inline bool off_isnull(loff_t off)
 {
-	return (off == VOLUTA_OFF_NULL);
+	return (off >= VOLUTA_OFF_NULL) || (off < 0);
 }
 
 static inline loff_t off_min(loff_t off1, loff_t off2)
@@ -167,11 +167,6 @@ static inline bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
 static inline bool vtype_isnone(enum voluta_vtype vtype)
 {
 	return vtype_isequal(vtype, VOLUTA_VTYPE_NONE);
-}
-
-static inline bool vtype_issuper(enum voluta_vtype vtype)
-{
-	return vtype_isequal(vtype, VOLUTA_VTYPE_SUPER);
 }
 
 static inline bool vtype_ishsmap(enum voluta_vtype vtype)

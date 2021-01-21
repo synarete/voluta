@@ -921,6 +921,12 @@ static int xb_populate(struct voluta_xbuf *xb,
 static int xb_destage(const struct voluta_xbuf *xb,
 		      struct voluta_pstore *pstore)
 {
+	const loff_t lba = off_to_lba(xb->off);
+
+	voluta_assert(!off_isnull(xb->off));
+	voluta_assert(!lba_isnull(lba));
+	voluta_assert_gt(lba, VOLUTA_LBA_SB);
+
 	return voluta_pstore_write(pstore, xb->off, xb->buf.len, xb->buf.buf);
 }
 

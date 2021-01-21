@@ -18,7 +18,7 @@
 #define VOLUTA_ERRORS_H_
 
 
-/* run-time assertions */
+/* run-time assertions (debug mode only) */
 #ifdef NDEBUG
 #define voluta_assert(cond)
 #define voluta_assert_eq(a, b)

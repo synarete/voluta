@@ -178,27 +178,27 @@ void voluta_die_if_exists(const char *path)
 	}
 }
 
-static struct voluta_zero_block *zb_new(void)
+static struct voluta_zero_block4 *zb_new(void)
 {
-	struct voluta_zero_block *zb = NULL;
+	struct voluta_zero_block4 *zb = NULL;
 
 	zb = voluta_malloc_safe(sizeof(*zb));
 	memset(zb, 0, sizeof(*zb));
 	return zb;
 }
 
-static void zb_del(struct voluta_zero_block *zb)
+static void zb_del(struct voluta_zero_block4 *zb)
 {
 	memset(zb, 0xFE, sizeof(*zb));
 	free(zb);
 }
 
-static struct voluta_zero_block *read_zb_or_die(const char *path)
+static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
 	struct stat st;
-	struct voluta_zero_block *zb = zb_new();
+	struct voluta_zero_block4 *zb = zb_new();
 
 	voluta_stat_reg(path, &st);
 	if (st.st_size == 0) {
@@ -221,18 +221,29 @@ static struct voluta_zero_block *read_zb_or_die(const char *path)
 
 void voluta_die_if_bad_zb(const char *path, const char *pass,
 			  enum voluta_ztype *out_ztype,
-			  enum voluta_zb_flags *out_zbf)
+			  enum voluta_zbf *out_zbf)
 {
 	int err;
-	struct voluta_zero_block *zb = NULL;
+	struct voluta_zero_block4 *zb = NULL;
 
 	zb = read_zb_or_die(path);
-	err = voluta_zb_parse_hdr(zb, out_ztype, out_zbf);
-	if (!err && (pass != NULL)) {
-		err = voluta_zb_decipher(zb, pass);
+	err = voluta_zb_check(zb);
+	if (err) {
+		goto out;
 	}
-	zb_del(zb);
+	*out_ztype = voluta_zb_type(zb);
+	*out_zbf = voluta_zb_flags(zb);
+	if (pass == NULL) {
+		goto out;
+	}
 
+
+
+	/* FIXME
+	err = voluta_zb_decipher(zb, pass);
+	*/
+out:
+	zb_del(zb);
 	if (err == -EAGAIN) {
 		voluta_die(err, "already in use: %s", path);
 	} else if (err == -EUCLEAN) {
@@ -245,7 +256,7 @@ void voluta_die_if_bad_zb(const char *path, const char *pass,
 }
 
 void voluta_die_if_not_volume(const char *path, const char *pass,
-			      enum voluta_zb_flags *out_zbf)
+			      enum voluta_zbf *out_zbf)
 {
 	int err;
 	enum voluta_ztype ztype;
@@ -263,10 +274,9 @@ void voluta_die_if_not_volume(const char *path, const char *pass,
 void voluta_die_if_not_archive(const char *path, const char *pass)
 {
 	enum voluta_ztype ztype;
-	enum voluta_zb_flags zbf;
+	enum voluta_zbf zbf;
 
-	voluta_die_if_not_reg(path, false); /* TODO: Check size 8K */
-
+	voluta_die_if_not_reg(path, false); /* TODO: Check size  */
 	voluta_die_if_bad_zb(path, pass, &ztype, &zbf);
 	if (ztype != VOLUTA_ZTYPE_ARCHIVE) {
 		voluta_die(0, "not an archive: %s", path);

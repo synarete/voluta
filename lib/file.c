@@ -78,8 +78,6 @@ static const struct voluta_vaddr *vaddr_none(void)
 
 static ssize_t data_size_of(enum voluta_vtype vtype)
 {
-	voluta_assert(vtype_isdata(vtype));
-
 	return vtype_ssize(vtype);
 }
 
@@ -672,7 +670,6 @@ static void file_tree_root(const struct voluta_inode_info *ii,
 			   struct voluta_vaddr *out_vaddr)
 {
 	ris_tree_root(ii_ris_of(ii), out_vaddr);
-	voluta_assert(vaddr_isnull(out_vaddr) || vaddr_isrtnode(out_vaddr));
 }
 
 static void tree_root_of(const struct voluta_file_ctx *f_ctx,
@@ -1333,8 +1330,6 @@ static void resolve_tree_leaf(const struct voluta_file_ctx *f_ctx,
 
 	child_of_current_pos(f_ctx, parent_vi, &fnr);
 	vaddr_copyto(&fnr.vaddr, out_vaddr);
-
-	voluta_assert(vaddr_isnull(out_vaddr) || vaddr_isdata(out_vaddr));
 }
 
 static void resolve_curr_node(const struct voluta_file_ctx *f_ctx,
@@ -1345,8 +1340,6 @@ static void resolve_curr_node(const struct voluta_file_ctx *f_ctx,
 
 	child_of_current_pos(f_ctx, parent_vi, &fnr);
 	vaddr_copyto(&fnr.vaddr, out_vaddr);
-
-	voluta_assert(vaddr_isnull(out_vaddr) || vaddr_isrtnode(out_vaddr));
 }
 
 static int stage_by_tree_map(const struct voluta_file_ctx *f_ctx,
@@ -1691,8 +1684,6 @@ static int del_rtnode(const struct voluta_file_ctx *f_ctx,
 static void update_head_leaf(const struct voluta_file_ctx *f_ctx,
 			     const struct voluta_vaddr *vaddr)
 {
-	voluta_assert(vaddr_isdata(vaddr));
-
 	set_head_leaf_of(f_ctx, vaddr);
 	ii_dirtify(f_ctx->ii);
 }
@@ -1700,8 +1691,6 @@ static void update_head_leaf(const struct voluta_file_ctx *f_ctx,
 static void update_tree_root(const struct voluta_file_ctx *f_ctx,
 			     const struct voluta_vaddr *vaddr)
 {
-	voluta_assert(vaddr_isrtnode(vaddr));
-
 	set_tree_root_of(f_ctx, vaddr);
 	ii_dirtify(f_ctx->ii);
 }
@@ -1709,7 +1698,6 @@ static void update_tree_root(const struct voluta_file_ctx *f_ctx,
 static void update_iattr_blocks(const struct voluta_file_ctx *f_ctx,
 				const struct voluta_vaddr *vaddr, long dif)
 {
-	voluta_assert(vaddr_isdata(vaddr));
 	update_iblocks(f_ctx->op, f_ctx->ii, vaddr->vtype, dif);
 }
 
@@ -2464,7 +2452,6 @@ static int discard_entire(struct voluta_file_ctx *f_ctx,
 {
 	int err;
 
-	voluta_assert(vaddr_isdata(&fnr->vaddr));
 	err = discard_data_leaf_at(f_ctx, fnr);
 	if (err) {
 		return err;
@@ -2488,7 +2475,6 @@ static int discard_data_at(struct voluta_file_ctx *f_ctx,
 	if (vaddr_isnull(&fnr->vaddr)) {
 		return 0;
 	}
-	voluta_assert(vaddr_isdata(&fnr->vaddr));
 	partial = off_is_partial(fnr->file_pos, f_ctx->end, fnr->vaddr.vtype);
 	if (partial) {
 		err = discard_partial(f_ctx, fnr);

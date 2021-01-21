@@ -86,16 +86,16 @@ clone
 ..
 
 
-archive
--------
-**voluta archive** *volume-file* *archive-dir*
+export
+------
+**voluta export** *volume-file* *archive-dir*
 
 ..
 
 
-restore
+import
 -------
-**voluta restore** *archive-file* *volume-dir*
+**voluta import** *archive-file* *volume-dir*
 
 ..
 

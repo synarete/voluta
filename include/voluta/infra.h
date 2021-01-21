@@ -65,10 +65,16 @@ size_t voluta_sc_avphys_pages(void);
 
 size_t voluta_sc_l1_dcache_linesize(void);
 
-/* monotonic-time wrappers */
+/* time wrappers */
 void voluta_mclock_now(struct timespec *ts);
 
 void voluta_mclock_dur(const struct timespec *start, struct timespec *dur);
+
+time_t voluta_time_now(void);
+
+void voluta_ts_copy(struct timespec *dst, const struct timespec *src);
+
+int voluta_ts_gettime(struct timespec *ts, bool realtime);
 
 /* getentropy wrapper */
 void voluta_getentropy(void *buf, size_t len);

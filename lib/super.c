@@ -26,6 +26,10 @@
 #include "libvoluta.h"
 
 
+/* non-valid ("NIL") allocation-group index */
+#define VOLUTA_AG_INDEX_NULL            (0UL - 1)
+
+
 struct voluta_ag_range {
 	size_t beg; /* start ag-index */
 	size_t tip; /* heuristic of current tip ag-index */
@@ -52,8 +56,7 @@ struct voluta_super_ctx {
 	ino_t ino;
 };
 
-static int stage_super(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info **out_vi);
+
 static int stage_hsmap(struct voluta_sb_info *sbi, size_t hs_index,
 		       struct voluta_vnode_info **out_vi);
 static int stage_agmap(struct voluta_sb_info *sbi, size_t ag_index,
@@ -62,19 +65,11 @@ static int format_spmaps_at(struct voluta_sb_info *sbi,
 			    size_t hs_index, size_t nags);
 static int load_agmap(struct voluta_sb_info *sbi, size_t ag_index);
 static int fetch_parents(struct voluta_super_ctx *s_ctx);
-static size_t sbi_wstart_ag(const struct voluta_sb_info *sbi);
-static int sbi_resolve_itroot(const struct voluta_sb_info *sbi,
-			      struct voluta_vaddr *out_vaddr);
 static int format_next_agmaps(struct voluta_sb_info *sbi,
 			      struct voluta_vnode_info *hsm_vi,
 			      size_t nags_want, size_t *out_nags_fmt);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static time_t time_now(void)
-{
-	return time(NULL);
-}
 
 static struct voluta_cache *cache_of(const struct voluta_super_ctx *s_ctx)
 {
@@ -135,96 +130,6 @@ static size_t safe_sum(size_t cur, ssize_t dif)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static uint32_t sb_version(const struct voluta_super_block *sb)
-{
-	return le32_to_cpu(sb->s_version);
-}
-
-static void sb_set_version(struct voluta_super_block *sb, uint32_t version)
-{
-	sb->s_version = cpu_to_le32(version);
-}
-
-static const char *sb_fs_name(const struct voluta_super_block *sb)
-{
-	return (const char *)(sb->s_fs_name.name);
-}
-
-static void sb_set_fs_name(struct voluta_super_block *sb, const char *name)
-{
-	const size_t name_max = sizeof(sb->s_fs_name.name) - 1;
-	const size_t name_len = min(strlen(name), name_max);
-
-	memcpy(sb->s_fs_name.name, name, name_len);
-}
-
-static const struct voluta_iv_key *
-sb_iv_key_at(const struct voluta_super_block *sb, size_t slot)
-{
-	return &sb->s_iv_keys[slot];
-}
-
-static const struct voluta_iv_key *
-sb_iv_key_of(const struct voluta_super_block *sb, size_t hs_index)
-{
-	const size_t slot = (hs_index - 1) % ARRAY_SIZE(sb->s_iv_keys);
-
-	return sb_iv_key_at(sb, slot);
-}
-
-static void sb_rfill_iv_keys(struct voluta_super_block *sb)
-{
-	for (size_t i = 0; i < ARRAY_SIZE(sb->s_iv_keys); ++i) {
-		voluta_iv_key_rand(&sb->s_iv_keys[i]);
-	}
-}
-
-static time_t sb_birth_time(const struct voluta_super_block *sb)
-{
-	return (time_t)le64_to_cpu(sb->s_birth_time);
-}
-
-static void sb_set_birth_time(struct voluta_super_block *sb, time_t btime)
-{
-	sb->s_birth_time = cpu_to_le64((uint64_t)btime);
-}
-
-static size_t sb_ag_count(const struct voluta_super_block *sb)
-{
-	return le64_to_cpu(sb->s_ag_count);
-}
-
-static void sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count)
-{
-	sb->s_ag_count = cpu_to_le64(ag_count);
-}
-
-static void sb_it_root(const struct voluta_super_block *sb,
-		       struct voluta_vaddr *out_vaddr)
-{
-	voluta_vaddr64_parse(&sb->s_it_root, out_vaddr);
-}
-
-static void sb_set_it_root(struct voluta_super_block *sb,
-			   const struct voluta_vaddr *vaddr)
-{
-	voluta_vaddr64_set(&sb->s_it_root, vaddr);
-}
-
-static void sb_init(struct voluta_super_block *sb)
-{
-	sb_set_version(sb, VOLUTA_FMT_VERSION);
-	sb_set_ag_count(sb, 0);
-	sb_set_it_root(sb, &voluta_vaddr_none);
-}
-
-static void sb_fill_uuid(struct voluta_super_block *sb)
-{
-	voluta_uuid_generate(&sb->s_uuid);
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
 {
 	return le32_to_cpu(agr->ag_used_meta);
@@ -257,28 +162,28 @@ static void agr_set_nfiles(struct voluta_ag_rec *agr, size_t nfiles)
 	agr->ag_nfiles = cpu_to_le32((uint32_t)nfiles);
 }
 
-static enum voluta_ag_flags agr_flags(const struct voluta_ag_rec *agr)
+static enum voluta_agf agr_flags(const struct voluta_ag_rec *agr)
 {
 	return le16_to_cpu(agr->ag_flags);
 }
 
-static void agr_set_flags(struct voluta_ag_rec *agr, enum voluta_ag_flags f)
+static void agr_set_flags(struct voluta_ag_rec *agr, enum voluta_agf f)
 {
 	agr->ag_flags = cpu_to_le16((uint16_t)f);
 }
 
 static bool agr_has_flags(const struct voluta_ag_rec *agr,
-			  const enum voluta_ag_flags mask)
+			  const enum voluta_agf mask)
 {
 	return ((agr_flags(agr) & mask) == mask);
 }
 
-static void agr_add_flags(struct voluta_ag_rec *agr, enum voluta_ag_flags mask)
+static void agr_add_flags(struct voluta_ag_rec *agr, enum voluta_agf mask)
 {
 	agr_set_flags(agr, agr_flags(agr) | mask);
 }
 
-static void agr_del_flags(struct voluta_ag_rec *agr, enum voluta_ag_flags mask)
+static void agr_del_flags(struct voluta_ag_rec *agr, enum voluta_agf mask)
 {
 	agr_set_flags(agr, agr_flags(agr) & ~mask);
 }
@@ -428,18 +333,18 @@ static void hsm_set_index(struct voluta_hspace_map *hsm, size_t hs_index)
 	hsm->hs_index = cpu_to_le32((uint32_t)hs_index);
 }
 
-static enum voluta_hs_flags hsm_flags(const struct voluta_hspace_map *hsm)
+static enum voluta_hsf hsm_flags(const struct voluta_hspace_map *hsm)
 {
 	return le32_to_cpu(hsm->hs_flags);
 }
 
 static void hsm_set_flags(struct voluta_hspace_map *hsm,
-			  enum voluta_hs_flags flags)
+			  enum voluta_hsf flags)
 {
 	hsm->hs_flags = cpu_to_le32((uint32_t)flags);
 }
 
-static void hsm_add_flag(struct voluta_hspace_map *hsm, enum voluta_hs_flags f)
+static void hsm_add_flag(struct voluta_hspace_map *hsm, enum voluta_hsf f)
 {
 	hsm_set_flags(hsm, f | hsm_flags(hsm));
 }
@@ -451,7 +356,7 @@ static void hsm_add_hasnext(struct voluta_hspace_map *hsm)
 
 static bool hsm_test_hasnext(const struct voluta_hspace_map *hsm)
 {
-	const enum voluta_hs_flags f = VOLUTA_HSF_HASNEXT;
+	const enum voluta_hsf f = VOLUTA_HSF_HASNEXT;
 
 	return ((hsm_flags(hsm) & f) == f);
 }
@@ -540,11 +445,7 @@ hsm_record_at(const struct voluta_hspace_map *hsm, size_t slot)
 static struct voluta_ag_rec *
 hsm_record_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 {
-	size_t slot;
-	const size_t nag_prefix = VOLUTA_NAG_PREFIX_META;
-
-	voluta_assert_ge(ag_index, nag_prefix);
-	slot = (ag_index - nag_prefix) % ARRAY_SIZE(hsm->hs_agr);
+	const size_t slot = voluta_ag_index_to_hs_slot(ag_index);
 
 	return hsm_record_at(hsm, slot);
 }
@@ -691,7 +592,7 @@ static size_t hsm_find_avail(const struct voluta_hspace_map *hsm,
 	agr = hsm_record_of(hsm, ag_index_from);
 	beg = hsm_record_slot(hsm, agr);
 	for (size_t i = beg; i < nags; ++i) {
-		agr = &hsm->hs_agr[i];
+		agr = hsm_record_at(hsm, i);
 		if (!agr_is_formatted(agr)) {
 			break;
 		}
@@ -716,9 +617,8 @@ hsm_update_formatted_ag(struct voluta_hspace_map *hsm, size_t ag_index)
 static size_t
 hsm_used_space_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 {
-	const struct voluta_ag_rec *agr;
+	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
-	agr = hsm_record_of(hsm, ag_index);
 	return agr_used_space(agr);
 }
 
@@ -733,10 +633,33 @@ hsm_key_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 static const struct voluta_iv *
 hsm_iv_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 {
+	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
+
+	return agr_iv(agr);
+}
+
+static void hsm_mark_itroot_at(struct voluta_hspace_map *hsm, size_t ag_index)
+{
+	struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
+
+	agr_add_flags(agr, VOLUTA_AGF_ITABLEROOT);
+}
+
+static size_t hsm_find_itroot_ag(const struct voluta_hspace_map *hsm)
+{
+	size_t ag_index;
+	const size_t nags = hsm_nags_span(hsm);
 	const struct voluta_ag_rec *agr;
 
-	agr = hsm_record_of(hsm, ag_index);
-	return agr_iv(agr);
+	ag_index = VOLUTA_AG_INDEX_NULL;
+	for (size_t i = 0; i < nags; ++i) {
+		agr = hsm_record_at(hsm, i);
+		if (agr_has_flags(agr, VOLUTA_AGF_ITABLEROOT)) {
+			ag_index = hsm_resolve_ag_index(hsm, agr);
+			break;
+		}
+	}
+	return ag_index;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -754,6 +677,11 @@ static uint64_t mask_of(size_t kbn, size_t nkb)
 	voluta_assert_ne(mask, 0);
 
 	return mask;
+}
+
+static void bkr_set_flags(struct voluta_bk_rec *bkr, uint32_t f)
+{
+	bkr->bk_flags = cpu_to_le32(f);
 }
 
 static enum voluta_vtype bkr_vtype(const struct voluta_bk_rec *bkr)
@@ -910,6 +838,7 @@ static void bkr_init(struct voluta_bk_rec *bkr)
 {
 	bkr_set_vtype(bkr, VOLUTA_VTYPE_NONE);
 	bkr_set_refcnt(bkr, 0);
+	bkr_set_flags(bkr, 0);
 	bkr_set_allocated(bkr, 0);
 	bkr_set_unwritten(bkr, 0);
 	bkr->bk_flags = 0;
@@ -972,9 +901,22 @@ static void agm_set_index(struct voluta_agroup_map *agm, size_t ag_index)
 	agm->ag_index = cpu_to_le64(ag_index);
 }
 
+static void agm_it_root(const struct voluta_agroup_map *agm,
+			struct voluta_vaddr *out_vaddr)
+{
+	voluta_vaddr64_parse(&agm->ag_it_root, out_vaddr);
+}
+
+static void agm_set_it_root(struct voluta_agroup_map *agm,
+			    const struct voluta_vaddr *vaddr)
+{
+	voluta_vaddr64_set(&agm->ag_it_root, vaddr);
+}
+
 static void agm_init(struct voluta_agroup_map *agm, size_t ag_index)
 {
 	agm_set_index(agm, ag_index);
+	agm_set_it_root(agm, &voluta_vaddr_none);
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }
 
@@ -1203,10 +1145,6 @@ static size_t vi_ag_index(const struct voluta_vnode_info *vi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static size_t size_to_nags(loff_t nbytes)
-{
-	return (size_t)nbytes / VOLUTA_AG_SIZE;
-}
 
 static void spi_init(struct voluta_space_info *spi)
 {
@@ -1236,10 +1174,10 @@ static void spi_setup(struct voluta_space_info *spi, loff_t space_size)
 {
 	size_t ag_count;
 	size_t hs_count;
-	const size_t nag_prefix = VOLUTA_NAG_PREFIX_META;
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
+	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
 
-	ag_count = size_to_nags(space_size);
+	ag_count = voluta_size_to_ag_count((size_t)space_size);
 	hs_count = div_round_up(ag_count - nag_prefix, nag_in_hs);
 
 	spi->sp_size = space_size;
@@ -1341,8 +1279,7 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 
 static void spi_mark_used_prefix_ags(struct voluta_space_info *spi)
 {
-	const size_t ag_index = VOLUTA_NAG_PREFIX_META;
-	const loff_t off = ag_index_to_off(ag_index);
+	const loff_t off = ag_index_to_off(VOLUTA_NAG_IN_HS_PREFIX);
 
 	if (off > spi->sp_used_meta) {
 		spi->sp_used_meta = off;
@@ -1731,7 +1668,6 @@ static bool can_allocate_from(const struct voluta_vnode_info *hsm_vi,
 static void ag_range_of(const struct voluta_vnode_info *hsm_vi,
 			struct voluta_ag_range *ag_range)
 {
-	const size_t ag_index_w = sbi_wstart_ag(vi_sbi(hsm_vi));
 	const struct voluta_hspace_map *hsm = hsm_vi->vu.hsm;
 
 	ag_range->beg = hsm_ag_index_beg(hsm);
@@ -1742,8 +1678,6 @@ static void ag_range_of(const struct voluta_vnode_info *hsm_vi,
 	voluta_assert_ge(ag_range->tip, ag_range->beg);
 	voluta_assert_ge(ag_range->fin, ag_range->tip);
 	voluta_assert_ge(ag_range->end, ag_range->fin);
-
-	voluta_assert_ge(ag_range->beg, ag_index_w);
 }
 
 static int try_allocate_at(struct voluta_vnode_info *hsm_vi,
@@ -1988,9 +1922,6 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 	vi->view = view;
 
 	switch (vi->vaddr.vtype) {
-	case VOLUTA_VTYPE_SUPER:
-		vi->vu.sb = &view->u.sb;
-		break;
 	case VOLUTA_VTYPE_HSMAP:
 		vi->vu.hsm = &view->u.hsm;
 		break;
@@ -2268,157 +2199,113 @@ static int stage_vnode(struct voluta_super_ctx *s_ctx)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int spawn_super(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info **out_vi)
+static bool vaddr_isitnode(const struct voluta_vaddr *vaddr)
 {
-	struct voluta_super_ctx s_ctx = {
-		.sbi = sbi,
-		.vaddr = &s_ctx.via.vaddr
-	};
-
-	voluta_vaddr_of_super(s_ctx.vaddr);
-	return spawn_meta(&s_ctx, out_vi);
+	return !vaddr_isnull(vaddr) &&
+	       vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_ITNODE);
 }
 
-static void sbi_attach_sb(struct voluta_sb_info *sbi,
-			  struct voluta_vnode_info *sb_vi)
+
+static int sbi_resolve_itroot_ag(struct voluta_sb_info *sbi,
+				 size_t *out_ag_index)
 {
-	sbi->sb_vi = sb_vi;
-	vi_incref(sb_vi);
-}
-
-static void sbi_detach_sb(struct voluta_sb_info *sbi)
-{
-	vi_decref(sbi->sb_vi);
-	sbi->sb_vi = NULL;
-}
-
-static struct voluta_super_block *sbi_sb(const struct voluta_sb_info *sbi)
-{
-	const struct voluta_super_block *sb = sbi->sb_vi->vu.sb;
-
-	return unconst(sb);
-}
-
-static void sbi_set_fs_name(struct voluta_sb_info *sbi)
-{
-	struct voluta_namebuf *nb = &sbi->sb_fs_name;
-
-	strncpy(nb->name, sb_fs_name(sbi_sb(sbi)), sizeof(nb->name));
-}
-
-static int sbi_bind_itable_root(struct voluta_sb_info *sbi,
-				const struct voluta_vaddr *itr_vaddr)
-{
+	int err;
 	size_t ag_index;
+	struct voluta_vnode_info *hsm_vi = NULL;
+	const size_t hs_count = sbi->sb_spi.sp_hs_count;
 
-	ag_index = vaddr_ag_index(itr_vaddr);
-	if (ag_index >= sbi->sb_spi.sp_ag_count) {
-		return -ENOSPC;
+	for (size_t hs_index = 1; (hs_index <= hs_count); ++hs_index) {
+		err = stage_hsmap(sbi, hs_index, &hsm_vi);
+		if (err) {
+			return err;
+		}
+		ag_index = hsm_find_itroot_ag(hsm_vi->vu.hsm);
+		if (!ag_index_isnull(ag_index)) {
+			*out_ag_index = ag_index;
+			return 0;
+		}
 	}
-	sb_set_it_root(sbi_sb(sbi), itr_vaddr);
-	vi_dirtify(sbi->sb_vi);
-	return 0;
+	log_err("failed to find it-root ag: hs_count=%lu", hs_count);
+	return -EFSCORRUPTED;
 }
 
-static int sbi_resolve_itroot(const struct voluta_sb_info *sbi,
+static int sbi_resolve_itroot(struct voluta_sb_info *sbi,
 			      struct voluta_vaddr *out_vaddr)
 {
-	sb_it_root(sbi_sb(sbi), out_vaddr);
-	return vaddr_isnull(out_vaddr) ? -ENOENT : 0;
-}
-
-static size_t sbi_wstart_ag(const struct voluta_sb_info *sbi)
-{
 	int err;
 	size_t ag_index;
-	struct voluta_vaddr itr_vaddr;
-	const size_t ag_index_null = VOLUTA_AG_INDEX_NULL;
+	struct voluta_vnode_info *agm_vi = NULL;
 
-	err = sbi_resolve_itroot(sbi, &itr_vaddr);
-	if (err) {
-		return ag_index_null;
-	}
-	ag_index = vaddr_ag_index(&itr_vaddr);
-	if (ag_index >= sbi->sb_spi.sp_ag_count) {
-		return ag_index_null;
-	}
-	return ag_index;
-}
-
-static void sbi_setup_sb(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info *sb_vi)
-{
-	const char *fs_name = ""; /* TODO: FIXME */
-	struct voluta_super_block *sb = sb_vi->vu.sb;
-
-	vi_stamp_view(sb_vi);
-	sb_init(sb);
-	sb_set_birth_time(sb, time_now());
-	sb_set_fs_name(sb, fs_name);
-	sb_rfill_iv_keys(sb);
-	sb_set_ag_count(sb, sbi->sb_spi.sp_ag_count);
-	sb_fill_uuid(sb);
-}
-
-int voluta_format_super(struct voluta_sb_info *sbi)
-{
-	int err;
-	struct voluta_vnode_info *sb_vi;
-
-	err = spawn_super(sbi, &sb_vi);
+	err = sbi_resolve_itroot_ag(sbi, &ag_index);
 	if (err) {
 		return err;
 	}
-	sbi_setup_sb(sbi, sb_vi);
-	sbi_attach_sb(sbi, sb_vi);
-	sbi_set_fs_name(sbi);
-	spi_mark_used_prefix_ags(&sbi->sb_spi);
-	return 0;
-}
-
-static int check_super(const struct voluta_sb_info *sbi,
-		       const struct voluta_vnode_info *sb_vi)
-{
-	const size_t ag_count = sb_ag_count(sb_vi->vu.sb);
-	const size_t sp_ag_count = sbi->sb_spi.sp_ag_count;
-
-	if (ag_count != sp_ag_count) {
-		log_err("ag-count mismatch: sb=%lu expected=%lu",
-			ag_count, sp_ag_count);
+	err = stage_agmap(sbi, ag_index, &agm_vi);
+	if (err) {
+		return err;
+	}
+	agm_it_root(agm_vi->vu.agm, out_vaddr);
+	if (!vaddr_isitnode(out_vaddr)) {
+		log_err("non valid it-root vaddr: off=0x%lx vtype=%d",
+			out_vaddr->off, out_vaddr->vtype);
 		return -EFSCORRUPTED;
 	}
 	return 0;
 }
 
-int voluta_load_super(struct voluta_sb_info *sbi)
+int voluta_reload_itable(struct voluta_sb_info *sbi)
 {
 	int err;
-	struct voluta_vnode_info *sb_vi = NULL;
+	struct voluta_vaddr vaddr;
 
-	err = stage_super(sbi, &sb_vi);
+	err = sbi_resolve_itroot(sbi, &vaddr);
 	if (err) {
 		return err;
 	}
-	err = check_super(sbi, sb_vi);
+	err = voluta_reload_itable_at(sbi, &vaddr);
 	if (err) {
 		return err;
 	}
-	sbi_attach_sb(sbi, sb_vi);
-	sbi_set_fs_name(sbi);
+	return 0;
+}
 
+int voluta_adjust_super(struct voluta_sb_info *sbi)
+{
 	spi_mark_used_prefix_ags(&sbi->sb_spi);
-
 	return 0;
 }
 
 int voluta_shut_super(struct voluta_sb_info *sbi)
 {
-	/* XXX: TODO: fill sb_fs_name*/
-	log_dbg("shut-super: name=%s", sbi->sb_fs_name.name);
-	sbi_detach_sb(sbi);
+	log_dbg("shut-super: op_count=%lu", sbi->sb_ops.op_count);
 	spi_init(&sbi->sb_spi);
 	voluta_iti_reinit(&sbi->sb_iti);
+	return 0;
+}
+
+static int stamp_itable_at(struct voluta_sb_info *sbi,
+			   const struct voluta_vaddr *vaddr)
+{
+	int err;
+	size_t hs_index;
+	size_t ag_index;
+	struct voluta_vnode_info *hsm_vi;
+	struct voluta_vnode_info *agm_vi;
+
+	hs_index = vaddr_hs_index(vaddr);
+	err = stage_hsmap(sbi, hs_index, &hsm_vi);
+	if (err) {
+		return err;
+	}
+	ag_index = vaddr_ag_index(vaddr);
+	err = stage_agmap(sbi, ag_index, &agm_vi);
+	if (err) {
+		return err;
+	}
+	agm_set_it_root(agm_vi->vu.agm, vaddr);
+	vi_dirtify(agm_vi);
+	hsm_mark_itroot_at(hsm_vi->vu.hsm, ag_index);
+	vi_dirtify(hsm_vi);
 	return 0;
 }
 
@@ -2426,15 +2313,16 @@ int voluta_format_itable(struct voluta_sb_info *sbi)
 {
 	int err;
 	const struct voluta_vaddr *vaddr = NULL;
-	struct voluta_vnode_info *sb_vi = sbi->sb_vi;
 
 	err = voluta_create_itable(sbi);
 	if (err) {
 		return err;
 	}
 	vaddr = voluta_root_of_itable(sbi);
-	sbi_bind_itable_root(sbi, vaddr);
-	vi_dirtify(sb_vi);
+	err = stamp_itable_at(sbi, vaddr);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
@@ -2606,10 +2494,10 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 	const size_t hs_count = 1; /* TODO: format more then one? */
 
 	voluta_assert_gt(hs_count, 0);
-	voluta_assert_gt(sbi->sb_spi.sp_ag_count, VOLUTA_NAG_PREFIX_META);
+	voluta_assert_gt(sbi->sb_spi.sp_ag_count, VOLUTA_NAG_IN_HS_PREFIX);
 
 	for (size_t hs_index = 1; hs_index <= hs_count; ++hs_index) {
-		err = format_spmaps_at(sbi, hs_index, 2);
+		err = format_spmaps_at(sbi, hs_index, 3);
 		if (err) {
 			return err;
 		}
@@ -2741,7 +2629,7 @@ static int load_first_agmap_of(struct voluta_sb_info *sbi,
 	return err;
 }
 
-int voluta_load_spmaps(struct voluta_sb_info *sbi)
+int voluta_reload_spmaps(struct voluta_sb_info *sbi)
 {
 	int err;
 	bool has_next;
@@ -2790,107 +2678,10 @@ static int load_agmap(struct voluta_sb_info *sbi, size_t ag_index)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int scan_stage_root(struct voluta_sb_info *sbi,
-			   const struct voluta_ino_set *ino_set,
-			   struct voluta_inode_info **out_root_ii)
-{
-	int err;
-	ino_t ino;
-	struct voluta_inode_info *ii;
-
-	for (size_t i = 0; i < ino_set->cnt; ++i) {
-		ino = ino_set->ino[i];
-		err = voluta_fetch_inode(sbi, ino, &ii);
-		if (err) {
-			return err;
-		}
-		if (voluta_is_rootdir(ii)) {
-			*out_root_ii = ii;
-			return 0;
-		}
-	}
-	return -ENOENT;
-}
-
-static struct voluta_ino_set *new_ino_set(struct voluta_qalloc *qal)
-{
-	struct voluta_ino_set *ino_set;
-
-	ino_set = voluta_qalloc_zalloc(qal, sizeof(*ino_set));
-	if (ino_set != NULL) {
-		ino_set->cnt = 0;
-	}
-	return ino_set;
-}
-
-static void del_ino_set(struct voluta_qalloc *qal,
-			struct voluta_ino_set *ino_set)
-{
-	ino_set->cnt = 0;
-	voluta_qalloc_free(qal, ino_set, sizeof(*ino_set));
-}
-
-static int do_scan_root_inode(struct voluta_sb_info *sbi,
-			      struct voluta_ino_set *ino_set,
-			      struct voluta_inode_info **out_root_ii)
-{
-	int err;
-
-	err = voluta_parse_itable_top(sbi, ino_set);
-	if (err) {
-		return err;
-	}
-	err = scan_stage_root(sbi, ino_set, out_root_ii);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
-static int scan_root_inode(struct voluta_sb_info *sbi,
-			   struct voluta_inode_info **out_root_ii)
-{
-	int err = -ENOMEM;
-	struct voluta_ino_set *ino_set;
-
-	ino_set = new_ino_set(sbi->sb_qalloc);
-	if (ino_set != NULL) {
-		err = do_scan_root_inode(sbi, ino_set, out_root_ii);
-		del_ino_set(sbi->sb_qalloc, ino_set);
-	}
-	return err;
-}
-
-int voluta_load_itable(struct voluta_sb_info *sbi)
-{
-	int err;
-	struct voluta_vaddr vaddr;
-	struct voluta_inode_info *root_ii;
-
-	err = sbi_resolve_itroot(sbi, &vaddr);
-	if (err) {
-		return err;
-	}
-	err = voluta_reload_itable(sbi, &vaddr);
-	if (err) {
-		return err;
-	}
-	err = scan_root_inode(sbi, &root_ii);
-	if (err) {
-		return err;
-	}
-	voluta_bind_rootdir(sbi, root_ii);
-	relax_cache(sbi);
-	return 0;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
 static int verify_vtype(enum voluta_vtype vtype)
 {
 	switch (vtype) {
 	case VOLUTA_VTYPE_NONE:
-	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 	case VOLUTA_VTYPE_ITNODE:
@@ -2948,17 +2739,6 @@ int voluta_verify_agroup_map(const struct voluta_agroup_map *agm)
 	return 0;
 }
 
-int voluta_verify_super_block(const struct voluta_super_block *sb)
-{
-	if (sb_version(sb) != VOLUTA_FMT_VERSION) {
-		return -EFSCORRUPTED;
-	}
-	if (sb_birth_time(sb) <= 0) {
-		return -EFSCORRUPTED;
-	}
-	return 0;
-}
-
 int voluta_verify_uspace_map(const struct voluta_hspace_map *hsm)
 {
 	size_t hs_index;
@@ -2979,28 +2759,20 @@ static size_t calc_iopen_limit(const struct voluta_cache *cache)
 	return (cache->c_qalloc->st.memsz_data / (2 * VOLUTA_BK_SIZE));
 }
 
-static int sbi_init_commons(struct voluta_sb_info *sbi,
-			    struct voluta_zero_block *zb,
-			    struct voluta_cache *cache,
-			    struct voluta_pstore *pstore)
-
+static int sbi_init_commons(struct voluta_sb_info *sbi)
 {
 	voluta_uuid_generate(&sbi->sb_fs_uuid);
 	spi_init(&sbi->sb_spi);
-	sbi->sb_zb = zb;
 	sbi->sb_owner.uid = getuid();
 	sbi->sb_owner.gid = getgid();
 	sbi->sb_owner.pid = getpid();
 	sbi->sb_owner.umask = 0002;
 	sbi->sb_iconv = (iconv_t)(-1);
-	sbi->sb_cache = cache;
-	sbi->sb_qalloc = cache->c_qalloc;
-	sbi->sb_pstore = pstore;
+	sbi->sb_qalloc = sbi->sb_cache->c_qalloc;
 	sbi->sb_encbuf = NULL;
-	sbi->sb_vi = NULL;
-	sbi->sb_ops.op_iopen_max = calc_iopen_limit(cache);
+	sbi->sb_ops.op_iopen_max = calc_iopen_limit(sbi->sb_cache);
 	sbi->sb_ops.op_iopen = 0;
-	sbi->sb_ops.op_time = time_now();
+	sbi->sb_ops.op_time = voluta_time_now();
 	sbi->sb_ops.op_count = 0;
 	sbi->sb_timeout = 0;
 	sbi->sb_nidle = 0;
@@ -3015,10 +2787,10 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 {
 	voluta_crypto_fini(&sbi->sb_crypto);
 	spi_fini(&sbi->sb_spi);
+	sbi->sb = NULL;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
 	sbi->sb_pstore = NULL;
-	sbi->sb_vi = NULL;
 	sbi->sb_ctl_flags = 0;
 	sbi->sb_ms_flags = 0;
 }
@@ -3086,13 +2858,16 @@ static int sbi_init_subs(struct voluta_sb_info *sbi)
 }
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
-		    struct voluta_zero_block *zb,
-		    struct voluta_cache *cache,
-		    struct voluta_pstore *pstore)
+		    struct voluta_super_block *sb,
+		    struct voluta_cache *cache, struct voluta_pstore *pstore)
 {
 	int err;
 
-	err = sbi_init_commons(sbi, zb, cache, pstore);
+	sbi->sb = sb;
+	sbi->sb_cache = cache;
+	sbi->sb_pstore = pstore;
+
+	err = sbi_init_commons(sbi);
 	if (err) {
 		return err;
 	}
@@ -3267,7 +3042,7 @@ int voluta_timeout_cycle(struct voluta_sb_info *sbi)
 {
 	int err = 0;
 	int flags = VOLUTA_F_TIMEOUT;
-	const time_t now = time_now();
+	const time_t now = voluta_time_now();
 	const time_t dif = now - sbi->sb_timeout;
 
 	if (labs(dif) > 1) {
@@ -3291,18 +3066,6 @@ static int stage_meta(struct voluta_super_ctx *s_ctx,
 	err = stage_vnode(s_ctx);
 	*out_vi = s_ctx->vi;
 	return err;
-}
-
-static int stage_super(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info **out_vi)
-{
-	struct voluta_super_ctx s_ctx = {
-		.sbi = sbi,
-		.vaddr = &s_ctx.via.vaddr
-	};
-
-	voluta_vaddr_of_super(s_ctx.vaddr);
-	return stage_meta(&s_ctx, out_vi);
 }
 
 static int stage_hsmap(struct voluta_sb_info *sbi, size_t hs_index,
@@ -3879,28 +3642,7 @@ int voluta_clear_unwritten(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-bool voluta_is_wlayer(const struct voluta_sb_info *sbi,
-		      const struct voluta_vaddr *vaddr)
-{
-	const size_t ag_index = vaddr_ag_index(vaddr);
-	const size_t ag_index_wstart = sbi_wstart_ag(sbi);
-	const size_t nag_prefix_meta = VOLUTA_NAG_PREFIX_META;
-
-	voluta_assert(!vaddr_isnull(vaddr));
-
-	return (ag_index < nag_prefix_meta) || (ag_index >= ag_index_wstart);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void iv_key_of_super(const struct voluta_vnode_info *vi,
-			    struct voluta_iv_key *out_iv_key)
-{
-	const struct voluta_iv_key *iv_key;
-
-	iv_key = voluta_zb_iv_key(vi->v_sbi->sb_zb);
-	voluta_iv_key_copyto(iv_key, out_iv_key);
-}
 
 static void iv_key_of_hsmap(const struct voluta_vnode_info *vi,
 			    struct voluta_iv_key *out_iv_key)
@@ -3910,7 +3652,7 @@ static void iv_key_of_hsmap(const struct voluta_vnode_info *vi,
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
 	hs_index = vaddr_hs_index(vaddr);
-	iv_key = sb_iv_key_of(sbi_sb(vi->v_sbi), hs_index);
+	iv_key = voluta_sb_iv_key_of(vi->v_sbi->sb, hs_index);
 	voluta_iv_key_copyto(iv_key, out_iv_key);
 }
 
@@ -3952,9 +3694,6 @@ void voluta_iv_key_of(const struct voluta_vnode_info *vi,
 	const enum voluta_vtype vtype = vi_vtype(vi);
 
 	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
-		iv_key_of_super(vi, out_iv_key);
-		break;
 	case VOLUTA_VTYPE_HSMAP:
 		iv_key_of_hsmap(vi, out_iv_key);
 		break;

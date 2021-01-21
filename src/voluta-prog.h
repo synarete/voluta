@@ -131,27 +131,27 @@ struct voluta_globals {
 	char   *clone_volume;
 	char   *clone_volume_tmp;
 
-	/* Options for 'archive' sub-command */
-	char   *archive_passphrase;
-	char   *archive_passphrase_file;
-	char   *archive_src;
-	char   *archive_src_real;
-	char   *archive_src_dir;
-	char   *archive_src_name;
-	char   *archive_dst;
-	char   *archive_dst_real;
-	char   *archive_dst_path;
+	/* Options for 'export' sub-command */
+	char   *export_passphrase;
+	char   *export_passphrase_file;
+	char   *export_src;
+	char   *export_src_real;
+	char   *export_src_dir;
+	char   *export_src_name;
+	char   *export_dst;
+	char   *export_dst_real;
+	char   *export_dst_path;
 
-	/* Options for 'restore' sub-command */
-	char   *restore_passphrase;
-	char   *restore_passphrase_file;
-	char   *restore_src;
-	char   *restore_src_real;
-	char   *restore_src_dir;
-	char   *restore_src_name;
-	char   *restore_dst;
-	char   *restore_dst_real;
-	char   *restore_dst_path;
+	/* Options for 'import' sub-command */
+	char   *import_passphrase;
+	char   *import_passphrase_file;
+	char   *import_src;
+	char   *import_src_real;
+	char   *import_src_dir;
+	char   *import_src_name;
+	char   *import_dst;
+	char   *import_dst_real;
+	char   *import_dst_path;
 
 	/* Sub-command execution hook */
 	const struct voluta_cmd_info *cmd_info;
@@ -175,9 +175,9 @@ void voluta_execute_query(void);
 
 void voluta_execute_clone(void);
 
-void voluta_execute_archive(void);
+void voluta_execute_export(void);
 
-void voluta_execute_restore(void);
+void voluta_execute_import(void);
 
 void voluta_getopt_mkfs(void);
 
@@ -193,9 +193,9 @@ void voluta_getopt_query(void);
 
 void voluta_getopt_clone(void);
 
-void voluta_getopt_archive(void);
+void voluta_getopt_export(void);
 
-void voluta_getopt_restore(void);
+void voluta_getopt_import(void);
 
 /* Common utilities */
 __attribute__((__noreturn__))
@@ -232,10 +232,10 @@ void voluta_die_if_exists(const char *path);
 
 void voluta_die_if_bad_zb(const char *path, const char *pass,
 			  enum voluta_ztype *out_ztype,
-			  enum voluta_zb_flags *out_zbf);
+			  enum voluta_zbf *out_zbf);
 
 void voluta_die_if_not_volume(const char *path, const char *pass,
-			      enum voluta_zb_flags *out_zbf);
+			      enum voluta_zbf *out_zbf);
 
 void voluta_die_if_not_archive(const char *path, const char *pass);
 

@@ -2274,11 +2274,11 @@ static int fuseq_wr_iter_actor(struct voluta_rwiter_ctx *rwi,
 			       const struct voluta_fiovec *fiov)
 {
 	int err;
-	struct voluta_fuseq_wr_iter *fq_wri;
+	struct voluta_fuseq_wr_iter *fq_wri = fuseq_wr_iter_of(rwi);
 
-	fq_wri = fuseq_wr_iter_of(rwi);
-	voluta_assert(fq_wri->fqc->fq->fq_active); /* XXX crap */
-
+	if (!fq_wri->fqc->fq->fq_active) {
+		return -EROFS;
+	}
 	if ((fiov->fd < 0) || (fiov->off < 0)) {
 		return -EINVAL;
 	}

@@ -26,6 +26,10 @@
 
 #define ITNODE_ROOT_DEPTH 1
 
+struct voluta_ino_set {
+	size_t cnt;
+	ino_t ino[VOLUTA_ITNODE_NENTS];
+};
 
 static int lookup_iref(struct voluta_sb_info *sbi,
 		       struct voluta_vnode_info *vi, ino_t ino,
@@ -698,22 +702,10 @@ static int stage_itnode(struct voluta_sb_info *sbi,
 			struct voluta_vnode_info *parent_vi, ino_t ino,
 			struct voluta_vnode_info **out_child_vi)
 {
-	int err;
-	bool isw;
 	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *child;
 
 	resolve_child(parent_vi, ino, &vaddr);
-	err = fetch_itnode_at(sbi, &vaddr, &child);
-	if (err) {
-		return err;
-	}
-	isw = voluta_is_wlayer(sbi, &vaddr);
-	if (!isw) {
-		return -EROFS; /* XXX FIXME */
-	}
-	*out_child_vi = child;
-	return 0;
+	return fetch_itnode_at(sbi, &vaddr, out_child_vi);
 }
 
 static int fetch_itnode(struct voluta_sb_info *sbi,
@@ -758,16 +750,8 @@ static int fetch_itroot(struct voluta_sb_info *sbi,
 static int stage_itroot(struct voluta_sb_info *sbi,
 			struct voluta_vnode_info **out_vi)
 {
-	int err;
-	const struct voluta_vaddr *vaddr = itreeroot_vaddr(sbi);
-
-	if (voluta_is_wlayer(sbi, vaddr)) {
-		err = fetch_itroot(sbi, out_vi);
-	} else {
-		log_err("itable-root is not writable: off=%lu", vaddr->off);
-		err = -EFSCORRUPTED;
-	}
-	return err;
+	/* XXX FIXME */
+	return fetch_itroot(sbi, out_vi);
 }
 
 static void iaddr_by_ite(struct voluta_iaddr *iaddr,
@@ -1185,14 +1169,41 @@ int voluta_resolve_ino(struct voluta_sb_info *sbi, ino_t xino,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_ino_set *ino_set_new(struct voluta_qalloc *qal)
+{
+	struct voluta_ino_set *ino_set;
+
+	ino_set = voluta_qalloc_zalloc(qal, sizeof(*ino_set));
+	if (ino_set != NULL) {
+		ino_set->cnt = 0;
+	}
+	return ino_set;
+}
+
+static void ino_set_del(struct voluta_ino_set *ino_set,
+			struct voluta_qalloc *qal)
+{
+	ino_set->cnt = 0;
+	voluta_qalloc_free(qal, ino_set, sizeof(*ino_set));
+}
+
+static bool ino_set_isfull(const struct voluta_ino_set *ino_set)
+{
+	return (ino_set->cnt >= ARRAY_SIZE(ino_set->ino));
+}
+
+static void ino_set_append(struct voluta_ino_set *ino_set, ino_t ino)
+{
+	ino_set->ino[ino_set->cnt++] = ino;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 int voluta_create_itable(struct voluta_sb_info *sbi)
 {
 	int err;
 	struct voluta_vnode_info *vi;
 	struct voluta_itable_info *iti = iti_of(sbi);
-
-	voluta_assert(vaddr_isnull(&iti->it_treeroot));
-	voluta_assert_eq(iti->it_rootdir.ino, VOLUTA_INO_NULL);
 
 	err = create_itroot(sbi, &vi);
 	if (err) {
@@ -1275,8 +1286,95 @@ static int scan_subtree(struct voluta_sb_info *sbi,
 	return err;
 }
 
-int voluta_reload_itable(struct voluta_sb_info *sbi,
-			 const struct voluta_vaddr *vaddr)
+static void fill_ino_set(const struct voluta_vnode_info *vi,
+			 struct voluta_ino_set *ino_set)
+{
+	const struct voluta_itable_entry *ite;
+	const struct voluta_itable_tnode *itn = vi->vu.itn;
+
+	ino_set->cnt = 0;
+	ite = itn_find_next(itn, NULL);
+	while (ite != NULL) {
+		if (ino_set_isfull(ino_set)) {
+			break;
+		}
+		ino_set_append(ino_set, ite_ino(ite));
+		ite = itn_find_next(itn, ite + 1);
+	}
+}
+
+static int parse_itable_top(struct voluta_sb_info *sbi,
+			    struct voluta_ino_set *ino_set)
+{
+	int err;
+	struct voluta_vnode_info *vi;
+	struct voluta_itable_info *iti = iti_of(sbi);
+
+	err = fetch_itnode_at(sbi, &iti->it_treeroot, &vi);
+	if (err) {
+		return err;
+	}
+	fill_ino_set(vi, ino_set);
+	return 0;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static int scan_stage_root(struct voluta_sb_info *sbi,
+			   const struct voluta_ino_set *ino_set,
+			   struct voluta_inode_info **out_root_ii)
+{
+	int err;
+	ino_t ino;
+	struct voluta_inode_info *ii;
+
+	for (size_t i = 0; i < ino_set->cnt; ++i) {
+		ino = ino_set->ino[i];
+		err = voluta_fetch_inode(sbi, ino, &ii);
+		if (err) {
+			return err;
+		}
+		if (voluta_is_rootdir(ii)) {
+			*out_root_ii = ii;
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+
+static int do_scan_root_inode(struct voluta_sb_info *sbi,
+			      struct voluta_ino_set *ino_set,
+			      struct voluta_inode_info **out_root_ii)
+{
+	int err;
+
+	err = parse_itable_top(sbi, ino_set);
+	if (err) {
+		return err;
+	}
+	err = scan_stage_root(sbi, ino_set, out_root_ii);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+static int scan_root_inode(struct voluta_sb_info *sbi,
+			   struct voluta_inode_info **out_root_ii)
+{
+	int err = -ENOMEM;
+	struct voluta_ino_set *ino_set;
+
+	ino_set = ino_set_new(sbi->sb_qalloc);
+	if (ino_set != NULL) {
+		err = do_scan_root_inode(sbi, ino_set, out_root_ii);
+		ino_set_del(ino_set, sbi->sb_qalloc);
+	}
+	return err;
+}
+
+static int reload_and_scan_itable(struct voluta_sb_info *sbi,
+				  const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1296,45 +1394,21 @@ int voluta_reload_itable(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static bool ino_set_isfull(const struct voluta_ino_set *ino_set)
-{
-	return (ino_set->cnt >= ARRAY_SIZE(ino_set->ino));
-}
-
-static void ino_set_append(struct voluta_ino_set *ino_set, ino_t ino)
-{
-	ino_set->ino[ino_set->cnt++] = ino;
-}
-
-static void fill_ino_set(const struct voluta_vnode_info *vi,
-			 struct voluta_ino_set *ino_set)
-{
-	const struct voluta_itable_entry *ite;
-	const struct voluta_itable_tnode *itn = vi->vu.itn;
-
-	ino_set->cnt = 0;
-	ite = itn_find_next(itn, NULL);
-	while (ite != NULL) {
-		if (ino_set_isfull(ino_set)) {
-			break;
-		}
-		ino_set_append(ino_set, ite_ino(ite));
-		ite = itn_find_next(itn, ite + 1);
-	}
-}
-
-int voluta_parse_itable_top(struct voluta_sb_info *sbi,
-			    struct voluta_ino_set *ino_set)
+int voluta_reload_itable_at(struct voluta_sb_info *sbi,
+			    const struct voluta_vaddr *vaddr)
 {
 	int err;
-	struct voluta_vnode_info *vi;
-	struct voluta_itable_info *iti = iti_of(sbi);
+	struct voluta_inode_info *root_ii;
 
-	err = fetch_itnode_at(sbi, &iti->it_treeroot, &vi);
+	err = reload_and_scan_itable(sbi, vaddr);
 	if (err) {
 		return err;
 	}
-	fill_ino_set(vi, ino_set);
+	err = scan_root_inode(sbi, &root_ii);
+	if (err) {
+		return err;
+	}
+	voluta_bind_rootdir(sbi, root_ii);
 	return 0;
 }
 

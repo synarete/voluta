@@ -37,7 +37,7 @@ static void mountd_getopt(void);
 static void mountd_init_process(void);
 static void mountd_enable_signals(void);
 static void mountd_boostrap_process(void);
-static void mountd_create_setup_env(void);
+static void mountd_create_mse_inst(void);
 static void mountd_trace_start(void);
 static void mound_execute_ms(void);
 static void mountd_finalize(void);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	mountd_load_mntrules();
 
 	/* Setup enviroment instance */
-	mountd_create_setup_env();
+	mountd_create_mse_inst();
 
 	/* Say something */
 	mountd_trace_start();
@@ -125,20 +125,15 @@ static void mountd_boostrap_process(void)
 	atexit(mountd_finalize);
 }
 
-static void mountd_create_setup_env(void)
+static void mountd_create_mse_inst(void)
 {
-	struct voluta_ms_env *ms_env = NULL;
-
-	voluta_init_ms_env();
-	ms_env = voluta_ms_env_inst();
-	if (ms_env == NULL) {
-		voluta_die(0, "ilternal error");
-	}
+	voluta_create_mse_inst();
 }
 
 static void mountd_trace_start(void)
 {
-	voluta_log_process_info();
+	voluta_log_meta_banner(true);
+	voluta_log_info("%s", voluta_globals.prog);
 }
 
 static void mountd_load_mntrules(void)
@@ -157,7 +152,7 @@ static void mountd_drop_mntrules(void)
 
 static void mountd_finalize(void)
 {
-	voluta_fini_ms_env();
+	voluta_destroy_mse_inst();
 	mountd_drop_mntrules();
 }
 
@@ -179,7 +174,7 @@ static const char *voluta_mountd_usage[] = {
 	"",
 	"options:",
 	"  -f, --conf=CONF              Mount-rules config file",
-	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -v, --version                Show version and exit",
 	NULL
 };

@@ -20,7 +20,7 @@
 
 static void fsck_finalize(void)
 {
-	voluta_fini_fs_env();
+	voluta_destrpy_fse_inst();
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -78,7 +78,7 @@ void voluta_getopt_fsck(void)
 	if (optind >= argc) {
 		voluta_die_no_volume_path();
 	}
-	voluta_globals.fsck_volume = argv[optind++];
+	voluta_globals.cmd.fsck.volume = argv[optind++];
 	voluta_die_if_redundant_arg();
 }
 

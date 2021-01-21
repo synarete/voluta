@@ -33,33 +33,30 @@
 
 static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
+	int err;
+
 	sbi->sb_ops.op_time = op->xtime.tv_sec;
 	sbi->sb_ops.op_count++;
-	sbi->sb_nidle = 0;
 
-	return voluta_flush_dirty_and_relax(sbi, VOLUTA_F_OPSTART);
+	err = voluta_flush_dirty(sbi, 0);
+	if (!err) {
+		voluta_cache_relax(sbi->sb_cache, VOLUTA_F_OPSTART);
+	}
+	return err;
 }
 
-static void op_finish(struct voluta_sb_info *sbi, const struct voluta_oper *op)
+static int op_finish(struct voluta_sb_info *sbi,
+		     const struct voluta_oper *op, int err)
 {
 	const time_t now = time(NULL);
 	const time_t beg = op->xtime.tv_sec;
 	const time_t dif = now - beg;
 
 	if ((beg < now) && (dif > 30)) {
-		log_warn("slow operation: op=%ld code=%d duration=%ld",
-			 sbi->sb_ops.op_count, op->opcode, dif);
+		log_warn("slow-oper: id=%ld code=%d duration=%ld status=%d",
+			 sbi->sb_ops.op_count, op->opcode, dif, err);
 	}
-}
-
-static int voluta_op_flush(struct voluta_sb_info *sbi)
-{
-	int err;
-
-	err = voluta_flush_dirty(sbi, 0);
-	if (!err) {
-		voluta_cache_shrink_once(sbi->sb_cache);
-	}
+	/* TODO: maybe extra flush-relax? */
 	return err;
 }
 
@@ -106,10 +103,8 @@ int voluta_fs_forget(struct voluta_sb_info *sbi,
 
 	err = voluta_do_forget_inode(sbi, ino, nlookup);
 	ok_or_goto_out(err);
-
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_statfs(struct voluta_sb_info *sbi,
@@ -130,10 +125,8 @@ int voluta_fs_statfs(struct voluta_sb_info *sbi,
 
 	err = voluta_do_statvfs(op, ii, stvfs);
 	ok_or_goto_out(err);
-
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_lookup(struct voluta_sb_info *sbi,
@@ -162,11 +155,8 @@ int voluta_fs_lookup(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_getattr(struct voluta_sb_info *sbi,
@@ -187,10 +177,8 @@ int voluta_fs_getattr(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_access(struct voluta_sb_info *sbi,
@@ -210,10 +198,8 @@ int voluta_fs_access(struct voluta_sb_info *sbi,
 
 	err = voluta_do_access(op, ii, mode);
 	ok_or_goto_out(err);
-
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_mkdir(struct voluta_sb_info *sbi,
@@ -242,14 +228,8 @@ int voluta_fs_mkdir(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_rmdir(struct voluta_sb_info *sbi,
@@ -274,12 +254,8 @@ int voluta_fs_rmdir(struct voluta_sb_info *sbi,
 
 	err = voluta_do_rmdir(op, dir_ii, &nstr);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_symlink(struct voluta_sb_info *sbi,
@@ -313,14 +289,8 @@ int voluta_fs_symlink(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_readlink(struct voluta_sb_info *sbi,
@@ -342,8 +312,7 @@ int voluta_fs_readlink(struct voluta_sb_info *sbi,
 	err = voluta_do_readlink(op, ii, ptr, lim, out_len);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_unlink(struct voluta_sb_info *sbi,
@@ -368,12 +337,8 @@ int voluta_fs_unlink(struct voluta_sb_info *sbi,
 
 	err = voluta_do_unlink(op, dir_ii, &nstr);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_link(struct voluta_sb_info *sbi,
@@ -405,14 +370,8 @@ int voluta_fs_link(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_opendir(struct voluta_sb_info *sbi,
@@ -433,8 +392,7 @@ int voluta_fs_opendir(struct voluta_sb_info *sbi,
 	err = voluta_do_opendir(op, dir_ii);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_releasedir(struct voluta_sb_info *sbi,
@@ -443,7 +401,7 @@ int voluta_fs_releasedir(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
 
-	unused(o_flags);
+	unused(o_flags); /* TODO: useme */
 
 	err = op_start(sbi, op);
 	ok_or_goto_out(err);
@@ -456,12 +414,8 @@ int voluta_fs_releasedir(struct voluta_sb_info *sbi,
 
 	err = voluta_do_releasedir(op, dir_ii);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_readdir(struct voluta_sb_info *sbi,
@@ -483,8 +437,7 @@ int voluta_fs_readdir(struct voluta_sb_info *sbi,
 	err = voluta_do_readdir(op, dir_ii, rd_ctx);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_readdirplus(struct voluta_sb_info *sbi,
@@ -506,8 +459,7 @@ int voluta_fs_readdirplus(struct voluta_sb_info *sbi,
 	err = voluta_do_readdirplus(op, dir_ii, rd_ctx);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_fsyncdir(struct voluta_sb_info *sbi,
@@ -527,12 +479,8 @@ int voluta_fs_fsyncdir(struct voluta_sb_info *sbi,
 
 	err = voluta_do_fsyncdir(op, dir_ii, datasync);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_chmod(struct voluta_sb_info *sbi,
@@ -558,12 +506,8 @@ int voluta_fs_chmod(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_chown(struct voluta_sb_info *sbi,
@@ -589,12 +533,8 @@ int voluta_fs_chown(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_utimens(struct voluta_sb_info *sbi,
@@ -620,12 +560,8 @@ int voluta_fs_utimens(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_truncate(struct voluta_sb_info *sbi,
@@ -649,12 +585,8 @@ int voluta_fs_truncate(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_create(struct voluta_sb_info *sbi,
@@ -686,14 +618,8 @@ int voluta_fs_create(struct voluta_sb_info *sbi,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_open(struct voluta_sb_info *sbi,
@@ -713,12 +639,8 @@ int voluta_fs_open(struct voluta_sb_info *sbi,
 
 	err = voluta_do_open(op, ii, o_flags);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_mknod(struct voluta_sb_info *sbi, const struct voluta_oper *op,
@@ -747,14 +669,8 @@ int voluta_fs_mknod(struct voluta_sb_info *sbi, const struct voluta_oper *op,
 
 	err = voluta_do_getattr(op, ii, out_stat);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
-
-	voluta_inc_nlookup(ii);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_release(struct voluta_sb_info *sbi,
@@ -779,12 +695,8 @@ int voluta_fs_release(struct voluta_sb_info *sbi,
 
 	err = voluta_do_release(op, ii);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_flush(struct voluta_sb_info *sbi,
@@ -804,12 +716,8 @@ int voluta_fs_flush(struct voluta_sb_info *sbi,
 
 	err = voluta_do_flush(op, ii);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_fsync(struct voluta_sb_info *sbi,
@@ -830,12 +738,8 @@ int voluta_fs_fsync(struct voluta_sb_info *sbi,
 
 	err = voluta_do_fsync(op, ii, datasync);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_rename(struct voluta_sb_info *sbi,
@@ -869,12 +773,8 @@ int voluta_fs_rename(struct voluta_sb_info *sbi,
 
 	err = voluta_do_rename(op, dir_ii, &nstr, newdir_ii, &newnstr, flags);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_read(struct voluta_sb_info *sbi,
@@ -896,8 +796,7 @@ int voluta_fs_read(struct voluta_sb_info *sbi,
 	err = voluta_do_read(op, ii, buf, len, off, out_len);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_read_iter(struct voluta_sb_info *sbi,
@@ -919,8 +818,7 @@ int voluta_fs_read_iter(struct voluta_sb_info *sbi,
 	err = voluta_do_read_iter(op, ii, rwi_ctx);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_write(struct voluta_sb_info *sbi,
@@ -941,12 +839,8 @@ int voluta_fs_write(struct voluta_sb_info *sbi,
 
 	err = voluta_do_write(op, ii, buf, len, off, out_len);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_write_iter(struct voluta_sb_info *sbi,
@@ -967,12 +861,24 @@ int voluta_fs_write_iter(struct voluta_sb_info *sbi,
 
 	err = voluta_do_write_iter(op, ii, rwi_ctx);
 	ok_or_goto_out(err);
+out:
+	return op_finish(sbi, op, err);
+}
 
-	err = voluta_op_flush(sbi);
+int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
+			const struct voluta_oper *op, ino_t ino,
+			const struct voluta_xiovec *xiov, size_t cnt)
+{
+	int err;
+	struct voluta_inode_info *ii = NULL;
+
+	err = voluta_stage_inode(sbi, ino, &ii);
+	ok_or_goto_out(err);
+
+	err = voluta_do_rdwr_post(op, ii, xiov, cnt);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_fallocate(struct voluta_sb_info *sbi,
@@ -993,12 +899,8 @@ int voluta_fs_fallocate(struct voluta_sb_info *sbi,
 
 	err = voluta_do_fallocate(op, ii, mode, offset, length);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_lseek(struct voluta_sb_info *sbi,
@@ -1019,10 +921,8 @@ int voluta_fs_lseek(struct voluta_sb_info *sbi,
 
 	err = voluta_do_lseek(op, ii, off, whence, out_off);
 	ok_or_goto_out(err);
-
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_copy_file_range(struct voluta_sb_info *sbi,
@@ -1049,12 +949,8 @@ int voluta_fs_copy_file_range(struct voluta_sb_info *sbi,
 	err = voluta_do_copy_file_range(op, ii_in, ii_out, off_in,
 					off_out, len, flags, out_ncp);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_setxattr(struct voluta_sb_info *sbi,
@@ -1080,12 +976,8 @@ int voluta_fs_setxattr(struct voluta_sb_info *sbi,
 
 	err = voluta_do_setxattr(op, ii, &nstr, value, size, flags);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_getxattr(struct voluta_sb_info *sbi,
@@ -1112,8 +1004,7 @@ int voluta_fs_getxattr(struct voluta_sb_info *sbi,
 	err = voluta_do_getxattr(op, ii, &nstr, buf, size, out_size);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_listxattr(struct voluta_sb_info *sbi,
@@ -1135,8 +1026,7 @@ int voluta_fs_listxattr(struct voluta_sb_info *sbi,
 	err = voluta_do_listxattr(op, ii, lxa_ctx);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_removexattr(struct voluta_sb_info *sbi,
@@ -1161,12 +1051,8 @@ int voluta_fs_removexattr(struct voluta_sb_info *sbi,
 
 	err = voluta_do_removexattr(op, ii, &nstr);
 	ok_or_goto_out(err);
-
-	err = voluta_op_flush(sbi);
-	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
@@ -1188,8 +1074,7 @@ int voluta_fs_statx(struct voluta_sb_info *sbi,
 	err = voluta_do_statx(op, ii, out_stx);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_fiemap(struct voluta_sb_info *sbi,
@@ -1211,8 +1096,7 @@ int voluta_fs_fiemap(struct voluta_sb_info *sbi,
 	err = voluta_do_fiemap(op, ii, fm);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_query(struct voluta_sb_info *sbi,
@@ -1234,8 +1118,7 @@ int voluta_fs_query(struct voluta_sb_info *sbi,
 	err = voluta_do_query(op, ii, out_qry);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_clone(struct voluta_sb_info *sbi,
@@ -1257,6 +1140,17 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
 	err = voluta_do_clone(op, ii, str, lim);
 	ok_or_goto_out(err);
 out:
-	op_finish(sbi, op);
-	return err;
+	return op_finish(sbi, op, err);
+}
+
+int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
+{
+	int err;
+
+	err = voluta_flush_dirty(sbi, flags | VOLUTA_F_TIMEOUT);
+	if (err) {
+		return err;
+	}
+	voluta_cache_relax(sbi->sb_cache, flags | VOLUTA_F_TIMEOUT);
+	return 0;
 }

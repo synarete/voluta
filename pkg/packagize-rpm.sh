@@ -41,9 +41,9 @@ run which rpmbuild
 run mkdir -p ${autotoolsdir}
 cd ${autotoolsdir}
 run ${basedir}/bootstrap
-run ${basedir}/configure
+run ${basedir}/configure "--enable-unitests=no"
 run make
-run make dist
+run make distcheck
 
 # Pre rpmbuild
 unset HOME

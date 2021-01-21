@@ -95,21 +95,24 @@ struct ut_malloc_chunk {
 	uint8_t data[32];
 };
 
+struct ut_args {
+	struct voluta_fs_args fs_args;
+	struct voluta_ar_args ar_args;
+	const char *program;
+	const char *version;
+};
+
 struct ut_env {
-	struct voluta_passphrase pass;
-	struct voluta_fs_args    fs_args;
+	struct ut_args           args;
 	struct voluta_fs_env    *fse;
-	struct voluta_ar_args    ar_args;
 	struct voluta_archiver  *arc;
 	struct voluta_oper       oper;
 	struct timespec          ts_start;
 	struct statvfs           stvfs_start;
 	struct ut_malloc_chunk  *malloc_list;
-	const char              *tname;
 	size_t                   ualloc_start;
 	size_t                   nbytes_alloc;
-	size_t                   unique_count;
-	int                      silent;
+	long                     unique_opid;
 };
 
 struct ut_dvec {
@@ -140,12 +143,10 @@ struct ut_globals {
 	char          **argv;
 	int             argc;
 	int             log_mask;
-	char           *test_dir_real;
+	const char     *program;
+	const char     *version;
 	const char     *test_dir;
-	const char     *test_name;
-	const char     *passphrase;
-	int             encrypt_mode;
-	int             spliced_mode;
+	char           *test_dir_real;
 	struct timespec start_ts;
 };
 
@@ -175,6 +176,7 @@ extern const struct ut_tests ut_test_file_fallocate;
 extern const struct ut_tests ut_test_file_fiemap;
 extern const struct ut_tests ut_test_file_lseek;
 extern const struct ut_tests ut_test_reload;
+extern const struct ut_tests ut_test_recrypt;
 extern const struct ut_tests ut_test_fillfs;
 extern const struct ut_tests ut_test_archive;
 
@@ -437,6 +439,8 @@ void ut_drop_caches_fully(struct ut_env *ute);
 
 void ut_reload_ok(struct ut_env *ute, ino_t ino);
 
+void ut_recrypt_flip_ok(struct ut_env *ute, ino_t ino);
+
 /* utilities */
 void ut_prandom_seq(long *arr, size_t len, long base);
 
@@ -453,37 +457,34 @@ uint64_t ut_fnv1a(const void *buf, size_t len, uint64_t hval_base);
 void ut_expect_eq_ts(const struct timespec *ts1, const struct timespec *ts2);
 void ut_expect_eq_stat(const struct stat *st1, const struct stat *st2);
 void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
-void ut_expect_true_(bool cond, const char *fl, int line);
-void ut_expect_lt_(long a, long b, const char *fl, int ln);
-void ut_expect_le_(long a, long b, const char *fl, int ln);
-void ut_expect_gt_(long a, long b, const char *fl, int ln);
-void ut_expect_ge_(long a, long b, const char *fl, int ln);
-void ut_expect_eq_(long a, long b, const char *fl, int ln);
-void ut_expect_ne_(long a, long b, const char *fl, int ln);
-void ut_expect_eqs_(const char *s1, const char *s2, const char *fl, int ln);
-void ut_expect_ok_(int err, const char *fl, int ln);
-void ut_expect_err_(int err, int exp, const char *fl, int ln);
-void ut_expect_null_(const void *ptr, const char *fl, int ln);
-void ut_expect_not_null_(const void *ptr, const char *fl, int ln);
-void ut_expect_eqm_(const void *p, const void *q,
-		    size_t n, const char *fl, int ln);
-
 
 /* except-alias */
-#define UT_FILN VOLUTA_FL
-#define ut_expect(cond)         ut_expect_true_((bool)(cond), UT_FILN)
-#define ut_expect_lt(a, b)      ut_expect_lt_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_le(a, b)      ut_expect_le_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_gt(a, b)      ut_expect_gt_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ge(a, b)      ut_expect_ge_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_eq(a, b)      ut_expect_eq_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ne(a, b)      ut_expect_ne_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ok(err)       ut_expect_ok_((int)(err), UT_FILN)
-#define ut_expect_err(err, exp) ut_expect_err_((int)(err), (int)(exp), UT_FILN)
-#define ut_expect_null(ptr)     ut_expect_null_(ptr, UT_FILN)
-#define ut_expect_not_null(ptr) ut_expect_not_null_(ptr, UT_FILN)
-#define ut_expect_eqs(a, b)     ut_expect_eqs_(a, b, UT_FILN)
-#define ut_expect_eqm(a, b, n)  ut_expect_eqm_(a, b, n, UT_FILN)
+#define ut_expect(cond) \
+	voluta_expect_true_((bool)(cond), VOLUTA_FL)
+#define ut_expect_lt(a, b) \
+	voluta_expect_lt_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_le(a, b) \
+	voluta_expect_le_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_gt(a, b) \
+	voluta_expect_gt_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ge(a, b) \
+	voluta_expect_ge_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_eq(a, b) \
+	voluta_expect_eq_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ne(a, b) \
+	voluta_expect_ne_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ok(err) \
+	voluta_expect_ok_((int)(err), VOLUTA_FL)
+#define ut_expect_err(err, exp) \
+	voluta_expect_err_((int)(err), (int)(exp), VOLUTA_FL)
+#define ut_expect_null(ptr) \
+	voluta_expect_null_(ptr, VOLUTA_FL)
+#define ut_expect_not_null(ptr) \
+	voluta_expect_not_null_(ptr, VOLUTA_FL)
+#define ut_expect_eqs(a, b) \
+	voluta_expect_eqs_(a, b, VOLUTA_FL)
+#define ut_expect_eqm(a, b, n) \
+	voluta_expect_eqm_(a, b, n, VOLUTA_FL)
 
 /* aliases */
 #define UT_KILO                 VOLUTA_KILO

@@ -43,6 +43,7 @@
 #define STATICASSERT(expr_)             VOLUTA_STATICASSERT(expr_)
 #define STATICASSERT_EQ(a_, b_)         VOLUTA_STATICASSERT_EQ(a_, b_)
 #define STATICASSERT_LT(a_, b_)         VOLUTA_STATICASSERT_LT(a_, b_)
+#define STATICASSERT_LE(a_, b_)         VOLUTA_STATICASSERT_LE(a_, b_)
 #define STATICASSERT_GT(a_, b_)         VOLUTA_STATICASSERT_GT(a_, b_)
 #define STATICASSERT_SIZEOF(t_, s_)     VOLUTA_STATICASSERT_EQ(sizeof(t_), s_)
 
@@ -62,7 +63,7 @@
 #define vtype_nkbs(vt)                  voluta_vtype_nkbs(vt)
 #define vtype_size(vt)                  voluta_vtype_size(vt)
 #define vtype_ssize(vt)                 voluta_vtype_ssize(vt)
-#define vtype_isnormal(vt)              voluta_vtype_isnormal(vt)
+#define vtype_isumap(vt)                voluta_vtype_isubermap(vt)
 #define vtype_isdata(vt)                voluta_vtype_isdata(vt)
 #define vtype_ismeta(vt)                voluta_vtype_ismeta(vt)
 
@@ -73,11 +74,13 @@
 #define vaddr_ag_index(va)              voluta_vaddr_ag_index(va)
 #define vaddr_hs_index(va)              voluta_vaddr_hs_index(va)
 #define vaddr_setup(va, t, o)           voluta_vaddr_setup(va, t, o)
+#define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)
 #define vi_decref(vi)                   voluta_vi_decref(vi)
 #define vi_dirtify(vi)                  voluta_vi_dirtify(vi)
+#define vi_undirtify(vi)                voluta_vi_undirtify(vi)
 #define vi_isdata(vi)                   voluta_vi_isdata(vi)
 #define vi_dat_of(vi)                   voluta_vi_dat_of(vi)
 #define ii_refcnt(ii)                   vi_refcnt(ii_vi(ii))
@@ -130,6 +133,7 @@
 #define listq_finin(lq, n)              voluta_listq_finin(lq, n)
 #define listq_isempty(lq)               voluta_listq_isempty(lq)
 #define listq_push_back(lq, lh)         voluta_listq_push_back(lq, lh)
+#define listq_push_front(lq, lh)        voluta_listq_push_front(lq, lh)
 #define listq_pop_front(lq)             voluta_listq_pop_front(lq)
 #define listq_remove(lq, lh)            voluta_listq_remove(lq, lh)
 #define listq_front(lq)                 voluta_listq_front(lq)

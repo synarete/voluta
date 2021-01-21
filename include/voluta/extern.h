@@ -48,18 +48,55 @@ int voluta_lib_init(void); /* TODO: have fini_lib */
 int voluta_resolve_volume_size(const char *path,
 			       loff_t size_want, loff_t *out_size);
 
-int voluta_require_volume_path(const char *path, int access_mode);
+int voluta_require_volume_path(const char *path, bool rw);
 
 int voluta_check_mntdir_fstype(long vfstype);
 
 int voluta_check_name(const char *name);
 
-int voluta_zb_parse_hdr(const struct voluta_zero_block *zb,
-			enum voluta_ztype *out_ztype,
-			enum voluta_zb_flags *out_zbf);
+/* zero-block */
+int voluta_zb_check(const struct voluta_zero_block4 *zb);
 
-int voluta_zb_decipher(struct voluta_zero_block *zb, const char *pass);
+enum voluta_ztype voluta_zb_type(const struct voluta_zero_block4 *zb);
 
+enum voluta_zbf voluta_zb_flags(const struct voluta_zero_block4 *zb);
+
+int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass);
+
+/* file-system */
+int voluta_fse_new(const struct voluta_fs_args *args,
+		   struct voluta_fs_env **out_fse);
+
+void voluta_fse_del(struct voluta_fs_env *fse);
+
+int voluta_fse_reload(struct voluta_fs_env *fse);
+
+int voluta_fse_format(struct voluta_fs_env *fse);
+
+int voluta_fse_traverse(struct voluta_fs_env *fse);
+
+int voluta_fse_serve(struct voluta_fs_env *fse);
+
+int voluta_fse_verify(struct voluta_fs_env *fse);
+
+int voluta_fse_term(struct voluta_fs_env *fse);
+
+void voluta_fse_halt(struct voluta_fs_env *fse, int signum);
+
+int voluta_fse_sync_drop(struct voluta_fs_env *fse);
+
+void voluta_fse_stats(const struct voluta_fs_env *fse,
+		      struct voluta_fs_stats *st);
+
+/* archiver */
+int voluta_archiver_new(const struct voluta_ar_args *args,
+			struct voluta_archiver **out_arc);
+
+void voluta_archiver_del(struct voluta_archiver *arc);
+
+int voluta_archiver_export(struct voluta_archiver *arc);
+
+int voluta_archiver_import(struct voluta_archiver *arc);
 
 /* mount-service */
 struct voluta_ms_env;
@@ -79,45 +116,9 @@ int voluta_rpc_handshake(uid_t uid, gid_t gid);
 int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
 		     size_t max_read, unsigned long ms_flags, int *out_fd);
 
-int voluta_rpc_umount(const char *mountpoint, uid_t uid, gid_t gid);
+int voluta_rpc_umount(const char *mountpoint,
+		      uid_t uid, gid_t gid, int mnt_flags);
 
-
-/* file-system */
-int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse);
-
-void voluta_fse_del(struct voluta_fs_env *fse);
-
-int voluta_fse_load(struct voluta_fs_env *fse);
-
-int voluta_fse_format(struct voluta_fs_env *fse);
-
-int voluta_fse_serve(struct voluta_fs_env *fse);
-
-int voluta_fse_verify(struct voluta_fs_env *fse);
-
-int voluta_fse_term(struct voluta_fs_env *fse);
-
-void voluta_fse_halt(struct voluta_fs_env *fse, int signum);
-
-int voluta_fse_sync_drop(struct voluta_fs_env *fse);
-
-int voluta_fse_setargs(struct voluta_fs_env *fse,
-		       const struct voluta_fs_args *args);
-
-void voluta_fse_stats(const struct voluta_fs_env *fse,
-		      struct voluta_fs_stats *st);
-
-/* archiver */
-int voluta_archiver_new(size_t memwant, struct voluta_archiver **out_arc);
-
-void voluta_archiver_del(struct voluta_archiver *arc);
-
-int voluta_archiver_setargs(struct voluta_archiver *arc,
-			    const struct voluta_ar_args *args);
-
-int voluta_archiver_export(struct voluta_archiver *arc);
-
-int voluta_archiver_import(struct voluta_archiver *arc);
-
+long voluta_fuse_super_magic(void);
 
 #endif /* VOLUTA_EXTERN_H_ */

@@ -29,32 +29,30 @@
  */
 static void test_tmpfile_simple(struct vt_env *vte)
 {
-	int fd, o_flags = O_RDWR | O_TMPFILE | O_EXCL;
+	int fd = -1;
 	loff_t pos = -1;
-	size_t i, n, bsz;
-	size_t nwr, nrd;
+	size_t dat = 0;
+	size_t nwr = 0;
+	size_t nrd = 0;
 	struct stat st;
-	char *path;
-	void *buf;
-
-	bsz  = VT_BK_SIZE;
-	buf  = vt_new_buf_zeros(vte, bsz);
-	path = vt_new_path_unique(vte);
+	const size_t bsz  = VT_BK_SIZE;
+	void *buf  = vt_new_buf_zeros(vte, bsz);
+	char *path = vt_new_path_unique(vte);
 
 	vt_mkdir(path, 0700);
-	vt_open(path, o_flags, 0600, &fd);
-	for (i = 0; i < 128; ++i) {
-		n = i;
-		memcpy(buf, &n, sizeof(n));
+	vt_open(path, O_RDWR | O_TMPFILE | O_EXCL, 0600, &fd);
+	for (size_t i = 0; i < 128; ++i) {
+		dat = i;
+		memcpy(buf, &dat, sizeof(dat));
 		vt_write(fd, buf, bsz, &nwr);
 		vt_fstat(fd, &st);
 		vt_expect_eq((long)st.st_size, (long)((i + 1) * bsz));
 	}
 	vt_llseek(fd, 0, SEEK_SET, &pos);
-	for (i = 0; i < 128; ++i) {
+	for (size_t i = 0; i < 128; ++i) {
 		vt_read(fd, buf, bsz, &nrd);
-		memcpy(&n, buf, sizeof(n));
-		vt_expect_eq((long)i, (long)n);
+		memcpy(&dat, buf, sizeof(dat));
+		vt_expect_eq((long)i, (long)dat);
 	}
 	vt_close(fd);
 	vt_rmdir(path);
@@ -66,21 +64,22 @@ static void test_tmpfile_simple(struct vt_env *vte)
  */
 static void test_buffer(struct vt_env *vte, size_t bsz)
 {
-	int fd, o_flags = O_RDWR | O_TMPFILE | O_EXCL;
-	size_t i, n;
-	void *buf1, *buf2;
-	char *path;
+	int fd = -1;
+	size_t nwr = 0;
+	size_t nrd = 0;
+	void *buf1 = NULL;
+	void *buf2 = NULL;
+	char *path = vt_new_path_unique(vte);
 	struct stat st;
 
-	path = vt_new_path_unique(vte);
 	vt_mkdir(path, 0700);
-	vt_open(path, o_flags, 0600, &fd);
-	for (i = 0; i < 8; ++i) {
+	vt_open(path, O_RDWR | O_TMPFILE | O_EXCL, 0600, &fd);
+	for (size_t i = 0; i < 8; ++i) {
 		buf1 = vt_new_buf_rands(vte, bsz);
-		vt_pwrite(fd, buf1, bsz, 0, &n);
+		vt_pwrite(fd, buf1, bsz, 0, &nwr);
 		vt_fsync(fd);
 		buf2 = vt_new_buf_rands(vte, bsz);
-		vt_pread(fd, buf2, bsz, 0, &n);
+		vt_pread(fd, buf2, bsz, 0, &nrd);
 		vt_fstat(fd, &st);
 		vt_expect_eq(st.st_size, bsz);
 		vt_expect_eqm(buf1, buf2, bsz);

@@ -31,7 +31,7 @@
 
 static void mount_halt_by_signal(int signum)
 {
-	struct voluta_fs_env *fse = voluta_fs_env_inst();
+	struct voluta_fs_env *fse = voluta_fse_inst();
 
 	if (fse) {
 		voluta_fse_halt(fse, signum);
@@ -47,21 +47,22 @@ static void mount_enable_signals(void)
 static void mount_execute_fs(void)
 {
 	int err;
-	struct voluta_fs_env *fse = voluta_fs_env_inst();
+	struct voluta_fs_env *fse = voluta_fse_inst();
 
 	err = voluta_fse_serve(fse);
 	if (err) {
 		voluta_die(err, "fs failure: %s %s",
-			   voluta_globals.mount_volume,
-			   voluta_globals.mount_point_real);
+			   voluta_globals.cmd.mount.volume,
+			   voluta_globals.cmd.mount.point_real);
 	}
 }
 
 static void mount_finalize(void)
 {
-	voluta_fini_fs_env();
-	voluta_pfree_string(&voluta_globals.mount_volume_real);
-	voluta_pfree_string(&voluta_globals.mount_point_real);
+	voluta_destrpy_fse_inst();
+	voluta_pfree_string(&voluta_globals.cmd.mount.volume_real);
+	voluta_pfree_string(&voluta_globals.cmd.mount.volume_clone);
+	voluta_pfree_string(&voluta_globals.cmd.mount.point_real);
 	voluta_close_syslog();
 }
 
@@ -69,33 +70,52 @@ static void mount_finalize(void)
 
 static void mount_setup_check_mntpoint(void)
 {
-	voluta_globals.mount_point_real =
-		voluta_realpath_safe(voluta_globals.mount_point);
+	voluta_globals.cmd.mount.point_real =
+		voluta_realpath_safe(voluta_globals.cmd.mount.point);
 
-	voluta_die_if_not_mntdir(voluta_globals.mount_point_real, true);
+	voluta_die_if_not_mntdir(voluta_globals.cmd.mount.point_real, true);
 	voluta_die_if_no_mountd();
 }
 
 static void mount_setup_check_volume(void)
 {
-	enum voluta_zb_flags zbf;
-	const char *pass = NULL;
+	bool is_enc = false;
 	const char *path = NULL;
+	const bool rw = !voluta_globals.cmd.mount.rdonly;
 
-	voluta_globals.mount_volume_real =
-		voluta_realpath_safe(voluta_globals.mount_volume);
+	voluta_globals.cmd.mount.volume_real =
+		voluta_realpath_safe(voluta_globals.cmd.mount.volume);
+	voluta_globals.cmd.mount.volume_active =
+		voluta_globals.cmd.mount.volume_real;
 
-	path = voluta_globals.mount_volume_real;
-	voluta_die_if_not_volume(path, pass, &zbf);
+	path = voluta_globals.cmd.mount.volume_real;
+	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
+	if (is_enc) {
+		voluta_globals.cmd.mount.passphrase =
+			voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
+		voluta_globals.cmd.mount.encrypted = true;
+	}
+	voluta_die_if_bad_sb(path, voluta_globals.cmd.mount.passphrase);
+}
 
-	if (zbf & VOLUTA_ZBF_ENCRYPTED) {
-		voluta_globals.mount_passphrase =
-			voluta_getpass(voluta_globals.mount_passphrase_file);
+static void mount_prepare_volume_clone(void)
+{
+	char *volume_real = voluta_globals.cmd.mount.volume_real;
+	char *volume_clone = voluta_clone_as_tmppath(volume_real);
 
-		pass = voluta_globals.mount_passphrase;
-		voluta_die_if_not_volume(path, pass, &zbf);
+	voluta_globals.cmd.mount.volume_clone = volume_clone;
+	if (volume_clone != NULL) {
+		voluta_globals.cmd.mount.volume_active = volume_clone;
+	}
+}
 
-		voluta_globals.mount_encrypted = true;
+static void mount_fixup_volume_clone(void)
+{
+	char *volume_real = voluta_globals.cmd.mount.volume_real;
+	char *volume_clone = voluta_globals.cmd.mount.volume_clone;
+
+	if (volume_clone != NULL) {
+		voluta_sys_rename(volume_clone, volume_real);
 	}
 }
 
@@ -110,7 +130,7 @@ static void mount_setup_check_volume(void)
 static int mount_probe_rootdir(void)
 {
 	struct stat st;
-	const char *path = voluta_globals.mount_point_real;
+	const char *path = voluta_globals.cmd.mount.point_real;
 
 	voluta_statpath_safe(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
@@ -157,46 +177,45 @@ static void mount_boostrap_process(void)
 	}
 }
 
-static void mount_create_setup_env(void)
+static void mount_create_fs_env(void)
 {
-	int err;
-	struct voluta_fs_env *fse = NULL;
-	struct voluta_fs_args args = {
+	const struct voluta_fs_args args = {
 		.uid = getuid(),
 		.gid = getgid(),
 		.pid = getpid(),
 		.umask = 0022,
-		.mountp = voluta_globals.mount_point_real,
-		.volume = voluta_globals.mount_volume_real,
-		.passph = voluta_globals.mount_passphrase,
-		.encrypted = voluta_globals.mount_encrypted,
-		.lazytime = voluta_globals.mount_lazytime,
-		.noexec = voluta_globals.mount_noexec,
-		.nosuid = voluta_globals.mount_nosuid,
-		.nodev = voluta_globals.mount_nodev,
-		.rdonly = voluta_globals.mount_rdonly,
-		.vsize = 0,
+		.volume = voluta_globals.cmd.mount.volume_active,
+		.mountp = voluta_globals.cmd.mount.point_real,
+		.passwd = voluta_globals.cmd.mount.passphrase,
+		.encrypted = voluta_globals.cmd.mount.encrypted,
+		.encryptwr = voluta_globals.cmd.mount.encrypted,
+		.lazytime = voluta_globals.cmd.mount.lazytime,
+		.noexec = voluta_globals.cmd.mount.noexec,
+		.nosuid = voluta_globals.cmd.mount.nosuid,
+		.nodev = voluta_globals.cmd.mount.nodev,
+		.rdonly = voluta_globals.cmd.mount.rdonly,
 		.pedantic = false,
-		.spliced = true,
+		.with_fuseq = true,
 
 	};
-
-	voluta_init_fs_env();
-	fse = voluta_fs_env_inst();
-	err = voluta_fse_setargs(fse, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
-	err = voluta_fse_verify(fse);
-	if (err == -EUCLEAN) {
-		voluta_die(0, "not a voluta volume: %s", args.volume);
-	} else if (err == -EKEYEXPIRED) {
-		voluta_die(0, "wrong passphrase: %s", args.volume);
-	} else if (err != 0) {
-		voluta_die(err, "illegal volume: %s", args.volume);
-	}
+	voluta_create_fse_inst(&args);
 }
 
+static void mount_verify_fs_env(void)
+{
+	int err;
+	struct voluta_fs_env *fse = voluta_fse_inst();
+	const char *volume = voluta_globals.cmd.mount.volume;
+
+	err = voluta_fse_verify(fse);
+	if (err == -EUCLEAN) {
+		voluta_die(0, "not a voluta volume: %s", volume);
+	} else if (err == -EKEYEXPIRED) {
+		voluta_die(0, "wrong passphrase: %s", volume);
+	} else if (err != 0) {
+		voluta_die(err, "illegal volume: %s", volume);
+	}
+}
 
 /*
  * Trace global setting to user. When running as daemon on systemd-based
@@ -207,20 +226,26 @@ static void mount_create_setup_env(void)
  */
 static void mount_trace_start(void)
 {
-	voluta_log_process_info();
-	voluta_log_info("mount-point: %s", voluta_globals.mount_point_real);
-	if (voluta_globals.mount_volume) {
-		voluta_log_info("volume: %s", voluta_globals.mount_volume);
-	}
+	voluta_log_meta_banner(true);
+	voluta_log_info("executable: %s", voluta_globals.prog);
+	voluta_log_info("mount-point: %s", voluta_globals.cmd.mount.point_real);
+	voluta_log_info("volume: %s", voluta_globals.cmd.mount.volume);
+	voluta_log_info("modes: encrypted=%d rdonly=%d noexec=%d "
+			"nodev=%d nosuid=%d",
+			(int)voluta_globals.cmd.mount.encrypted,
+			(int)voluta_globals.cmd.mount.rdonly,
+			(int)voluta_globals.cmd.mount.noexec,
+			(int)voluta_globals.cmd.mount.nodev,
+			(int)voluta_globals.cmd.mount.nosuid);
 }
 
 static void mount_trace_finish(void)
 {
 	const time_t exec_time = time(NULL) - voluta_globals.start_time;
 
-	voluta_log_info("mount done: %s", voluta_globals.mount_point_real);
+	voluta_log_info("mount done: %s", voluta_globals.cmd.mount.point_real);
 	voluta_log_info("execution time: %ld seconds", exec_time);
-	voluta_log_info("finish: %s", voluta_globals.version);
+	voluta_log_meta_banner(false);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -236,11 +261,17 @@ void voluta_execute_mount(void)
 	/* Require valid back-end storage volume */
 	mount_setup_check_volume();
 
+	/* If supported, use a clone of the volume */
+	mount_prepare_volume_clone();
+
 	/* Become daemon process */
 	mount_boostrap_process();
 
 	/* Setup environment instance */
-	mount_create_setup_env();
+	mount_create_fs_env();
+
+	/* Re-verify input arguments */
+	mount_verify_fs_env();
 
 	/* Report beginning-of-mount */
 	mount_trace_start();
@@ -253,6 +284,9 @@ void voluta_execute_mount(void)
 
 	/* Report end-of-mount */
 	mount_trace_finish();
+
+	/* Override volume with updated clone */
+	mount_fixup_volume_clone();
 
 	/* Post execution cleanups */
 	mount_finalize();
@@ -296,13 +330,13 @@ void voluta_getopt_mount(void)
 	while (opt_chr > 0) {
 		opt_chr = voluta_getopt_subcmd("rxSZDV:CP:h", opts);
 		if (opt_chr == 'r') {
-			voluta_globals.mount_rdonly = true;
+			voluta_globals.cmd.mount.rdonly = true;
 		} else if (opt_chr == 'x') {
-			voluta_globals.mount_noexec = true;
+			voluta_globals.cmd.mount.noexec = true;
 		} else if (opt_chr == 'S') {
-			voluta_globals.mount_nosuid = true;
+			voluta_globals.cmd.mount.nosuid = true;
 		} else if (opt_chr == 'Z') {
-			voluta_globals.mount_nodev = true;
+			voluta_globals.cmd.mount.nodev = true;
 		} else if (opt_chr == 'D') {
 			voluta_globals.dont_daemonize = true;
 		} else if (opt_chr == 'V') {
@@ -310,16 +344,16 @@ void voluta_getopt_mount(void)
 		} else if (opt_chr == 'C') {
 			voluta_globals.allow_coredump = true;
 		} else if (opt_chr == 'P') {
-			voluta_globals.mount_passphrase_file = optarg;
+			voluta_globals.cmd.mount.passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_mount_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.mount_volume =
+	voluta_globals.cmd.mount.volume =
 		voluta_consume_cmdarg("volume-path", false);
-	voluta_globals.mount_point =
+	voluta_globals.cmd.mount.point =
 		voluta_consume_cmdarg("mount-point", true);
 }
 

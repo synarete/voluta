@@ -48,34 +48,33 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_fuseq;
-struct voluta_fuseq_ctx;
+struct voluta_fuseq_worker;
 struct voluta_fuseq_in;
 struct voluta_fuseq_inb;
 struct voluta_fuseq_outb;
 struct voluta_sb_info;
 struct voluta_oper;
+struct voluta_dset;
 struct voluta_rwiter_ctx;
 struct voluta_readdir_ctx;
 struct voluta_readdir_info;
 struct voluta_listxattr_ctx;
-struct voluta_ub_info;
+struct voluta_ar_blob_info;
 
 
 /* file-system control flags */
 enum voluta_flags {
-	VOLUTA_F_ENCRYPT        = VOLUTA_BIT(0),
-	VOLUTA_F_SPLICED        = VOLUTA_BIT(1),
-	VOLUTA_F_SYNC           = VOLUTA_BIT(2),
-	VOLUTA_F_NOW            = VOLUTA_BIT(3),
-	VOLUTA_F_BLKDEV         = VOLUTA_BIT(4),
-	VOLUTA_F_MEMFD          = VOLUTA_BIT(5),
-	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(6),
-	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(7),
-	VOLUTA_F_IDLE           = VOLUTA_BIT(8),
-	VOLUTA_F_BRINGUP        = VOLUTA_BIT(9),
-	VOLUTA_F_OPSTART        = VOLUTA_BIT(10),
-	VOLUTA_F_RDONLY         = VOLUTA_BIT(11),
-	VOLUTA_F_ASSERTIVE      = VOLUTA_BIT(12),
+	VOLUTA_F_ENCRYPTED      = VOLUTA_BIT(0),
+	VOLUTA_F_ENCRYPTWR      = VOLUTA_BIT(1),
+	VOLUTA_F_SYNC           = VOLUTA_BIT(1),
+	VOLUTA_F_NOW            = VOLUTA_BIT(2),
+	VOLUTA_F_BLKDEV         = VOLUTA_BIT(3),
+	VOLUTA_F_MEMFD          = VOLUTA_BIT(4),
+	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(5),
+	VOLUTA_F_BRINGUP        = VOLUTA_BIT(6),
+	VOLUTA_F_OPSTART        = VOLUTA_BIT(7),
+	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(8),
+	VOLUTA_F_IDLE           = VOLUTA_BIT(9),
 };
 
 
@@ -101,22 +100,22 @@ enum voluta_iattr_flags {
 };
 
 /* threading */
-typedef void (*voluta_execute_fn)(struct voluta_thread *);
+typedef int (*voluta_execute_fn)(struct voluta_thread *);
 
 /* wrapper of pthread_t */
 struct voluta_thread {
-	pthread_t thread;
-	time_t start_time;
-	time_t finish_time;
 	voluta_execute_fn exec;
-	void *arg;
-	int status;
-	int pad;
+	pthread_t       pth;
+	char            name[32];
+	time_t          start_time;
+	time_t          finish_time;
+	int             status;
 };
 
 /* wrapper of pthread_mutex_t */
 struct voluta_mutex {
 	pthread_mutex_t mutex;
+	int alive;
 };
 
 struct voluta_pipe {
@@ -156,7 +155,6 @@ struct voluta_ino_dt {
 /* name-buffer */
 struct voluta_namebuf {
 	char name[VOLUTA_NAME_MAX + 1];
-	long last;
 };
 
 /* pass-phrase + salt buffers */
@@ -188,12 +186,11 @@ struct voluta_crypto {
 };
 
 
-/* zero-block public attributes */
-struct voluta_zattr {
-	enum voluta_ztype za_type;
-	long    za_version;
-	loff_t  za_vsize;
-	struct voluta_kdf_pair za_kdf_pair;
+/* zero-block cryptographic params */
+struct voluta_zcrypt_params {
+	struct voluta_kdf_pair kdf;
+	uint32_t cipher_algo;
+	uint32_t cipher_mode;
 };
 
 /* user-credentials */
@@ -245,9 +242,11 @@ struct voluta_iaddr {
 struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
-	long ce_refcnt;
 	long ce_key;
 	long ce_tick;
+	int  ce_refcnt;
+	bool ce_mapped;
+	bool ce_forgot;
 };
 
 /* block caching info */
@@ -260,7 +259,6 @@ struct voluta_bk_info {
 
 /* vnode */
 union voluta_vnode_u {
-	struct voluta_super_block       *sb;
 	struct voluta_hspace_map        *hsm;
 	struct voluta_agroup_map        *agm;
 	struct voluta_itable_tnode      *itn;
@@ -292,10 +290,15 @@ struct voluta_vnode_info {
 };
 
 /* dirty-queues of cached-elements */
+struct voluta_dirtyq {
+	struct voluta_listq             dq_list;
+	size_t dq_accum_nbytes;
+};
+
 struct voluta_dirtyqs {
 	struct voluta_qalloc           *dq_qalloc;
-	struct voluta_listq            *dq_bins;
-	struct voluta_listq             dq_main;
+	struct voluta_dirtyq           *dq_bins;
+	struct voluta_dirtyq            dq_main;
 	size_t dq_nbins;
 };
 
@@ -311,11 +314,11 @@ struct voluta_inode_info {
 
 /* caching */
 struct voluta_lrumap {
-	struct voluta_list_head  lru;
+	struct voluta_listq      lru;
 	struct voluta_list_head *htbl;
 	long (*hash_fn)(long);
-	size_t hsize;
-	size_t count;
+	size_t htbl_nelems;
+	size_t htbl_size;
 };
 
 struct voluta_cache {
@@ -348,6 +351,11 @@ struct voluta_space_info {
 	ssize_t sp_nfiles;
 };
 
+/* encrypted output buffer */
+struct voluta_encbuf {
+	uint8_t b[VOLUTA_MEGA];
+};
+
 /* persistent-storage I/O-control */
 struct voluta_pstore {
 	int     ps_dfd;
@@ -355,6 +363,16 @@ struct voluta_pstore {
 	int     ps_flags;
 	loff_t  ps_size;
 	loff_t  ps_capacity;
+};
+
+/* volume storage controller */
+struct voluta_vstore {
+	struct voluta_pstore            vs_pstore;
+	struct voluta_crypto            vs_crypto;
+	struct voluta_qalloc           *vs_qalloc;
+	struct voluta_encbuf           *vs_encbuf;
+	const char *vs_volpath;
+	unsigned long vs_ctl_flags;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -379,11 +397,6 @@ struct voluta_itable_info {
 	size_t it_ninodes_max;
 };
 
-struct voluta_ino_set {
-	size_t cnt;
-	ino_t ino[VOLUTA_ITNODE_NENTS];
-};
-
 /* operations counters */
 struct voluta_oper_stat {
 	size_t op_iopen_max;
@@ -393,37 +406,30 @@ struct voluta_oper_stat {
 	/* TODO: Have counter per-operation */
 };
 
-/* encrypted output buffer */
-struct voluta_encbuf {
-	uint8_t b[VOLUTA_MEGA];
-};
-
 /* super-block in-memory info */
 struct voluta_sb_info {
-	struct voluta_namebuf           sb_fs_name;
-	struct voluta_uuid              sb_fs_uuid;
-	struct voluta_ucred             sb_owner;
-	struct voluta_crypto            sb_crypto;
-	struct voluta_zero_block       *sb_zb;
+	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_pstore           *sb_pstore;
-	struct voluta_encbuf           *sb_encbuf;
-	struct voluta_vnode_info       *sb_vi;
+	struct voluta_vstore           *sb_vstore;
+	struct voluta_uuid              sb_fs_uuid;
+	struct voluta_ucred             sb_owner;
 	struct voluta_space_info        sb_spi;
 	struct voluta_itable_info       sb_iti;
 	struct voluta_oper_stat         sb_ops;
-	const char                     *sb_volpath;
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
-	time_t                          sb_timeout;
-	size_t                          sb_nidle;
-};
+	time_t                          sb_mntime;
+} voluta_aligned64;
 
 /* de-stage dirty-vnodes set */
+typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
+				   struct voluta_vnode_info *vi);
+
 struct voluta_dset {
 	struct voluta_cache            *ds_cache;
+	voluta_dset_add_fn              ds_add_fn;
 	struct voluta_vnode_info       *ds_viq;
 	struct voluta_avl               ds_avl;
 	long ds_key;
@@ -433,7 +439,7 @@ struct voluta_dset {
 struct voluta_oper {
 	struct voluta_ucred ucred;
 	struct timespec     xtime;
-	unsigned long       unique;
+	long                unique;
 	int                 opcode;
 };
 
@@ -451,50 +457,60 @@ struct voluta_fuseq_conn_info {
 	size_t  max_background;
 	size_t  congestion_threshold;
 	size_t  time_gran;
-};
+} voluta_aligned64;
 
-struct voluta_fuseq_ctx {
-	const struct voluta_fuseq_cmd  *cmd;
+struct voluta_fuseq_worker {
 	struct voluta_fuseq            *fq;
+	const struct voluta_fuseq_cmd  *cmd;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq_inb        *inb;
 	struct voluta_fuseq_outb       *outb;
-	struct voluta_oper              op;
-};
+	struct voluta_fuseq_rw_iter    *rwi;
+	struct voluta_oper             *op;
+	struct voluta_oper              oper;
+	struct voluta_pipe              pipe;
+	struct voluta_thread            th;
+	int idx;
+} voluta_aligned64;
 
 struct voluta_fuseq {
+	struct voluta_fuseq_worker      fq_worker[4];
 	struct voluta_fuseq_conn_info   fq_coni;
-	struct voluta_fuseq_ctx         fq_ctx;
+	struct voluta_mutex             fq_ch_lock;
+	struct voluta_mutex             fq_fs_lock;
 	struct voluta_sb_info          *fq_sbi;
 	struct voluta_qalloc           *fq_qal;
-	struct voluta_pipe              fq_pipe;
-	unsigned long fq_nopers;
-	int fq_fuse_fd;
-	int fq_null_fd;
-	int fq_chan_err;
-	int fq_got_init;
-	int fq_got_destroy;
-	int fq_deny_others;
-	bool fq_active;
-	bool fq_mount;
-	bool fq_umount;
-	bool fq_splice_memfd;
-};
+	size_t          fq_nopers;
+	time_t          fq_times;
+	int             fq_nworkers_avail;
+	int             fq_nworkers_active;
+	volatile int    fq_active;
+	volatile int    fq_fuse_fd;
+	volatile int    fq_null_fd;
+	bool            fq_got_init;
+	bool            fq_got_destroy;
+	bool            fq_deny_others;
+	bool            fq_mount;
+	bool            fq_umount;
+	bool            fq_splice_memfd;
+} voluta_aligned64;
 
 /* file-system arguments */
 struct voluta_fs_args {
-	const char *mountp;
 	const char *volume;
+	const char *mountp;
 	const char *fsname;
-	const char *passph;
+	const char *passwd;
+	size_t memwant;
 	loff_t vsize;
 	uid_t  uid;
 	gid_t  gid;
 	pid_t  pid;
 	mode_t umask;
+	bool   with_fuseq;
 	bool   pedantic;
 	bool   encrypted;
-	bool   spliced;
+	bool   encryptwr;
 	bool   lazytime;
 	bool   noexec;
 	bool   nosuid;
@@ -505,14 +521,16 @@ struct voluta_fs_args {
 /* file-system environment context */
 struct voluta_fs_env {
 	struct voluta_fs_args           args;
+	struct voluta_zcrypt_params     zcryp;
+	struct voluta_passphrase        passph;
+	struct voluta_kivam             kivam;
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_pstore           *pstore;
-	struct voluta_zero_block       *zb;
+	struct voluta_vstore           *vstore;
+	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;
-	const char *volume_path;
 	loff_t volume_size;
 	int signum;
 };
@@ -544,7 +562,7 @@ struct voluta_listxattr_ctx {
 };
 
 typedef int (*voluta_rwiter_fn)(struct voluta_rwiter_ctx *rwi_ctx,
-				const struct voluta_fiovec *fiov);
+				const struct voluta_xiovec *xiov);
 
 struct voluta_rwiter_ctx {
 	voluta_rwiter_fn actor;
@@ -555,22 +573,24 @@ struct voluta_rwiter_ctx {
 
 /* archiving */
 struct voluta_ar_args {
-	const char *passph;
+	const char *passwd;
 	const char *volume;
 	const char *blobsdir;
 	const char *arcname;
+	size_t memwant;
 };
 
 struct voluta_archiver {
 	struct voluta_ar_args           ar_args;
-	struct voluta_iv_key            ar_iv_key;
+	struct voluta_kivam             ar_kivam;
 	struct voluta_qalloc           *ar_qalloc;
 	struct voluta_crypto           *ar_crypto;
 	struct voluta_bstore           *ar_bstore;
-	struct voluta_ar_blob          *ar_blob;
-	struct voluta_ar_metaspec      *ar_spec;
+	struct voluta_ar_blob_info     *ar_bli;
+	struct voluta_ar_spec          *ar_spec;
 	size_t ar_spec_nents;
 	size_t ar_spec_nents_max;
+	int try_clone;
 };
 
 #endif /* VOLUTA_TYPES_H_ */

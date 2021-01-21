@@ -77,7 +77,7 @@ static void assign_statx_ts(struct statx_timestamp *stx_ts,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static ino_t inode_ino(const struct voluta_inode *inode)
+ino_t voluta_inode_ino(const struct voluta_inode *inode)
 {
 	return cpu_to_ino(inode->i_ino);
 }
@@ -172,19 +172,19 @@ static void inode_inc_revision(struct voluta_inode *inode)
 	inode_set_revision(inode, inode_revision(inode) + 1);
 }
 
-static enum voluta_inode_flags inode_flags(const struct voluta_inode *inode)
+static enum voluta_inodef inode_flags(const struct voluta_inode *inode)
 {
 	return le32_to_cpu(inode->i_flags);
 }
 
 static void inode_set_flags(struct voluta_inode *inode,
-			    enum voluta_inode_flags flags)
+			    enum voluta_inodef flags)
 {
 	inode->i_flags = cpu_to_le32(flags);
 }
 
 static bool inode_has_flags(struct voluta_inode *inode,
-			    enum voluta_inode_flags mask)
+			    enum voluta_inodef mask)
 {
 	return (inode_flags(inode) & mask) == mask;
 }
@@ -360,7 +360,7 @@ bool voluta_is_rootdir(const struct voluta_inode_info *ii)
 	return ii_isdir(ii) && inode_has_flags(ii->inode, VOLUTA_INODEF_ROOTD);
 }
 
-enum voluta_inode_flags voluta_ii_flags(const struct voluta_inode_info *ii)
+enum voluta_inodef voluta_ii_flags(const struct voluta_inode_info *ii)
 {
 	return inode_flags(ii->inode);
 }
@@ -1169,7 +1169,7 @@ int voluta_verify_inode(const struct voluta_inode *inode)
 {
 	int err;
 
-	err = voluta_verify_ino(inode_ino(inode));
+	err = voluta_verify_ino(voluta_inode_ino(inode));
 	if (err) {
 		return err;
 	}

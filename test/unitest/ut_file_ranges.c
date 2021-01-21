@@ -26,7 +26,6 @@ struct ut_dvecs {
 	size_t count;
 };
 
-
 static struct ut_dvecs *new_dvecs(struct ut_env *ute)
 {
 	struct ut_dvecs *dvecs;
@@ -36,22 +35,27 @@ static struct ut_dvecs *new_dvecs(struct ut_env *ute)
 	return dvecs;
 }
 
-static void assign(struct ut_env *ute,
-		   struct ut_dvecs *drefs,
+static void assign(struct ut_env *ute, struct ut_dvecs *dvecs,
 		   const struct ut_ranges *rngs)
 {
 	loff_t off;
 	size_t len;
 	struct ut_dvec *dvec;
 
-	ut_expect(rngs->cnt <= UT_ARRAY_SIZE(drefs->dvec));
-
 	for (size_t i = 0; i < rngs->cnt; ++i) {
 		off = rngs->arr[i].off;
 		len = rngs->arr[i].len;
 		dvec = ut_new_dvec(ute, off, len);
-		drefs->dvec[drefs->count++] = dvec;
+		dvecs->dvec[dvecs->count++] = dvec;
 	}
+}
+
+static void swap(struct ut_dvec **pa, struct ut_dvec **pb)
+{
+	struct ut_dvec *c = *pa;
+
+	*pa = *pb;
+	*pb = c;
 }
 
 static struct ut_dvecs *
@@ -61,14 +65,6 @@ simple(struct ut_env *ute, const struct ut_ranges *ranges)
 
 	assign(ute, drefs, ranges);
 	return drefs;
-}
-
-static void swap(struct ut_dvec **pa, struct ut_dvec **pb)
-{
-	struct ut_dvec *c = *pa;
-
-	*pa = *pb;
-	*pb = c;
 }
 
 static struct ut_dvecs *

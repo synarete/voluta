@@ -58,6 +58,7 @@ AC_DEFUN([AX_VOLUTA_NEED_FUNCS],
   AX_VOLUTA_CHECK_FUNCS([canonicalize_file_name])
   AX_VOLUTA_CHECK_FUNCS([splice])
   AX_VOLUTA_CHECK_FUNCS([vmsplice])
+  AX_VOLUTA_CHECK_FUNCS([get_nprocs_conf])
 ])
 
 

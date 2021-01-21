@@ -711,7 +711,7 @@ static void ut_file_read_behind_(struct ut_env *ute, loff_t off)
 	pos = (off < bsz) ? 0 : (off - bsz + 1);
 	idx = (off < bsz) ? off : (bsz - 1);
 	buf = ut_randbuf(ute, (size_t)bsz);
-	buf[idx] = ~da;
+	buf[idx] = (uint8_t)(~da);
 
 	ut_create_file(ute, root_ino, name, &ino);
 	ut_trunacate_file(ute, ino, off + bsz);

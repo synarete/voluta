@@ -34,6 +34,11 @@
 extern const struct voluta_vaddr voluta_vaddr_none;
 
 
+static inline int min_int(int x, int y)
+{
+	return (x < y) ? x : y;
+}
+
 static inline size_t min(size_t x, size_t y)
 {
 	return (x < y) ? x : y;
@@ -68,7 +73,7 @@ static inline bool ino_isnull(ino_t ino)
 
 static inline bool off_isnull(loff_t off)
 {
-	return (off == VOLUTA_OFF_NULL);
+	return (off >= VOLUTA_OFF_NULL) || (off < 0);
 }
 
 static inline loff_t off_min(loff_t off1, loff_t off2)
@@ -169,11 +174,6 @@ static inline bool vtype_isnone(enum voluta_vtype vtype)
 	return vtype_isequal(vtype, VOLUTA_VTYPE_NONE);
 }
 
-static inline bool vtype_issuper(enum voluta_vtype vtype)
-{
-	return vtype_isequal(vtype, VOLUTA_VTYPE_SUPER);
-}
-
 static inline bool vtype_ishsmap(enum voluta_vtype vtype)
 {
 	return vtype_isequal(vtype, VOLUTA_VTYPE_HSMAP);
@@ -226,7 +226,7 @@ struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 static inline
 const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 {
-	return &vi->v_sbi->sb_crypto.md;
+	return &vi->v_sbi->sb_vstore->vs_crypto.md;
 }
 
 static inline

@@ -154,6 +154,7 @@ static void verify_fsstat(const struct vt_env *vte)
 	struct statvfs stvfs_end;
 
 	if (mask_of(vte) & VT_VERIFY) {
+		sleep(1); /* TODO: race in FUSE? */
 		statvfs_of(vte, &stvfs_end);
 		verify_consistent_statvfs(&vte->stvfs, &stvfs_end);
 	}
@@ -217,6 +218,7 @@ static void *safe_malloc(size_t size)
 	ptr = malloc(size);
 	if (ptr == NULL) {
 		error(EXIT_FAILURE, errno, "malloc failed: size=%lu", size);
+		abort(); /* makes gcc '-fanalyzer' happy */
 	}
 	return ptr;
 }
@@ -240,14 +242,16 @@ static struct vt_tdef *alloc_tests_arr(void)
 
 static void random_shuffle_tests(struct vt_env *vte)
 {
-	size_t pos1, pos2, rand;
+	size_t pos1;
+	size_t pos2;
+	uint64_t rand;
 	struct vt_tests *tests = &vte->tests;
 	struct vt_tdef *tests_arr = voluta_unconst(tests->arr);
 
 	for (size_t i = 0; i < tests->len; ++i) {
-		rand = (size_t)vt_lrand(vte);
+		rand = (uint64_t)vt_lrand(vte);
 		pos1 = (rand ^ i) % tests->len;
-		pos2 = ~(rand >> 32) % tests->len;
+		pos2 = (rand >> 32) % tests->len;
 		swap_testdef(&tests_arr[pos1], &tests_arr[pos2]);
 	}
 }
@@ -256,7 +260,7 @@ static void vt_clone_tests(struct vt_env *vte)
 {
 	size_t len = 0;
 	struct vt_tdef *arr = alloc_tests_arr();
-	const struct vt_tdef *tdef;
+	const struct vt_tdef *tdef = NULL;
 	const size_t nelems = VT_ARRAY_SIZE(vt_testsbl);
 
 	for (size_t i = 0; i < nelems; ++i) {

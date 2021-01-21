@@ -30,16 +30,17 @@
 /*
  * Expects valid lseek(3p) with whence as SEEK_SET, SEEK_CUR and SEEK_END
  */
-static void test_lseek_simple(struct vt_env *vte)
+static void test_lseek_simple_(struct vt_env *vte, size_t bsz)
 {
-	int fd, o_flags = O_CREAT | O_RDWR;
+	int fd = -1;
 	loff_t pos = -1;
-	size_t nrd, nwr, bsz = VT_UMEGA;
-	uint8_t byte, *buf;
+	size_t nrd = 0;
+	size_t nwr = 0;
+	uint8_t byte;
+	uint8_t *buf = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 
-	buf = vt_new_buf_rands(vte, bsz);
-	vt_open(path, o_flags, 0600, &fd);
+	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_write(fd, buf, bsz, &nwr);
 	vt_expect_eq(bsz, nwr);
 
@@ -65,22 +66,28 @@ static void test_lseek_simple(struct vt_env *vte)
 	vt_unlink(path);
 }
 
+static void test_lseek_simple(struct vt_env *vte)
+{
+	test_lseek_simple_(vte, VT_UMEGA / 8);
+	test_lseek_simple_(vte, VT_UMEGA);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects valid lseek(2) with SEEK_DATA
  */
 static void test_lseek_data_(struct vt_env *vte, size_t bsz)
 {
-	int fd;
-	loff_t from, off, pos = -1;
-	uint8_t byte;
+	int fd = -1;
+	loff_t from = 0;
+	loff_t pos = 0;
+	uint8_t byte = 0;
+	const loff_t off = (loff_t)(bsz * 2);
 	uint8_t *buf1 = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	off = (loff_t)(bsz * 2);
 	vt_pwriten(fd, buf1, bsz, off);
-
 	from = off - 2;
 	vt_llseek(fd, from, SEEK_DATA, &pos);
 	vt_expect_eq(pos, off);
@@ -106,19 +113,20 @@ static void test_lseek_data(struct vt_env *vte)
  */
 static void test_lseek_hole_(struct vt_env *vte, size_t bsz)
 {
-	int fd;
-	loff_t from, off, pos = -1;
-	size_t nrd;
-	uint8_t byte, *buf1;
+	int fd = -1;
+	loff_t from;
+	loff_t off;
+	loff_t pos = -1;
+	size_t nrd = 0;
+	uint8_t byte = 0;
+	uint8_t *buf1 = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	buf1 = vt_new_buf_rands(vte, bsz);
 	off = (loff_t)bsz;
 	vt_pwriten(fd, buf1, bsz, off);
 	off = (loff_t)(bsz * 100);
 	vt_pwriten(fd, buf1, bsz, off);
-
 	off = (loff_t)bsz;
 	from = off - 1;
 	vt_llseek(fd, from, SEEK_HOLE, &pos);
@@ -126,13 +134,11 @@ static void test_lseek_hole_(struct vt_env *vte, size_t bsz)
 	vt_read(fd, &byte, 1, &nrd);
 	vt_expect_eq(1, nrd);
 	vt_expect_eq(0, byte);
-
 	from = (loff_t)(bsz * 2) - 2;
 	vt_llseek(fd, from, SEEK_HOLE, &pos);
 	vt_expect_eq(pos, (loff_t)(bsz * 2));
 	vt_preadn(fd, &byte, 1, pos);
 	vt_expect_eq(0, byte);
-
 	vt_close(fd);
 	vt_unlink(path);
 }
@@ -149,31 +155,30 @@ static void test_lseek_hole(struct vt_env *vte)
 /*
  * Tests lseek(2) with SEEK_DATA on sparse file
  */
-static void test_lseek_data_sparse(struct vt_env *vte)
+static void test_lseek_data_sparse_(struct vt_env *vte, size_t nsteps)
 {
-	int fd;
-	loff_t off, data_off, pos, ssize;
-	size_t i, nwr, step, size, nsteps = 256;
-	char *path, *buf1;
-
-	size = VT_BK_SIZE;
-	ssize = (loff_t)size;
-	step = VT_UMEGA;
-	path = vt_new_path_unique(vte);
-	buf1 = vt_new_buf_rands(vte, size);
+	int fd = -1;
+	loff_t off;
+	loff_t pos;
+	loff_t data_off;
+	size_t nwr = 0;
+	const size_t size = VT_BK_SIZE;
+	const ssize_t ssize = (ssize_t)size;
+	const size_t step = VT_UMEGA;
+	const void *buf1 = vt_new_buf_rands(vte, size);
+	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	for (i = 0; i < nsteps; ++i) {
+	for (size_t i = 0; i < nsteps; ++i) {
 		off = (loff_t)(step * (i + 1));
 		data_off = off - ssize;
 		vt_ftruncate(fd, off);
 		vt_pwrite(fd, buf1, size, data_off, &nwr);
 		vt_expect_eq(nwr, size);
 	}
-
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);
-	for (i = 0; i < nsteps; ++i) {
+	for (size_t i = 0; i < nsteps; ++i) {
 		off = (loff_t)(step * i);
 		data_off = (loff_t)(step * (i + 1)) - ssize;
 		vt_llseek(fd, off, SEEK_DATA, &pos);
@@ -183,49 +188,58 @@ static void test_lseek_data_sparse(struct vt_env *vte)
 	vt_unlink(path);
 }
 
+static void test_lseek_data_sparse(struct vt_env *vte)
+{
+	test_lseek_data_sparse_(vte, 16);
+	test_lseek_data_sparse_(vte, 256);
+}
+
 /*
  * Tests lseek(2) with SEEK_HOLE on sparse file
  */
-static void test_lseek_hole_sparse(struct vt_env *vte)
+static void test_lseek_hole_sparse_(struct vt_env *vte, size_t nsteps)
 {
-	int fd;
-	loff_t off, hole_off, pos, ssize;
-	size_t i, nwr, step, size, nsteps = 256;
-	char *path, *buf1;
-
-	size = VT_BK_SIZE;
-	ssize = (loff_t)size;
-	step = VT_UMEGA;
-	path = vt_new_path_unique(vte);
-	buf1 = vt_new_buf_rands(vte, size);
+	int fd = -1;
+	loff_t off = 0;
+	loff_t hole_off = 0;
+	loff_t pos = 0;
+	size_t nwr = 0;
+	const size_t size = VT_BK_SIZE;
+	const ssize_t ssize = (loff_t)size;
+	const size_t step = VT_UMEGA;
+	const void *buf1 = vt_new_buf_rands(vte, size);
+	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	for (i = 0; i < nsteps; ++i) {
+	for (size_t i = 0; i < nsteps; ++i) {
 		off = (loff_t)(step * i);
 		vt_pwrite(fd, buf1, size, off, &nwr);
 		vt_expect_eq(nwr, size);
 	}
-
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);
-	for (i = 0; i < nsteps - 1; ++i) {
+	for (size_t i = 0; i < nsteps - 1; ++i) {
 		off = (loff_t)(step * i);
 		hole_off = off + ssize;
 		vt_llseek(fd, off, SEEK_HOLE, &pos);
 		vt_expect_eq(pos, hole_off);
 	}
-
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);
-	for (i = 0; i < nsteps - 1; ++i) {
+	for (size_t i = 0; i < nsteps - 1; ++i) {
 		off = (loff_t)(step * i) + ssize + 1;
 		hole_off = off;
 		vt_llseek(fd, off, SEEK_HOLE, &pos);
 		vt_expect_eq(pos, hole_off);
 	}
-
 	vt_close(fd);
 	vt_unlink(path);
+}
+
+static void test_lseek_hole_sparse(struct vt_env *vte)
+{
+	test_lseek_hole_sparse_(vte, 16);
+	test_lseek_hole_sparse_(vte, 256);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

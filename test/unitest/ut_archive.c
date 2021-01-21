@@ -36,7 +36,7 @@ static void ut_export_import_ok(struct ut_env *ute)
 	err = voluta_archiver_import(arc);
 	ut_expect_ok(err);
 
-	err = voluta_fse_load(fse);
+	err = voluta_fse_reload(fse);
 	ut_expect_ok(err);
 }
 

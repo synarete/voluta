@@ -29,9 +29,10 @@
 static void test_fsync_reg(struct vt_env *vte, loff_t base_off,
 			   size_t bsz, loff_t step, size_t cnt)
 {
-	int fd;
-	loff_t off;
-	char *buf1, *buf2 = vt_new_buf_rands(vte, bsz);
+	int fd = -1;
+	loff_t off = -1;
+	void *buf1 = NULL;
+	void *buf2 = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
@@ -59,8 +60,7 @@ static void test_fsync_reg_aligned(struct vt_env *vte)
 static void test_fsync_reg_unaligned(struct vt_env *vte)
 {
 	test_fsync_reg(vte, 1, VT_UKILO - 1, VT_UMEGA + 1, 64);
-	test_fsync_reg(vte, VT_UMEGA - 1,
-		       3 * VT_UKILO + 1, VT_UGIGA - 1, 64);
+	test_fsync_reg(vte, VT_UMEGA - 1, 3 * VT_UKILO + 1, VT_UGIGA - 1, 64);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -69,9 +69,10 @@ static void test_fsync_reg_unaligned(struct vt_env *vte)
  */
 static void test_fsync_dir_nent(struct vt_env *vte, size_t cnt)
 {
-	int fd, dfd;
+	int fd = -1;
+	int dfd = -1;
 	const char *path1 = vt_new_path_unique(vte);
-	const char *path2;
+	const char *path2 = NULL;
 
 	vt_mkdir(path1, 0700);
 	vt_open(path1, O_DIRECTORY | O_RDONLY, 0, &dfd);
@@ -103,7 +104,7 @@ static void test_fsync_dir(struct vt_env *vte)
  */
 static void test_fsync_syncfs(struct vt_env *vte)
 {
-	int fd;
+	int fd = -1;
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);

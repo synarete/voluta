@@ -144,6 +144,24 @@ static void voluta_dump_addr2line(void)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+struct voluta_fatal_msg {
+	char str[256];
+};
+
+static void fmtmsg(struct voluta_fatal_msg *msg, const char *fmt, ...)
+{
+	va_list ap;
+	size_t len;
+	int n;
+
+	va_start(ap, fmt);
+	n = vsnprintf(msg->str, sizeof(msg->str) - 1, fmt, ap);
+	va_end(ap);
+
+	len = voluta_min(sizeof(msg->str) - 1, (size_t)n);
+	msg->str[len] = '\0';
+}
+
 __attribute__((__noreturn__))
 static void voluta_abort(void)
 {
@@ -154,122 +172,126 @@ static void voluta_abort(void)
 
 __attribute__((__noreturn__))
 static void
-voluta_assertion_failure_at(const char *msg, const char *file, int line)
+voluta_fatal_at(const char *msg, const char *fl, int ln)
 {
-	voluta_panicf(file, line, "failure: `%s'", msg);
+	voluta_panicf(fl, ln, "failure: `%s'", msg);
 	voluta_abort();
 }
 
-void voluta_assert_if_(int cond, const char *str, const char *file, int line)
+__attribute__((__noreturn__))
+static void voluta_fatal_op(long a, const char *op, long b,
+			    const char *fl, int ln)
+{
+	struct voluta_fatal_msg fm;
+
+	fmtmsg(&fm, "'%ld %s %ld'", a, op, b);
+	voluta_fatal_at(fm.str, fl, ln);
+}
+
+void voluta_expect_true_(int cond, const char *fl, int ln)
+{
+	struct voluta_fatal_msg fm;
+
+	if (unlikely(!cond)) {
+		fmtmsg(&fm, "not-true: %d", cond);
+		voluta_fatal_at(fm.str, fl, ln);
+	}
+}
+
+void voluta_expect_cond_(int cond, const char *str, const char *fl, int ln)
 {
 	if (unlikely(!cond)) {
-		voluta_assertion_failure_at(str, file, line);
+		voluta_fatal_at(str, fl, ln);
 	}
 }
 
-__attribute__((__noreturn__))
-static void voluta_assertion_failure_op(long a, const char *op, long b,
-					const char *file, int line)
-{
-	char str[128] = "";
-
-	snprintf(str, sizeof(str) - 1, "%ld %s %ld", a, op, b);
-	voluta_assertion_failure_at(str, file, line);
-}
-
-void voluta_assert_eq_(long a, long b, const char *file, int line)
+void voluta_expect_eq_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a != b)) {
-		voluta_assertion_failure_op(a, "!=", b, file, line);
+		voluta_fatal_op(a, "!=", b, fl, ln);
 	}
 }
 
-void voluta_assert_ne_(long a, long b, const char *file, int line)
+void voluta_expect_ne_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a == b)) {
-		voluta_assertion_failure_op(a, "==", b, file, line);
+		voluta_fatal_op(a, "==", b, fl, ln);
 	}
 }
 
-void voluta_assert_lt_(long a, long b, const char *file, int line)
+void voluta_expect_lt_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a >= b)) {
-		voluta_assertion_failure_op(a, ">=", b, file, line);
+		voluta_fatal_op(a, ">=", b, fl, ln);
 	}
 }
 
-void voluta_assert_le_(long a, long b, const char *file, int line)
+void voluta_expect_le_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a > b)) {
-		voluta_assertion_failure_op(a, ">", b, file, line);
+		voluta_fatal_op(a, ">", b, fl, ln);
 	}
 }
 
-void voluta_assert_gt_(long a, long b, const char *file, int line)
+void voluta_expect_gt_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a <= b)) {
-		voluta_assertion_failure_op(a, "<=", b, file, line);
+		voluta_fatal_op(a, "<=", b, fl, ln);
 	}
 }
 
-void voluta_assert_ge_(long a, long b, const char *file, int line)
+void voluta_expect_ge_(long a, long b, const char *fl, int ln)
 {
 	if (unlikely(a < b)) {
-		voluta_assertion_failure_op(a, "<", b, file, line);
+		voluta_fatal_op(a, "<", b, fl, ln);
 	}
 }
 
-static void
-voluta_assertion_failure(const char *file, int line, const char *fmt, ...)
+void voluta_expect_ok_(int err, const char *fl, int ln)
 {
-	va_list ap;
-	char str[512] = "";
+	struct voluta_fatal_msg fm;
 
-	va_start(ap, fmt);
-	vsnprintf(str, sizeof(str) - 1, fmt, ap);
-	va_end(ap);
-
-	voluta_assertion_failure_at(str, file, line);
-}
-
-void voluta_assert_ok_(int err, const char *file, int line)
-{
 	if (unlikely(err != 0)) {
-		voluta_assertion_failure(file, line, "not ok: %d", err);
+		fmtmsg(&fm, "err=%d", err);
+		voluta_fatal_at(fm.str, fl, ln);
 	}
 }
 
-void voluta_assert_err_(int err, int exp, const char *file, int line)
+void voluta_expect_err_(int err, int exp, const char *fl, int ln)
 {
+	struct voluta_fatal_msg fm;
+
 	if (unlikely(err != exp)) {
-		voluta_assertion_failure(file, line,
-					 "status %d != %d", err, exp);
+		fmtmsg(&fm, "err=%d exp=%d", err, exp);
+		voluta_fatal_at(fm.str, fl, ln);
 	}
 }
 
-void voluta_assert_not_null_(const void *ptr, const char *file, int line)
+void voluta_expect_not_null_(const void *ptr, const char *fl, int ln)
 {
 	if (unlikely(ptr == NULL)) {
-		voluta_assertion_failure_at("NULL pointer", file, line);
+		voluta_fatal_at("NULL pointer", fl, ln);
 	}
 }
 
-void voluta_assert_null_(const void *ptr, const char *file, int line)
+void voluta_expect_null_(const void *ptr, const char *fl, int ln)
 {
+	struct voluta_fatal_msg fm;
+
 	if (unlikely(ptr != NULL)) {
-		voluta_assertion_failure(file, line, "not NULL %p", ptr);
+		fmtmsg(&fm, "not NULL ptr=%p", ptr);
+		voluta_fatal_at(fm.str, fl, ln);
 	}
 }
 
-void voluta_assert_eqs_(const char *s1, const char *s2,
-			const char *file, int line)
+void voluta_expect_eqs_(const char *s, const char *z, const char *fl, int ln)
 {
-	int cmp;
+	struct voluta_fatal_msg msg;
+	const int cmp = strcmp(s, z);
 
-	cmp = strcmp(s1, s2);
 	if (unlikely(cmp != 0)) {
-		voluta_assertion_failure(file, line,
-					 "str-not-equal: %s != %s", s1, s2);
+		fmtmsg(&msg, "str-not-equal: %s != %s", s, z);
+		voluta_fatal_at(msg.str, fl, ln);
 	}
 }
 
@@ -280,8 +302,7 @@ static char nibble_to_ascii(unsigned int n)
 	return xdigits[n & 0xF];
 }
 
-static const char *
-mem_to_str(const void *mem, size_t nn, char *str, size_t len)
+static void mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 {
 	size_t pos = 0;
 	size_t i = 0;
@@ -298,21 +319,21 @@ mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 			str[pos++] = '.';
 		}
 	}
-	return str;
 }
 
-void voluta_assert_eqm_(const void *m1, const void *m2, size_t nn,
-			const char *file, int line)
+void voluta_expect_eqm_(const void *p, const void *q,
+			size_t n, const char *fl, int ln)
 {
-	char s1[36];
-	char s2[36];
-	const int cmp = memcmp(m1, m2, nn);
+	char s1[20];
+	char s2[20];
+	struct voluta_fatal_msg fm;
+	const int cmp = memcmp(p, q, n);
 
 	if (unlikely(cmp != 0)) {
-		voluta_assertion_failure(file, line,
-					 "memory-not-equal: %s != %s ",
-					 mem_to_str(m1, nn, s1, sizeof(s1)),
-					 mem_to_str(m2, nn, s2, sizeof(s2)));
+		mem_to_str(p, n, s1, sizeof(s1));
+		mem_to_str(q, n, s2, sizeof(s2));
+		fmtmsg(&fm, "memory-not-equal: %s != %s ", s1, s2);
+		voluta_fatal_at(fm.str, fl, ln);
 	}
 }
 
@@ -324,13 +345,13 @@ static void voluta_dump_panic_msg(const char *file, int line,
 	const char *es = " ";
 	const char *name = voluta_basename(file);
 
-	log_err("%s", es);
+	log_crit("%s", es);
 	if (errnum) {
-		log_err("%s:%d: %s %d", name, line, msg, errnum);
+		log_crit("%s:%d: %s %d", name, line, msg, errnum);
 	} else {
-		log_err("%s:%d: %s", name, line, msg);
+		log_crit("%s:%d: %s", name, line, msg);
 	}
-	log_err("%s", es);
+	log_crit("%s", es);
 }
 
 __attribute__((__noreturn__))

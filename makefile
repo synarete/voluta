@@ -67,6 +67,7 @@ endif
 # Configure options
 CONFIGURE_OPTS += --prefix=$(PREFIX)
 CONFIGURE_OPTS += --disable-shared
+CONFIGURE_OPTS += --enable-unitests=yes
 ifeq ($(D), 1)
 CONFIGURE_OPTS += --enable-debug=yes
 else
@@ -103,14 +104,17 @@ CFLAGS += -Wdeclaration-after-statement -Wnested-externs -Wstrict-prototypes
 CFLAGS += -Wold-style-definition -Winit-self -std=gnu11
 
 # Debug flags
-CFLAGS += -g -ggdb -fno-omit-frame-pointer -DDEBUG=$(D)
+CFLAGS += -DDEBUG=$(D)
+ifeq ($(D), 1)
+CFLAGS += -g -ggdb -fno-omit-frame-pointer
+endif
 
 # Optimization flags
 ifeq ($(O), 0)
 CFLAGS += -O0
 ifeq ($(CC), gcc)
 CFLAGS += -Wunsafe-loop-optimizations -funsafe-loop-optimizations
-CFLAGS += -Wold-style-declaration
+CFLAGS += -fasynchronous-unwind-tables -fstack-clash-protection
 endif
 else ifeq ($(O), 1)
 CFLAGS += -O1 -D_FORTIFY_SOURCE=2
@@ -127,7 +131,7 @@ ifeq ($(CC), gcc)
 CFLAGS += -Werror -Wstack-usage=4096 -Wlogical-op -Wjump-misses-init
 CFLAGS += -Wunsuffixed-float-constants -Wmultistatement-macros
 CFLAGS += -Wunused-const-variable=2 -Wswitch-unreachable
-CFLAGS += -Wstringop-truncation
+CFLAGS += -Wstringop-truncation -Wold-style-declaration
 else ifeq ($(CC), clang)
 endif
 
@@ -188,8 +192,7 @@ bootstrap:
 
 clangscan:
 	$(call report, $@)
-	@$(TOP)/bootstrap -r
-	@$(TOP)/misc/clangscanbuild.py $(TOP)
+	@$(TOP)/misc/clangscanbuild.sh $(TOP)
 
 rpm: reset
 	$(call report, $@)

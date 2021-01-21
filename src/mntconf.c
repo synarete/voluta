@@ -20,11 +20,12 @@
 #include "voluta-prog.h"
 
 #define die_illegal_conf(fl_, fmt_, ...) \
-	voluta_die_at(errno, fl_->file, fl_->line, fmt_, __VA_ARGS__)
+	voluta_die_at(errno, (fl_)->file, (fl_)->line, fmt_, __VA_ARGS__)
 
 
 #define die_illegal_value(fl_, ss_, tag_) \
-	die_illegal_conf(fl_, "illegal %s: '%.*s'", tag_, ss_->len, ss_->str)
+	die_illegal_conf(fl_, "illegal %s: '%.*s'", \
+			 tag_, (ss_)->len, (ss_)->str)
 
 
 struct voluta_fileline {
@@ -85,20 +86,14 @@ static void *zalloc(size_t nbytes)
 static bool parse_bool(const struct voluta_fileline *fl,
 		       const struct voluta_substr *ss)
 {
-	bool b = false;
-
-	if (ss_equals(ss, "1")) {
-		b = true;
-	} else if (ss_equals(ss, "true")) {
-		b = true;
-	} else if (ss_equals(ss, "0")) {
-		b = false;
-	} else if (ss_equals(ss, "false")) {
-		b = false;
-	} else {
-		die_illegal_value(fl, ss, "boolean");
+	if (ss_equals(ss, "1") || ss_equals(ss, "true")) {
+		return true;
 	}
-	return b;
+	if (ss_equals(ss, "0") || ss_equals(ss, "false")) {
+		return false;
+	}
+	die_illegal_value(fl, ss, "boolean");
+	return false; /* make clangscan happy */
 }
 
 static long parse_long(const struct voluta_fileline *fl,

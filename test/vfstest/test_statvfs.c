@@ -25,8 +25,6 @@
 #include <errno.h>
 #include "vfstest.h"
 
-
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects statvfs(3p) to successfully obtain information about the file system

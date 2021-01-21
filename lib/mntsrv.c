@@ -102,7 +102,7 @@ struct voluta_ms_env_obj {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* Known file-systems */
-#define FUSE_SUPER_MAGIC        0x65735546
+#define FUSE_SUPER_MAGIC        0x65735546 /*  from kernel 'fs/fuse/inode.c' */
 #define TMPFS_MAGIC             0x01021994
 #define XFS_SB_MAGIC            0x58465342
 #define EXT234_SUPER_MAGIC      0x0000EF53
@@ -382,7 +382,7 @@ static void mntmsg_init(struct voluta_mntmsg *mmsg, int cmd)
 
 	voluta_memzero(mmsg, sizeof(*mmsg));
 	mntmsg_set_status(mmsg, 0);
-	mmsg->mn_magic = VOLUTA_MAGIC;
+	mmsg->mn_magic = VOLUTA_VTYPE_MAGIC;
 	mmsg->mn_version_major = (uint16_t)voluta_version.major;
 	mmsg->mn_version_minor = (uint16_t)voluta_version.minor;
 	mmsg->mn_cmd = (uint32_t)cmd;
@@ -431,7 +431,7 @@ static void mntmsg_to_params(const struct voluta_mntmsg *mmsg,
 static int mntmsg_set_from_params(struct voluta_mntmsg *mmsg,
 				  const struct voluta_mntparams *mntp)
 {
-	mmsg->mn_flags = (uint32_t)mntp->flags;
+	mmsg->mn_flags = mntp->flags;
 	mmsg->mn_user_id = (uint32_t)mntp->user_id;
 	mmsg->mn_group_id = (uint32_t)mntp->group_id;
 	mmsg->mn_root_mode = (uint32_t)mntp->root_mode;
@@ -472,7 +472,7 @@ static enum voluta_mntcmd mntmsg_cmd(const struct voluta_mntmsg *mmsg)
 
 static int mntmsg_check(const struct voluta_mntmsg *mmsg)
 {
-	if (mmsg->mn_magic != VOLUTA_MAGIC) {
+	if (mmsg->mn_magic != VOLUTA_VTYPE_MAGIC) {
 		return -EINVAL;
 	}
 	if (mmsg->mn_version_major != voluta_version.major) {
@@ -814,19 +814,20 @@ static int mntsvc_check_umount(const struct voluta_mntsvc *msvc,
 			       const struct voluta_mntparams *mntp)
 {
 	int err;
-	const uint64_t mnt_flags = MNT_DETACH;
+	const uint64_t mnt_allow = MNT_DETACH | MNT_FORCE;
 	const char *path = mntp->path;
 
 	unused(msvc);
 	if (!strlen(path)) {
 		return -EPERM;
 	}
-	if (mntp->flags & ~mnt_flags) {
+	if (mntp->flags & ~mnt_allow) {
 		return -EINVAL;
 	}
-	if ((mntp->flags & mnt_flags) == 0) {
+	if ((mntp->flags | mnt_allow) != mnt_allow) {
 		return -EINVAL;
 	}
+	/* TODO: for MNT_FORCE, require valid uig/gid */
 	err = check_umount_path(path);
 	if (err) {
 		return err;
@@ -1414,13 +1415,14 @@ static int do_rpc_umount(struct voluta_mntclnt *mclnt,
 	return status;
 }
 
-int voluta_rpc_umount(const char *mountpoint, uid_t uid, gid_t gid)
+int voluta_rpc_umount(const char *mountpoint,
+		      uid_t uid, gid_t gid, int mnt_flags)
 {
 	int err;
 	struct voluta_mntclnt mclnt;
 	struct voluta_mntparams mntp = {
 		.path = mountpoint,
-		.flags = MNT_DETACH,
+		.flags = (uint64_t)mnt_flags,
 		.user_id = uid,
 		.group_id = gid,
 	};
@@ -1469,5 +1471,10 @@ int voluta_rpc_handshake(uid_t uid, gid_t gid)
 	return err;
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+long voluta_fuse_super_magic(void)
+{
+	return FUSE_SUPER_MAGIC;
+}
 

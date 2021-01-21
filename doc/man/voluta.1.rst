@@ -9,7 +9,7 @@ secure content archiver
 -----------------------
 
 :Author:         Shachar Sharon
-:Date:           Sep 2020
+:Date:           Feb 2021
 :Copyright:      GPLv3
 :Manual section: 1
 :Manual group:   Voluta Manual
@@ -86,19 +86,27 @@ clone
 ..
 
 
-archive
--------
-**voluta archive** *volume-file* *archive-dir*
+export
+------
+**voluta export** *volume-file* *archive-dir*
 
 ..
 
 
-restore
+import
 -------
-**voluta restore** *archive-file* *volume-dir*
+**voluta import** *archive-file* *volume-dir*
 
 ..
 
+show
+------
+**voluta show** *version* *pathname*
+**voluta show** *volume* *pathname*
+
+Query and report various internal parameters from a voluta file-system.
+
+..
 
 BUGS
 ====

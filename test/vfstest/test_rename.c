@@ -683,14 +683,15 @@ static void test_renameat_samedir(struct vt_env *vte)
 {
 	int dfd = -1;
 	int fd = -1;
-	ino_t ino;
-	struct stat st;
+	ino_t ino = 0;
 	char *lname1 = NULL;
 	char *lname2 = NULL;
+	char p1[] = "1";
+	char p2[] = "2";
+	const size_t cnt = VOLUTA_LINK_MAX / 3;
 	const char *path = vt_new_path_unique(vte);
 	const char *fname = vt_new_name_unique(vte);
-	char p1[] = "1", p2[] = "2";
-	const size_t cnt = VOLUTA_LINK_MAX / 3;
+	struct stat st;
 
 	vt_mkdir(path, 0700);
 	vt_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);

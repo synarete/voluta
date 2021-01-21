@@ -26,9 +26,9 @@
  */
 static void test_chmod_basic(struct vt_env *vte)
 {
-	int fd;
-	mode_t ifmt = S_IFMT;
+	int fd = -1;
 	struct stat st;
+	const mode_t ifmt = S_IFMT;
 	const char *path0 = vt_new_path_unique(vte);
 	const char *path1 = vt_new_path_unique(vte);
 	const char *path2 = vt_new_path_unique(vte);
@@ -70,35 +70,35 @@ static void test_chmod_basic(struct vt_env *vte)
  */
 static void test_chmod_ctime(struct vt_env *vte)
 {
-	int fd;
-	struct stat st1, st2;
+	int fd = -1;
+	struct stat st[2];
 	const char *path0 = vt_new_path_unique(vte);
 	const char *path1 = vt_new_path_unique(vte);
 	const char *path2 = vt_new_path_unique(vte);
 
 	vt_creat(path0, 0644, &fd);
-	vt_fstat(fd, &st1);
+	vt_fstat(fd, &st[0]);
 	vt_suspend(vte, 3, 2);
 	vt_chmod(path0, 0111);
-	vt_fstat(fd, &st2);
-	vt_expect_ctime_gt(&st1, &st2);
+	vt_fstat(fd, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
 	vt_close(fd);
 	vt_unlink(path0);
 
 	vt_mkdir(path1, 0755);
-	vt_stat(path1, &st1);
+	vt_stat(path1, &st[0]);
 	vt_suspend(vte, 3, 2);
 	vt_chmod(path1, 0753);
-	vt_stat(path1, &st2);
-	vt_expect_ctime_gt(&st1, &st2);
+	vt_stat(path1, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
 	vt_rmdir(path1);
 
 	vt_mkfifo(path2, 0640);
-	vt_stat(path2, &st1);
+	vt_stat(path2, &st[0]);
 	vt_suspend(vte, 3, 2);
 	vt_chmod(path2, 0300);
-	vt_stat(path2, &st2);
-	vt_expect_ctime_gt(&st1, &st2);
+	vt_stat(path2, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
 	vt_unlink(path2);
 }
 
@@ -108,9 +108,9 @@ static void test_chmod_ctime(struct vt_env *vte)
  */
 static void test_chmod_fchmod(struct vt_env *vte)
 {
-	int fd;
-	mode_t ifmt = S_IFMT;
+	int fd = -1;
 	struct stat st;
+	const mode_t ifmt = S_IFMT;
 	const char *path = vt_new_path_unique(vte);
 
 	vt_creat(path, 0600, &fd);

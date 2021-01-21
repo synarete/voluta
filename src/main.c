@@ -91,10 +91,11 @@ static const struct voluta_cmd_info g_cmd_info[] = {
 	DEFCMD(umount),
 	DEFCMD(fsck),
 	DEFCMD(show),
-	DEFCMD(query),
 	DEFCMD(clone),
-	DEFCMD(archive),
-	DEFCMD(restore),
+	DEFCMD(encrypt),
+	DEFCMD(decrypt),
+	DEFCMD(export),
+	DEFCMD(import),
 };
 
 static const struct voluta_cmd_info *cmt_info_of(const char *cmd_name)

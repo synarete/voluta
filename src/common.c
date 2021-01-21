@@ -47,8 +47,8 @@
 #include "voluta-prog.h"
 
 #define VOLUTA_LOG_DEFAULT \
-	(VOLUTA_LOG_INFO | VOLUTA_LOG_WARN | \
-	 VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
+	(VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
+	 VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
 
 /* Global process' variables */
 struct voluta_globals voluta_globals;
@@ -178,27 +178,27 @@ void voluta_die_if_exists(const char *path)
 	}
 }
 
-static struct voluta_zero_block *zb_new(void)
+static struct voluta_zero_block4 *zb_new(void)
 {
-	struct voluta_zero_block *zb = NULL;
+	struct voluta_zero_block4 *zb = NULL;
 
 	zb = voluta_malloc_safe(sizeof(*zb));
 	memset(zb, 0, sizeof(*zb));
 	return zb;
 }
 
-static void zb_del(struct voluta_zero_block *zb)
+static void zb_del(struct voluta_zero_block4 *zb)
 {
 	memset(zb, 0xFE, sizeof(*zb));
 	free(zb);
 }
 
-static struct voluta_zero_block *read_zb_or_die(const char *path)
+static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
 	struct stat st;
-	struct voluta_zero_block *zb = zb_new();
+	struct voluta_zero_block4 *zb = zb_new();
 
 	voluta_stat_reg(path, &st);
 	if (st.st_size == 0) {
@@ -219,20 +219,22 @@ static struct voluta_zero_block *read_zb_or_die(const char *path)
 	return zb;
 }
 
-void voluta_die_if_bad_zb(const char *path, const char *pass,
-			  enum voluta_ztype *out_ztype,
-			  enum voluta_zb_flags *out_zbf)
+static void voluta_die_if_bad_zb(const char *path,
+				 enum voluta_ztype *out_ztype,
+				 enum voluta_zbf *out_zbf)
 {
 	int err;
-	struct voluta_zero_block *zb = NULL;
+	struct voluta_zero_block4 *zb = NULL;
 
 	zb = read_zb_or_die(path);
-	err = voluta_zb_parse_hdr(zb, out_ztype, out_zbf);
-	if (!err && (pass != NULL)) {
-		err = voluta_zb_decipher(zb, pass);
+	err = voluta_zb_check(zb);
+	if (err) {
+		goto out;
 	}
+	*out_ztype = voluta_zb_type(zb);
+	*out_zbf = voluta_zb_flags(zb);
+out:
 	zb_del(zb);
-
 	if (err == -EAGAIN) {
 		voluta_die(err, "already in use: %s", path);
 	} else if (err == -EUCLEAN) {
@@ -244,30 +246,124 @@ void voluta_die_if_bad_zb(const char *path, const char *pass,
 	}
 }
 
-void voluta_die_if_not_volume(const char *path, const char *pass,
-			      enum voluta_zb_flags *out_zbf)
+static struct voluta_super_block *sb_new(void)
+{
+	struct voluta_super_block *sb = NULL;
+
+	sb = voluta_malloc_safe(sizeof(*sb));
+	memset(sb, 0, sizeof(*sb));
+	return sb;
+}
+
+static void sb_del(struct voluta_super_block *sb)
+{
+	memset(sb, 0xEF, sizeof(*sb));
+	free(sb);
+}
+
+static struct voluta_super_block *read_sb_or_die(const char *path)
+{
+	int fd = -1;
+	int err;
+	struct stat st;
+	struct voluta_super_block *sb = sb_new();
+
+	voluta_stat_reg(path, &st);
+	if (st.st_size == 0) {
+		voluta_die(0, "empty file: %s", path);
+	}
+	if (st.st_size < (int)sizeof(*sb)) {
+		voluta_die(0, "no super-block in: %s", path);
+	}
+	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
+	if (err) {
+		voluta_die(err, "open failed: %s", path);
+	}
+	err = voluta_sys_readn(fd, sb, sizeof(*sb));
+	if (err) {
+		voluta_die(err, "read error: %s", path);
+	}
+	voluta_sys_close(fd);
+	return sb;
+}
+
+void voluta_die_if_bad_sb(const char *path, const char *pass)
 {
 	int err;
+	enum voluta_zbf zbf;
 	enum voluta_ztype ztype;
+	struct voluta_super_block *sb = NULL;
 
-	err = voluta_require_volume_path(path, R_OK | W_OK);
+	sb = read_sb_or_die(path);
+	err = voluta_zb_check(&sb->s_zero);
 	if (err) {
-		voluta_die(err, "not a valid volume: %s", path);
+		goto out;
 	}
-	voluta_die_if_bad_zb(path, pass, &ztype, out_zbf);
+	ztype = voluta_zb_type(&sb->s_zero);
 	if (ztype != VOLUTA_ZTYPE_VOLUME) {
-		voluta_die(0, "not a volume: %s", path);
+		err = -EUCLEAN;
+		goto out;
+	}
+	zbf = voluta_zb_flags(&sb->s_zero);
+	if (!(zbf & VOLUTA_ZBF_ENCRYPTED)) {
+		err = 0;
+		goto out;
+	}
+	if (pass == NULL) {
+		err = -ENOKEY;
+		goto out;
+	}
+	err = voluta_decipher_sb(sb, pass);
+out:
+	sb_del(sb);
+	if (err == -EAGAIN) {
+		voluta_die(err, "already in use: %s", path);
+	} else if (err == -EUCLEAN) {
+		voluta_die(0, "not a valid voluta volume: %s", path);
+	} else if (err == -ENOKEY) {
+		voluta_die(0, "missing passphrase: %s", path);
+	} else if (err == -EKEYEXPIRED) {
+		voluta_die(0, "illegal passphrase: %s", path);
+	} else if (err) {
+		voluta_die(err, "failed to parse super block: %s", path);
 	}
 }
 
-void voluta_die_if_not_archive(const char *path, const char *pass)
+void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
+			      bool mustnot_be_enc, bool *out_is_encrypted)
+{
+	int err;
+	enum voluta_ztype ztype;
+	enum voluta_zbf zbf;
+	bool is_enc;
+
+	err = voluta_require_volume_path(path, rw);
+	if (err) {
+		voluta_die(err, "not a valid volume: %s", path);
+	}
+	voluta_die_if_bad_zb(path, &ztype, &zbf);
+	if (ztype != VOLUTA_ZTYPE_VOLUME) {
+		voluta_die(0, "not a volume: %s", path);
+	}
+	is_enc = (zbf & VOLUTA_ZBF_ENCRYPTED);
+	if (must_be_enc && !is_enc) {
+		voluta_die(0, "not an encrypted volume: %s", path);
+	}
+	if (mustnot_be_enc && is_enc) {
+		voluta_die(0, "already an encrypted volume: %s", path);
+	}
+	if (out_is_encrypted != NULL) {
+		*out_is_encrypted = is_enc;
+	}
+}
+
+void voluta_die_if_not_archive(const char *path)
 {
 	enum voluta_ztype ztype;
-	enum voluta_zb_flags zbf;
+	enum voluta_zbf zbf;
 
-	voluta_die_if_not_reg(path, false); /* TODO: Check size 8K */
-
-	voluta_die_if_bad_zb(path, pass, &ztype, &zbf);
+	voluta_die_if_not_reg(path, false); /* TODO: Check size  */
+	voluta_die_if_bad_zb(path, &ztype, &zbf);
 	if (ztype != VOLUTA_ZTYPE_ARCHIVE) {
 		voluta_die(0, "not an archive: %s", path);
 	}
@@ -339,9 +435,76 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 	} else {
 		voluta_statpath_safe(path, &st);
 		if (st.st_ino != VOLUTA_INO_ROOT) {
-			voluta_die(0, "not voluta mount-point: %s", path);
+			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
 	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static char *discover_unused_tmppath(const char *path)
+{
+	int err;
+	char *tmppath = NULL;
+	struct stat st = { .st_ino = 0 };
+
+	for (int i = 1; i < 100; ++i) {
+		tmppath = voluta_sprintf_path("%s.%02d~", path, i);
+		err = voluta_sys_stat(tmppath, &st);
+		if (err == -ENOENT) {
+			break;
+		}
+		voluta_pfree_string(&tmppath);
+	}
+	return tmppath;
+}
+
+char *voluta_clone_as_tmppath(const char *path)
+{
+	int err = 0;
+	int dst_fd = -1;
+	int src_fd = -1;
+	loff_t off_out = 0;
+	struct stat st;
+	const mode_t mode = S_IRUSR | S_IWUSR;
+	char *tpath = NULL;
+
+	err = voluta_sys_stat(path, &st);
+	if (err) {
+		goto out;
+	}
+	tpath = discover_unused_tmppath(path);
+	if (tpath == NULL) {
+		goto out;
+	}
+	err = voluta_sys_open(tpath, O_CREAT | O_RDWR | O_EXCL, mode, &dst_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ftruncate(dst_fd, st.st_size);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_llseek(dst_fd, 0, SEEK_SET, &off_out);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_open(path, O_RDONLY, 0, &src_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ioctl_ficlone(dst_fd, src_fd);
+	if (err) {
+		goto out;
+	}
+out:
+	voluta_sys_closefd(&src_fd);
+	voluta_sys_closefd(&dst_fd);
+	if (err && tpath) {
+		voluta_sys_unlink(tpath);
+		voluta_pfree_string(&tpath);
+	}
+	return tpath;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -644,7 +807,7 @@ char *voluta_realpath_safe(const char *path)
 
 	real_path = realpath(path, NULL);
 	if (real_path == NULL) {
-		voluta_die(-errno, "realpath error: '%s'", path);
+		voluta_die(-errno, "realpath failure: '%s'", path);
 	}
 	return real_path;
 }
@@ -727,6 +890,26 @@ void voluta_pfree_string(char **pp)
 	}
 }
 
+char *voluta_sprintf_path(const char *fmt, ...)
+{
+	va_list ap;
+	int n;
+	size_t path_size = PATH_MAX;
+	char *path = voluta_malloc_safe(path_size);
+	char *path_dup;
+
+	va_start(ap, fmt);
+	n = vsnprintf(path, path_size - 1, fmt, ap);
+	va_end(ap);
+
+	if (n >= (int)path_size) {
+		voluta_die(0, "illegal path-len %d", n);
+	}
+	path_dup = voluta_strdup_safe(path);
+	voluta_pfree_string(&path);
+	return path_dup;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* Singleton instances */
@@ -734,29 +917,25 @@ static struct voluta_fs_env *g_fs_env_inst;
 static struct voluta_ms_env *g_ms_env_inst;
 static struct voluta_archiver *g_archiver_inst;
 
-static void require_no_inst(const void *inst)
+static void voluta_require_no_inst(const void *inst)
 {
 	if (inst != NULL) {
 		voluta_die(0, "internal error: singleton already at %p", inst);
 	}
 }
 
-void voluta_init_fs_env(void)
+void voluta_create_fse_inst(const struct voluta_fs_args *args)
 {
-	/*
-	 * TODO-0020: Propagate wanted-memory-size from command line
-	 */
-	const size_t memwant = 16 * VOLUTA_GIGA;
 	int err;
 
-	require_no_inst(g_fs_env_inst);
-	err = voluta_fse_new(memwant, &g_fs_env_inst);
+	voluta_require_no_inst(g_fs_env_inst);
+	err = voluta_fse_new(args, &g_fs_env_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_fs_env(void)
+void voluta_destrpy_fse_inst(void)
 {
 	if (g_fs_env_inst) {
 		voluta_fse_del(g_fs_env_inst);
@@ -764,23 +943,23 @@ void voluta_fini_fs_env(void)
 	}
 }
 
-struct voluta_fs_env *voluta_fs_env_inst(void)
+struct voluta_fs_env *voluta_fse_inst(void)
 {
 	return g_fs_env_inst;
 }
 
-void voluta_init_ms_env(void)
+void voluta_create_mse_inst(void)
 {
 	int err;
 
-	require_no_inst(g_ms_env_inst);
+	voluta_require_no_inst(g_ms_env_inst);
 	err = voluta_mse_new(&g_ms_env_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_ms_env(void)
+void voluta_destroy_mse_inst(void)
 {
 	if (g_ms_env_inst) {
 		voluta_mse_del(g_ms_env_inst);
@@ -793,19 +972,18 @@ struct voluta_ms_env *voluta_ms_env_inst(void)
 	return g_ms_env_inst;
 }
 
-void voluta_init_archiver_inst(void)
+void voluta_create_arc_inst(const struct voluta_ar_args *args)
 {
 	int err;
-	const size_t memwant = 8 * VOLUTA_GIGA; /* TODO: from command lone */
 
-	require_no_inst(g_archiver_inst);
-	err = voluta_archiver_new(memwant, &g_archiver_inst);
+	voluta_require_no_inst(g_archiver_inst);
+	err = voluta_archiver_new(args, &g_archiver_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_archiver_inst(void)
+void voluta_destroy_arc_inst(void)
 {
 	if (g_archiver_inst) {
 		voluta_archiver_del(g_archiver_inst);
@@ -813,7 +991,7 @@ void voluta_fini_archiver_inst(void)
 	}
 }
 
-struct voluta_archiver *voluta_archiver_inst(void)
+struct voluta_archiver *voluta_arc_inst(void)
 {
 	return g_archiver_inst;
 }
@@ -946,18 +1124,21 @@ void voluta_set_verbose_mode(const char *mode)
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
 	} else if (!strcmp(modstr, "2")) {
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
-		voluta_globals.log_mask |= VOLUTA_LOG_FILINE;
-	} else {
+		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
+	} else if (!strcmp(modstr, "3")) {
 		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
 		voluta_globals.log_mask |= VOLUTA_LOG_FILINE;
 	}
 }
 
-void voluta_log_process_info(void)
+void voluta_log_meta_banner(bool start)
 {
-	voluta_log_info("version: %s", voluta_globals.version);
-	voluta_log_info("program: %s", voluta_globals.prog);
+	const char *tag = start ? "+++" : "---";
+	const char *name = voluta_globals.name;
+	const char *vers = voluta_globals.version;
+
+	voluta_log_info("%s %s %s %s", tag, name, vers, tag);
 }
 
 

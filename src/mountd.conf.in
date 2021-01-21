@@ -1,0 +1,15 @@
+# Config file for voluta-mountd service.
+#
+# Lines should have one of the the following format:
+#
+#  mntpath1
+#  mntpath2 uid=UID
+#  mntpath3 recursive=BOOL
+#  mntpath4 uid=UID recursive=BOOL
+#  ...
+#
+# Where:
+#  mntpath   -- Allow voluta.fuse mounts on this directory path
+#  uid=UID   -- Only user with UID may mount on this path (optional)
+#  recursive -- Enable mounts on sub-directories (optional)
+#

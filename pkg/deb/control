@@ -1,0 +1,18 @@
+Source: voluta
+Section: utils
+Priority: optional
+Maintainer: Shachar Sharon <synarete@xxxxxxxx>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev
+Standards-Version: 3.9.3
+Homepage:  https://github.com/synarete/voluta
+
+Package: voluta
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends},
+Description: Voluta
+ Voluta
+ .
+ This package provides an implementation and documentation of Voluta
+ .
+
+

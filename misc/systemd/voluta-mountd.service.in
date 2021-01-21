@@ -1,0 +1,15 @@
+[Unit]
+Description=voluta mount-daemon service
+After=syslog.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=300
+MemoryLimit=8M
+Nice=-17
+ExecStart=voluta-mountd -f /etc/voluta/mountd.conf
+#ExecStart=voluta-mountd -f "@SYSCONFDIR@/voluta/mountd.conf"
+
+[Install]
+WantedBy=multi-user.target

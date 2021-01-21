@@ -1,0 +1,141 @@
+## bash completion for 'voluta'
+[ -z "$BASH_VERSION" ] && return
+
+
+_voluta_mkfs() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-s --size= -n --name=
+      -F --force -h' -- "$cur" ) )
+  fi
+}
+
+_voluta_mount() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W ' -D --nodaemon -C --coredump -h' -- "$cur" ) )
+  fi
+}
+
+_voluta_umount() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_query() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-v --version -p --volume -h' -- "$cur" ) )
+  fi
+}
+
+_voluta_clone() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-n --name= -h' -- "$cur" ) )
+  fi
+}
+
+_voluta_archive() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_restore() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_show() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_subcmd() {
+  local cur prev words cword
+  _init_completion || return
+
+  case "${words[1]}" in
+    "mkfs")
+      _voluta_mkfs
+      ;;
+    "mount")
+      _voluta_mount
+      ;;
+    "umount")
+      _voluta_umount
+      ;;
+    "query")
+      _voluta_query
+      ;;
+    "clone")
+      _voluta_clone
+      ;;
+    "archive")
+      _voluta_archive
+      ;;
+    "restore")
+      _voluta_restore
+      ;;
+    "show")
+      _voluta_show
+      ;;
+  esac
+}
+
+_voluta_main() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
+  else
+    COMPREPLY+=( $(compgen -W 'mkfs mount umount query' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'clone archive restore show' -- "$cur") )
+  fi
+}
+
+
+_voluta() {
+  local IFS=$' \t\n'
+  local cur prev words cword
+  _init_completion || return
+
+  compopt -o nospace
+  COMPREPLY=( ${COMPREPLY[@]:-} )
+
+  if [[ $cword -eq 1 ]]; then
+    _voluta_main
+  else
+    _voluta_subcmd
+  fi
+}
+
+complete -o bashdefault -o default -F _voluta voluta
+
+# vim: filetype=sh
+

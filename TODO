@@ -1,0 +1,3 @@
+Voluta's TODOs are maintained in source files; from project top directory:
+
+  $ misc/findtodo.sh

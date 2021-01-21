@@ -1,0 +1,70 @@
+
+AC_DEFUN([AX_VOLUTA_CHECK_FUNCS],
+[
+  AC_CHECK_FUNCS([$1], :,
+    AC_MSG_ERROR([Unable to find function $1]))
+])
+
+AC_DEFUN([AX_VOLUTA_NEED_FUNCS],
+[
+  AC_FUNC_ERROR_AT_LINE
+  AC_FUNC_MALLOC
+  AC_FUNC_MMAP
+  AC_FUNC_FORK
+  AC_FUNC_GETGROUPS
+  AC_FUNC_STRERROR_R
+  AC_FUNC_MEMCMP
+  AC_FUNC_STAT
+  AC_FUNC_VPRINTF
+
+  AX_VOLUTA_CHECK_FUNCS([atexit])
+  AX_VOLUTA_CHECK_FUNCS([mount])
+  AX_VOLUTA_CHECK_FUNCS([umount2])
+  AX_VOLUTA_CHECK_FUNCS([pipe2])
+  AX_VOLUTA_CHECK_FUNCS([gettimeofday])
+  AX_VOLUTA_CHECK_FUNCS([isascii])
+  AX_VOLUTA_CHECK_FUNCS([iswprint])
+  AX_VOLUTA_CHECK_FUNCS([localtime_r])
+  AX_VOLUTA_CHECK_FUNCS([memchr])
+  AX_VOLUTA_CHECK_FUNCS([memmove])
+  AX_VOLUTA_CHECK_FUNCS([memset])
+  AX_VOLUTA_CHECK_FUNCS([memmem])
+  AX_VOLUTA_CHECK_FUNCS([munmap])
+  AX_VOLUTA_CHECK_FUNCS([strcasecmp])
+  AX_VOLUTA_CHECK_FUNCS([strdup])
+  AX_VOLUTA_CHECK_FUNCS([strrchr])
+  AX_VOLUTA_CHECK_FUNCS([prctl])
+  AX_VOLUTA_CHECK_FUNCS([select])
+  AX_VOLUTA_CHECK_FUNCS([sigprocmask])
+  AX_VOLUTA_CHECK_FUNCS([pathconf])
+  AX_VOLUTA_CHECK_FUNCS([usleep])
+  AX_VOLUTA_CHECK_FUNCS([getline])
+  AX_VOLUTA_CHECK_FUNCS([ioctl])
+  AX_VOLUTA_CHECK_FUNCS([fcntl])
+  AX_VOLUTA_CHECK_FUNCS([posix_fallocate])
+  AX_VOLUTA_CHECK_FUNCS([sysconf])
+  AX_VOLUTA_CHECK_FUNCS([pread])
+  AX_VOLUTA_CHECK_FUNCS([pwrite])
+  AX_VOLUTA_CHECK_FUNCS([preadv])
+  AX_VOLUTA_CHECK_FUNCS([pwritev])
+  AX_VOLUTA_CHECK_FUNCS([lseek64])
+  AX_VOLUTA_CHECK_FUNCS([preadv2])
+  AX_VOLUTA_CHECK_FUNCS([pwritev2])
+  AX_VOLUTA_CHECK_FUNCS([renameat2])
+  AX_VOLUTA_CHECK_FUNCS([getentropy])
+  AX_VOLUTA_CHECK_FUNCS([memfd_create])
+  AX_VOLUTA_CHECK_FUNCS([copy_file_range])
+  AX_VOLUTA_CHECK_FUNCS([tcgetattr])
+  AX_VOLUTA_CHECK_FUNCS([canonicalize_file_name])
+  AX_VOLUTA_CHECK_FUNCS([splice])
+  AX_VOLUTA_CHECK_FUNCS([vmsplice])
+])
+
+
+AC_DEFUN([AX_VOLUTA_NEED_BUILTIN],
+[
+  AX_GCC_BUILTIN(__builtin_expect)
+  AX_GCC_BUILTIN(__builtin_clz)
+  AX_GCC_BUILTIN(__builtin_popcount)
+])
+

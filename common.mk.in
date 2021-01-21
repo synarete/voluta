@@ -1,0 +1,33 @@
+name = @pkg_name@
+version = @pkg_version@
+release = @pkg_release@
+revision = @pkg_revision@
+builddate := $(shell date --iso-8601=minutes)
+
+LIBS := @LIBS@
+
+.DELETE_ON_ERROR:
+
+SUFFIXES = .in
+
+PATHSUBST = @SED@ \
+  -e "s,[@]PACKAGE_NAME[@],$(name),g" \
+  -e "s,[@]PACKAGE_VERSION[@],$(version),g" \
+  -e "s,[@]RELEASE[@],$(release),g" \
+  -e "s,[@]REVISION[@],$(revision),g" \
+  -e "s,[@]PREFIX[@],$(DESTDIR)$(prefix),g" \
+  -e "s,[@]BINDIR[@],$(DESTDIR)$(bindir),g" \
+  -e "s,[@]SBINDIR[@],$(DESTDIR)$(sbindir),g" \
+  -e "s,[@]LIBDIR[@],$(DESTDIR)$(libdir),g" \
+  -e "s,[@]SYSCONFDIR[@],$(DESTDIR)$(sysconfdir),g" \
+  -e "s,[@]DATAROOTDIR[@],$(DESTDIR)$(datarootdir),g" \
+  -e "s,[@]LOCALSTATEDIR[@],$(DESTDIR)$(localstatedir),g"
+
+
+%: %.in
+	@echo "  SED      $@"; $(PATHSUBST) $< > $@ ;
+
+-include generated
+.PHONY: generated
+generated: $(BUILT_SOURCES)
+

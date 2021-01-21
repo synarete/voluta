@@ -1,0 +1,41 @@
+.. _build_and_install:
+
+===============
+Build & Install
+===============
+
+.. include:: common.txt
+
+
+Pre-build requirements:
+
+  * gcc, make, coreutils, autoconf, automake, docutils
+
+..
+
+Download the source code from `github`_::
+
+  $ git clone https://github.com/voluta/voluta
+
+
+Bootstap and build using standard GNU autotools::
+
+  $ cd voluta
+  $ ./bootstrap
+  $ ./configure
+  ...
+  $ make
+  ...
+
+Manual installation::
+
+  $ make install
+
+
+On RedHat/CentOS/Fedora machine you can build rpm package::
+
+  $ ./misc/pkg/packagize-rpm
+
+
+
+..

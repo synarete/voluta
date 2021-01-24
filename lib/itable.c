@@ -518,7 +518,6 @@ void voluta_iti_fini(struct voluta_itable_info *iti)
 static void iti_set_rootdir(struct voluta_itable_info *iti, ino_t ino,
 			    const struct voluta_vaddr *vaddr)
 {
-	voluta_assert_eq(vaddr->vtype, VOLUTA_VTYPE_INODE);
 	iaddr_setup(&iti->it_rootdir, ino, vaddr);
 }
 

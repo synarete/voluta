@@ -57,25 +57,23 @@
 #define VT_STR(x_)              VOLUTA_STR(x_)
 #define VT_ARRAY_SIZE(x_)       VOLUTA_ARRAY_SIZE(x_)
 
-
-#define vt_expect_eqm(a, b, n)  voluta_assert_eqm(a, b, n)
-#define vt_expect_true(p)       voluta_assert(p)
-#define vt_expect_false(p)      voluta_assert(!(p))
-#define vt_expect_err(err, x)   voluta_assert_err(err, x)
-#define vt_expect_eq(a, b)      voluta_assert_eq(a, b)
-#define vt_expect_ne(a, b)      voluta_assert_ne(a, b)
-#define vt_expect_lt(a, b)      voluta_assert_lt(a, b)
-#define vt_expect_le(a, b)      voluta_assert_le(a, b)
-#define vt_expect_gt(a, b)      voluta_assert_gt(a, b)
-#define vt_expect_ge(a, b)      voluta_assert_ge(a, b)
+#define vt_expect_true(p)       voluta_expect(p)
+#define vt_expect_false(p)      voluta_expect(!(p))
+#define vt_expect_err(err, x)   voluta_expect_err(err, x)
+#define vt_expect_eq(a, b)      voluta_expect_eq(a, b)
+#define vt_expect_ne(a, b)      voluta_expect_ne(a, b)
+#define vt_expect_lt(a, b)      voluta_expect_lt(a, b)
+#define vt_expect_le(a, b)      voluta_expect_le(a, b)
+#define vt_expect_gt(a, b)      voluta_expect_gt(a, b)
+#define vt_expect_ge(a, b)      voluta_expect_ge(a, b)
+#define vt_expect_eqm(a, b, n)  voluta_expect_eqm(a, b, n)
 
 #define vt_expect_ts_eq(t1, t2) \
-	voluta_assert_eq(vt_timespec_diff(t1, t2), 0)
+	vt_expect_eq(vt_timespec_diff(t1, t2), 0)
 #define vt_expect_ts_gt(t1, t2) \
-	voluta_assert_gt(vt_timespec_diff(t1, t2), 0)
+	vt_expect_gt(vt_timespec_diff(t1, t2), 0)
 #define vt_expect_ts_ge(t1, t2) \
-	voluta_assert_ge(vt_timespec_diff(t1, t2), 0)
-
+	vt_expect_ge(vt_timespec_diff(t1, t2), 0)
 #define vt_expect_mtime_eq(st1, st2) \
 	vt_expect_ts_eq(&((st1)->st_mtim), &((st2)->st_mtim))
 #define vt_expect_mtime_gt(st1, st2) \

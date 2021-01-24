@@ -453,37 +453,34 @@ uint64_t ut_fnv1a(const void *buf, size_t len, uint64_t hval_base);
 void ut_expect_eq_ts(const struct timespec *ts1, const struct timespec *ts2);
 void ut_expect_eq_stat(const struct stat *st1, const struct stat *st2);
 void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
-void ut_expect_true_(bool cond, const char *fl, int line);
-void ut_expect_lt_(long a, long b, const char *fl, int ln);
-void ut_expect_le_(long a, long b, const char *fl, int ln);
-void ut_expect_gt_(long a, long b, const char *fl, int ln);
-void ut_expect_ge_(long a, long b, const char *fl, int ln);
-void ut_expect_eq_(long a, long b, const char *fl, int ln);
-void ut_expect_ne_(long a, long b, const char *fl, int ln);
-void ut_expect_eqs_(const char *s1, const char *s2, const char *fl, int ln);
-void ut_expect_ok_(int err, const char *fl, int ln);
-void ut_expect_err_(int err, int exp, const char *fl, int ln);
-void ut_expect_null_(const void *ptr, const char *fl, int ln);
-void ut_expect_not_null_(const void *ptr, const char *fl, int ln);
-void ut_expect_eqm_(const void *p, const void *q,
-		    size_t n, const char *fl, int ln);
-
 
 /* except-alias */
-#define UT_FILN VOLUTA_FL
-#define ut_expect(cond)         ut_expect_true_((bool)(cond), UT_FILN)
-#define ut_expect_lt(a, b)      ut_expect_lt_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_le(a, b)      ut_expect_le_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_gt(a, b)      ut_expect_gt_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ge(a, b)      ut_expect_ge_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_eq(a, b)      ut_expect_eq_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ne(a, b)      ut_expect_ne_((long)(a), (long)(b), UT_FILN)
-#define ut_expect_ok(err)       ut_expect_ok_((int)(err), UT_FILN)
-#define ut_expect_err(err, exp) ut_expect_err_((int)(err), (int)(exp), UT_FILN)
-#define ut_expect_null(ptr)     ut_expect_null_(ptr, UT_FILN)
-#define ut_expect_not_null(ptr) ut_expect_not_null_(ptr, UT_FILN)
-#define ut_expect_eqs(a, b)     ut_expect_eqs_(a, b, UT_FILN)
-#define ut_expect_eqm(a, b, n)  ut_expect_eqm_(a, b, n, UT_FILN)
+#define ut_expect(cond) \
+	voluta_expect_true_((bool)(cond), VOLUTA_FL)
+#define ut_expect_lt(a, b) \
+	voluta_expect_lt_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_le(a, b) \
+	voluta_expect_le_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_gt(a, b) \
+	voluta_expect_gt_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ge(a, b) \
+	voluta_expect_ge_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_eq(a, b) \
+	voluta_expect_eq_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ne(a, b) \
+	voluta_expect_ne_((long)(a), (long)(b), VOLUTA_FL)
+#define ut_expect_ok(err) \
+	voluta_expect_ok_((int)(err), VOLUTA_FL)
+#define ut_expect_err(err, exp) \
+	voluta_expect_err_((int)(err), (int)(exp), VOLUTA_FL)
+#define ut_expect_null(ptr) \
+	voluta_expect_null_(ptr, VOLUTA_FL)
+#define ut_expect_not_null(ptr) \
+	voluta_expect_not_null_(ptr, VOLUTA_FL)
+#define ut_expect_eqs(a, b) \
+	voluta_expect_eqs_(a, b, VOLUTA_FL)
+#define ut_expect_eqm(a, b, n) \
+	voluta_expect_eqm_(a, b, n, VOLUTA_FL)
 
 /* aliases */
 #define UT_KILO                 VOLUTA_KILO

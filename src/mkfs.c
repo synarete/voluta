@@ -128,7 +128,8 @@ void voluta_execute_mkfs(void)
 
 static const char *voluta_mkfs_usage[] = {
 	"mkfs [options] <volume-path>",
-	"options: \n" \
+	"",
+	"options:",
 	"  -s, --size=NBYTES            Volume size",
 	"  -n, --name=NAME              Private name",
 	"  -e, --encrypted              Encrypted volume",

@@ -663,7 +663,7 @@ static int fse_decrypt_sb(struct voluta_fs_env *fse)
 	enum voluta_zbf zbf;
 
 	zbf = voluta_zb_flags(&fse->sb->s_zero);
-	zb_enc = zbf & VOLUTA_ZBF_ENCRYPTED;
+	zb_enc = (int)zbf & VOLUTA_ZBF_ENCRYPTED;
 	if (zb_enc && !fse->args.encrypted) {
 		log_err("encrypted zb: flags=0x%x", zbf);
 		return -ENOKEY;
@@ -811,7 +811,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	struct voluta_super_block *sb = fse->sb;
 
 	vol_size = (size_t)fse->args.vsize;
-	ag_count = voluta_size_to_ag_count((size_t)vol_size);
+	ag_count = voluta_size_to_ag_count(vol_size);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
 	voluta_sb_setup_ivks(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));

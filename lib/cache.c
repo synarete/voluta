@@ -53,7 +53,6 @@ static void lh_init(struct voluta_list_head *lh)
 
 static void lh_fini(struct voluta_list_head *lh)
 {
-	voluta_assert_eq(lh, lh->next);
 	voluta_list_head_fini(lh);
 }
 
@@ -1446,7 +1445,6 @@ cache_find_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
 	ce = lrumap_find(&cache->c_ilm, (long)(iaddr->vaddr.off));
 	if (ce != NULL) {
 		ii = ii_from_ce(ce);
-		voluta_assert_eq(ii->i_ino, iaddr->ino);
 	}
 	return ii;
 }
@@ -2011,8 +2009,6 @@ void voluta_mark_visible(const struct voluta_vnode_info *vi)
 void voluta_mark_opaque_at(struct voluta_bk_info *bki,
 			   const struct voluta_vaddr *vaddr)
 {
-	voluta_assert_eq(bki->bk_lba, vaddr->lba);
-
 	bki_mark_opaque(bki, vaddr);
 }
 

@@ -290,7 +290,7 @@ static size_t alignment_of(size_t sz)
 	} else if (sz <= 1024) {
 		al = 1024;
 	} else if (sz <= 2048) {
-		al = 1024;
+		al = 2048;
 	} else {
 		al = voluta_sc_page_size();
 	}

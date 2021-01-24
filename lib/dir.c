@@ -1078,6 +1078,22 @@ static int stage_or_create_root(const struct voluta_dir_ctx *d_ctx,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static int check_child_depth(const struct voluta_vnode_info *vi,
+			     size_t parent_depth)
+{
+	int err = 0;
+	const size_t child_depth = htn_depth(vi->vu.htn);
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+
+	if ((parent_depth + 1) != child_depth) {
+		log_err("illegal-tree-depth: voff=0x%lx "
+			"parent_depth=%lu child_depth=%lu ",
+			vaddr->off, parent_depth, child_depth);
+		err = -EFSCORRUPTED;
+	}
+	return err;
+}
+
 static int do_lookup_by_tree(const struct voluta_dir_ctx *d_ctx,
 			     struct voluta_vnode_info *root_vi,
 			     struct voluta_dir_entry_info *dei)
@@ -1102,8 +1118,11 @@ static int do_lookup_by_tree(const struct voluta_dir_ctx *d_ctx,
 			return err;
 		}
 		vi = child_vi;
-		voluta_assert_eq(depth + 1, htn_depth(vi->vu.htn));
-		depth = htn_depth(vi->vu.htn);
+		err = check_child_depth(vi, depth);
+		if (err) {
+			return err;
+		}
+		depth++;
 	}
 	return -ENOENT;
 }
@@ -1359,8 +1378,11 @@ static int do_add_to_tree(const struct voluta_dir_ctx *d_ctx,
 		if (err) {
 			return err;
 		}
-		voluta_assert_eq(depth + 1, htn_depth(vi->vu.htn));
-		depth = htn_depth(vi->vu.htn);
+		err = check_child_depth(vi, depth);
+		if (err) {
+			return err;
+		}
+		depth++;
 	}
 	return -ENOSPC;
 }

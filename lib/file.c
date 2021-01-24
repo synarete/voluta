@@ -2685,8 +2685,6 @@ static int lseek_hole_noleaf(struct voluta_file_ctx *f_ctx,
 {
 	int err;
 
-	voluta_assert_eq(f_ctx->whence, SEEK_HOLE);
-
 	err = seek_hole_by_head_leaves(f_ctx, fnr);
 	if (!err || (err != -ENOENT)) {
 		return err;

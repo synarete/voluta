@@ -94,8 +94,6 @@ static size_t kbn_of(const struct voluta_vaddr *vaddr)
 	const loff_t nkb_in_bk = VOLUTA_NKB_IN_BK;
 	const loff_t off = vaddr->off;
 
-	voluta_assert_eq(vaddr->off % VOLUTA_KB_SIZE, 0);
-
 	return (size_t)((off / kb_size) % nkb_in_bk);
 }
 

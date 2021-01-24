@@ -61,7 +61,7 @@
 	REQUIRE_SIZEOF(type, VOLUTA_KB_SIZE)
 
 #define REQUIRE_SIZEOF_NK(type, nk) \
-	REQUIRE_SIZEOF(type, nk * VOLUTA_KILO)
+	REQUIRE_SIZEOF(type, (nk) * VOLUTA_KILO)
 
 #define REQUIRE_SIZEOF_4K(type) \
 	REQUIRE_SIZEOF_NK(type, 4)

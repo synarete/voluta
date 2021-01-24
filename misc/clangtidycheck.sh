@@ -16,7 +16,7 @@ _clang_tidy_check() {
   basedir=$(realpath $(dirname ${BASH_SOURCE[0]})/../)
   srcs=$(find ${basedir} -type f -name '*.c')
   chks=$(_clang_tidy_check_list | tr " " ",")
-  idefs="-I${basedir}/include"
+  idefs="-I${basedir}/include -I${basedir}/lib"
   xdefs="-DVOLUTA_LIBPRIVATE=1 -DVOLUTA_UNITEST=1"
 
   clang-tidy ${srcs} -checks='-*',${chks} -- ${idefs} ${xdefs}

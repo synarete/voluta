@@ -2669,8 +2669,12 @@ static int fuseq_read_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
 	const size_t hdr_len = sizeof(in->u.hdr.hdr);
 	struct voluta_pipe *pipe = &fq->fq_pipe;
 
-	voluta_assert_eq(fq->fq_coni.buffsize, pipe->size);
-
+	if (fq->fq_coni.buffsize != pipe->size) {
+		log_err("can not read from fuse: buffsize=%lu pipesize=%lu "
+			"fuse_fd=%d", fq->fq_coni.buffsize, pipe->size,
+			fq->fq_fuse_fd);
+		return -EIO;
+	}
 	err = voluta_sys_read(fq->fq_fuse_fd, in, pipe->size, &len);
 	if (err) {
 		return err;
@@ -2703,7 +2707,17 @@ static int fuseq_splice_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
 
 	voluta_assert_eq(fq->fq_coni.buffsize, pipe->size);
 
-	voluta_assert_eq(pipe->pend, 0);
+	if (fq->fq_coni.buffsize != pipe->size) {
+		log_err("can not splice to fuse: buffsize=%lu pipesize=%lu "
+			"fuse_fd=%d", fq->fq_coni.buffsize, pipe->size,
+			fq->fq_fuse_fd);
+		return -EIO;
+	}
+	if (pipe->pend != 0) {
+		log_err("pipe not empty: pend=%lu fuse_fd=%d",
+			pipe->pend, fq->fq_fuse_fd);
+		return -EIO;
+	}
 	err = pipe_splice_from_fd(pipe, fq->fq_fuse_fd, NULL, pipe->size);
 	if (err) {
 		log_err("fuse splice-in failed: err=%d", err);

@@ -654,7 +654,7 @@ static const char *substr_data(const struct voluta_substr *ss)
 
 static char *substr_mutable_data(const struct voluta_substr *ss)
 {
-	return (char *)(ss->str);
+	return unconst(ss->str);
 }
 
 static size_t substr_size(const struct voluta_substr *ss)

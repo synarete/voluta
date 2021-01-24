@@ -737,6 +737,26 @@ void voluta_pfree_string(char **pp)
 	}
 }
 
+char *voluta_sprintf_path(const char *fmt, ...)
+{
+	va_list ap;
+	int n;
+	size_t path_size = PATH_MAX;
+	char *path = voluta_malloc_safe(path_size);
+	char *path_dup;
+
+	va_start(ap, fmt);
+	n = vsnprintf(path, path_size - 1, fmt, ap);
+	va_end(ap);
+
+	if (n >= (int)path_size) {
+		voluta_die(0, "illegal path-len %d", n);
+	}
+	path_dup = voluta_strdup_safe(path);
+	voluta_pfree_string(&path);
+	return path_dup;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* Singleton instances */

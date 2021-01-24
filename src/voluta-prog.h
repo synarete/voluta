@@ -101,6 +101,7 @@ struct voluta_globals {
 	char   *mount_passphrase_file;
 	char   *mount_volume;
 	char   *mount_volume_real;
+	char   *mount_volume_clone;
 	char   *mount_point;
 	char   *mount_point_real;
 	bool    mount_encrypted;
@@ -264,6 +265,8 @@ void voluta_prctl_non_dumpable(void);
 char *voluta_strdup_safe(const char *s);
 
 void voluta_pfree_string(char **pp);
+
+char *voluta_sprintf_path(const char *fmt, ...);
 
 void voluta_statpath_safe(const char *path, struct stat *st);
 

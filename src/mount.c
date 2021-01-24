@@ -61,6 +61,7 @@ static void mount_finalize(void)
 {
 	voluta_fini_fs_env();
 	voluta_pfree_string(&voluta_globals.mount_volume_real);
+	voluta_pfree_string(&voluta_globals.mount_volume_clone);
 	voluta_pfree_string(&voluta_globals.mount_point_real);
 	voluta_close_syslog();
 }
@@ -96,6 +97,91 @@ static void mount_setup_check_volume(void)
 		voluta_die_if_not_volume(path, pass, &zbf);
 
 		voluta_globals.mount_encrypted = true;
+	}
+}
+
+static char *mount_volume_clone_path(void)
+{
+	int err;
+	struct stat st = { .st_ino = 0 };
+	char *volume_clone = NULL;
+	const char *volume_real = voluta_globals.mount_volume_real;
+
+	for (int i = 1; i < 100; ++i) {
+		volume_clone = voluta_sprintf_path("%s.%02d", volume_real, i);
+		err = voluta_sys_stat(volume_clone, &st);
+		if (err == -ENOENT) {
+			return volume_clone;
+		}
+		voluta_pfree_string(&volume_clone);
+	}
+	return NULL;
+}
+
+static void mount_prepare_volume_clone(void)
+{
+	int err;
+	int dst_fd = -1;
+	int src_fd = -1;
+	int o_flags;
+	loff_t off_out = 0;
+	mode_t mode = 0;
+	struct stat st = { .st_ino = 0 };
+	char *volume_clone = NULL;
+	const char *volume_real = voluta_globals.mount_volume_real;
+
+	if (voluta_globals.mount_rdonly) {
+		goto out;
+	}
+	err = voluta_sys_stat(volume_real, &st);
+	if (err) {
+		goto out;
+	}
+	volume_clone = mount_volume_clone_path();
+	if (volume_clone == NULL) {
+		goto out;
+	}
+	o_flags = O_CREAT | O_RDWR | O_EXCL;
+	mode = S_IRUSR | S_IWUSR;
+	err = voluta_sys_open(volume_clone, o_flags, mode, &dst_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ftruncate(dst_fd, st.st_size);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_llseek(dst_fd, 0, SEEK_SET, &off_out);
+	if (err) {
+		goto out;
+	}
+	o_flags = O_RDONLY;
+	mode = 0;
+	err = voluta_sys_open(volume_real, o_flags, mode, &src_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ioctl_ficlone(dst_fd, src_fd);
+	if (err) {
+		goto out;
+	}
+out:
+	voluta_sys_closefd(&src_fd);
+	voluta_sys_closefd(&dst_fd);
+	if (err && volume_clone) {
+		voluta_sys_unlink(volume_clone);
+		voluta_pfree_string(&volume_clone);
+	}
+	voluta_globals.mount_volume_clone = volume_clone;
+}
+
+static void mount_complete_volume_clone(void)
+{
+	const char *volume_real = voluta_globals.mount_volume_real;
+	const char *volume_clone = voluta_globals.mount_volume_clone;
+
+	if (volume_clone != NULL) {
+		voluta_sys_rename(volume_clone, volume_real);
 	}
 }
 
@@ -157,31 +243,39 @@ static void mount_boostrap_process(void)
 	}
 }
 
+static void mount_setup_fs_args(struct voluta_fs_args *args)
+{
+	memset(args, 0, sizeof(*args));
+	args->uid = getuid();
+	args->gid = getgid();
+	args->pid = getpid();
+	args->umask = 0022;
+	args->mountp = voluta_globals.mount_point_real;
+	args->passwd = voluta_globals.mount_passphrase;
+	args->encrypted = voluta_globals.mount_encrypted;
+	args->lazytime = voluta_globals.mount_lazytime;
+	args->noexec = voluta_globals.mount_noexec;
+	args->nosuid = voluta_globals.mount_nosuid;
+	args->nodev = voluta_globals.mount_nodev;
+	args->rdonly = voluta_globals.mount_rdonly;
+	args->pedantic = false;
+	args->spliced = true;
+	if (voluta_globals.mount_volume_clone != NULL) {
+		args->volume = voluta_globals.mount_volume_clone;
+	} else {
+		args->volume = voluta_globals.mount_volume_real;
+	}
+}
+
 static void mount_create_setup_env(void)
 {
 	int err;
+	struct voluta_fs_args args;
 	struct voluta_fs_env *fse = NULL;
-	struct voluta_fs_args args = {
-		.uid = getuid(),
-		.gid = getgid(),
-		.pid = getpid(),
-		.umask = 0022,
-		.mountp = voluta_globals.mount_point_real,
-		.volume = voluta_globals.mount_volume_real,
-		.passwd = voluta_globals.mount_passphrase,
-		.encrypted = voluta_globals.mount_encrypted,
-		.lazytime = voluta_globals.mount_lazytime,
-		.noexec = voluta_globals.mount_noexec,
-		.nosuid = voluta_globals.mount_nosuid,
-		.nodev = voluta_globals.mount_nodev,
-		.rdonly = voluta_globals.mount_rdonly,
-		.vsize = 0,
-		.pedantic = false,
-		.spliced = true,
 
-	};
-
+	mount_setup_fs_args(&args);
 	voluta_init_fs_env();
+
 	fse = voluta_fs_env_inst();
 	err = voluta_fse_setargs(fse, &args);
 	if (err) {
@@ -196,7 +290,6 @@ static void mount_create_setup_env(void)
 		voluta_die(err, "illegal volume: %s", args.volume);
 	}
 }
-
 
 /*
  * Trace global setting to user. When running as daemon on systemd-based
@@ -236,6 +329,9 @@ void voluta_execute_mount(void)
 	/* Require valid back-end storage volume */
 	mount_setup_check_volume();
 
+	/* If supported, use a clone of the volume */
+	mount_prepare_volume_clone();
+
 	/* Become daemon process */
 	mount_boostrap_process();
 
@@ -253,6 +349,9 @@ void voluta_execute_mount(void)
 
 	/* Report end-of-mount */
 	mount_trace_finish();
+
+	/* Override volume with updated clone */
+	mount_complete_volume_clone();
 
 	/* Post execution cleanups */
 	mount_finalize();

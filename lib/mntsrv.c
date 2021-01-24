@@ -102,7 +102,7 @@ struct voluta_ms_env_obj {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* Known file-systems */
-#define FUSE_SUPER_MAGIC        0x65735546
+#define FUSE_SUPER_MAGIC        0x65735546 /*  from kernel 'fs/fuse/inode.c' */
 #define TMPFS_MAGIC             0x01021994
 #define XFS_SB_MAGIC            0x58465342
 #define EXT234_SUPER_MAGIC      0x0000EF53
@@ -382,7 +382,7 @@ static void mntmsg_init(struct voluta_mntmsg *mmsg, int cmd)
 
 	voluta_memzero(mmsg, sizeof(*mmsg));
 	mntmsg_set_status(mmsg, 0);
-	mmsg->mn_magic = VOLUTA_MAGIC;
+	mmsg->mn_magic = VOLUTA_VTYPE_MAGIC;
 	mmsg->mn_version_major = (uint16_t)voluta_version.major;
 	mmsg->mn_version_minor = (uint16_t)voluta_version.minor;
 	mmsg->mn_cmd = (uint32_t)cmd;
@@ -472,7 +472,7 @@ static enum voluta_mntcmd mntmsg_cmd(const struct voluta_mntmsg *mmsg)
 
 static int mntmsg_check(const struct voluta_mntmsg *mmsg)
 {
-	if (mmsg->mn_magic != VOLUTA_MAGIC) {
+	if (mmsg->mn_magic != VOLUTA_VTYPE_MAGIC) {
 		return -EINVAL;
 	}
 	if (mmsg->mn_version_major != voluta_version.major) {
@@ -1469,5 +1469,10 @@ int voluta_rpc_handshake(uid_t uid, gid_t gid)
 	return err;
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+long voluta_fuse_super_magic(void)
+{
+	return FUSE_SUPER_MAGIC;
+}
 

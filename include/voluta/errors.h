@@ -63,6 +63,7 @@
 	voluta_assert_eqm_(m1, m2, nn, VOLUTA_FL)
 #endif
 
+/* expect-or-die */
 void voluta_assert_if_(int cond, const char *str, const char *file, int line);
 void voluta_assert_eq_(long a, long b, const char *file, int line);
 void voluta_assert_ne_(long a, long b, const char *file, int line);

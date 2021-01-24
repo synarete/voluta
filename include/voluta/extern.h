@@ -83,6 +83,7 @@ int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
 
 int voluta_rpc_umount(const char *mountpoint, uid_t uid, gid_t gid);
 
+long voluta_fuse_super_magic(void);
 
 /* file-system */
 int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse);

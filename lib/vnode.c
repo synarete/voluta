@@ -452,7 +452,7 @@ static int verify_hdr(const struct voluta_view *view, enum voluta_vtype vtype)
 	if (vtype_isdata(vtype)) {
 		return 0;
 	}
-	if (hdr_magic(hdr) != VOLUTA_MAGIC) {
+	if (hdr_magic(hdr) != VOLUTA_VTYPE_MAGIC) {
 		return -EFSCORRUPTED;
 	}
 	if (hdr_vtype(hdr) != vtype) {
@@ -550,7 +550,7 @@ int voluta_verify_meta(const struct voluta_vnode_info *vi)
 static void stamp_hdr(struct voluta_header *hdr,
 		      enum voluta_vtype vtype, size_t size)
 {
-	hdr_set_magic(hdr, VOLUTA_MAGIC);
+	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
 	hdr_set_size(hdr, size);
 	hdr_set_vtype(hdr, vtype);
 	hdr_set_csum(hdr, 0);

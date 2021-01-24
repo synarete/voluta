@@ -1400,6 +1400,7 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 	out_stvfs->f_ffree = (fsfilcnt_t)(nfiles_max - spi->sp_nfiles);
 	out_stvfs->f_favail = out_stvfs->f_ffree;
 	out_stvfs->f_namemax = VOLUTA_NAME_MAX;
+	out_stvfs->f_fsid = VOLUTA_SUPER_MAGIC;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

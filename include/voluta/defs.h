@@ -38,8 +38,11 @@
 /* current on-disk format version number */
 #define VOLUTA_FMT_VERSION              (1)
 
+/* file-system fsid magic number (ASCII: '@VLT') */
+#define VOLUTA_SUPER_MAGIC              (0x40564C54U)
+
 /* magic numbers at meta-objects start (ASCII: '#VLT') */
-#define VOLUTA_MAGIC                    (0x23564C54U)
+#define VOLUTA_VTYPE_MAGIC              (0x23564C54U)
 
 /* max length of encryption pass-phrase */
 #define VOLUTA_PASSPHRASE_MAX           (255)

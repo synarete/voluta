@@ -323,7 +323,7 @@ de_next_safe(const struct voluta_dir_entry *de,
 {
 	const struct voluta_dir_entry *next = de_next(de);
 
-	return (next < end) ? next : NULL;
+	return (next < end) ? unconst(next) : NULL;
 }
 
 static struct voluta_dir_entry *
@@ -390,6 +390,20 @@ de_search(const struct voluta_dir_entry *de,
 		itr = de_next(itr);
 	}
 	return NULL;
+}
+
+static int de_verify(const struct voluta_dir_entry *beg,
+		     const struct voluta_dir_entry *end)
+{
+	const struct voluta_dir_entry *itr = beg;
+
+	while (itr < end) {
+		if (de_isactive(itr) && !de_isvalid(itr)) {
+			return -EFSCORRUPTED;
+		}
+		itr = de_next(itr);
+	}
+	return 0;
 }
 
 static const struct voluta_dir_entry *
@@ -2090,10 +2104,35 @@ int voluta_verify_dir_inode(const struct voluta_inode *inode)
 	return 0;
 }
 
-int voluta_verify_dir_htree_node(const struct voluta_dir_htnode *htn)
+static int verify_childs_of(const struct voluta_dir_htnode *htn)
 {
 	int err;
 	struct voluta_vaddr vaddr;
+
+	for (size_t i = 0; i < ARRAY_SIZE(htn->dh_child); ++i) {
+		htn_child(htn, i, &vaddr);
+		if (vaddr_isnull(&vaddr)) {
+			continue;
+		}
+		err = voluta_verify_off(vaddr.off);
+		if (err) {
+			return err;
+		}
+		if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_HTNODE)) {
+			return -EFSCORRUPTED;
+		}
+	}
+	return 0;
+}
+
+static int verify_dirents_of(const struct voluta_dir_htnode *htn)
+{
+	return de_verify(htn_begin(htn), htn_end(htn));
+}
+
+int voluta_verify_dir_htree_node(const struct voluta_dir_htnode *htn)
+{
+	int err;
 
 	err = voluta_verify_ino(htn_ino(htn));
 	if (err) {
@@ -2107,18 +2146,13 @@ int voluta_verify_dir_htree_node(const struct voluta_dir_htnode *htn)
 	if (err) {
 		return err;
 	}
-	for (size_t i = 0; i < ARRAY_SIZE(htn->dh_child); ++i) {
-		htn_child(htn, i, &vaddr);
-		if (vaddr_isnull(&vaddr)) {
-			continue;
-		}
-		err = voluta_verify_off(vaddr.off);
-		if (err) {
-			return err;
-		}
-		if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_HTNODE)) {
-			return -EFSCORRUPTED;
-		}
+	err = verify_childs_of(htn);
+	if (err) {
+		return err;
+	}
+	err = verify_dirents_of(htn);
+	if (err) {
+		return err;
 	}
 	return 0;
 }

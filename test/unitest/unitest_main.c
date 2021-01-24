@@ -41,7 +41,6 @@ static void ut_setup_args(void);
 static void ut_init_lib(void);
 static void ut_atexit(void);
 
-
 /*
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *

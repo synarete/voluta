@@ -438,7 +438,7 @@ static void bref_set_voff(struct voluta_ar_blobref *bref, loff_t voff)
 static void bref_init(struct voluta_ar_blobref *bref, loff_t voff, size_t len)
 {
 	voluta_memzero(bref, sizeof(*bref));
-	bref_set_magic(bref, VOLUTA_MAGIC);
+	bref_set_magic(bref, VOLUTA_VTYPE_MAGIC);
 	bref_set_hfunc(bref, VOLUTA_MD_SHA256);
 	bref_set_length(bref, len);
 	bref_set_voff(bref, voff);

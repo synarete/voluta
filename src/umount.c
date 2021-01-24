@@ -15,6 +15,8 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <sys/vfs.h>
+#include <sys/statvfs.h>
 #include "voluta-prog.h"
 
 
@@ -32,9 +34,8 @@ static void umount_setup_check_params(void)
 	voluta_die_if_no_mountd();
 }
 
-static void umount_send_recv(void)
+static const char *umount_dirpath(void)
 {
-	int err;
 	const char *path;
 
 	if (voluta_globals.umount_point_real != NULL) {
@@ -42,9 +43,45 @@ static void umount_send_recv(void)
 	} else {
 		path = voluta_globals.umount_point;
 	}
+	return path;
+}
+
+static void umount_send_recv(void)
+{
+	int err;
+	const char *path = umount_dirpath();
+
 	err = voluta_rpc_umount(path, getuid(), getgid());
 	if (err) {
 		voluta_die(err, "umount failed: %s", path);
+	}
+}
+
+static void umount_probe_statvfs(void)
+{
+	int err;
+	long fstype;
+	struct statfs stfs;
+	const char *path = umount_dirpath();
+
+	for (size_t i = 0; i < 4; ++i) {
+		sleep(1);
+
+		memset(&stfs, 0, sizeof(stfs));
+		err = voluta_sys_statfs(path, &stfs);
+		if (err) {
+			break;
+		}
+		fstype = stfs.f_type;
+		if (fstype && (fstype != voluta_fuse_super_magic())) {
+			break;
+		}
+		/*
+		 * TODO-0022: Fix FUSE statfs/statvfs
+		 *
+		 * It appears that FUSE forces zero value for 'statvfs.f_fsid'.
+		 * Need to check why and if possible to fix.
+		 */
 	}
 }
 
@@ -60,6 +97,9 @@ void voluta_execute_umount(void)
 
 	/* Do actual umount */
 	umount_send_recv();
+
+	/* Post-umount checks */
+	umount_probe_statvfs();
 
 	/* Post execution cleanups */
 	umount_finalize();

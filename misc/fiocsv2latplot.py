@@ -27,7 +27,7 @@ class FioDat:
         self.wr_lat = float(fields[81])
         job_name = str(fields[3])
         self.job_name = job_name
-        job_subs = job_name.split('-')        
+        job_subs = job_name.split('-')
         self.tag = str(job_subs[0]).replace('_', '-')
         self.bsk = int(job_subs[1].replace('bs', ''))
         self.bs = self.bsk * 1024

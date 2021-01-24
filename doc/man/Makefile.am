@@ -1,9 +1,13 @@
 -include $(top_builddir)/common.mk
 
-EXTRA_DIST = voluta.1.rst
+EXTRA_DIST = $(NULL)
+EXTRA_DIST += voluta.1.rst
+EXTRA_DIST += voluta-mountd.8.rst
 
 if HAVE_RST2MAN
-dist_man_MANS = voluta.1
+dist_man_MANS = $(NULL)
+dist_man_MANS += voluta.1
+dist_man_MANS += voluta-mountd.8
 CLEANFILES = $(dist_man_MANS)
 
 all-local: $(dist_man_MANS)

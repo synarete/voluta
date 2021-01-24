@@ -1065,13 +1065,16 @@ static int remove_itentry(struct voluta_sb_info *sbi, ino_t ino)
 }
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
+		       const struct voluta_vaddr *vaddr,
 		       struct voluta_iaddr *out_iaddr)
 {
 	int err;
+	ino_t ino;
 	struct voluta_vnode_info *vi;
 	struct voluta_itable_info *iti = iti_of(sbi);
 
-	err = iti_next_ino(iti, &out_iaddr->ino);
+	iaddr_reset(out_iaddr);
+	err = iti_next_ino(iti, &ino);
 	if (err) {
 		return err;
 	}
@@ -1079,6 +1082,7 @@ int voluta_acquire_ino(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
+	iaddr_setup(out_iaddr, ino, vaddr);
 	err = insert_iref(sbi, vi, out_iaddr);
 	if (err) {
 		return err;
@@ -1172,7 +1176,7 @@ static struct voluta_ino_set *ino_set_new(struct voluta_qalloc *qal)
 {
 	struct voluta_ino_set *ino_set;
 
-	ino_set = voluta_qalloc_zalloc(qal, sizeof(*ino_set));
+	ino_set = voluta_qalloc_zmalloc(qal, sizeof(*ino_set));
 	if (ino_set != NULL) {
 		ino_set->cnt = 0;
 	}
@@ -1263,9 +1267,13 @@ static int do_scan_subtree(struct voluta_sb_info *sbi,
 {
 	int err = 0;
 	struct voluta_vaddr vaddr;
+	const size_t nchilds = itn_nchilds(vi->vu.itn);
 	const size_t nchilds_max = itn_nchilds_max(vi->vu.itn);
 
 	scan_entries_of(sbi, vi);
+	if (!nchilds) {
+		return 0;
+	}
 	for (size_t i = 0; (i < nchilds_max) && !err; ++i) {
 		resolve_child_at(vi, i, &vaddr);
 		err = scan_subtree_at(sbi, &vaddr);

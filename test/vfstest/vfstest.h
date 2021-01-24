@@ -197,10 +197,9 @@ void *vt_new_buf_zeros(struct vt_env *vte, size_t bsz);
 
 void *vt_new_buf_rands(struct vt_env *vte, size_t bsz);
 
-void *vt_new_buf_nums(struct vt_env *vte,
-		      unsigned long base, size_t bsz);
+void *vt_new_buf_nums(struct vt_env *vte, long base, size_t bsz);
 
-long *vt_new_randseq(struct vt_env *vte, size_t cnt, long base);
+long *vt_new_buf_randseq(struct vt_env *vte, size_t cnt, long base);
 
 long vt_lrand(struct vt_env *vte);
 

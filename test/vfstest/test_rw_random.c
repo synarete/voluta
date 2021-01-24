@@ -32,23 +32,23 @@ static void test_random_(struct vt_env *vte, loff_t from,
 {
 	int fd = -1;
 	loff_t pos = 0;
-	size_t seed = 0;
+	long seed = 0;
 	void *buf1 = NULL;
 	void *buf2 = vt_new_buf_zeros(vte, len);
-	const long *pseq = vt_new_randseq(vte, cnt, 0);
+	const long *pseq = vt_new_buf_randseq(vte, cnt, 0);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0640, &fd);
 	for (size_t i = 0; i < niter; ++i) {
 		for (size_t j = 0; j < cnt; ++j) {
 			pos = from + ((long)len * pseq[j]);
-			seed = i + j + (size_t)pos;
+			seed = (long)(i + j) + pos;
 			buf1 = vt_new_buf_nums(vte, seed, len);
 			vt_pwriten(fd, buf1, len, pos);
 		}
 		for (size_t j = 0; j < cnt; ++j) {
 			pos = from + ((long)len * pseq[j]);
-			seed = i + j + (size_t)pos;
+			seed = (long)(i + j) + pos;
 			buf1 = vt_new_buf_nums(vte, seed, len);
 			vt_preadn(fd, buf2, len, pos);
 			vt_expect_eqm(buf1, buf2, len);

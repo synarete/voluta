@@ -146,18 +146,29 @@ void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* time */
-void voluta_mclock_now(struct timespec *ts)
+static void do_clock_gettime(clockid_t clock_id, struct timespec *tp)
 {
 	int err;
 
-	err = voluta_sys_clock_gettime(CLOCK_MONOTONIC, ts);
+	err = voluta_sys_clock_gettime(clock_id, tp);
 	if (err) {
-		voluta_panic("clock_gettime err=%d", err);
+		voluta_panic("clock_gettime failure: clock_id=%ld err=%d",
+			     (long)clock_id, err);
 	}
 }
 
-static void mclock_dif(const struct timespec *beg,
-		       const struct timespec *end, struct timespec *dif)
+void voluta_rclock_now(struct timespec *ts)
+{
+	do_clock_gettime(CLOCK_REALTIME, ts);
+}
+
+void voluta_mclock_now(struct timespec *ts)
+{
+	do_clock_gettime(CLOCK_MONOTONIC, ts);
+}
+
+static void timespec_dif(const struct timespec *beg,
+			 const struct timespec *end, struct timespec *dif)
 {
 	dif->tv_sec = end->tv_sec - beg->tv_sec;
 	if (end->tv_nsec >= beg->tv_nsec) {
@@ -173,7 +184,7 @@ void voluta_mclock_dur(const struct timespec *start, struct timespec *dur)
 	struct timespec now;
 
 	voluta_mclock_now(&now);
-	mclock_dif(start, &now, dur);
+	timespec_dif(start, &now, dur);
 }
 
 time_t voluta_time_now(void)
@@ -202,9 +213,18 @@ int voluta_ts_gettime(struct timespec *ts, bool realtime)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* random generator */
-void voluta_getentropy(void *buf, size_t len)
+static void do_getentropy(void *buf, size_t len)
 {
 	int err;
+
+	err = getentropy(buf, len);
+	if (err) {
+		voluta_panic("getentropy failed err=%d", errno);
+	}
+}
+
+void voluta_getentropy(void *buf, size_t len)
+{
 	size_t cnt;
 	uint8_t *ptr = buf;
 	const uint8_t *end = ptr + len;
@@ -212,12 +232,17 @@ void voluta_getentropy(void *buf, size_t len)
 
 	while (ptr < end) {
 		cnt = min((size_t)(end - ptr), getentropy_max);
-		err = getentropy(ptr, cnt);
-		if (err) {
-			voluta_panic("getentropy failed err=%d", errno);
-		}
+		do_getentropy(ptr, cnt);
 		ptr += cnt;
 	}
+}
+
+uint32_t voluta_getentropy32(void)
+{
+	uint32_t r;
+
+	do_getentropy(&r, sizeof(r));
+	return r;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -459,7 +484,7 @@ const char *voluta_basename(const char *path)
 	return (name == NULL) ? path : (name + 1);
 }
 
-/* Optimal prime-value for hash-table of n-elements */
+/* prime-value for hash-table of n-elements */
 static const size_t voluta_primes[] = {
 	13UL,
 	53UL,
@@ -474,8 +499,11 @@ static const size_t voluta_primes[] = {
 	24593UL,
 	49157UL,
 	98317UL,
+	147377UL,
 	196613UL,
+	294979UL,
 	393241UL,
+	589933UL,
 	786433UL,
 	1572869UL,
 	3145739UL,

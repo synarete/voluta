@@ -329,15 +329,28 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 /*
  * Tests fallocate(2) with FALLOC_FL_COLLAPSE_RANGE on continues range.
  */
-static void
-test_collpase_range_continues(struct vt_env *vte, loff_t base)
+static void test_collpase_range_continues(struct vt_env *vte, loff_t base)
 {
-	int fd, mode = FALLOC_FL_COLLAPSE_RANGE;
-	loff_t off1, off2, off3;
-	loff_t slen1, slen2, slen3;
-	size_t nwr, nrd, len1, len2, len3, len4;
-	char *path, *buf1, *buf2, *buf3, *buf4;
+	int fd = -1;
+	loff_t off1 = -1;
+	loff_t off2 = -1;
+	loff_t off3 = -1;
+	loff_t slen1 = 0;
+	loff_t slen2 = 0;
+	loff_t slen3 = 0;
+	size_t nwr = 0;
+	size_t nrd = 0;
+	size_t len1 = 0;
+	size_t len2 = 0;
+	size_t len3 = 0;
+	size_t len4 = 0;
+	char *buf1 = NULL;
+	char *buf2 = NULL;
+	char *buf3 = NULL;
+	char *buf4 = NULL;
 	struct stat st;
+	const int mode = FALLOC_FL_COLLAPSE_RANGE;
+	char *path =  vt_new_path_unique(vte);
 
 	off1 = base;
 	len1 = 32 * VT_BK_SIZE;
@@ -354,7 +367,6 @@ test_collpase_range_continues(struct vt_env *vte, loff_t base)
 	len4 = len1 + len2 + len3;
 	buf4 = vt_new_buf_rands(vte, len4);
 
-	path = vt_new_path_unique(vte);
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_pwrite(fd, buf1, len1, off1, &nwr);
 	vt_expect_eq(nwr, len1);
@@ -393,16 +405,29 @@ static void test_fallocate_collpase_range_simple(struct vt_env *vte)
 /*
  * Tests fallocate(2) with FALLOC_FL_COLLAPSE_RANGE on range with holes.
  */
-static void test_collpase_range_with_holes(struct vt_env *vte,
-		loff_t base, loff_t holesz)
+static void test_collpase_range_with_holes(struct vt_env *vte, loff_t base,
+		loff_t holesz)
 {
-	int fd, mode = FALLOC_FL_COLLAPSE_RANGE;
-	loff_t off1, off2, off3;
-	loff_t slen1, slen2, slen3;
-	size_t nwr, nrd, len1, len2, len3, len4;
-	char *buf1, *buf2, *buf3, *buf4;
+	int fd = -1;
+	loff_t off1 = -1;
+	loff_t off2 = -1;
+	loff_t off3 = -1;
+	loff_t slen1 = -1;
+	loff_t slen2 = -1;
+	loff_t slen3 = -1;
+	size_t nwr = 0;
+	size_t nrd = 0;
+	size_t len1 = 0;
+	size_t len2 = 0;
+	size_t len3 = 0;
+	size_t len4 = 0;
+	char *buf1 = NULL;
+	char *buf2 = NULL;
+	char *buf3 = NULL;
+	char *buf4 = NULL;
 	struct stat st;
 	const char *path = vt_new_path_unique(vte);
+	const int mode = FALLOC_FL_COLLAPSE_RANGE;
 
 	off1 = base;
 	len1 = 32 * VT_BK_SIZE;
@@ -463,7 +488,6 @@ static void test_fallocate_collpase_range_holes(struct vt_env *vte)
 	test_collpase_range_with_holes(vte, VT_UGIGA, VT_UMEGA);
 }
 
-
 /*
  * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE on range with data
  */
@@ -477,8 +501,14 @@ struct vt_zero_range_info {
 static void test_zero_range_data_(struct vt_env *vte,
 				  const struct vt_zero_range_info *zri)
 {
-	int fd, mode = FALLOC_FL_ZERO_RANGE;
-	size_t nwr, nrd, len1, len2, pos0, pos1, pos2;
+	int fd = -1;
+	size_t nwr = 0;
+	size_t nrd = 0;
+	size_t len1 = 0;
+	size_t len2 = 0;
+	size_t pos0 = 0;
+	size_t pos1 = 0;
+	size_t pos2 = 0;
 	const loff_t data_off = zri->data_off;
 	const size_t data_sz = zri->data_sz;
 	const loff_t zero_off = zri->zero_off;
@@ -487,13 +517,13 @@ static void test_zero_range_data_(struct vt_env *vte,
 	uint8_t *data_buf1 = vt_new_buf_rands(vte, data_sz);
 	uint8_t *data_buf2 = vt_new_buf_rands(vte, data_sz);
 	uint8_t *zeros_buf = vt_new_buf_zeros(vte, zero_sz);
+	const int mode = FALLOC_FL_ZERO_RANGE;
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_pwrite(fd, data_buf1, data_sz, data_off, &nwr);
 	vt_fallocate(fd, mode, zero_off, (loff_t)zero_sz);
 	vt_pread(fd, data_buf2, data_sz, data_off, &nrd);
 
-	pos0 = 0;
 	len1 = (size_t)(zero_off - data_off);
 	pos1 = len1;
 	pos2 = pos1 + zero_sz;
@@ -535,10 +565,13 @@ static void test_fallocate_zero_range_data(struct vt_env *vte)
 static void test_fallocate_sparse_(struct vt_env *vte,
 				   loff_t base_off, loff_t step_size)
 {
-	int fd;
-	size_t nwr, nrd;
-	loff_t off, len, tmp;
-	blkcnt_t blocks;
+	int fd = -1;
+	size_t nwr = 0;
+	size_t nrd = 0;
+	loff_t off = -1;
+	loff_t len = 0;
+	loff_t tmp = 0;
+	blkcnt_t blocks = 0;
 	struct stat st;
 	const char *path = vt_new_path_unique(vte);
 	const long cnt = 1024;

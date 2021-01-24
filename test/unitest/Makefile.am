@@ -6,7 +6,7 @@ voluta_unitest_CPPFLAGS += -I$(top_srcdir)/include
 voluta_unitest_CPPFLAGS += -I$(top_srcdir)/lib
 voluta_unitest_CPPFLAGS += -DVOLUTA_UNITEST=1
 voluta_unitest_LDFLAGS = $(NULL)
-voluta_unitest_LDFLAGS += $(PTHREAD_DEF)
+voluta_unitest_LDFLAGS += $(PTHREAD_CFLAGS) $(PTHREAD_DEF)
 voluta_unitest_LDFLAGS += -L$(top_builddir)/lib/
 voluta_unitest_LDFLAGS += -static
 voluta_unitest_LDADD = $(NULL)
@@ -38,6 +38,7 @@ voluta_unitest_SOURCES += ut_file_trunc.c
 voluta_unitest_SOURCES += ut_fillfs.c
 voluta_unitest_SOURCES += ut_ioctl.c
 voluta_unitest_SOURCES += ut_namei.c
+voluta_unitest_SOURCES += ut_recrypt.c
 voluta_unitest_SOURCES += ut_reload.c
 voluta_unitest_SOURCES += ut_rename.c
 voluta_unitest_SOURCES += ut_strings.c
@@ -46,17 +47,18 @@ voluta_unitest_SOURCES += ut_symlink.c
 voluta_unitest_SOURCES += ut_xattr.c
 
 
+if VOLUTA_RUN_UNITESTS
 ut_check_dir := "$(builddir)/ut"
 
 all-local:
 	@mkdir -p $(ut_check_dir)
 
-check-local: $(bin_PROGRAMS)
-	@mkdir -p $(ut_check_dir)
-	@echo "  TEST       " && $$(realpath "$^") -e 1 -s 0 $(ut_check_dir) ;
-	@echo "  TEST       " && $$(realpath "$^") -e 0 -s 1 $(ut_check_dir) ;
-	@echo "  TEST       " && $$(realpath "$^") -e 0 -s 0 $(ut_check_dir) ;
-	@rm -rf $(ut_check_dir)
-
 clean-local:
 	@rm -rf $(ut_check_dir)
+
+check-local: $(bin_PROGRAMS)
+	@mkdir -p $(ut_check_dir)
+	@echo "  TEST       " && $$(realpath "$^") $(ut_check_dir) ;
+	@rm -rf $(ut_check_dir)
+
+endif

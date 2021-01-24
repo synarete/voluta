@@ -26,11 +26,12 @@ struct voluta_qastat {
 	size_t nbytes_used;
 };
 
-struct voluta_fiovec {
-	loff_t off;
+struct voluta_xiovec {
+	void  *base;
 	size_t len;
-	void  *mm;
+	loff_t off;
 	int    fd;
+	void  *cookie;
 };
 
 struct voluta_slab {
@@ -51,7 +52,7 @@ struct voluta_qalloc {
 	struct voluta_qastat st;
 	struct voluta_list_head free_list;
 	struct voluta_slab slabs[8];
-};
+} voluta_aligned64;
 
 
 int voluta_resolve_memsize(size_t mem_want, size_t *out_mem_size);
@@ -64,15 +65,17 @@ int voluta_qalloc_fini(struct voluta_qalloc *qal);
 
 void *voluta_qalloc_malloc(struct voluta_qalloc *qal, size_t nbytes);
 
-void *voluta_qalloc_zalloc(struct voluta_qalloc *qal, size_t nbytes);
+void *voluta_qalloc_zmalloc(struct voluta_qalloc *qal, size_t nbytes);
 
 void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
+
+void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 
 void voluta_qalloc_stat(const struct voluta_qalloc *qal,
 			struct voluta_qastat *qast);
 
-int voluta_qalloc_fiovec(const struct voluta_qalloc *qal, void *ptr,
-			 size_t len, struct voluta_fiovec *fiov);
+int voluta_qalloc_xiovec(const struct voluta_qalloc *qal, void *ptr,
+			 size_t len, struct voluta_xiovec *xiov);
 
 int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
 			 const void *ptr, size_t nbytes);

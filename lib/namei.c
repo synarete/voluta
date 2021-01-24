@@ -44,6 +44,29 @@ static bool dir_hasflag(const struct voluta_inode_info *dir_ii,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static bool has_nlookup_mode(const struct voluta_inode_info *ii)
+{
+	const struct voluta_sb_info *sbi = ii_sbi(ii);
+
+	return ((sbi->sb_ctl_flags & VOLUTA_F_NLOOKUP) != 0);
+}
+
+static void ii_sub_nlookup(struct voluta_inode_info *ii, long n)
+{
+	if (has_nlookup_mode(ii)) {
+		ii->i_nlookup -= n;
+	}
+}
+
+static void ii_inc_nlookup(struct voluta_inode_info *ii, int err)
+{
+	if (!err && likely(ii != NULL) && has_nlookup_mode(ii)) {
+		ii->i_nlookup++;
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static bool isowner(const struct voluta_oper *op,
 		    const struct voluta_inode_info *ii)
 {
@@ -468,11 +491,14 @@ int voluta_do_lookup(const struct voluta_oper *op,
 		     struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_lookup(op, dir_ii, name, out_ii);
+	err = do_lookup(op, dir_ii, name, &ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 
+	*out_ii = ii;
 	return err;
 }
 
@@ -617,11 +643,14 @@ int voluta_do_create(const struct voluta_oper *op,
 		     struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_create(op, dir_ii, name, mode, out_ii);
+	err = do_create(op, dir_ii, name, mode, &ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 
+	*out_ii = ii;
 	return err;
 }
 
@@ -711,11 +740,14 @@ int voluta_do_mknod(const struct voluta_oper *op,
 		    struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_mknod(op, dir_ii, name, mode, dev, out_ii);
+	err = do_mknod(op, dir_ii, name, mode, dev, &ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 
+	*out_ii = ii;
 	return err;
 }
 
@@ -1009,6 +1041,7 @@ int voluta_do_link(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	ii_incref(ii);
 	err = do_link(op, dir_ii, name, ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(ii);
 	ii_decref(dir_ii);
 
@@ -1064,11 +1097,14 @@ int voluta_do_mkdir(const struct voluta_oper *op,
 		    struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_mkdir(op, dir_ii, name, mode, out_ii);
+	err = do_mkdir(op, dir_ii, name, mode, &ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 
+	*out_ii = ii;
 	return err;
 }
 
@@ -1243,11 +1279,14 @@ int voluta_do_symlink(const struct voluta_oper *op,
 		      struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_symlink(op, dir_ii, name, symval, out_ii);
+	err = do_symlink(op, dir_ii, name, symval, &ii);
+	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 
+	*out_ii = ii;
 	return err;
 }
 
@@ -1418,7 +1457,7 @@ static int do_fsyncdir(const struct voluta_inode_info *dir_ii)
 	if (err) {
 		return err;
 	}
-	err = voluta_flush_dirty_of(dir_ii, 0);
+	err = voluta_flush_dirty_of(dir_ii, VOLUTA_F_SYNC);
 	if (err) {
 		return err;
 	}
@@ -1453,7 +1492,7 @@ static int do_fsync(const struct voluta_inode_info *ii)
 	if (err) {
 		return err;
 	}
-	err = voluta_flush_dirty_of(ii, 0);
+	err = voluta_flush_dirty_of(ii, VOLUTA_F_SYNC);
 	if (err) {
 		return err;
 	}
@@ -1478,12 +1517,9 @@ int voluta_do_fsync(const struct voluta_oper *op,
 int voluta_do_flush(const struct voluta_oper *op,
 		    struct voluta_inode_info *ii)
 {
-	int err = 0;
+	const int flags = (op->ucred.uid == 0) ? VOLUTA_F_NOW : 0;
 
-	if (ii_isreg(ii) || (op->ucred.uid  == 0)) {
-		err = voluta_flush_dirty_of(ii, VOLUTA_F_ASSERTIVE);
-	}
-	return err;
+	return voluta_flush_dirty_of(ii, flags);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1818,56 +1854,70 @@ int voluta_do_statvfs(const struct voluta_oper *op,
 }
 
 static void fill_query_version(const struct voluta_inode_info *ii,
-			       struct voluta_ioc_query *qry)
+			       struct voluta_ioc_query *query)
 {
-	qry->u.version.major = voluta_version.major;
-	qry->u.version.minor = voluta_version.minor;
-	qry->u.version.sublevel = voluta_version.sublevel;
-	strncpy(qry->u.version.string, voluta_version.string,
-		sizeof(qry->u.version.string) - 1);
+	query->u.version.major = voluta_version.major;
+	query->u.version.minor = voluta_version.minor;
+	query->u.version.sublevel = voluta_version.sublevel;
+	strncpy(query->u.version.string, voluta_version.string,
+		sizeof(query->u.version.string) - 1);
 	unused(ii);
 }
 
 static void fill_query_volume(const struct voluta_inode_info *ii,
-			      struct voluta_ioc_query *qry)
+			      struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
-	const struct voluta_pstore *pstore = sbi->sb_pstore;
+	const struct voluta_vstore *vstore = sbi->sb_vstore;
 
-	qry->u.volume.size = (uint64_t)pstore->ps_size;
-	if (sbi->sb_volpath != NULL) {
-		strncpy(qry->u.volume.path, sbi->sb_volpath,
-			sizeof(qry->u.volume.path) - 1);
+	query->u.volume.size = (uint64_t)vstore->vs_pstore.ps_size;
+	if (vstore->vs_volpath != NULL) {
+		strncpy(query->u.volume.path, vstore->vs_volpath,
+			sizeof(query->u.volume.path) - 1);
 	}
 }
 
+static void fill_query_fsinfo(const struct voluta_inode_info *ii,
+			      struct voluta_ioc_query *query)
+{
+	const struct voluta_sb_info *sbi = ii_sbi(ii);
+	const unsigned long mask = VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR;
+
+	query->u.fsinfo.uptime = voluta_time_now() - sbi->sb_mntime;
+	query->u.fsinfo.msflags = sbi->sb_ms_flags;
+	query->u.fsinfo.encrypt = (sbi->sb_ctl_flags & mask) > 0;
+}
+
 static void fill_query_inode(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *qry)
+			     struct voluta_ioc_query *query)
 {
 	const enum voluta_inodef iflags = voluta_ii_flags(ii);
 	const enum voluta_dirf dirflags =
 		ii_isdir(ii) ? voluta_dir_flags(ii) : 0;
 
-	qry->u.inode.iflags = (int32_t)iflags;
-	qry->u.inode.dirflags = (int32_t)dirflags;
+	query->u.inode.iflags = (uint32_t)iflags;
+	query->u.inode.dirflags = (uint32_t)dirflags;
 }
 
 static int fill_query_result(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *qry)
+			     struct voluta_ioc_query *query)
 {
-	const enum voluta_query_type qtype = qry->qtype;
+	const enum voluta_query_type qtype = query->qtype;
 
-	voluta_memzero(&qry->u, sizeof(qry->u));
+	voluta_memzero(&query->u, sizeof(query->u));
 
 	switch (qtype) {
 	case VOLUTA_QUERY_VERSION:
-		fill_query_version(ii, qry);
+		fill_query_version(ii, query);
 		break;
 	case VOLUTA_QUERY_VOLUME:
-		fill_query_volume(ii, qry);
+		fill_query_volume(ii, query);
+		break;
+	case VOLUTA_QUERY_FSINFO:
+		fill_query_fsinfo(ii, query);
 		break;
 	case VOLUTA_QUERY_INODE:
-		fill_query_inode(ii, qry);
+		fill_query_inode(ii, query);
 		break;
 	case VOLUTA_QUERY_NONE:
 	default:
@@ -1878,7 +1928,7 @@ static int fill_query_result(const struct voluta_inode_info *ii,
 
 static int do_query(const struct voluta_oper *op,
 		    const struct voluta_inode_info *ii,
-		    struct voluta_ioc_query *qry)
+		    struct voluta_ioc_query *query)
 {
 	int err;
 
@@ -1886,7 +1936,7 @@ static int do_query(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = fill_query_result(ii, qry);
+	err = fill_query_result(ii, query);
 	if (err) {
 		return err;
 	}
@@ -1916,7 +1966,7 @@ static int check_fsowner(const struct voluta_sb_info *sbi,
 
 static int check_cloneable_volume(const struct voluta_sb_info *sbi)
 {
-	const struct voluta_pstore *pstore = sbi->sb_pstore;
+	const struct voluta_pstore *pstore = &sbi->sb_vstore->vs_pstore;
 
 	return (pstore->ps_flags & VOLUTA_F_MEMFD) ? -ENOTSUP : 0;
 }
@@ -1968,7 +2018,7 @@ static int gen_clone_name(char *str, size_t lim, struct voluta_str *name)
 	}
 	voluta_uuid_generate(&uu);
 	voluta_uuid_name(&uu, &nb);
-	len = snprintf(str, lim, "%s.voluta", nb.name);
+	len = snprintf(str, lim, "%s.voluta~", nb.name);
 	if (len >= (int)lim) {
 		return -EINVAL;
 	}
@@ -1996,7 +2046,7 @@ static int do_clone(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_clone(sbi->sb_pstore, &name);
+	err = voluta_vstore_clone(sbi->sb_vstore, &name);
 	if (err) {
 		return err;
 	}
@@ -2164,27 +2214,6 @@ int voluta_check_name(const char *name)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool has_nlookup_mode(const struct voluta_inode_info *ii)
-{
-	const struct voluta_sb_info *sbi = ii_sbi(ii);
-
-	return ((sbi->sb_ctl_flags & VOLUTA_F_NLOOKUP) != 0);
-}
-
-void voluta_inc_nlookup(struct voluta_inode_info *ii)
-{
-	if (has_nlookup_mode(ii)) {
-		ii->i_nlookup++;
-	}
-}
-
-static void sub_nlookup(struct voluta_inode_info *ii, long n)
-{
-	if (has_nlookup_mode(ii)) {
-		ii->i_nlookup -= n;
-	}
-}
-
 static struct voluta_inode_info *
 lookup_cached_ii(struct voluta_sb_info *sbi, const struct voluta_iaddr *iaddr)
 {
@@ -2195,7 +2224,7 @@ static void try_forget_cached_ii(struct voluta_inode_info *ii, size_t nlookup)
 {
 	struct voluta_sb_info *sbi = ii_sbi(ii);
 
-	sub_nlookup(ii, (long)nlookup);
+	ii_sub_nlookup(ii, (long)nlookup);
 	if ((ii->i_nlookup <= 0) && ii_isevictable(ii)) {
 		voulta_cache_forget_ii(sbi->sb_cache, ii);
 	}

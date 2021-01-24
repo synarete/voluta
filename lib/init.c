@@ -32,10 +32,21 @@ static int errno_or_errnum(int errnum)
 static int check_sysconf(void)
 {
 	long val;
+	long page_shift = 0;
 	const long page_size_min = VOLUTA_PAGE_SIZE;
+	const long page_shift_min = VOLUTA_PAGE_SHIFT;
+	const long page_shift_max = VOLUTA_PAGE_SHIFT_MAX;
 	const long cl_size_min = VOLUTA_CACHELINE_SIZE;
 
 	errno = 0;
+	val = (long)voluta_sc_phys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
+	val = (long)voluta_sc_avphys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
 	val = (long)voluta_sc_l1_dcache_linesize();
 	if ((val != cl_size_min) || (val % cl_size_min)) {
 		return errno_or_errnum(ENOTSUP);
@@ -44,13 +55,14 @@ static int check_sysconf(void)
 	if ((val < page_size_min) || (val % page_size_min)) {
 		return errno_or_errnum(ENOTSUP);
 	}
-	val = (long)voluta_sc_phys_pages();
-	if (val <= 0) {
-		return errno_or_errnum(ENOMEM);
+	for (long shift = page_shift_min; shift <= page_shift_max; ++shift) {
+		if (val == (1L << shift)) {
+			page_shift = val;
+			break;
+		}
 	}
-	val = (long)voluta_sc_avphys_pages();
-	if (val <= 0) {
-		return errno_or_errnum(ENOMEM);
+	if (page_shift == 0) {
+		return -ENOTSUP;
 	}
 	return 0;
 }
@@ -98,7 +110,7 @@ int voluta_lib_init(void)
 {
 	int err;
 
-	voluta_verify_persistent_format();
+	voluta_guarantee_persistent_format();
 
 	if (g_libvoluta_init) {
 		return 0;

@@ -2,7 +2,6 @@
 #
 # usage: BS=<4|8|16|32|64..> RUNTIME=<30|60|90..> fio2csv <test-dir>
 #
-
 self=$(basename ${BASH_SOURCE[0]})
 msg() { echo "$self: $*" >&2; }
 die() { msg "$*"; exit 1; }
@@ -18,6 +17,9 @@ MEGA=$((KILO * KILO))
 GIGA=$((MEGA * KILO))
 DATASIZE=${GIGA}
 RUNTIME=${RUNTIME:-30}
+BS=${BS:-64}
+RWMIX=${RWMIX:-30}
+RW=${RW:-readwrite}
 
 # TODO: echo 1 > /sys/block/<dev>/queue/iostats
 
@@ -27,6 +29,7 @@ _fio_minimal() {
   local bs=$3
   local bs_size=$((${bs} * 1024))
   local rwmix=$4
+  local rw=$5
   local ioengine="psync"
   local size=$((DATASIZE / ${jobs}))
   local base=$(basename ${testdir})
@@ -39,11 +42,11 @@ _fio_minimal() {
     --bs=${bs_size} \
     --size=${size} \
     --fallocate=none \
-    --rw=randrw \
+    --rw=$rw \
     --rwmixwrite=${rwmix} \
     --ioengine=psync \
-    --sync=1 \
-    --direct=1 \
+    --sync=0 \
+    --direct=0 \
     --time_based \
     --runtime=${RUNTIME} \
     --thinktime=0 \
@@ -51,39 +54,35 @@ _fio_minimal() {
     --group_reporting \
     --randrepeat=1 \
     --unlink=1 \
-    --fsync_on_close=1 \
+    --fsync_on_close=0 \
     --minimal \
     ;
 }
 
 _fio_jobs() {
-  local testdir=$(realpath $1)
-  local jobs=(1 2 4 8 16 32)
-  local bs=8
-  local rwmix=50
+  local testdir="$1"
+  local jobs=($(seq 1 $(nproc)))
 
   for job in ${jobs[@]}; do
-    _fio_minimal ${testdir} ${job} ${bs} ${rwmix}
+    _fio_minimal ${testdir} ${job} ${BS} ${RWMIX} ${RW}
   done
 }
 
-_fio_rwmix() {
-  local testdir=$(realpath $1)
-  local job=1
-  local bs=8
-  local rwmixs=(10 25 50 75 90)
+_fio_bss() {
+  local testdir="$1"
+  local bss=(8 64 512)
 
-  for rwmix in ${rwmixs[@]}; do
-    _fio_minimal ${testdir} ${job} ${bs} ${rwmix}
+  for bs in ${bss[@]}; do
+    _fio_minimal ${testdir} 1 ${bs} ${RWMIX} ${RW}
   done
 }
 
 _fio_to_cvs() {
   for testdir in "$@"; do
     if [[ -d ${testdir} ]]; then
-      _fio_jobs ${testdir}
-      #_fio_rwmix ${testdir}
-    fi    
+      #_fio_jobs $(realpath ${testdir})
+      _fio_bss $(realpath ${testdir})
+    fi
   done
 }
 
@@ -91,6 +90,8 @@ _fio_verify() {
   try which fio > /dev/null
 }
 
+
+# main
 _fio_verify
 _fio_to_cvs "$@"
 

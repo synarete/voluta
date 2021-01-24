@@ -19,74 +19,67 @@
 
 static void import_finalize(void)
 {
-	voluta_fini_archiver_inst();
-	voluta_delpass(&voluta_globals.import_passphrase);
-	voluta_pfree_string(&voluta_globals.import_src_real);
-	voluta_pfree_string(&voluta_globals.import_src_dir);
-	voluta_pfree_string(&voluta_globals.import_src_name);
-	voluta_pfree_string(&voluta_globals.import_dst_real);
-	voluta_pfree_string(&voluta_globals.import_dst_path);
+	voluta_destroy_arc_inst();
+	voluta_delpass(&voluta_globals.cmd.import.passphrase);
+	voluta_pfree_string(&voluta_globals.cmd.import.archive_real);
+	voluta_pfree_string(&voluta_globals.cmd.import.archive_dir);
+	voluta_pfree_string(&voluta_globals.cmd.import.archive_name);
+	voluta_pfree_string(&voluta_globals.cmd.import.volume_real);
+	voluta_pfree_string(&voluta_globals.cmd.import.volume_path);
 }
 
-static void import_setup_check_source(void)
+static void import_setup_check_archive(void)
 {
-	voluta_globals.import_src_real =
-		voluta_realpath_safe(voluta_globals.import_src);
-	voluta_die_if_not_reg(voluta_globals.import_src_real, false);
+	voluta_globals.cmd.import.archive_real =
+		voluta_realpath_safe(voluta_globals.cmd.import.archive);
+	voluta_die_if_not_reg(voluta_globals.cmd.import.archive_real, false);
 
-	voluta_globals.import_src_dir =
-		voluta_dirpath_safe(voluta_globals.import_src_real);
-	voluta_globals.import_src_name =
-		voluta_basename_safe(voluta_globals.import_src_real);
+	voluta_globals.cmd.import.archive_dir =
+		voluta_dirpath_safe(voluta_globals.cmd.import.archive_real);
+	voluta_globals.cmd.import.archive_name =
+		voluta_basename_safe(voluta_globals.cmd.import.archive_real);
 }
 
-static void import_setup_check_dest(void)
+static void import_setup_check_volume(void)
 {
-	voluta_globals.import_dst_real =
-		voluta_realpath_safe(voluta_globals.import_dst);
-	voluta_die_if_not_dir(voluta_globals.import_dst_real, false);
-	voluta_globals.import_dst_path =
-		voluta_joinpath_safe(voluta_globals.import_dst_real,
-				     voluta_globals.import_src_name);
-	voluta_die_if_exists(voluta_globals.import_dst_path);
+	voluta_globals.cmd.import.volume_real =
+		voluta_realpath_safe(voluta_globals.cmd.import.volume);
+	voluta_die_if_not_dir(voluta_globals.cmd.import.volume_real, false);
+	voluta_globals.cmd.import.volume_path =
+		voluta_joinpath_safe(voluta_globals.cmd.import.volume_real,
+				     voluta_globals.cmd.import.archive_name);
+	voluta_die_if_exists(voluta_globals.cmd.import.volume_path);
 }
 
 static void import_setup_check_pass(void)
 {
-	voluta_die_if_not_archive(voluta_globals.import_src_real,
-				  voluta_globals.import_passphrase);
+	voluta_die_if_not_archive(voluta_globals.cmd.import.archive_real);
 }
 
 static void import_setup_check_params(void)
 {
-	import_setup_check_source();
-	import_setup_check_dest();
+	import_setup_check_archive();
+	import_setup_check_volume();
 	import_setup_check_pass();
 }
 
-static void import_create_setup_env(void)
+static void import_create_arc_inst(void)
 {
-	int err;
-	struct voluta_archiver *arc = NULL;
 	struct voluta_ar_args args = {
-		.passph = voluta_globals.import_passphrase,
-		.volume = voluta_globals.import_dst_path,
-		.blobsdir = voluta_globals.import_src_dir,
-		.arcname = voluta_globals.import_src_name,
+		.passwd = voluta_globals.cmd.import.passphrase,
+		.volume = voluta_globals.cmd.import.volume_path,
+		.blobsdir = voluta_globals.cmd.import.archive_dir,
+		.arcname = voluta_globals.cmd.import.archive_name,
+		.memwant = 4 * VOLUTA_GIGA /* TODO: from command line */
 	};
 
-	voluta_init_archiver_inst();
-	arc = voluta_archiver_inst();
-	err = voluta_archiver_setargs(arc, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
+	voluta_create_arc_inst(&args);
 }
 
 static void import_run(void)
 {
 	int err;
-	struct voluta_archiver *arc = voluta_archiver_inst();
+	struct voluta_archiver *arc = voluta_arc_inst();
 
 	err = voluta_archiver_import(arc);
 	if (err) {
@@ -105,7 +98,7 @@ void voluta_execute_import(void)
 	import_setup_check_params();
 
 	/* Setup environment instance */
-	import_create_setup_env();
+	import_create_arc_inst();
 
 	/* Do actual import */
 	import_run();
@@ -120,6 +113,7 @@ static const char *voluta_import_usage[] = {
 	"import <archive-file> <volume-dir>",
 	"",
 	"options:",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -P, --passphrase-file=PATH   Passphrase input file (unsafe)",
 	NULL
 };
@@ -128,24 +122,27 @@ void voluta_getopt_import(void)
 {
 	int opt_chr = 1;
 	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
 		{ "passphrase-file", required_argument, NULL, 'P' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, no_argument, NULL, 0 },
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("P:h", opts);
-		if (opt_chr == 'P') {
-			voluta_globals.import_passphrase_file = optarg;
+		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.import.passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_import_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.import_src =
+	voluta_globals.cmd.import.archive =
 		voluta_consume_cmdarg("archive-file", false);
-	voluta_globals.import_dst =
-		voluta_consume_cmdarg("olume-dir", true);
+	voluta_globals.cmd.import.volume =
+		voluta_consume_cmdarg("volume-dir", true);
 }
 

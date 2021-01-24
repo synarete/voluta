@@ -329,9 +329,6 @@ static void xan_remove(struct voluta_xattr_node *xan,
 {
 	const size_t nents = xe_nents(xe);
 
-	voluta_assert(xe >= xan_begin(xan));
-	voluta_assert(xe < xan_end(xan));
-
 	xe_squeeze(xe, xan_last(xan));
 	xan_dec_nents(xan, nents);
 }
@@ -363,7 +360,6 @@ static size_t xai_nents(const struct voluta_xattr_ispec *xai)
 
 static void xai_set_nents(struct voluta_xattr_ispec *xai, size_t n)
 {
-	voluta_assert_le(n, ARRAY_SIZE(xai->xe));
 	xai->xa_nents = cpu_to_le16((uint16_t)n);
 }
 
@@ -464,9 +460,6 @@ static void xai_remove(struct voluta_xattr_ispec *xai,
 		       struct voluta_xattr_entry *xe)
 {
 	const size_t nents = xe_nents(xe);
-
-	voluta_assert(xe >= xai_begin(xai));
-	voluta_assert(xe < xai_end(xai));
 
 	xe_squeeze(xe, xai_last(xai));
 	xai_dec_nents(xai, nents);

@@ -34,6 +34,11 @@
 extern const struct voluta_vaddr voluta_vaddr_none;
 
 
+static inline int min_int(int x, int y)
+{
+	return (x < y) ? x : y;
+}
+
 static inline size_t min(size_t x, size_t y)
 {
 	return (x < y) ? x : y;
@@ -221,7 +226,7 @@ struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 static inline
 const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 {
-	return &vi->v_sbi->sb_crypto.md;
+	return &vi->v_sbi->sb_vstore->vs_crypto.md;
 }
 
 static inline

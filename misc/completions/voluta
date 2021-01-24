@@ -30,15 +30,6 @@ _voluta_umount() {
   fi
 }
 
-_voluta_query() {
-  local cur prev words cword
-  _init_completion || return
-
-  if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $( compgen -W '-v --version -p --volume -h' -- "$cur" ) )
-  fi
-}
-
 _voluta_clone() {
   local cur prev words cword
   _init_completion || return
@@ -47,6 +38,25 @@ _voluta_clone() {
     COMPREPLY+=( $( compgen -W '-n --name= -h' -- "$cur" ) )
   fi
 }
+
+_voluta_encrypt() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-V --verbose= -h' -- "$cur" ) )
+  fi
+}
+
+_voluta_decrypt() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-V --verbose= -h' -- "$cur" ) )
+  fi
+}
+
 
 _voluta_export() {
   local cur prev words cword
@@ -66,13 +76,55 @@ _voluta_import() {
   fi
 }
 
-_voluta_show() {
+_voluta_show_version() {
   local cur prev words cword
   _init_completion || return
 
   if [[ "$cur" == -* ]]; then
     COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
   fi
+}
+
+_voluta_show_volume() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_show_fsinfo() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_show() {
+  local cur prev words cword
+  _init_completion || return
+
+  case "${words[2]}" in
+    "version")
+      _voluta_show_version
+      ;;
+    "volume")
+      _voluta_show_volume
+      ;;
+    "fsinfo")
+      _voluta_show_fsinfo
+      ;;
+  esac
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
+  else
+    COMPREPLY+=( $(compgen -W 'version volume fsinfo' -- "$cur") )
+  fi
+
 }
 
 _voluta_subcmd() {
@@ -89,11 +141,14 @@ _voluta_subcmd() {
     "umount")
       _voluta_umount
       ;;
-    "query")
-      _voluta_query
-      ;;
     "clone")
       _voluta_clone
+      ;;
+    "encrypt")
+      _voluta_encrypt
+      ;;
+    "decrypt")
+      _voluta_decrypt
       ;;
     "export")
       _voluta_export
@@ -114,8 +169,8 @@ _voluta_main() {
   if [[ "$cur" == -* ]]; then
     COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
   else
-    COMPREPLY+=( $(compgen -W 'mkfs mount umount query' -- "$cur") )
-    COMPREPLY+=( $(compgen -W 'clone show export import' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'mkfs mount umount clone' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'encrypt decrypt export import show' -- "$cur") )
   fi
 }
 

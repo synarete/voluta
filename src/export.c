@@ -19,75 +19,68 @@
 
 static void export_finalize(void)
 {
-	voluta_fini_archiver_inst();
-	voluta_delpass(&voluta_globals.export_passphrase);
-	voluta_pfree_string(&voluta_globals.export_src_real);
-	voluta_pfree_string(&voluta_globals.export_src_dir);
-	voluta_pfree_string(&voluta_globals.export_src_name);
-	voluta_pfree_string(&voluta_globals.export_dst_real);
-	voluta_pfree_string(&voluta_globals.export_dst_path);
+	voluta_destroy_arc_inst();
+	voluta_delpass(&voluta_globals.cmd.export.passphrase);
+	voluta_pfree_string(&voluta_globals.cmd.export.volume_real);
+	voluta_pfree_string(&voluta_globals.cmd.export.volume_name);
+	voluta_pfree_string(&voluta_globals.cmd.export.archive_real);
+	voluta_pfree_string(&voluta_globals.cmd.export.archive_path);
 }
 
-static void export_setup_check_source(void)
+static void export_setup_check_volume(void)
 {
-	voluta_globals.export_src_real =
-		voluta_realpath_safe(voluta_globals.export_src);
-	voluta_die_if_not_reg(voluta_globals.export_src_real, false);
+	voluta_globals.cmd.export.volume_real =
+		voluta_realpath_safe(voluta_globals.cmd.export.volume);
+	voluta_die_if_not_reg(voluta_globals.cmd.export.volume_real, false);
 
-	voluta_globals.export_src_dir =
-		voluta_dirpath_safe(voluta_globals.export_src_real);
-	voluta_globals.export_src_name =
-		voluta_basename_safe(voluta_globals.export_src_real);
+	voluta_globals.cmd.export.volume_name =
+		voluta_basename_safe(voluta_globals.cmd.export.volume_real);
+	voluta_die_if_not_volume(voluta_globals.cmd.export.volume_real,
+				 false, false, false, NULL);
 }
 
-static void export_setup_check_dest(void)
+static void export_setup_check_archive(void)
 {
-	voluta_globals.export_dst_real =
-		voluta_realpath_safe(voluta_globals.export_dst);
-	voluta_die_if_not_dir(voluta_globals.export_dst_real, false);
-	voluta_globals.export_dst_path =
-		voluta_joinpath_safe(voluta_globals.export_dst_real,
-				     voluta_globals.export_src_name);
-	voluta_die_if_exists(voluta_globals.export_dst_path);
+	voluta_globals.cmd.export.archive_real =
+		voluta_realpath_safe(voluta_globals.cmd.export.archive);
+	voluta_die_if_not_dir(voluta_globals.cmd.export.archive_real, false);
+	voluta_globals.cmd.export.archive_path =
+		voluta_joinpath_safe(voluta_globals.cmd.export.archive_real,
+				     voluta_globals.cmd.export.volume_name);
+	voluta_die_if_exists(voluta_globals.cmd.export.archive_path);
 }
 
 static void export_setup_check_pass(void)
 {
-	enum voluta_zbf zbf;
+	const char *path = voluta_globals.cmd.export.volume_real;
 
-	voluta_die_if_not_volume(voluta_globals.export_src_real, NULL, &zbf);
+	voluta_die_if_not_volume(path, false, false, false, NULL);
 }
 
 static void export_setup_check_params(void)
 {
-	export_setup_check_source();
-	export_setup_check_dest();
+	export_setup_check_volume();
+	export_setup_check_archive();
 	export_setup_check_pass();
 }
 
-static void export_create_setup_env(void)
+static void export_create_arc_inst(void)
 {
-	int err;
-	struct voluta_archiver *arc = NULL;
 	struct voluta_ar_args args = {
-		.passph = voluta_globals.export_passphrase,
-		.volume = voluta_globals.export_src_real,
-		.blobsdir = voluta_globals.export_dst_real,
-		.arcname = voluta_globals.export_src_name,
+		.passwd = voluta_globals.cmd.export.passphrase,
+		.volume = voluta_globals.cmd.export.volume_real,
+		.blobsdir = voluta_globals.cmd.export.archive_real,
+		.arcname = voluta_globals.cmd.export.volume_name,
+		.memwant = 4 * VOLUTA_GIGA /* TODO: from command line */
 	};
 
-	voluta_init_archiver_inst();
-	arc = voluta_archiver_inst();
-	err = voluta_archiver_setargs(arc, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
+	voluta_create_arc_inst(&args);
 }
 
 static void export_run(void)
 {
 	int err;
-	struct voluta_archiver *arc = voluta_archiver_inst();
+	struct voluta_archiver *arc = voluta_arc_inst();
 
 	err = voluta_archiver_export(arc);
 	if (err) {
@@ -106,7 +99,7 @@ void voluta_execute_export(void)
 	export_setup_check_params();
 
 	/* Setup environment instance */
-	export_create_setup_env();
+	export_create_arc_inst();
 
 	/* Do actual export */
 	export_run();
@@ -121,6 +114,7 @@ static const char *voluta_export_usage[] = {
 	"export <volume-file> <export-dir>",
 	"",
 	"options:",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -P, --passphrase-file=PATH   Passphrase input file (unsafe)",
 	NULL
 };
@@ -129,24 +123,27 @@ void voluta_getopt_export(void)
 {
 	int opt_chr = 1;
 	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
 		{ "passphrase-file", required_argument, NULL, 'P' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, no_argument, NULL, 0 },
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("P:h", opts);
-		if (opt_chr == 'P') {
-			voluta_globals.export_passphrase_file = optarg;
+		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.export.passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_export_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.export_src =
+	voluta_globals.cmd.export.volume =
 		voluta_consume_cmdarg("volume-file", false);
-	voluta_globals.export_dst =
+	voluta_globals.cmd.export.archive =
 		voluta_consume_cmdarg("export-dir", true);
 }
 

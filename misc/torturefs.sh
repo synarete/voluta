@@ -164,7 +164,7 @@ do_gcc_check() {
 }
 
 # Glibc
-do_gcc_check() {
+do_glibc_check() {
   local currdir=$(pwd)
   local workdir="$1/glibc"
   local builddir="$1/glibc-build"

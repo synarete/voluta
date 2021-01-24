@@ -17,31 +17,44 @@
 #define _GNU_SOURCE 1
 #include <sys/vfs.h>
 #include <sys/statvfs.h>
+#include <sys/mount.h>
 #include "voluta-prog.h"
 
 
 static void umount_finalize(void)
 {
-	voluta_pfree_string(&voluta_globals.umount_point_real);
+	voluta_pfree_string(&voluta_globals.cmd.umount.point_real);
 }
 
 static void umount_setup_check_params(void)
 {
-	voluta_globals.umount_point_real =
-		voluta_realpath_safe(voluta_globals.umount_point);
+	int err;
+	struct stat st;
+	const char *mntpath;
 
-	voluta_die_if_not_mntdir(voluta_globals.umount_point_real, false);
 	voluta_die_if_no_mountd();
+
+	err = voluta_sys_stat(voluta_globals.cmd.umount.point, &st);
+	if ((err == -ENOTCONN) && voluta_globals.cmd.umount.force) {
+		voluta_log_debug("transport endpoint not connected: %s",
+				 voluta_globals.cmd.umount.point);
+	} else {
+		voluta_globals.cmd.umount.point_real =
+			voluta_realpath_safe(voluta_globals.cmd.umount.point);
+
+		mntpath = voluta_globals.cmd.umount.point_real;
+		voluta_die_if_not_mntdir(mntpath, false);
+	}
 }
 
 static const char *umount_dirpath(void)
 {
 	const char *path;
 
-	if (voluta_globals.umount_point_real != NULL) {
-		path = voluta_globals.umount_point_real;
+	if (voluta_globals.cmd.umount.point_real != NULL) {
+		path = voluta_globals.cmd.umount.point_real;
 	} else {
-		path = voluta_globals.umount_point;
+		path = voluta_globals.cmd.umount.point;
 	}
 	return path;
 }
@@ -49,11 +62,20 @@ static const char *umount_dirpath(void)
 static void umount_send_recv(void)
 {
 	int err;
+	int mnt_flags = 0;
 	const char *path = umount_dirpath();
 
-	err = voluta_rpc_umount(path, getuid(), getgid());
+	if (voluta_globals.cmd.umount.lazy) {
+		mnt_flags |= MNT_DETACH;
+	}
+	if (voluta_globals.cmd.umount.force) {
+		mnt_flags |= MNT_FORCE;
+	}
+	err = voluta_rpc_umount(path, getuid(), getgid(), mnt_flags);
 	if (err) {
-		voluta_die(err, "umount failed: %s", path);
+		voluta_die(err, "umount failed: %s lazy=%d force=%d", path,
+			   (int)voluta_globals.cmd.umount.lazy,
+			   (int)voluta_globals.cmd.umount.force);
 	}
 }
 
@@ -111,6 +133,7 @@ static const char *voluta_umount_usage[] = {
 	"umount [options] <mount-point>",
 	"",
 	"options:",
+	"  -l, --lazy                   Detach umount",
 	"  -f, --force                  Forced umount",
 	NULL
 };
@@ -119,22 +142,25 @@ void voluta_getopt_umount(void)
 {
 	int opt_chr = 1;
 	const struct option opts[] = {
+		{ "lazy", no_argument, NULL, 'l' },
 		{ "force", no_argument, NULL, 'f' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, no_argument, NULL, 0 },
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("fh", opts);
-		if (opt_chr == 'f') {
-			voluta_globals.umount_force = true;
+		opt_chr = voluta_getopt_subcmd("lfh", opts);
+		if (opt_chr == 'l') {
+			voluta_globals.cmd.umount.lazy = true;
+		} else if (opt_chr == 'f') {
+			voluta_globals.cmd.umount.force = true;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_umount_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.umount_point =
+	voluta_globals.cmd.umount.point =
 		voluta_consume_cmdarg("mount-point", true);
 }
 

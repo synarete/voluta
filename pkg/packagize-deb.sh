@@ -43,7 +43,7 @@ run which dh
 run mkdir -p ${autotoolsdir}
 run cd ${autotoolsdir}
 run ${basedir}/bootstrap
-run ${basedir}/configure
+run ${basedir}/configure "--enable-unitests=no"
 run make
 run make distcheck
 

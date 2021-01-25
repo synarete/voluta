@@ -43,6 +43,7 @@
 #define STATICASSERT(expr_)             VOLUTA_STATICASSERT(expr_)
 #define STATICASSERT_EQ(a_, b_)         VOLUTA_STATICASSERT_EQ(a_, b_)
 #define STATICASSERT_LT(a_, b_)         VOLUTA_STATICASSERT_LT(a_, b_)
+#define STATICASSERT_LE(a_, b_)         VOLUTA_STATICASSERT_LE(a_, b_)
 #define STATICASSERT_GT(a_, b_)         VOLUTA_STATICASSERT_GT(a_, b_)
 #define STATICASSERT_SIZEOF(t_, s_)     VOLUTA_STATICASSERT_EQ(sizeof(t_), s_)
 

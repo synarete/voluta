@@ -138,7 +138,8 @@ static void mountd_create_setup_env(void)
 
 static void mountd_trace_start(void)
 {
-	voluta_log_process_info();
+	voluta_log_meta_banner(true);
+	voluta_log_info("%s", voluta_globals.prog);
 }
 
 static void mountd_load_mntrules(void)

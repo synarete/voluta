@@ -66,6 +66,8 @@ size_t voluta_sc_avphys_pages(void);
 size_t voluta_sc_l1_dcache_linesize(void);
 
 /* time wrappers */
+void voluta_rclock_now(struct timespec *ts);
+
 void voluta_mclock_now(struct timespec *ts);
 
 void voluta_mclock_dur(const struct timespec *start, struct timespec *dur);

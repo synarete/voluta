@@ -48,7 +48,7 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_fuseq;
-struct voluta_fuseq_ctx;
+struct voluta_fuseq_sub;
 struct voluta_fuseq_in;
 struct voluta_fuseq_inb;
 struct voluta_fuseq_outb;
@@ -117,6 +117,7 @@ struct voluta_thread {
 /* wrapper of pthread_mutex_t */
 struct voluta_mutex {
 	pthread_mutex_t mutex;
+	int alive;
 };
 
 struct voluta_pipe {
@@ -443,7 +444,7 @@ struct voluta_fuseq_conn_info {
 	size_t  time_gran;
 };
 
-struct voluta_fuseq_ctx {
+struct voluta_fuseq_sub {
 	const struct voluta_fuseq_cmd  *cmd;
 	struct voluta_fuseq            *fq;
 	struct voluta_sb_info          *sbi;
@@ -454,18 +455,20 @@ struct voluta_fuseq_ctx {
 
 struct voluta_fuseq {
 	struct voluta_fuseq_conn_info   fq_coni;
-	struct voluta_fuseq_ctx         fq_ctx;
+	struct voluta_fuseq_sub         fq_sub[1];
 	struct voluta_sb_info          *fq_sbi;
 	struct voluta_qalloc           *fq_qal;
 	struct voluta_pipe              fq_pipe;
-	time_t  fq_times;
+	struct voluta_mutex             fq_ch_lock;
+	struct voluta_mutex             fq_fs_lock;
+	size_t  fq_nsubs;
 	size_t  fq_nopers;
+	time_t  fq_times;
 	int     fq_fuse_fd;
 	int     fq_null_fd;
-	int     fq_chan_err;
-	int     fq_got_init;
-	int     fq_got_destroy;
-	int     fq_deny_others;
+	bool    fq_got_init;
+	bool    fq_got_destroy;
+	bool    fq_deny_others;
 	bool    fq_active;
 	bool    fq_mount;
 	bool    fq_umount;

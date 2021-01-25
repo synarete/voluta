@@ -449,20 +449,19 @@ static void test_mmap_on_holes(struct vt_env *vte)
 /*
  * Tests mixed mmap and read/write operations
  */
-static void test_mmap_rw_mixed(struct vt_env *vte)
+static void test_mmap_rw_mixed_(struct vt_env *vte, size_t bsz)
 {
 	int fd = -1;
-	size_t nrd, bsz = VT_BK_SIZE;
-	loff_t off;
-	void *addr;
-	char *data, *buf1, *buf2;
+	size_t nrd = 0;
+	loff_t off = -1;
+	void *addr = NULL;
+	char *data = NULL;
 	const size_t mlen = 4 * VT_UMEGA;
 	const int prot = PROT_READ | PROT_WRITE;
 	const int flag = MAP_SHARED;
+	char *buf1 = vt_new_buf_rands(vte, bsz);
+	char *buf2 = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
-
-	buf1 = vt_new_buf_rands(vte, bsz);
-	buf2 = vt_new_buf_rands(vte, bsz);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_fallocate(fd, 0, 0, (loff_t)mlen);
@@ -491,6 +490,12 @@ static void test_mmap_rw_mixed(struct vt_env *vte)
 	vt_munmap(addr, mlen);
 	vt_close(fd);
 	vt_unlink(path);
+}
+
+static void test_mmap_rw_mixed(struct vt_env *vte)
+{
+	test_mmap_rw_mixed_(vte, 4 * VT_KILO);
+	test_mmap_rw_mixed_(vte, VT_BK_SIZE);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -64,9 +64,11 @@ int voluta_qalloc_fini(struct voluta_qalloc *qal);
 
 void *voluta_qalloc_malloc(struct voluta_qalloc *qal, size_t nbytes);
 
-void *voluta_qalloc_zalloc(struct voluta_qalloc *qal, size_t nbytes);
+void *voluta_qalloc_zmalloc(struct voluta_qalloc *qal, size_t nbytes);
 
 void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
+
+void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 
 void voluta_qalloc_stat(const struct voluta_qalloc *qal,
 			struct voluta_qastat *qast);

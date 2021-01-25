@@ -313,7 +313,6 @@ static struct voluta_dir_entry *de_next(const struct voluta_dir_entry *de)
 {
 	const size_t step = de_nents(de);
 
-	voluta_assert_gt(step, 0);
 	return unconst(de + step);
 }
 
@@ -363,9 +362,6 @@ static size_t de_slot(const struct voluta_dir_entry *de,
 		      const struct voluta_dir_entry *beg)
 {
 	const ptrdiff_t slot = (de - beg);
-
-	voluta_assert_ge(de, beg);
-	voluta_assert_lt(slot, VOLUTA_DIR_HTNODE_NENTS);
 
 	return (size_t)slot;
 }
@@ -1651,7 +1647,6 @@ static int stage_htnode_by_index(struct voluta_dir_ctx *d_ctx,
 	const size_t depth = index_to_depth(idx);
 	size_t child_ord[HTREE_DEPTH_MAX];
 
-	voluta_assert_lt(depth, ARRAY_SIZE(child_ord));
 	if (depth >= ARRAY_SIZE(child_ord)) {
 		return -ENOENT;
 	}

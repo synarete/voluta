@@ -844,7 +844,7 @@ void *voluta_qalloc_malloc(struct voluta_qalloc *qal, size_t nbytes)
 	return ptr;
 }
 
-void *voluta_qalloc_zalloc(struct voluta_qalloc *qal, size_t nbytes)
+void *voluta_qalloc_zmalloc(struct voluta_qalloc *qal, size_t nbytes)
 {
 	void *ptr;
 
@@ -1102,6 +1102,14 @@ void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
 	if (err) {
 		voluta_panic("free error: ptr=%p nbytes=%lu err=%d",
 			     ptr, nbytes, err);
+	}
+}
+
+void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
+{
+	if (ptr != NULL) {
+		voluta_memzero(ptr, nbytes);
+		voluta_qalloc_free(qal, ptr, nbytes);
 	}
 }
 

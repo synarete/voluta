@@ -984,10 +984,13 @@ void voluta_set_verbose_mode(const char *mode)
 	}
 }
 
-void voluta_log_process_info(void)
+void voluta_log_meta_banner(bool start)
 {
-	voluta_log_info("voluta %s %s",
-			voluta_globals.version, voluta_globals.prog);
+	const char *tag = start ? "+++" : "---";
+	const char *name = voluta_globals.name;
+	const char *vers = voluta_globals.version;
+
+	voluta_log_info("%s %s %s %s", tag, name, vers, tag);
 }
 
 

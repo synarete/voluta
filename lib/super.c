@@ -2794,15 +2794,15 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 
 static int sbi_init_encbuf(struct voluta_sb_info *sbi)
 {
-	sbi->sb_encbuf = voluta_qalloc_malloc(sbi->sb_qalloc,
-					      sizeof(*sbi->sb_encbuf));
+	sbi->sb_encbuf = voluta_qalloc_zmalloc(sbi->sb_qalloc,
+					       sizeof(*sbi->sb_encbuf));
 	return (sbi->sb_encbuf == NULL) ? -ENOMEM : 0;
 }
 
 static void sbi_fini_encbuf(struct voluta_sb_info *sbi)
 {
-	voluta_qalloc_free(sbi->sb_qalloc,
-			   sbi->sb_encbuf, sizeof(*sbi->sb_encbuf));
+	voluta_qalloc_zfree(sbi->sb_qalloc,
+			    sbi->sb_encbuf, sizeof(*sbi->sb_encbuf));
 }
 
 static int sbi_init_iti(struct voluta_sb_info *sbi)
@@ -3035,7 +3035,7 @@ int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags)
 	return err;
 }
 
-int voluta_exec_timeout_cycle(struct voluta_sb_info *sbi, int flags)
+int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
 {
 	return voluta_flush_dirty_and_relax(sbi, flags | VOLUTA_F_TIMEOUT);
 }

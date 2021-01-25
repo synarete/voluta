@@ -146,18 +146,29 @@ void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* time */
-void voluta_mclock_now(struct timespec *ts)
+static void do_clock_gettime(clockid_t clock_id, struct timespec *tp)
 {
 	int err;
 
-	err = voluta_sys_clock_gettime(CLOCK_MONOTONIC, ts);
+	err = voluta_sys_clock_gettime(clock_id, tp);
 	if (err) {
-		voluta_panic("clock_gettime err=%d", err);
+		voluta_panic("clock_gettime failure: clock_id=%ld err=%d",
+			     (long)clock_id, err);
 	}
 }
 
-static void mclock_dif(const struct timespec *beg,
-		       const struct timespec *end, struct timespec *dif)
+void voluta_rclock_now(struct timespec *ts)
+{
+	do_clock_gettime(CLOCK_REALTIME, ts);
+}
+
+void voluta_mclock_now(struct timespec *ts)
+{
+	do_clock_gettime(CLOCK_MONOTONIC, ts);
+}
+
+static void timespec_dif(const struct timespec *beg,
+			 const struct timespec *end, struct timespec *dif)
 {
 	dif->tv_sec = end->tv_sec - beg->tv_sec;
 	if (end->tv_nsec >= beg->tv_nsec) {
@@ -173,7 +184,7 @@ void voluta_mclock_dur(const struct timespec *start, struct timespec *dur)
 	struct timespec now;
 
 	voluta_mclock_now(&now);
-	mclock_dif(start, &now, dur);
+	timespec_dif(start, &now, dur);
 }
 
 time_t voluta_time_now(void)

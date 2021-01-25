@@ -750,7 +750,7 @@ static int dirtyqs_init(struct voluta_dirtyqs *dqs, struct voluta_qalloc *qal)
 	dqs->dq_qalloc = qal;
 	dqs->dq_nbins = 0;
 
-	dqs->dq_bins = voluta_qalloc_zalloc(qal, msize);
+	dqs->dq_bins = voluta_qalloc_zmalloc(qal, msize);
 	if (dqs->dq_bins == NULL) {
 		return -ENOMEM;
 	}
@@ -1875,7 +1875,7 @@ static int cache_init_nil_bk(struct voluta_cache *cache)
 	struct voluta_qalloc *qal = cache->c_qalloc;
 	const size_t bk_size = sizeof(*cache->c_nil_bk);
 
-	cache->c_nil_bk = voluta_qalloc_zalloc(qal, bk_size);
+	cache->c_nil_bk = voluta_qalloc_zmalloc(qal, bk_size);
 	return (cache->c_nil_bk != NULL) ? 0 : -ENOMEM;
 }
 

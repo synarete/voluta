@@ -371,7 +371,7 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
 
 int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags);
 
-int voluta_exec_timeout_cycle(struct voluta_sb_info *sbi, int flags);
+int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags);
 
 int voluta_shut_super(struct voluta_sb_info *sbi);
 
@@ -1003,7 +1003,10 @@ void voluta_mutex_destroy(struct voluta_mutex *mutex);
 
 void voluta_mutex_lock(struct voluta_mutex *mutex);
 
-bool voluta_mutex_rylock(struct voluta_mutex *mutex);
+bool voluta_mutex_trylock(struct voluta_mutex *mutex);
+
+bool voluta_mutex_timedlock(struct voluta_mutex *mutex,
+			    const struct timespec *abstime);
 
 void voluta_mutex_unlock(struct voluta_mutex *mutex);
 

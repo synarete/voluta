@@ -108,7 +108,7 @@ static char *mount_volume_clone_path(void)
 	const char *volume_real = voluta_globals.mount_volume_real;
 
 	for (int i = 1; i < 100; ++i) {
-		volume_clone = voluta_sprintf_path("%s.%02d", volume_real, i);
+		volume_clone = voluta_sprintf_path("%s.%02d~", volume_real, i);
 		err = voluta_sys_stat(volume_clone, &st);
 		if (err == -ENOENT) {
 			return volume_clone;
@@ -300,7 +300,8 @@ static void mount_create_setup_env(void)
  */
 static void mount_trace_start(void)
 {
-	voluta_log_process_info();
+	voluta_log_meta_banner(true);
+	voluta_log_info("executable: %s", voluta_globals.prog);
 	voluta_log_info("mount-point: %s", voluta_globals.mount_point_real);
 	if (voluta_globals.mount_volume) {
 		voluta_log_info("volume: %s", voluta_globals.mount_volume);
@@ -313,7 +314,7 @@ static void mount_trace_finish(void)
 
 	voluta_log_info("mount done: %s", voluta_globals.mount_point_real);
 	voluta_log_info("execution time: %ld seconds", exec_time);
-	voluta_log_info("finish: %s", voluta_globals.version);
+	voluta_log_meta_banner(false);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

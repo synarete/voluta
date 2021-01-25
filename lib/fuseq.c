@@ -58,7 +58,15 @@
 	(VOLUTA_CMD_TAIL_MAX / sizeof(struct fuse_forget_one))
 
 
-/* Local types */
+/* local functions */
+static void fuseq_lock_ch(const struct voluta_fuseq_sub *fqs);
+static bool fuseq_timedlock_ch(const struct voluta_fuseq_sub *fqs);
+static void fuseq_unlock_ch(const struct voluta_fuseq_sub *fqs);
+static void fuseq_lock_fs(const struct voluta_fuseq_sub *fqs);
+static void fuseq_unlock_fs(const struct voluta_fuseq_sub *fqs);
+
+
+/* local types */
 struct voluta_fuseq_hdr_in {
 	struct fuse_in_header   hdr;
 };
@@ -327,7 +335,7 @@ struct voluta_fuseq_xiter {
 
 struct voluta_fuseq_wr_iter {
 	struct voluta_rwiter_ctx rwi;
-	struct voluta_fuseq_ctx *fqc;
+	struct voluta_fuseq_sub *fqs;
 	size_t nwr;
 	size_t nwr_max;
 };
@@ -335,7 +343,7 @@ struct voluta_fuseq_wr_iter {
 struct voluta_fuseq_rd_iter {
 	struct voluta_fiovec fiov[VOLUTA_IO_NBK_MAX];
 	struct voluta_rwiter_ctx rwi;
-	struct voluta_fuseq_ctx *fqc;
+	struct voluta_fuseq_sub *fqs;
 	size_t cnt;
 	size_t nrd;
 	size_t nrd_max;
@@ -378,8 +386,8 @@ struct voluta_fuseq_outb {
 };
 
 
-typedef void (*voluta_fuseq_hook)(struct voluta_fuseq_ctx *, ino_t,
-				  const struct voluta_fuseq_in *);
+typedef int (*voluta_fuseq_hook)(struct voluta_fuseq_sub *, ino_t,
+				 const struct voluta_fuseq_in *);
 
 struct voluta_fuseq_cmd {
 	voluta_fuseq_hook hook;
@@ -698,61 +706,43 @@ static void fill_fuse_open(struct fuse_open_out *open)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void
-check_fh(const struct voluta_fuseq_ctx *fqc, ino_t ino, uint64_t fh)
+static void check_fh(const struct voluta_fuseq_sub *fqs,
+		     ino_t ino, uint64_t fh)
 {
 	if (fh != 0) {
-		log_warn("op=%s ino=%lu fh=0x%lx", fqc->cmd->name, ino, fh);
+		log_warn("op=%s ino=%lu fh=0x%lx", fqs->cmd->name, ino, fh);
 	}
 }
 
-static void fuseq_set_chan_err(struct voluta_fuseq *fq, int chan_err)
-{
-	fq->fq_chan_err = chan_err;
-}
-
-static int fuseq_get_chan_err(const struct voluta_fuseq *fq)
-{
-	return fq->fq_chan_err;
-}
-
-static void fuseq_fill_out_header(struct voluta_fuseq_ctx *fqc,
+static void fuseq_fill_out_header(struct voluta_fuseq_sub *fqs,
 				  struct fuse_out_header *out_hdr,
 				  size_t len, int err)
 {
 	out_hdr->len = (uint32_t)len;
 	out_hdr->error = -abs(err);
-	out_hdr->unique = fqc->op.unique;
+	out_hdr->unique = fqs->op.unique;
 
-	voluta_assert_gt(fqc->op.unique, 0);
-	voluta_assert_gt(fqc->op.opcode, 0);
+	voluta_assert_gt(fqs->op.unique, 0);
+	voluta_assert_gt(fqs->op.opcode, 0);
 }
 
-static void fuseq_send_msg(struct voluta_fuseq_ctx *fqc,
-			   const struct iovec *iov, size_t iovcnt)
+static int fuseq_send_msg(struct voluta_fuseq_sub *fqs,
+			  const struct iovec *iov, size_t iovcnt)
 {
 	int err;
 	size_t nwr = 0;
-	struct voluta_fuseq *fq = fqc->fq;
+	const int fuse_fd = fqs->fq->fq_fuse_fd;
 
-	voluta_assert(fqc->fq->fq_mount);
-	err = voluta_sys_writev(fq->fq_fuse_fd, iov, (int)iovcnt, &nwr);
-
-	/* XXX */
-	voluta_assert_ok(err);
-	voluta_assert_gt(nwr, 0);
-
-	if (!fqc->fq->fq_umount) {
-		/* XXX */
-		voluta_assert_ok(err);
-		voluta_assert_gt(nwr, 0);
+	err = voluta_sys_writev(fuse_fd, iov, (int)iovcnt, &nwr);
+	if (err) {
+		log_warn("send-to-fuse failed: fuse_fd=%d iovcnt=%lu err=%d",
+			 fuse_fd, iovcnt, err);
 	}
-
-	fuseq_set_chan_err(fq, err);
+	return err;
 }
 
-static void fuseq_reply_arg(struct voluta_fuseq_ctx *fqc,
-			    const void *arg, size_t argsz)
+static int fuseq_reply_arg(struct voluta_fuseq_sub *fqs,
+			   const void *arg, size_t argsz)
 {
 	struct iovec iov[2];
 	struct fuse_out_header hdr;
@@ -766,13 +756,13 @@ static void fuseq_reply_arg(struct voluta_fuseq_ctx *fqc,
 		iov[1].iov_len = argsz;
 		cnt = 2;
 	}
-	fuseq_fill_out_header(fqc, &hdr, hdrsz + argsz, 0);
-	fuseq_send_msg(fqc, iov, cnt);
+	fuseq_fill_out_header(fqs, &hdr, hdrsz + argsz, 0);
+	return fuseq_send_msg(fqs, iov, cnt);
 }
 
-static void fuseq_reply_arg2(struct voluta_fuseq_ctx *fqc,
-			     const void *arg, size_t argsz,
-			     const void *buf, size_t bufsz)
+static int fuseq_reply_arg2(struct voluta_fuseq_sub *fqs,
+			    const void *arg, size_t argsz,
+			    const void *buf, size_t bufsz)
 {
 	struct iovec iov[3];
 	struct fuse_out_header hdr;
@@ -785,17 +775,17 @@ static void fuseq_reply_arg2(struct voluta_fuseq_ctx *fqc,
 	iov[2].iov_base = unconst(buf);
 	iov[2].iov_len = bufsz;
 
-	fuseq_fill_out_header(fqc, &hdr, hdrsz + argsz + bufsz, 0);
-	fuseq_send_msg(fqc, iov, 3);
+	fuseq_fill_out_header(fqs, &hdr, hdrsz + argsz + bufsz, 0);
+	return fuseq_send_msg(fqs, iov, 3);
 }
 
-static void fuseq_reply_buf(struct voluta_fuseq_ctx *fqc,
-			    const void *buf, size_t bsz)
+static int fuseq_reply_buf(struct voluta_fuseq_sub *fqs,
+			   const void *buf, size_t bsz)
 {
-	fuseq_reply_arg(fqc, buf, bsz);
+	return fuseq_reply_arg(fqs, buf, bsz);
 }
 
-static void fuseq_reply_err(struct voluta_fuseq_ctx *fqc, int err)
+static int fuseq_reply_err(struct voluta_fuseq_sub *fqs, int err)
 {
 	struct iovec iov[1];
 	struct fuse_out_header hdr;
@@ -804,31 +794,32 @@ static void fuseq_reply_err(struct voluta_fuseq_ctx *fqc, int err)
 	iov[0].iov_base = &hdr;
 	iov[0].iov_len = hdrsize;
 
-	fuseq_fill_out_header(fqc, &hdr, hdrsize, err);
-	fuseq_send_msg(fqc, iov, 1);
+	fuseq_fill_out_header(fqs, &hdr, hdrsize, err);
+	return fuseq_send_msg(fqs, iov, 1);
 }
 
-static void fuseq_reply_status(struct voluta_fuseq_ctx *fqc, int status)
+static int fuseq_reply_status(struct voluta_fuseq_sub *fqs, int status)
 {
-	fuseq_reply_err(fqc, status);
+	return fuseq_reply_err(fqs, status);
 }
 
-static void fuseq_reply_none(struct voluta_fuseq_ctx *fqc)
+static int fuseq_reply_none(struct voluta_fuseq_sub *fqs)
 {
-	fqc->op.unique = 0;
+	fqs->op.unique = 0;
+	return 0;
 }
 
-static void fuseq_reply_entry_ok(struct voluta_fuseq_ctx *fqc,
-				 const struct stat *st)
+static int fuseq_reply_entry_ok(struct voluta_fuseq_sub *fqs,
+				const struct stat *st)
 {
 	struct fuse_entry_out arg;
 
 	fill_fuse_entry(&arg, st);
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_create_ok(struct voluta_fuseq_ctx *fqc,
-				  const struct stat *st)
+static int fuseq_reply_create_ok(struct voluta_fuseq_sub *fqs,
+				 const struct stat *st)
 {
 	struct fuseq_create_out {
 		struct fuse_entry_out ent;
@@ -837,87 +828,87 @@ static void fuseq_reply_create_ok(struct voluta_fuseq_ctx *fqc,
 
 	fill_fuse_entry(&arg.ent, st);
 	fill_fuse_open(&arg.open);
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_attr_ok(struct voluta_fuseq_ctx *fqc,
-				const struct stat *st)
+static int fuseq_reply_attr_ok(struct voluta_fuseq_sub *fqs,
+			       const struct stat *st)
 {
 	struct fuse_attr_out arg;
 
 	fill_fuse_attr(&arg, st);
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_statfs_ok(struct voluta_fuseq_ctx *fqc,
-				  const struct statvfs *stv)
+static int fuseq_reply_statfs_ok(struct voluta_fuseq_sub *fqs,
+				 const struct statvfs *stv)
 {
 	struct fuse_statfs_out arg;
 
 	statfs_to_fuse_kstatfs(stv, &arg.st);
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_buf_ok(struct voluta_fuseq_ctx *fqc,
-			       const char *buf, size_t bsz)
+static int fuseq_reply_buf_ok(struct voluta_fuseq_sub *fqs,
+			      const char *buf, size_t bsz)
 {
-	fuseq_reply_arg(fqc, buf, bsz);
+	return fuseq_reply_arg(fqs, buf, bsz);
 }
 
-static void fuseq_reply_readlink_ok(struct voluta_fuseq_ctx *fqc,
-				    const char *lnk, size_t len)
+static int fuseq_reply_readlink_ok(struct voluta_fuseq_sub *fqs,
+				   const char *lnk, size_t len)
 {
-	fuseq_reply_buf_ok(fqc, lnk, len);
+	return fuseq_reply_buf_ok(fqs, lnk, len);
 }
 
-static void fuseq_reply_open_ok(struct voluta_fuseq_ctx *fqc)
+static int fuseq_reply_open_ok(struct voluta_fuseq_sub *fqs)
 {
 	struct fuse_open_out arg;
 
 	fill_fuse_open(&arg);
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_opendir_ok(struct voluta_fuseq_ctx *fqc)
+static int fuseq_reply_opendir_ok(struct voluta_fuseq_sub *fqs)
 {
-	fuseq_reply_open_ok(fqc);
+	return fuseq_reply_open_ok(fqs);
 }
 
-static void fuseq_reply_write_ok(struct voluta_fuseq_ctx *fqc, size_t cnt)
+static int fuseq_reply_write_ok(struct voluta_fuseq_sub *fqs, size_t cnt)
 {
 	struct fuse_write_out arg = {
 		.size = (uint32_t)cnt
 	};
 
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_lseek_ok(struct voluta_fuseq_ctx *fqc, loff_t off)
+static int fuseq_reply_lseek_ok(struct voluta_fuseq_sub *fqs, loff_t off)
 {
 	struct fuse_lseek_out arg = {
 		.offset = (uint64_t)off
 	};
 
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_xattr_len(struct voluta_fuseq_ctx *fqc, size_t len)
+static int fuseq_reply_xattr_len(struct voluta_fuseq_sub *fqs, size_t len)
 {
 	struct fuse_getxattr_out arg = {
 		.size = (uint32_t)len
 	};
 
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_xattr_buf(struct voluta_fuseq_ctx *fqc,
-				  const void *buf, size_t len)
+static int fuseq_reply_xattr_buf(struct voluta_fuseq_sub *fqs,
+				 const void *buf, size_t len)
 {
-	fuseq_reply_buf(fqc, buf, len);
+	return fuseq_reply_buf(fqs, buf, len);
 }
 
-static void fuseq_reply_init_ok(struct voluta_fuseq_ctx *fqc,
-				const struct voluta_fuseq_conn_info *coni)
+static int fuseq_reply_init_ok(struct voluta_fuseq_sub *fqs,
+			       const struct voluta_fuseq_conn_info *coni)
 {
 	struct fuse_init_out arg = {
 		.major = FUSE_KERNEL_VERSION,
@@ -938,203 +929,250 @@ static void fuseq_reply_init_ok(struct voluta_fuseq_ctx *fqc,
 	arg.congestion_threshold = (uint16_t)coni->congestion_threshold;
 	arg.time_gran = (uint32_t)coni->time_gran;
 
-	fuseq_reply_arg(fqc, &arg, sizeof(arg));
+	return fuseq_reply_arg(fqs, &arg, sizeof(arg));
 }
 
-static void fuseq_reply_ioctl_ok(struct voluta_fuseq_ctx *fqc, int result,
-				 const void *buf, size_t size)
+static int fuseq_reply_ioctl_ok(struct voluta_fuseq_sub *fqs, int result,
+				const void *buf, size_t size)
 {
+	int ret;
 	struct fuse_ioctl_out arg;
 
 	memset(&arg, 0, sizeof(arg));
 	arg.result = result;
 
 	if (size) {
-		fuseq_reply_arg2(fqc, &arg, sizeof(arg), buf, size);
+		ret = fuseq_reply_arg2(fqs, &arg, sizeof(arg), buf, size);
 	} else {
-		fuseq_reply_arg(fqc, &arg, sizeof(arg));
+		ret = fuseq_reply_arg(fqs, &arg, sizeof(arg));
 	}
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void fuseq_reply_attr(struct voluta_fuseq_ctx *fqc,
+static int fuseq_reply_attr(struct voluta_fuseq_sub *fqs,
+			    const struct stat *st, int err)
+{
+	int ret;
+
+	if (unlikely(err)) {
+		ret = fuseq_reply_err(fqs, err);
+	} else {
+		ret = fuseq_reply_attr_ok(fqs, st);
+	}
+	return ret;
+}
+
+static int fuseq_reply_entry(struct voluta_fuseq_sub *fqs,
 			     const struct stat *st, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_attr_ok(fqc, st);
+		ret = fuseq_reply_entry_ok(fqs, st);
 	}
+	return ret;
 }
 
-static void fuseq_reply_entry(struct voluta_fuseq_ctx *fqc,
+static int fuseq_reply_create(struct voluta_fuseq_sub *fqs,
 			      const struct stat *st, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_entry_ok(fqc, st);
+		ret = fuseq_reply_create_ok(fqs, st);
 	}
+	return ret;
 }
 
-static void fuseq_reply_create(struct voluta_fuseq_ctx *fqc,
-			       const struct stat *st, int err)
+static int fuseq_reply_readlink(struct voluta_fuseq_sub *fqs,
+				const char *lnk, size_t len, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_create_ok(fqc, st);
+		ret = fuseq_reply_readlink_ok(fqs, lnk, len);
 	}
+	return ret;
 }
 
-static void fuseq_reply_readlink(struct voluta_fuseq_ctx *fqc,
-				 const char *lnk, size_t len, int err)
+static int fuseq_reply_statfs(struct voluta_fuseq_sub *fqs,
+			      const struct statvfs *stv, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_readlink_ok(fqc, lnk, len);
+		ret = fuseq_reply_statfs_ok(fqs, stv);
 	}
+	return ret;
 }
 
-static void fuseq_reply_statfs(struct voluta_fuseq_ctx *fqc,
-			       const struct statvfs *stv, int err)
+static int fuseq_reply_open(struct voluta_fuseq_sub *fqs, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_statfs_ok(fqc, stv);
+		ret = fuseq_reply_open_ok(fqs);
 	}
+	return ret;
 }
 
-static void fuseq_reply_open(struct voluta_fuseq_ctx *fqc, int err)
+static int fuseq_reply_xattr(struct voluta_fuseq_sub *fqs,
+			     const void *buf, size_t len, int err)
 {
-	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
-	} else {
-		fuseq_reply_open_ok(fqc);
-	}
-}
+	int ret;
 
-static void fuseq_reply_xattr(struct voluta_fuseq_ctx *fqc,
-			      const void *buf, size_t len, int err)
-{
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else if (buf == NULL) {
-		fuseq_reply_xattr_len(fqc, len);
+		ret = fuseq_reply_xattr_len(fqs, len);
 	} else {
-		fuseq_reply_xattr_buf(fqc, buf, len);
+		ret = fuseq_reply_xattr_buf(fqs, buf, len);
 	}
+	return ret;
 }
 
-static void fuseq_reply_opendir(struct voluta_fuseq_ctx *fqc, int err)
+static int fuseq_reply_opendir(struct voluta_fuseq_sub *fqs, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_opendir_ok(fqc);
+		ret = fuseq_reply_opendir_ok(fqs);
 	}
+	return ret;
 }
 
-static void fuseq_reply_readdir(struct voluta_fuseq_ctx *fqc,
-				const struct voluta_fuseq_diter *di, int err)
+static int fuseq_reply_readdir(struct voluta_fuseq_sub *fqs,
+			       const struct voluta_fuseq_diter *di, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_buf(fqc, di->buf, di->len);
+		ret = fuseq_reply_buf(fqs, di->buf, di->len);
 	}
+	return ret;
 }
 
-static void fuseq_reply_lseek(struct voluta_fuseq_ctx *fqc,
-			      loff_t off, int err)
+static int fuseq_reply_lseek(struct voluta_fuseq_sub *fqs,
+			     loff_t off, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_lseek_ok(fqc, off);
+		ret = fuseq_reply_lseek_ok(fqs, off);
 	}
+	return ret;
 }
 
-static void fuseq_reply_copy_file_range(struct voluta_fuseq_ctx *fqc,
-					size_t cnt, int err)
+static int fuseq_reply_copy_file_range(struct voluta_fuseq_sub *fqs,
+				       size_t cnt, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_write_ok(fqc, cnt);
+		ret = fuseq_reply_write_ok(fqs, cnt);
 	}
+	return ret;
 }
 
-static void fuseq_reply_init(struct voluta_fuseq_ctx *fqc, int err)
+static int fuseq_reply_init(struct voluta_fuseq_sub *fqs, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_init_ok(fqc, &fqc->fq->fq_coni);
+		ret = fuseq_reply_init_ok(fqs, &fqs->fq->fq_coni);
 	}
+	return ret;
 }
 
-static void fuseq_reply_ioctl(struct voluta_fuseq_ctx *fqc, int result,
-			      const void *buf, size_t size, int err)
+static int fuseq_reply_ioctl(struct voluta_fuseq_sub *fqs, int result,
+			     const void *buf, size_t size, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_ioctl_ok(fqc, result, buf, size);
+		ret = fuseq_reply_ioctl_ok(fqs, result, buf, size);
 	}
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void fuseq_reply_write(struct voluta_fuseq_ctx *fqc,
-			      size_t cnt, int err)
+static int fuseq_reply_write(struct voluta_fuseq_sub *fqs,
+			     size_t cnt, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_write_ok(fqc, cnt);
+		ret = fuseq_reply_write_ok(fqs, cnt);
 	}
+	return ret;
 }
 
-static void fuseq_reply_read_buf(struct voluta_fuseq_ctx *fqc,
-				 const void *dat, size_t len, int err)
+static int fuseq_reply_read_buf(struct voluta_fuseq_sub *fqs,
+				const void *dat, size_t len, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_buf_ok(fqc, dat, len);
+		ret = fuseq_reply_buf_ok(fqs, dat, len);
 	}
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int fuseq_append_hdr_to_pipe(struct voluta_fuseq_ctx *fqc, size_t len)
+static int fuseq_append_hdr_to_pipe(struct voluta_fuseq_sub *fqs, size_t len)
 {
 	struct fuse_out_header hdr;
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 
-	fuseq_fill_out_header(fqc, &hdr,  sizeof(hdr) + len, 0);
+	fuseq_fill_out_header(fqs, &hdr,  sizeof(hdr) + len, 0);
 	return pipe_append_from_buf(pipe, &hdr, sizeof(hdr));
 }
 
 
-static int fuseq_append_to_pipe_by_fd(struct voluta_fuseq_ctx *fqc,
+static int fuseq_append_to_pipe_by_fd(struct voluta_fuseq_sub *fqs,
 				      const struct voluta_fiovec *fiov)
 {
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 	size_t len = fiov->len;
 	loff_t off = fiov->off;
 
 	return pipe_splice_from_fd(pipe, fiov->fd, &off, len);
 }
 
-static int fuseq_append_to_pipe_by_iov(struct voluta_fuseq_ctx *fqc,
+static int fuseq_append_to_pipe_by_iov(struct voluta_fuseq_sub *fqs,
 				       const struct voluta_fiovec *fiov)
 {
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 	struct iovec iov = {
 		.iov_base = fiov->mm,
 		.iov_len = fiov->len
@@ -1143,86 +1181,91 @@ static int fuseq_append_to_pipe_by_iov(struct voluta_fuseq_ctx *fqc,
 }
 
 static int
-fuseq_append_data_to_pipe(struct voluta_fuseq_ctx *fqc,
+fuseq_append_data_to_pipe(struct voluta_fuseq_sub *fqs,
 			  const struct voluta_fiovec *fiov, size_t cnt)
 {
 	int err = 0;
 
 	for (size_t i = 0; (i < cnt) && !err; ++i) {
 		if (fiov[i].mm != NULL) {
-			err = fuseq_append_to_pipe_by_iov(fqc, &fiov[i]);
+			err = fuseq_append_to_pipe_by_iov(fqs, &fiov[i]);
 		} else {
-			err = fuseq_append_to_pipe_by_fd(fqc, &fiov[i]);
+			err = fuseq_append_to_pipe_by_fd(fqs, &fiov[i]);
 		}
 	}
 	return err;
 }
 
 static int
-fuseq_append_response_to_pipe(struct voluta_fuseq_ctx *fqc, size_t nrd,
+fuseq_append_response_to_pipe(struct voluta_fuseq_sub *fqs, size_t nrd,
 			      const struct voluta_fiovec *fiov, size_t cnt)
 {
 	int err;
 
-	err = fuseq_append_hdr_to_pipe(fqc, nrd);
+	err = fuseq_append_hdr_to_pipe(fqs, nrd);
 	if (err) {
 		return err;
 	}
-	err = fuseq_append_data_to_pipe(fqc, fiov, cnt);
+	err = fuseq_append_data_to_pipe(fqs, fiov, cnt);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fuseq_send_response_out(struct voluta_fuseq_ctx *fqc)
+static int fuseq_send_response_out(struct voluta_fuseq_sub *fqs)
 {
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 
-	return pipe_flush_to_fd(pipe, fqc->fq->fq_fuse_fd);
+	return pipe_flush_to_fd(pipe, fqs->fq->fq_fuse_fd);
 }
 
-static void fuseq_reply_read_pipe(struct voluta_fuseq_ctx *fqc, size_t nrd,
-				  const struct voluta_fiovec *fiov, size_t cnt)
+static int fuseq_reply_read_pipe(struct voluta_fuseq_sub *fqs, size_t nrd,
+				 const struct voluta_fiovec *fiov, size_t cnt)
 {
 	int err;
+	int ret;
 
-	err = fuseq_append_response_to_pipe(fqc, nrd, fiov, cnt);
+	err = fuseq_append_response_to_pipe(fqs, nrd, fiov, cnt);
 	if (err) {
-		fuseq_reply_err(fqc, err);
-		return;
+		ret = fuseq_reply_err(fqs, err);
+	} else {
+		ret = fuseq_send_response_out(fqs);
 	}
-	err = fuseq_send_response_out(fqc);
-	if (err) {
-		fuseq_set_chan_err(fqc->fq, err);
-	}
+	return ret ? ret : err;
 }
 
-static void fuseq_reply_read_data(struct voluta_fuseq_ctx *fqc, size_t nrd,
-				  const struct voluta_fiovec *fiov)
+static int fuseq_reply_read_data(struct voluta_fuseq_sub *fqs, size_t nrd,
+				 const struct voluta_fiovec *fiov)
 {
-	fuseq_reply_arg(fqc, fiov->mm, nrd);
+	return fuseq_reply_arg(fqs, fiov->mm, nrd);
 }
 
-static void fuseq_reply_read_ok(struct voluta_fuseq_ctx *fqc, size_t nrd,
-				const struct voluta_fiovec *fiov, size_t cnt)
+static int fuseq_reply_read_ok(struct voluta_fuseq_sub *fqs, size_t nrd,
+			       const struct voluta_fiovec *fiov, size_t cnt)
 {
+	int ret;
+
 	if ((cnt > 1) || (fiov->mm == NULL)) {
-		fuseq_reply_read_pipe(fqc, nrd, fiov, cnt);
+		ret = fuseq_reply_read_pipe(fqs, nrd, fiov, cnt);
 	} else {
-		fuseq_reply_read_data(fqc, nrd, fiov);
+		ret = fuseq_reply_read_data(fqs, nrd, fiov);
 	}
+	return ret;
 }
 
-static void fuseq_reply_read_iter(struct voluta_fuseq_ctx *fqc, size_t nrd,
-				  const struct voluta_fiovec *fiov,
-				  size_t cnt, int err)
+static int fuseq_reply_read_iter(struct voluta_fuseq_sub *fqs, size_t nrd,
+				 const struct voluta_fiovec *fiov,
+				 size_t cnt, int err)
 {
+	int ret;
+
 	if (unlikely(err)) {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	} else {
-		fuseq_reply_read_ok(fqc, nrd, fiov, cnt);
+		ret = fuseq_reply_read_ok(fqs, nrd, fiov, cnt);
 	}
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1451,14 +1494,14 @@ static void setup_cap_want(struct voluta_fuseq_conn_info *coni, int cap)
 	}
 }
 
-static int check_init(const struct voluta_fuseq_ctx *fqc,
+static int check_init(const struct voluta_fuseq_sub *fqs,
 		      const struct fuse_init_in *arg)
 {
 	int err = 0;
 	const unsigned int u_major = FUSE_KERNEL_VERSION;
 	const unsigned int u_minor = FUSE_KERNEL_MINOR_VERSION;
 
-	unused(fqc);
+	unused(fqs);
 	if ((arg->major != u_major) || (arg->minor != u_minor)) {
 		log_warn("version mismatch: kernel=%u.%u userspace=%u.%u",
 			 arg->major, arg->minor, u_major, u_minor);
@@ -1471,21 +1514,20 @@ static int check_init(const struct voluta_fuseq_ctx *fqc,
 	return err;
 }
 
-static void do_init(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		    const struct voluta_fuseq_in *in)
+static int do_init(struct voluta_fuseq_sub *fqs, ino_t ino,
+		   const struct voluta_fuseq_in *in)
 {
 	int err = 0;
-	struct voluta_fuseq_conn_info *coni = &fqc->fq->fq_coni;
+	struct voluta_fuseq_conn_info *coni = &fqs->fq->fq_coni;
 
 	unused(ino);
 
-	err = check_init(fqc, &in->u.init.arg);
+	err = check_init(fqs, &in->u.init.arg);
 	if (err) {
-		fuseq_reply_init(fqc, err);
-		return;
+		return fuseq_reply_init(fqs, err);
 	}
 
-	fqc->fq->fq_got_init = 1;
+	fqs->fq->fq_got_init = true;
 	coni->proto_major = (int)(in->u.init.arg.major);
 	coni->proto_minor = (int)(in->u.init.arg.minor);
 	coni->cap_kern = (int)(in->u.init.arg.flags);
@@ -1509,18 +1551,26 @@ static void do_init(struct voluta_fuseq_ctx *fqc, ino_t ino,
 	setup_cap_want(coni, FUSE_SPLICE_READ);
 	setup_cap_want(coni, FUSE_SPLICE_WRITE);
 
-	fuseq_reply_init(fqc, 0);
+	return fuseq_reply_init(fqs, 0);
 }
 
-static void do_destroy(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		       const struct voluta_fuseq_in *in)
+static int do_destroy(struct voluta_fuseq_sub *fqs, ino_t ino,
+		      const struct voluta_fuseq_in *in)
 {
+	int ret;
 	unused(ino);
 	unused(in);
 
-	fqc->fq->fq_got_destroy = 1;
-	fqc->fq->fq_active = false;
-	fuseq_reply_status(fqc, 0);
+	fuseq_lock_fs(fqs);
+	fqs->fq->fq_got_destroy = true;
+	fqs->fq->fq_active = false;
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, 0);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
 static bool fuseq_has_cap(const struct voluta_fuseq *fq, int cap_mask)
@@ -1595,10 +1645,11 @@ static void utimens_of(const struct stat *st, int to_set, struct stat *times)
 	}
 }
 
-static void do_setattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		       const struct voluta_fuseq_in *in)
+static int do_setattr(struct voluta_fuseq_sub *fqs, ino_t ino,
+		      const struct voluta_fuseq_in *in)
 {
 	int err;
+	int ret;
 	int to_set;
 	uid_t uid;
 	gid_t gid;
@@ -1613,518 +1664,724 @@ static void do_setattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
 	to_set = (int)(in->u.setattr.arg.valid & FATTR_MASK);
 	utimens_of(&attr, to_set, &times);
 
-	err = voluta_fs_getattr(fqc->sbi, &fqc->op, ino, &st);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_getattr(fqs->sbi, &fqs->op, ino, &st);
 	if (!err && (to_set & (FATTR_UID | FATTR_GID))) {
 		err = uid_gid_of(&attr, to_set, &uid, &gid);
 	}
 	if (!err && (to_set & FATTR_AMTIME_NOW)) {
-		err = voluta_fs_utimens(fqc->sbi, &fqc->op, ino, &times, &st);
+		err = voluta_fs_utimens(fqs->sbi, &fqs->op, ino, &times, &st);
 	}
 	if (!err && (to_set & FATTR_MODE)) {
 		mode = attr.st_mode;
-		err = voluta_fs_chmod(fqc->sbi, &fqc->op,
+		err = voluta_fs_chmod(fqs->sbi, &fqs->op,
 				      ino, mode, &times, &st);
 	}
 	if (!err && (to_set & (FATTR_UID | FATTR_GID))) {
-		err = voluta_fs_chown(fqc->sbi, &fqc->op,
+		err = voluta_fs_chown(fqs->sbi, &fqs->op,
 				      ino, uid, gid, &times, &st);
 	}
 	if (!err && (to_set & FATTR_SIZE)) {
 		size = attr.st_size;
-		err = voluta_fs_truncate(fqc->sbi, &fqc->op, ino, size, &st);
+		err = voluta_fs_truncate(fqs->sbi, &fqs->op, ino, size, &st);
 	}
 	if (!err && (to_set & FATTR_AMCTIME) && !(to_set & FATTR_NONTIME)) {
-		err = voluta_fs_utimens(fqc->sbi, &fqc->op, ino, &times, &st);
+		err = voluta_fs_utimens(fqs->sbi, &fqs->op, ino, &times, &st);
 	}
-	fuseq_reply_attr(fqc, &st, err);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_attr(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void do_lookup(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		      const struct voluta_fuseq_in *in)
+static int do_lookup(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
 {
 	int err;
-	const char *name;
+	int ret;
+	const char *name = in->u.lookup.name;
 	struct stat st = { .st_ino = 0 };
 
-	name = in->u.lookup.name;
-	err = voluta_fs_lookup(fqc->sbi, &fqc->op, ino, name, &st);
-	fuseq_reply_entry(fqc, &st, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_lookup(fqs->sbi, &fqs->op, ino, name, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_entry(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_forget(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		      const struct voluta_fuseq_in *in)
+static int do_forget(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
 {
 	int err;
-	unsigned long nlookup;
+	int ret;
+	const size_t nlookup = in->u.forget.arg.nlookup;
 
-	nlookup = in->u.forget.arg.nlookup;
-	err = voluta_fs_forget(fqc->sbi, &fqc->op, ino, nlookup);
-	fuseq_reply_none(fqc);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_forget(fqs->sbi, &fqs->op, ino, nlookup);
+	fuseq_unlock_fs(fqs);
+
 	unused(err);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_none(fqs);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_batch_forget(struct voluta_fuseq_ctx *fqc, ino_t unused_ino,
-			    const struct voluta_fuseq_in *in)
+static int do_batch_forget(struct voluta_fuseq_sub *fqs, ino_t unused_ino,
+			   const struct voluta_fuseq_in *in)
 {
 	int err;
+	int ret;
 	ino_t ino;
 	size_t nlookup;
-	size_t count;
+	const size_t count = in->u.batch_forget.arg.count;
 
-	count = in->u.batch_forget.arg.count;
+	fuseq_lock_fs(fqs);
 	for (size_t i = 0; i < count; ++i) {
 		ino = (ino_t)(in->u.batch_forget.one[i].nodeid);
 		nlookup = (ino_t)(in->u.batch_forget.one[i].nlookup);
 
-		err = voluta_fs_forget(fqc->sbi, &fqc->op, ino, nlookup);
+		err = voluta_fs_forget(fqs->sbi, &fqs->op, ino, nlookup);
 		unused(err);
 	}
-	fuseq_reply_none(fqc);
+	fuseq_unlock_fs(fqs);
+
 	unused(unused_ino);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_none(fqs);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_getattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_getattr(struct voluta_fuseq_sub *fqs, ino_t ino,
+		      const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	struct stat st = { .st_ino = 0 };
+
+	check_fh(fqs, ino, in->u.getattr.arg.fh);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_getattr(fqs->sbi, &fqs->op, ino, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_attr(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_readlink(struct voluta_fuseq_sub *fqs, ino_t ino,
 		       const struct voluta_fuseq_in *in)
 {
 	int err;
-	struct stat st = { .st_ino = 0 };
-
-	check_fh(fqc, ino, in->u.getattr.arg.fh);
-	err = voluta_fs_getattr(fqc->sbi, &fqc->op, ino, &st);
-	fuseq_reply_attr(fqc, &st, err);
-}
-
-static void do_readlink(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			const struct voluta_fuseq_in *in)
-{
-	int err;
+	int ret;
 	size_t nrd = 0;
-	struct voluta_fuseq_pathbuf *pab;
+	struct voluta_fuseq_pathbuf *pab = &fqs->outb->u.pab;
+	const size_t lim = sizeof(pab->path);
+	char *lnk = pab->path;
 
-	pab = &fqc->outb->u.pab;
-	err = voluta_fs_readlink(fqc->sbi, &fqc->op, ino,
-				 pab->path, sizeof(pab->path), &nrd);
-	fuseq_reply_readlink(fqc, pab->path, nrd, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_readlink(fqs->sbi, &fqs->op, ino, lnk, lim, &nrd);
+	fuseq_unlock_fs(fqs);
 
 	unused(in);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_readlink(fqs, lnk, nrd, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_symlink(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		       const struct voluta_fuseq_in *in)
-{
-	int err;
-	const char *name;
-	const char *target;
-	struct stat st = { .st_ino = 0 };
-
-	name = in->u.symlink.name_target;
-	target = after_name(name);
-
-	err = voluta_fs_symlink(fqc->sbi, &fqc->op, ino, name, target, &st);
-	fuseq_reply_entry(fqc, &st, err);
-}
-
-static void do_mknod(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
-{
-	int err;
-	dev_t rdev;
-	mode_t umask;
-	mode_t mode;
-	const char *name;
-	struct stat st = { .st_ino = 0 };
-
-	mode = (mode_t)in->u.mknod.arg.mode;
-	rdev = (dev_t)in->u.mknod.arg.rdev;
-	umask = (mode_t)in->u.mknod.arg.umask;
-	name = in->u.mknod.name;
-
-	fqc->op.ucred.umask = umask;
-	err = voluta_fs_mknod(fqc->sbi, &fqc->op, ino, name, mode, rdev, &st);
-	fuseq_reply_entry(fqc, &st, err);
-}
-
-static void do_mkdir(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
-{
-	int err;
-	mode_t mode;
-	mode_t umask;
-	const char *name;
-	struct stat st = { .st_ino = 0 };
-
-	umask = (mode_t)in->u.mkdir.arg.umask;
-	mode = (mode_t)(in->u.mkdir.arg.mode | S_IFDIR);
-	name = in->u.mkdir.name;
-
-	fqc->op.ucred.umask = umask;
-	err = voluta_fs_mkdir(fqc->sbi, &fqc->op, ino, name, mode, &st);
-	fuseq_reply_entry(fqc, &st, err);
-}
-
-static void do_unlink(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_symlink(struct voluta_fuseq_sub *fqs, ino_t ino,
 		      const struct voluta_fuseq_in *in)
 {
 	int err;
-	const char *name;
+	int ret;
+	const char *name = in->u.symlink.name_target;
+	const char *target = after_name(name);
+	struct stat st = { .st_ino = 0 };
 
-	name = in->u.unlink.name;
-	err = voluta_fs_unlink(fqc->sbi, &fqc->op, ino, name);
-	fuseq_reply_status(fqc, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_symlink(fqs->sbi, &fqs->op, ino, name, target, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_entry(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_rmdir(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
-{
-	int err;
-	const char *name;
-
-	name = in->u.rmdir.name;
-	err = voluta_fs_rmdir(fqc->sbi, &fqc->op, ino, name);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_rename(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		      const struct voluta_fuseq_in *in)
-{
-	int err;
-	ino_t newparent;
-	const char *name;
-	const char *newname;
-
-	newparent = (ino_t)(in->u.rename.arg.newdir);
-	name = in->u.rename.name_newname;
-	newname = after_name(name);
-	err = voluta_fs_rename(fqc->sbi, &fqc->op, ino, name,
-			       newparent, newname, 0);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_link(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_mknod(struct voluta_fuseq_sub *fqs, ino_t ino,
 		    const struct voluta_fuseq_in *in)
 {
 	int err;
-	ino_t oldino;
-	const char *newname;
+	int ret;
+	const dev_t rdev = (dev_t)in->u.mknod.arg.rdev;
+	const mode_t mode = (mode_t)in->u.mknod.arg.mode;
+	const mode_t umask = (mode_t)in->u.mknod.arg.umask;
+	const char *name = in->u.mknod.name;
 	struct stat st = { .st_ino = 0 };
 
-	oldino = (ino_t)(in->u.link.arg.oldnodeid);
-	newname = in->u.link.name;
-	err = voluta_fs_link(fqc->sbi, &fqc->op, oldino, ino, newname, &st);
-	fuseq_reply_entry(fqc, &st, err);
+	fqs->op.ucred.umask = umask;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_mknod(fqs->sbi, &fqs->op, ino, name, mode, rdev, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_entry(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_open(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_mkdir(struct voluta_fuseq_sub *fqs, ino_t ino,
 		    const struct voluta_fuseq_in *in)
 {
 	int err;
-	int o_flags;
+	int ret;
+	const mode_t mode = (mode_t)(in->u.mkdir.arg.mode | S_IFDIR);
+	const mode_t umask = (mode_t)in->u.mkdir.arg.umask;
+	const char *name = in->u.mkdir.name;
+	struct stat st = { .st_ino = 0 };
 
-	o_flags = (int)(in->u.open.arg.flags);
-	err = voluta_fs_open(fqc->sbi, &fqc->op, ino, o_flags);
-	fuseq_reply_open(fqc, err);
+	fqs->op.ucred.umask = umask;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_mkdir(fqs->sbi, &fqs->op, ino, name, mode, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_entry(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_statfs(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		      const struct voluta_fuseq_in *in)
+static int do_unlink(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
 {
 	int err;
+	int ret;
+	const char *name = in->u.unlink.name;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_unlink(fqs->sbi, &fqs->op, ino, name);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_rmdir(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const char *name = in->u.rmdir.name;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_rmdir(fqs->sbi, &fqs->op, ino, name);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_rename(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const ino_t newparent = (ino_t)(in->u.rename.arg.newdir);
+	const char *name = in->u.rename.name_newname;
+	const char *newname = after_name(name);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_rename(fqs->sbi, &fqs->op, ino,
+			       name, newparent, newname, 0);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_link(struct voluta_fuseq_sub *fqs, ino_t ino,
+		   const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const ino_t oldino = (ino_t)(in->u.link.arg.oldnodeid);
+	const char *newname = in->u.link.name;
+	struct stat st = { .st_ino = 0 };
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_link(fqs->sbi, &fqs->op, oldino, ino, newname, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_entry(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_open(struct voluta_fuseq_sub *fqs, ino_t ino,
+		   const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const int o_flags = (int)(in->u.open.arg.flags);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_open(fqs->sbi, &fqs->op, ino, o_flags);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_open(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_statfs(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
 	struct statvfs stv = { .f_bsize = 0 };
 
-	err = voluta_fs_statfs(fqc->sbi, &fqc->op, ino, &stv);
-	fuseq_reply_statfs(fqc, &stv, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_statfs(fqs->sbi, &fqs->op, ino, &stv);
+	fuseq_unlock_fs(fqs);
+
 	unused(in);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_statfs(fqs, &stv, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_release(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_release(struct voluta_fuseq_sub *fqs, ino_t ino,
+		      const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const int o_flags = (int)in->u.release.arg.flags;
+	const bool flush = (in->u.release.arg.flags & FUSE_RELEASE_FLUSH) != 0;
+
+	check_fh(fqs, ino, in->u.release.arg.fh);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_release(fqs->sbi, &fqs->op, ino, o_flags, flush);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_fsync(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const bool datasync = (in->u.fsync.arg.fsync_flags & 1) != 0;
+
+	check_fh(fqs, ino, in->u.fsync.arg.fh);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_fsync(fqs->sbi, &fqs->op, ino, datasync);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_setxattr(struct voluta_fuseq_sub *fqs, ino_t ino,
 		       const struct voluta_fuseq_in *in)
 {
 	int err;
-	int o_flags;
-	bool flush;
+	int ret;
+	const size_t value_size = in->u.setxattr.arg.size;
+	const int xflags = (int)(in->u.setxattr.arg.flags);
+	const char *name = in->u.setxattr.name_value;
+	const char *value = after_name(name);
 
-	o_flags = (int)in->u.release.arg.flags;
-	flush = (in->u.release.arg.flags & FUSE_RELEASE_FLUSH) != 0;
-	check_fh(fqc, ino, in->u.release.arg.fh);
-
-	err = voluta_fs_release(fqc->sbi, &fqc->op, ino, o_flags, flush);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_fsync(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
-{
-	int err;
-	bool datasync;
-
-	datasync = (in->u.fsync.arg.fsync_flags & 1) != 0;
-	check_fh(fqc, ino, in->u.fsync.arg.fh);
-
-	err = voluta_fs_fsync(fqc->sbi, &fqc->op, ino, datasync);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_setxattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			const struct voluta_fuseq_in *in)
-{
-	int err;
-	int xflags;
-	size_t value_size;
-	const char *name;
-	const char *value;
-
-	value_size = in->u.setxattr.arg.size;
-	xflags = (int)(in->u.setxattr.arg.flags);
-	name = in->u.setxattr.name_value;
-	value = after_name(name);
-
-	err = voluta_fs_setxattr(fqc->sbi, &fqc->op, ino,
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_setxattr(fqs->sbi, &fqs->op, ino,
 				 name, value, value_size, xflags);
-	fuseq_reply_status(fqc, err);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_getxattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_getxattr(struct voluta_fuseq_sub *fqs, ino_t ino,
+		       const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	struct voluta_fuseq_xattrbuf *xab = &fqs->outb->u.xab;
+	const size_t len = min(in->u.getxattr.arg.size, sizeof(xab->value));
+	void *buf = len ? xab->value : NULL;
+	const char *name = in->u.getxattr.name;
+	size_t cnt = 0;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_getxattr(fqs->sbi, &fqs->op, ino,
+				 name, buf, len, &cnt);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_xattr(fqs, buf, cnt, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_listxattr(struct voluta_fuseq_sub *fqs, ino_t ino,
 			const struct voluta_fuseq_in *in)
 {
 	int err;
-	size_t cnt = 0;
-	size_t len;
-	void *buf;
-	const char *name;
-	struct voluta_fuseq_xattrbuf *xab;
+	int ret;
+	struct voluta_fuseq_xiter *xit = &fqs->outb->u.xit;
 
-	xab = &fqc->outb->u.xab;
-	len = min(in->u.getxattr.arg.size, sizeof(xab->value));
-	buf = len ? xab->value : NULL;
-	name = in->u.getxattr.name;
-
-	err = voluta_fs_getxattr(fqc->sbi, &fqc->op, ino,
-				 name, buf, len, &cnt);
-	fuseq_reply_xattr(fqc, buf, cnt, err);
-}
-
-static void do_listxattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			 const struct voluta_fuseq_in *in)
-{
-	int err;
-	struct voluta_fuseq_xiter *xit;
-
-	xit = &fqc->outb->u.xit;
 	xiter_prep(xit, in->u.listxattr.arg.size);
-	err = voluta_fs_listxattr(fqc->sbi, &fqc->op, ino, &xit->lxa);
-	fuseq_reply_xattr(fqc, xit->beg, xit->cnt, err);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_listxattr(fqs->sbi, &fqs->op, ino, &xit->lxa);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_xattr(fqs, xit->beg, xit->cnt, err);
+	fuseq_unlock_ch(fqs);
+
 	xiter_done(xit);
+
+	return ret;
 }
 
-static void do_removexattr(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			   const struct voluta_fuseq_in *in)
-{
-	int err;
-	const char *name;
-
-	name = in->u.removexattr.name;
-	err = voluta_fs_removexattr(fqc->sbi, &fqc->op, ino, name);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_flush(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
-{
-	int err;
-
-	check_fh(fqc, ino, in->u.flush.arg.fh);
-	err = voluta_fs_flush(fqc->sbi, &fqc->op, ino);
-	fuseq_reply_status(fqc, err);
-}
-
-static void do_opendir(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		       const struct voluta_fuseq_in *in)
-{
-	int err;
-	int o_flags;
-
-	o_flags = (int)(in->u.opendir.arg.flags);
-	unused(o_flags); /* XXX use me */
-
-	err = voluta_fs_opendir(fqc->sbi, &fqc->op, ino);
-	fuseq_reply_opendir(fqc, err);
-}
-
-static void do_readdir(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		       const struct voluta_fuseq_in *in)
-{
-	int err;
-	size_t size;
-	loff_t off;
-	struct voluta_fuseq_diter *dit;
-
-	size = in->u.readdir.arg.size;
-	off = (loff_t)(in->u.readdir.arg.offset);
-	check_fh(fqc, ino, in->u.readdir.arg.fh);
-
-	dit = &fqc->outb->u.dit;
-	diter_prep(dit, size, off, 0);
-	err = voluta_fs_readdir(fqc->sbi, &fqc->op, ino, &dit->rd_ctx);
-	fuseq_reply_readdir(fqc, dit, err);
-	diter_done(dit);
-}
-
-static void do_readdirplus(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			   const struct voluta_fuseq_in *in)
-{
-	int err;
-	size_t size;
-	loff_t off;
-	struct voluta_fuseq_diter *dit;
-
-	size = in->u.readdir.arg.size;
-	off = (loff_t)(in->u.readdir.arg.offset);
-	check_fh(fqc, ino, in->u.readdir.arg.fh);
-
-	dit = &fqc->outb->u.dit;
-	diter_prep(dit, size, off, 1);
-	err = voluta_fs_readdirplus(fqc->sbi, &fqc->op, ino, &dit->rd_ctx);
-	fuseq_reply_readdir(fqc, dit, err);
-	diter_done(dit);
-}
-
-static void do_releasedir(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_removexattr(struct voluta_fuseq_sub *fqs, ino_t ino,
 			  const struct voluta_fuseq_in *in)
 {
 	int err;
-	int o_flags;
+	int ret;
+	const char *name = in->u.removexattr.name;
 
-	o_flags = (int)(in->u.releasedir.arg.flags);
-	check_fh(fqc, ino, in->u.releasedir.arg.fh);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_removexattr(fqs->sbi, &fqs->op, ino, name);
+	fuseq_unlock_fs(fqs);
 
-	err = voluta_fs_releasedir(fqc->sbi, &fqc->op, ino, o_flags);
-	fuseq_reply_status(fqc, err);
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_fsyncdir(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			const struct voluta_fuseq_in *in)
+static int do_flush(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
 {
 	int err;
-	bool datasync;
+	int ret;
 
-	datasync = (in->u.fsyncdir.arg.fsync_flags & 1) != 0;
-	check_fh(fqc, ino, in->u.fsyncdir.arg.fh);
+	check_fh(fqs, ino, in->u.flush.arg.fh);
 
-	err = voluta_fs_fsyncdir(fqc->sbi, &fqc->op, ino, datasync);
-	fuseq_reply_status(fqc, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_flush(fqs->sbi, &fqs->op, ino);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_access(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_opendir(struct voluta_fuseq_sub *fqs, ino_t ino,
 		      const struct voluta_fuseq_in *in)
 {
 	int err;
-	int mask;
+	int ret;
+	const int o_flags = (int)(in->u.opendir.arg.flags);
 
-	mask = (int)(in->u.access.arg.mask);
-	err = voluta_fs_access(fqc->sbi, &fqc->op, ino, mask);
-	fuseq_reply_status(fqc, err);
+	unused(o_flags); /* XXX use me */
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_opendir(fqs->sbi, &fqs->op, ino);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_opendir(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_create(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_readdir(struct voluta_fuseq_sub *fqs, ino_t ino,
 		      const struct voluta_fuseq_in *in)
 {
 	int err;
-	int o_flags;
-	mode_t mode;
-	mode_t umask;
-	const char *name;
-	struct stat st = { .st_ino = 0 };
+	int ret;
+	const size_t size = in->u.readdir.arg.size;
+	const loff_t off = (loff_t)(in->u.readdir.arg.offset);
+	struct voluta_fuseq_diter *dit = &fqs->outb->u.dit;
 
-	o_flags = (int)(in->u.create.arg.flags);
-	mode = (mode_t)(in->u.create.arg.mode);
-	umask = (mode_t)(in->u.create.arg.umask);
-	name = in->u.create.name;
+	check_fh(fqs, ino, in->u.readdir.arg.fh);
+	diter_prep(dit, size, off, 0);
 
-	fqc->op.ucred.umask = umask;
-	err = voluta_fs_create(fqc->sbi, &fqc->op, ino,
-			       name, o_flags, mode, &st);
-	fuseq_reply_create(fqc, &st, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_readdir(fqs->sbi, &fqs->op, ino, &dit->rd_ctx);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_readdir(fqs, dit, err);
+	fuseq_unlock_ch(fqs);
+
+	diter_done(dit);
+
+	return ret;
 }
 
-static void do_fallocate(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_readdirplus(struct voluta_fuseq_sub *fqs, ino_t ino,
+			  const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const size_t size = in->u.readdir.arg.size;
+	const loff_t off = (loff_t)(in->u.readdir.arg.offset);
+	struct voluta_fuseq_diter *dit = &fqs->outb->u.dit;
+
+	check_fh(fqs, ino, in->u.readdir.arg.fh);
+	diter_prep(dit, size, off, 1);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_readdirplus(fqs->sbi, &fqs->op, ino, &dit->rd_ctx);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_readdir(fqs, dit, err);
+	fuseq_unlock_ch(fqs);
+
+	diter_done(dit);
+
+	return ret;
+}
+
+static int do_releasedir(struct voluta_fuseq_sub *fqs, ino_t ino,
 			 const struct voluta_fuseq_in *in)
 {
 	int err;
-	int mode;
-	loff_t off;
-	loff_t len;
+	int ret;
+	const int o_flags = (int)(in->u.releasedir.arg.flags);
 
-	mode = (int)(in->u.fallocate.arg.mode);
-	off = (loff_t)(in->u.fallocate.arg.offset);
-	len = (loff_t)(in->u.fallocate.arg.length);
-	check_fh(fqc, ino, in->u.fallocate.arg.fh);
+	check_fh(fqs, ino, in->u.releasedir.arg.fh);
 
-	err = voluta_fs_fallocate(fqc->sbi, &fqc->op, ino, mode, off, len);
-	fuseq_reply_status(fqc, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_releasedir(fqs->sbi, &fqs->op, ino, o_flags);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_rename2(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_fsyncdir(struct voluta_fuseq_sub *fqs, ino_t ino,
 		       const struct voluta_fuseq_in *in)
 {
 	int err;
-	int flags;
-	ino_t newparent;
-	const char *name;
-	const char *newname;
+	int ret;
+	const bool datasync = (in->u.fsyncdir.arg.fsync_flags & 1) != 0;
 
-	newparent = (ino_t)(in->u.rename2.arg.newdir);
-	name = in->u.rename2.name_newname;
-	newname = after_name(name);
-	flags = (int)(in->u.rename2.arg.flags);
+	check_fh(fqs, ino, in->u.fsyncdir.arg.fh);
 
-	err = voluta_fs_rename(fqc->sbi, &fqc->op, ino,
-			       name, newparent, newname, flags);
-	fuseq_reply_status(fqc, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_fsyncdir(fqs->sbi, &fqs->op, ino, datasync);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_lseek(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_access(struct voluta_fuseq_sub *fqs, ino_t ino,
 		     const struct voluta_fuseq_in *in)
 {
 	int err;
-	int whence;
-	loff_t off;
-	loff_t soff = -1;
+	int ret;
+	const int mask = (int)(in->u.access.arg.mask);
 
-	off = (loff_t)(in->u.lseek.arg.offset);
-	whence = (int)(in->u.lseek.arg.whence);
-	check_fh(fqc, ino, in->u.lseek.arg.fh);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_access(fqs->sbi, &fqs->op, ino, mask);
+	fuseq_unlock_fs(fqs);
 
-	err = voluta_fs_lseek(fqc->sbi, &fqc->op, ino, off, whence, &soff);
-	fuseq_reply_lseek(fqc, soff, err);
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-
-static void do_copy_file_range(struct voluta_fuseq_ctx *fqc, ino_t ino_in,
-			       const struct voluta_fuseq_in *in)
+static int do_create(struct voluta_fuseq_sub *fqs, ino_t ino,
+		     const struct voluta_fuseq_in *in)
 {
 	int err;
-	int flags;
-	loff_t off_in;
-	ino_t ino_out;
-	loff_t off_out;
-	size_t len;
-	size_t cnt = 0;
+	int ret;
+	const int o_flags = (int)(in->u.create.arg.flags);
+	const mode_t mode = (mode_t)(in->u.create.arg.mode);
+	const mode_t umask = (mode_t)(in->u.create.arg.umask);
+	const char *name = in->u.create.name;
+	struct stat st = { .st_ino = 0 };
 
-	off_in = (loff_t)in->u.copy_file_range.arg.off_in;
-	ino_out = (ino_t)in->u.copy_file_range.arg.nodeid_out;
-	off_out = (loff_t)in->u.copy_file_range.arg.off_out;
-	len = in->u.copy_file_range.arg.len;
-	flags = (int)in->u.copy_file_range.arg.flags;
-	check_fh(fqc, ino_in, in->u.copy_file_range.arg.fh_in);
-	check_fh(fqc, ino_out, in->u.copy_file_range.arg.fh_out);
+	fqs->op.ucred.umask = umask;
 
-	err = voluta_fs_copy_file_range(fqc->sbi, &fqc->op, ino_in, off_in,
-					ino_out, off_out, len, flags, &cnt);
-	fuseq_reply_copy_file_range(fqc, cnt, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_create(fqs->sbi, &fqs->op, ino,
+			       name, o_flags, mode, &st);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_create(fqs, &st, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
+static int do_fallocate(struct voluta_fuseq_sub *fqs, ino_t ino,
+			const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const int mode = (int)(in->u.fallocate.arg.mode);
+	const loff_t off = (loff_t)(in->u.fallocate.arg.offset);
+	const loff_t len = (loff_t)(in->u.fallocate.arg.length);
+
+	check_fh(fqs, ino, in->u.fallocate.arg.fh);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_fallocate(fqs->sbi, &fqs->op, ino, mode, off, len);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_rename2(struct voluta_fuseq_sub *fqs, ino_t ino,
+		      const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	const ino_t newparent = (ino_t)(in->u.rename2.arg.newdir);
+	const char *name = in->u.rename2.name_newname;
+	const char *newname = after_name(name);
+	const int flags = (int)(in->u.rename2.arg.flags);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_rename(fqs->sbi, &fqs->op, ino,
+			       name, newparent, newname, flags);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_status(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_lseek(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	loff_t soff = -1;
+	const loff_t off = (loff_t)(in->u.lseek.arg.offset);
+	const int whence = (int)(in->u.lseek.arg.whence);
+
+	check_fh(fqs, ino, in->u.lseek.arg.fh);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_lseek(fqs->sbi, &fqs->op, ino, off, whence, &soff);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_lseek(fqs, soff, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+
+static int do_copy_file_range(struct voluta_fuseq_sub *fqs, ino_t ino_in,
+			      const struct voluta_fuseq_in *in)
+{
+	int err;
+	int ret;
+	size_t cnt = 0;
+	const loff_t off_in = (loff_t)in->u.copy_file_range.arg.off_in;
+	const ino_t ino_out = (ino_t)in->u.copy_file_range.arg.nodeid_out;
+	const loff_t off_out = (loff_t)in->u.copy_file_range.arg.off_out;
+	const size_t len = in->u.copy_file_range.arg.len;
+	const int flags = (int)in->u.copy_file_range.arg.flags;
+
+	check_fh(fqs, ino_in, in->u.copy_file_range.arg.fh_in);
+	check_fh(fqs, ino_out, in->u.copy_file_range.arg.fh_out);
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_copy_file_range(fqs->sbi, &fqs->op, ino_in, off_in,
+					ino_out, off_out, len, flags, &cnt);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_copy_file_range(fqs, cnt, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -2163,11 +2420,11 @@ static int fuseq_rd_iter_actor(struct voluta_rwiter_ctx *rwi,
 	return 0;
 }
 
-static void fuseq_setup_rd_iter(struct voluta_fuseq_ctx *fqc,
+static void fuseq_setup_rd_iter(struct voluta_fuseq_sub *fqs,
 				struct voluta_fuseq_rd_iter *fq_rdi,
 				size_t len, loff_t off)
 {
-	fq_rdi->fqc = fqc;
+	fq_rdi->fqs = fqs;
 	fq_rdi->rwi.actor = fuseq_rd_iter_actor;
 	fq_rdi->rwi.len = len;
 	fq_rdi->rwi.off = off;
@@ -2176,55 +2433,65 @@ static void fuseq_setup_rd_iter(struct voluta_fuseq_ctx *fqc,
 	fq_rdi->nrd_max = len;
 }
 
-static void do_read_iter(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			 const struct voluta_fuseq_in *in)
-{
-	int err;
-	loff_t off;
-	size_t len;
-	struct voluta_fuseq_rd_iter *fq_rdi;
-
-	off = (loff_t)(in->u.read.arg.offset);
-	len = min(in->u.read.arg.size, fqc->fq->fq_coni.max_read);
-
-	fq_rdi = &fqc->outb->u.rdi;
-	fuseq_setup_rd_iter(fqc, fq_rdi, len, off);
-
-	err = voluta_fs_read_iter(fqc->sbi, &fqc->op, ino, &fq_rdi->rwi);
-	fuseq_reply_read_iter(fqc, fq_rdi->nrd,
-			      fq_rdi->fiov, fq_rdi->cnt, err);
-}
-
-static void do_read_buf(struct voluta_fuseq_ctx *fqc, ino_t ino,
+static int do_read_iter(struct voluta_fuseq_sub *fqs, ino_t ino,
 			const struct voluta_fuseq_in *in)
 {
 	int err;
-	loff_t off;
-	size_t len;
-	size_t nrd = 0;
-	struct voluta_fuseq_databuf *dab;
+	int ret;
+	struct voluta_fuseq_rd_iter *fq_rdi = &fqs->outb->u.rdi;
+	const loff_t off = (loff_t)(in->u.read.arg.offset);
+	const size_t len = min(in->u.read.arg.size, fqs->fq->fq_coni.max_read);
 
-	off = (loff_t)(in->u.read.arg.offset);
-	len = min(in->u.read.arg.size, fqc->fq->fq_coni.max_read);
-	dab = &fqc->outb->u.dab;
+	fuseq_setup_rd_iter(fqs, fq_rdi, len, off);
 
-	err = voluta_fs_read(fqc->sbi, &fqc->op, ino,
-			     dab->buf, len, off, &nrd);
-	fuseq_reply_read_buf(fqc, dab->buf, nrd, err);
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_read_iter(fqs->sbi, &fqs->op, ino, &fq_rdi->rwi);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_read_iter(fqs, fq_rdi->nrd,
+				    fq_rdi->fiov, fq_rdi->cnt, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_read(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		    const struct voluta_fuseq_in *in)
+static int do_read_buf(struct voluta_fuseq_sub *fqs, ino_t ino,
+		       const struct voluta_fuseq_in *in)
 {
+	int err;
+	int ret;
+	size_t nrd = 0;
+	const loff_t off = (loff_t)(in->u.read.arg.offset);
+	const size_t len = min(in->u.read.arg.size, fqs->fq->fq_coni.max_read);
+	struct voluta_fuseq_databuf *dab = &fqs->outb->u.dab;
+
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_read(fqs->sbi, &fqs->op, ino,
+			     dab->buf, len, off, &nrd);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_read_buf(fqs, dab->buf, nrd, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_read(struct voluta_fuseq_sub *fqs, ino_t ino,
+		   const struct voluta_fuseq_in *in)
+{
+	int ret;
 	const size_t rd_size = in->u.read.arg.size;
 
-	check_fh(fqc, ino, in->u.read.arg.fh);
+	check_fh(fqs, ino, in->u.read.arg.fh);
 
-	if ((rd_size > 1024) && fuseq_cap_splice_write(fqc->fq)) {
-		do_read_iter(fqc, ino, in);
+	if ((rd_size > 1024) && fuseq_cap_splice_write(fqs->fq)) {
+		ret = do_read_iter(fqs, ino, in);
 	} else {
-		do_read_buf(fqc, ino, in);
+		ret = do_read_buf(fqs, ino, in);
 	}
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -2239,38 +2506,38 @@ fuseq_wr_iter_of(const struct voluta_rwiter_ctx *rwi)
 }
 
 static int
-fuseq_extract_from_pipe_by_fd(struct voluta_fuseq_ctx *fqc,
+fuseq_extract_from_pipe_by_fd(struct voluta_fuseq_sub *fqs,
 			      const struct voluta_fiovec *fiov)
 {
 	loff_t off = fiov->off;
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 
 	return pipe_splice_to_fd(pipe, fiov->fd, &off, fiov->len);
 }
 
 static int
-fuseq_extract_from_pipe_by_iov(struct voluta_fuseq_ctx *fqc,
+fuseq_extract_from_pipe_by_iov(struct voluta_fuseq_sub *fqs,
 			       const struct voluta_fiovec *fiov)
 {
 	struct iovec iov = {
 		.iov_base = fiov->mm,
 		.iov_len = fiov->len
 	};
-	struct voluta_pipe *pipe = &fqc->fq->fq_pipe;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
 
 	return pipe_vmsplice_to_iov(pipe, &iov, 1);
 }
 
 static int
-fuseq_extract_data_from_pipe(struct voluta_fuseq_ctx *fqc,
+fuseq_extract_data_from_pipe(struct voluta_fuseq_sub *fqs,
 			     const struct voluta_fiovec *fiov)
 {
 	int err;
 
 	if (fiov->mm != NULL) {
-		err = fuseq_extract_from_pipe_by_iov(fqc, fiov);
+		err = fuseq_extract_from_pipe_by_iov(fqs, fiov);
 	} else {
-		err = fuseq_extract_from_pipe_by_fd(fqc, fiov);
+		err = fuseq_extract_from_pipe_by_fd(fqs, fiov);
 	}
 	return err;
 }
@@ -2281,7 +2548,7 @@ static int fuseq_wr_iter_actor(struct voluta_rwiter_ctx *rwi,
 	int err;
 	struct voluta_fuseq_wr_iter *fq_wri = fuseq_wr_iter_of(rwi);
 
-	if (!fq_wri->fqc->fq->fq_active) {
+	if (!fq_wri->fqs->fq->fq_active) {
 		return -EROFS;
 	}
 	if ((fiov->fd < 0) || (fiov->off < 0)) {
@@ -2290,7 +2557,7 @@ static int fuseq_wr_iter_actor(struct voluta_rwiter_ctx *rwi,
 	if ((fq_wri->nwr + fiov->len) > fq_wri->nwr_max) {
 		return -EINVAL;
 	}
-	err = fuseq_extract_data_from_pipe(fq_wri->fqc, fiov);
+	err = fuseq_extract_data_from_pipe(fq_wri->fqs, fiov);
 	if (err) {
 		return err;
 	}
@@ -2298,11 +2565,11 @@ static int fuseq_wr_iter_actor(struct voluta_rwiter_ctx *rwi,
 	return 0;
 }
 
-static void fuseq_setup_wr_iter(struct voluta_fuseq_ctx *fqc,
+static void fuseq_setup_wr_iter(struct voluta_fuseq_sub *fqs,
 				struct voluta_fuseq_wr_iter *fq_rwi,
 				size_t len, loff_t off)
 {
-	fq_rwi->fqc = fqc;
+	fq_rwi->fqs = fqs;
 	fq_rwi->rwi.actor = fuseq_wr_iter_actor;
 	fq_rwi->rwi.len = len;
 	fq_rwi->rwi.off = off;
@@ -2310,69 +2577,83 @@ static void fuseq_setup_wr_iter(struct voluta_fuseq_ctx *fqc,
 	fq_rwi->nwr_max = len;
 }
 
-static void do_write(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
+static int do_write(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
 {
 	int err;
-	loff_t off1;
-	size_t lim;
-	size_t len1;
-	loff_t off2;
-	size_t len2;
+	int ret;
 	size_t nwr = 0;
-	struct voluta_fuseq_wr_iter fq_rwi;
+	const loff_t off1 = (loff_t)(in->u.write.arg.offset);
+	const size_t lim = fqs->fq->fq_coni.max_write;
+	const size_t wsz = in->u.write.arg.size;
+	const size_t len1 = min3(wsz, lim, sizeof(in->u.write.buf));
+	const loff_t off2 = off_end(off1, len1);
+	const size_t len2 = min(wsz - len1, lim - len1);
+	struct voluta_fuseq_wr_iter fq_rwi = { .nwr_max = 0 };
 
-	off1 = (loff_t)(in->u.write.arg.offset);
-	lim = fqc->fq->fq_coni.max_write;
-	len1 = min3(in->u.write.arg.size, lim, sizeof(in->u.write.buf));
-	off2 = off_end(off1, len1);
-	len2 = min(in->u.write.arg.size - len1, lim - len1);
-	check_fh(fqc, ino, in->u.write.arg.fh);
+	check_fh(fqs, ino, in->u.write.arg.fh);
 
-	err = voluta_fs_write(fqc->sbi, &fqc->op, ino,
+	fuseq_lock_fs(fqs);
+	err = voluta_fs_write(fqs->sbi, &fqs->op, ino,
 			      in->u.write.buf, len1, off1, &nwr);
 	if (!err && len2) {
-		fuseq_setup_wr_iter(fqc, &fq_rwi, len2, off2);
-		err = voluta_fs_write_iter(fqc->sbi, &fqc->op,
+		fuseq_setup_wr_iter(fqs, &fq_rwi, len2, off2);
+		err = voluta_fs_write_iter(fqs->sbi, &fqs->op,
 					   ino, &fq_rwi.rwi);
 		nwr += fq_rwi.nwr;
 	}
-	fuseq_reply_write(fqc, nwr, err);
+	fuseq_unlock_fs(fqs);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_write(fqs, nwr, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void do_ioc_notimpl(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			   const struct voluta_fuseq_in *in)
+static int do_ioc_notimpl(struct voluta_fuseq_sub *fqs, ino_t ino,
+			  const struct voluta_fuseq_in *in)
 {
-	fuseq_reply_err(fqc, -ENOSYS); /* XXX maybe -ENOTTY */
 	unused(ino);
 	unused(in);
+
+	return fuseq_reply_err(fqs, -ENOSYS); /* XXX maybe -ENOTTY */
 }
 
-static void do_ioc_getflags(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			    const struct voluta_fuseq_in *in)
+static int do_ioc_getflags(struct voluta_fuseq_sub *fqs, ino_t ino,
+			   const struct voluta_fuseq_in *in)
 {
-	int err = -EINVAL;
-	long ret = 0;
+	int err;
+	int ret;
+	long attr = 0;
 	size_t out_bufsz;
 	struct statx stx;
 
 	out_bufsz = in->u.ioctl.arg.out_size;
-	if (out_bufsz != sizeof(ret)) {
-		fuseq_reply_err(fqc, -EINVAL);
-		return;
-	}
-	err = voluta_fs_statx(fqc->sbi, &fqc->op, ino, &stx);
-	ret = (long)stx.stx_attributes;
+	if (out_bufsz != sizeof(attr)) {
+		err = -EINVAL;
+	} else {
+		fuseq_lock_fs(fqs);
+		err = voluta_fs_statx(fqs->sbi, &fqs->op, ino, &stx);
+		fuseq_unlock_fs(fqs);
 
-	fuseq_reply_ioctl(fqc, 0, &ret, sizeof(ret), err);
+		attr = (long)stx.stx_attributes;
+	}
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_ioctl(fqs, 0, &attr, sizeof(attr), err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_ioc_query(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			 const struct voluta_fuseq_in *in)
+static int do_ioc_query(struct voluta_fuseq_sub *fqs, ino_t ino,
+			const struct voluta_fuseq_in *in)
 {
-	int err = -EINVAL;
+	int err;
+	int ret;
 	int flags;
 	size_t bsz_in;
 	size_t bsz_out;
@@ -2387,26 +2668,31 @@ static void do_ioc_query(struct voluta_fuseq_ctx *fqc, ino_t ino,
 	bsz_out = in->u.ioctl.arg.out_size;
 
 	if (!bsz_out && (flags | FUSE_IOCTL_RETRY)) {
-		fuseq_reply_err(fqc, -ENOSYS);
-		return;
+		err = -ENOSYS;
+	} else if (bsz_out != sizeof(query)) {
+		err = -EINVAL;
+	} else if (bsz_in < sizeof(query.qtype)) {
+		err = -EINVAL;
+	} else {
+		query.qtype = ((const struct voluta_ioc_query *)buf_in)->qtype;
+
+		fuseq_lock_fs(fqs);
+		err = voluta_fs_query(fqs->sbi, &fqs->op, ino, &query);
+		fuseq_unlock_fs(fqs);
 	}
-	if (bsz_out != sizeof(query)) {
-		fuseq_reply_err(fqc, -EINVAL);
-		return;
-	}
-	if (bsz_in < sizeof(query.qtype)) {
-		fuseq_reply_err(fqc, -EINVAL);
-		return;
-	}
-	query.qtype = ((const struct voluta_ioc_query *)buf_in)->qtype;
-	err = voluta_fs_query(fqc->sbi, &fqc->op, ino, &query);
-	fuseq_reply_ioctl(fqc, 0, &query, sizeof(query), err);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_ioctl(fqs, 0, &query, sizeof(query), err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_ioc_clone(struct voluta_fuseq_ctx *fqc, ino_t ino,
-			 const struct voluta_fuseq_in *in)
+static int do_ioc_clone(struct voluta_fuseq_sub *fqs, ino_t ino,
+			const struct voluta_fuseq_in *in)
 {
-	int err = -EINVAL;
+	int err;
+	int ret;
 	int flags;
 	size_t bsz_in;
 	size_t bsz_out;
@@ -2421,24 +2707,54 @@ static void do_ioc_clone(struct voluta_fuseq_ctx *fqc, ino_t ino,
 	bsz_out = in->u.ioctl.arg.out_size;
 
 	if (!bsz_out && (flags | FUSE_IOCTL_RETRY)) {
-		fuseq_reply_err(fqc, -ENOSYS);
-		return;
+		err = -ENOSYS;
+	} else if (bsz_in < sizeof(clone.flags)) {
+		err = -EINVAL;
+	} else {
+		clone.flags = ((const struct voluta_ioc_clone *)buf_in)->flags;
+
+		fuseq_lock_fs(fqs);
+		err = voluta_fs_clone(fqs->sbi, &fqs->op, ino,
+				      clone.name, sizeof(clone.name));
+		fuseq_unlock_fs(fqs);
 	}
-	if (bsz_in < sizeof(clone.flags)) {
-		fuseq_reply_err(fqc, -EINVAL);
-		return;
-	}
-	clone.flags = ((const struct voluta_ioc_clone *)buf_in)->flags;
-	err = voluta_fs_clone(fqc->sbi, &fqc->op,
-			      ino, clone.name, sizeof(clone.name));
-	fuseq_reply_ioctl(fqc, 0, &clone, sizeof(clone), err);
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_ioctl(fqs, 0, &clone, sizeof(clone), err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
 }
 
-static void do_ioctl(struct voluta_fuseq_ctx *fqc, ino_t ino,
-		     const struct voluta_fuseq_in *in)
+static int check_ioctl_flags(int flags)
 {
-	long cmd;
+	if (flags & FUSE_IOCTL_COMPAT) {
+		return -ENOSYS;
+	}
+	if ((flags & FUSE_IOCTL_DIR) && (flags & FUSE_IOCTL_UNRESTRICTED)) {
+		return -ENOTTY;
+	}
+	return 0;
+}
+
+static int do_ioctl_bad_flags(struct voluta_fuseq_sub *fqs, int err)
+{
+	int ret;
+
+	fuseq_lock_ch(fqs);
+	ret = fuseq_reply_err(fqs, err);
+	fuseq_unlock_ch(fqs);
+
+	return ret;
+}
+
+static int do_ioctl(struct voluta_fuseq_sub *fqs, ino_t ino,
+		    const struct voluta_fuseq_in *in)
+{
+	int err = 0;
+	int ret;
 	int flags;
+	long cmd;
 	size_t in_size;
 	const void *in_buf;
 
@@ -2448,29 +2764,26 @@ static void do_ioctl(struct voluta_fuseq_ctx *fqc, ino_t ino,
 	in_buf = in_size ? in->u.ioctl.buf : NULL;
 	unused(in_buf); /* XXX */
 
-	if (flags & FUSE_IOCTL_COMPAT) {
-		fuseq_reply_err(fqc, -ENOSYS);
-		return;
+	err = check_ioctl_flags(flags);
+	if (err) {
+		ret = do_ioctl_bad_flags(fqs, err);
+	} else {
+		switch (cmd) {
+		case FS_IOC_GETFLAGS:
+			ret = do_ioc_getflags(fqs, ino, in);
+			break;
+		case VOLUTA_FS_IOC_QUERY:
+			ret = do_ioc_query(fqs, ino, in);
+			break;
+		case VOLUTA_FS_IOC_CLONE:
+			ret = do_ioc_clone(fqs, ino, in);
+			break;
+		default:
+			ret = do_ioc_notimpl(fqs, ino, in);
+			break;
+		}
 	}
-	if ((flags & FUSE_IOCTL_DIR) && (flags & FUSE_IOCTL_UNRESTRICTED)) {
-		fuseq_reply_err(fqc, -ENOTTY);
-		return;
-	}
-
-	switch (cmd) {
-	case FS_IOC_GETFLAGS:
-		do_ioc_getflags(fqc, ino, in);
-		break;
-	case VOLUTA_FS_IOC_QUERY:
-		do_ioc_query(fqc, ino, in);
-		break;
-	case VOLUTA_FS_IOC_CLONE:
-		do_ioc_clone(fqc, ino, in);
-		break;
-	default:
-		do_ioc_notimpl(fqc, ino, in);
-		break;
-	}
+	return ret;
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
@@ -2534,34 +2847,34 @@ static const struct voluta_fuseq_cmd *cmd_of(unsigned int opc)
 
 
 
-static int fuseq_resolve_opdesc(struct voluta_fuseq_ctx *fqc, unsigned int opc)
+static int fuseq_resolve_opdesc(struct voluta_fuseq_sub *fqs, unsigned int opc)
 {
 	const struct voluta_fuseq_cmd *cmd = cmd_of(opc);
 
 	if ((cmd == NULL) || (cmd->hook == NULL)) {
 		return -ENOSYS;
 	}
-	if (!fqc->fq->fq_got_init && (cmd->code != FUSE_INIT)) {
+	if (!fqs->fq->fq_got_init && (cmd->code != FUSE_INIT)) {
 		return -EIO;
 	}
-	if (fqc->fq->fq_got_init && (cmd->code == FUSE_INIT)) {
+	if (fqs->fq->fq_got_init && (cmd->code == FUSE_INIT)) {
 		return -EIO;
 	}
-	fqc->cmd = cmd;
+	fqs->cmd = cmd;
 	return 0;
 }
 
-static int fuseq_check_perm(const struct voluta_fuseq_ctx *fqc, uid_t opuid)
+static int fuseq_check_perm(const struct voluta_fuseq_sub *fqs, uid_t opuid)
 {
-	const uid_t owner = fqc->sbi->sb_owner.uid;
+	const uid_t owner = fqs->sbi->sb_owner.uid;
 
-	if (!fqc->fq->fq_deny_others) {
+	if (!fqs->fq->fq_deny_others) {
 		return 0;
 	}
 	if ((opuid == 0) || (owner == opuid)) {
 		return 0;
 	}
-	switch (fqc->op.opcode) {
+	switch (fqs->op.opcode) {
 	case FUSE_INIT:
 	case FUSE_READ:
 	case FUSE_WRITE:
@@ -2579,10 +2892,10 @@ static int fuseq_check_perm(const struct voluta_fuseq_ctx *fqc, uid_t opuid)
 	return -EACCES;
 }
 
-static void fuseq_assign_curr_oper(struct voluta_fuseq_ctx *fqc,
+static void fuseq_assign_curr_oper(struct voluta_fuseq_sub *fqs,
 				   const struct fuse_in_header *hdr)
 {
-	struct voluta_oper *op = &fqc->op;
+	struct voluta_oper *op = &fqs->op;
 
 	op->ucred.uid = (uid_t)(hdr->uid);
 	op->ucred.gid = (gid_t)(hdr->gid);
@@ -2592,65 +2905,76 @@ static void fuseq_assign_curr_oper(struct voluta_fuseq_ctx *fqc,
 	op->opcode = (int)hdr->opcode;
 }
 
-static int fuseq_setup_curr_xtime(struct voluta_fuseq_ctx *fqc)
+static int fuseq_setup_curr_xtime(struct voluta_fuseq_sub *fqs)
 {
-	const bool is_realtime = (fqc->cmd->realtime > 0);
+	const bool is_realtime = (fqs->cmd->realtime > 0);
 
-	return voluta_ts_gettime(&fqc->op.xtime, is_realtime);
+	return voluta_ts_gettime(&fqs->op.xtime, is_realtime);
 }
 
-static int fuseq_process_hdr(struct voluta_fuseq_ctx *fqc,
+static struct voluta_fuseq_in *fuseq_in_of(const struct voluta_fuseq_sub *fqs)
+{
+	const struct voluta_fuseq_in *in = &fqs->inb->u.in;
+
+	return unconst(in);
+}
+
+static int fuseq_process_hdr(struct voluta_fuseq_sub *fqs,
 			     const struct voluta_fuseq_in *in)
 {
 	int err;
 	const struct fuse_in_header *hdr = &in->u.hdr.hdr;
 
-	fuseq_assign_curr_oper(fqc, hdr);
-	err = fuseq_resolve_opdesc(fqc, hdr->opcode);
+	fuseq_assign_curr_oper(fqs, hdr);
+	err = fuseq_resolve_opdesc(fqs, hdr->opcode);
 	if (err) {
 		return err;
 	}
-	err = fuseq_check_perm(fqc, hdr->uid);
+	err = fuseq_check_perm(fqs, hdr->uid);
 	if (err) {
 		return err;
 	}
-	err = fuseq_setup_curr_xtime(fqc);
+	err = fuseq_setup_curr_xtime(fqs);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static void fuseq_call_oper(struct voluta_fuseq_ctx *fqc,
-			    const struct voluta_fuseq_in *in)
+static int fuseq_call_oper(struct voluta_fuseq_sub *fqs,
+			   const struct voluta_fuseq_in *in)
 {
 	const unsigned long nodeid = in->u.hdr.hdr.nodeid;
 
-	fqc->cmd->hook(fqc, (ino_t)nodeid, in);
+	return fqs->cmd->hook(fqs, (ino_t)nodeid, in);
 }
 
-static void fuseq_exec_request(struct voluta_fuseq *fq,
-			       const struct voluta_fuseq_in *in)
+static int fuseq_exec_request(struct voluta_fuseq_sub *fqs)
 {
 	int err;
-	struct voluta_fuseq_ctx *fqc = &fq->fq_ctx;
+	int ret;
+	struct voluta_fuseq_in *in = fuseq_in_of(fqs);
 
-	err = fuseq_process_hdr(fqc, in);
+	err = fuseq_process_hdr(fqs, in);
 	if (!err) {
-		fuseq_call_oper(fqc, in);
+		fqs->fq->fq_nopers++;
+		ret = fuseq_call_oper(fqs, in);
 	} else {
-		fuseq_reply_err(fqc, err);
+		ret = fuseq_reply_err(fqs, err);
 	}
-	fq->fq_nopers++;
+	return ret;
 }
 
-static void reset_inhdr(struct voluta_fuseq_in *in)
+static void fuseq_reset_inhdr(struct voluta_fuseq_sub *fqs)
 {
+	struct voluta_fuseq_in *in = fuseq_in_of(fqs);
+
 	memset(&in->u.hdr, 0, sizeof(in->u.hdr));
 }
 
-static int check_inhdr(const struct voluta_fuseq_in *in, size_t nrd)
+static int fuseq_check_inhdr(const struct voluta_fuseq_sub *fqs, size_t nrd)
 {
+	const struct voluta_fuseq_in *in = fuseq_in_of(fqs);
 	const int opc = (int)in->u.hdr.hdr.opcode;
 	const size_t len = in->u.hdr.hdr.len;
 
@@ -2659,38 +2983,54 @@ static int check_inhdr(const struct voluta_fuseq_in *in, size_t nrd)
 			"opc=%d nrd=%lu len=%lu ", opc, nrd, len);
 		return -EIO;
 	}
-	if ((opc != FUSE_WRITE) && (opc != FUSE_BATCH_FORGET)) {
-		if (len > sizeof(in->u.write)) {
-			log_err("illegal header: opc=%d len=%lu", opc, len);
-			return -EPROTO;
-		}
+	if ((len > sizeof(in->u)) && (opc != FUSE_WRITE)) {
+		log_err("illegal header: opc=%d len=%lu", opc, len);
+		return -EPROTO;
 	}
 	return 0;
 }
 
-static int fuseq_read_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
+static int fuseq_check_pipe_size(const struct voluta_fuseq_sub *fqs)
+{
+	int err = 0;
+	const struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
+	const size_t buffsize = fqs->fq->fq_coni.buffsize;
+
+	if (buffsize != pipe->size) {
+		log_err("pipe-fuse mismatch: pipesize=%lu buffsize=%lu ",
+			pipe->size, buffsize);
+		err = -EIO;
+	}
+	return err;
+}
+
+static int fuseq_read_in(struct voluta_fuseq_sub *fqs)
 {
 	int err;
 	size_t len = 0;
-	const size_t hdr_len = sizeof(in->u.hdr.hdr);
-	struct voluta_pipe *pipe = &fq->fq_pipe;
+	size_t hdr_len = 0;
+	struct voluta_fuseq_in *in = NULL;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
+	const int fuse_fd = fqs->fq->fq_fuse_fd;
 
-	if (fq->fq_coni.buffsize != pipe->size) {
-		log_err("can not read from fuse: buffsize=%lu pipesize=%lu "
-			"fuse_fd=%d", fq->fq_coni.buffsize, pipe->size,
-			fq->fq_fuse_fd);
-		return -EIO;
-	}
-	err = voluta_sys_read(fq->fq_fuse_fd, in, pipe->size, &len);
+	err = fuseq_check_pipe_size(fqs);
 	if (err) {
 		return err;
 	}
+	in = fuseq_in_of(fqs);
+	err = voluta_sys_read(fuse_fd, in, pipe->size, &len);
+	if (err) {
+		log_err("read fuse-to-pipe failed: fuse_fd=%d "
+			"pipe-size=%lu err=%d", fuse_fd, pipe->size, err);
+		return err;
+	}
+	hdr_len = sizeof(in->u.hdr.hdr);
 	if (len < hdr_len) {
 		log_err("fuse read-in too-short: "\
 			"len=%lu hdr_len=%lu", len, hdr_len);
 		return -EIO;
 	}
-	return check_inhdr(in, len);
+	return fuseq_check_inhdr(fqs, len);
 }
 
 static void *tail_of(struct voluta_fuseq_in *in, size_t head_len)
@@ -2700,48 +3040,48 @@ static void *tail_of(struct voluta_fuseq_in *in, size_t head_len)
 	return (uint8_t *)p + head_len;
 }
 
-static int fuseq_splice_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
+static int fuseq_splice_in(struct voluta_fuseq_sub *fqs)
 {
 	int err;
 	int opc;
 	size_t rem;
 	size_t len;
 	size_t nsp = 0;
+	size_t hdr_len = 0;
 	void *tail = NULL;
-	const size_t hdr_len = sizeof(in->u.hdr.hdr);
-	struct voluta_pipe *pipe = &fq->fq_pipe;
+	struct voluta_fuseq_in *in = NULL;
+	struct voluta_pipe *pipe = &fqs->fq->fq_pipe;
+	const int fuse_fd = fqs->fq->fq_fuse_fd;
 
-	voluta_assert_eq(fq->fq_coni.buffsize, pipe->size);
-
-	if (fq->fq_coni.buffsize != pipe->size) {
-		log_err("can not splice to fuse: buffsize=%lu pipesize=%lu "
-			"fuse_fd=%d", fq->fq_coni.buffsize, pipe->size,
-			fq->fq_fuse_fd);
-		return -EIO;
+	err = fuseq_check_pipe_size(fqs);
+	if (err) {
+		return err;
 	}
 	if (pipe->pend != 0) {
 		log_err("pipe not empty: pend=%lu fuse_fd=%d",
-			pipe->pend, fq->fq_fuse_fd);
+			pipe->pend, fuse_fd);
 		return -EIO;
 	}
-	err = pipe_splice_from_fd(pipe, fq->fq_fuse_fd, NULL, pipe->size);
+	err = pipe_splice_from_fd(pipe, fuse_fd, NULL, pipe->size);
 	if (err) {
 		log_err("fuse splice-in failed: err=%d", err);
 		return err;
 	}
 	nsp = pipe->pend;
+	hdr_len = sizeof(in->u.hdr.hdr);
 	if (nsp < hdr_len) {
 		log_err("fuse splice-in too-short: "\
 			"nsp=%lu hdr_len=%lu", nsp, hdr_len);
 		return -EIO;
 	}
+	in = fuseq_in_of(fqs);
 	len = min(nsp, sizeof(in->u.write));
 	err = pipe_copy_to_buf(pipe, in, len);
 	if (err) {
 		log_err("pipe-copy failed: len=%lu err=%d", len, err);
 		return err;
 	}
-	err = check_inhdr(in, nsp);
+	err = fuseq_check_inhdr(fqs, nsp);
 	if (err) {
 		return err;
 	}
@@ -2750,7 +3090,7 @@ static int fuseq_splice_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
 	if (!rem || (opc == FUSE_WRITE)) {
 		return 0;
 	}
-	tail = tail_of(in, len); /* FUSE_BATCH_FORGET et.al. */
+	tail = tail_of(in, len); /* FUSE_SETXATTR, FUSE_BATCH_FORGET et.al. */
 	err = pipe_copy_to_buf(pipe, tail, rem);
 	if (err) {
 		log_err("pipe-copy-tail failed: "\
@@ -2760,90 +3100,98 @@ static int fuseq_splice_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
 	return 0;
 }
 
-static void
-fuseq_read_or_splice_request(struct voluta_fuseq *fq,
-			     struct voluta_fuseq_in *in)
+static int fuseq_read_or_splice_request(struct voluta_fuseq_sub *fqs)
 {
 	int err;
 
-	if (fuseq_cap_splice_read(fq)) {
-		err = fuseq_splice_in(fq, in);
+	if (fuseq_cap_splice_read(fqs->fq)) {
+		err = fuseq_splice_in(fqs);
 	} else {
-		err = fuseq_read_in(fq, in);
+		err = fuseq_read_in(fqs);
 	}
 
 	if (err == -ENOENT) {
 		/* hmmm... ok, but why? */
-		reset_inhdr(in);
+		err = -ENODATA;
 	} else if ((err == -EINTR) || (err == -EAGAIN)) {
 		log_dbg("fuse no-read: err=%d", err);
+		err = -ENODATA;
 	} else if (err == -ENODEV) {
 		/* Filesystem unmounted, or connection aborted */
 		log_info("fuse connection aborted: err=%d", err);
-		fuseq_set_chan_err(fq, err);
 	} else if (err) {
 		log_err("fuse recv-request: err=%d", err);
-		fuseq_set_chan_err(fq, err);
 	}
+
+	if (err) {
+		fuseq_reset_inhdr(fqs);
+	}
+	return err;
 }
 
-static int fuseq_prep_request(struct voluta_fuseq *fq,
-			      struct voluta_fuseq_in *in)
+static int fuseq_prep_request(struct voluta_fuseq_sub *fqs)
 {
-	reset_inhdr(in);
-	return pipe_flush_to_fd(&fq->fq_pipe, fq->fq_null_fd);
+	const int null_fd = fqs->fq->fq_null_fd;
+
+	fuseq_reset_inhdr(fqs);
+	return pipe_flush_to_fd(&fqs->fq->fq_pipe, null_fd);
 }
 
-static int fuseq_wait_request(struct voluta_fuseq *fq)
+static int fuseq_wait_request(const struct voluta_fuseq_sub *fqs)
 {
+	const int fuse_fd = fqs->fq->fq_fuse_fd;
 	const struct timespec ts = { .tv_sec = 1 };
 
-	return voluta_sys_pselect_rfd(fq->fq_fuse_fd, &ts);
+	return voluta_sys_pselect_rfd(fuse_fd, &ts);
 }
 
-static int fuseq_recv_request(struct voluta_fuseq *fq,
-			      struct voluta_fuseq_in *in)
+static int fuseq_recv_request(struct voluta_fuseq_sub *fqs)
 {
 	int err;
 
-	err = fuseq_prep_request(fq, in);
+	err = fuseq_prep_request(fqs);
 	if (err) {
 		return err;
 	}
-	err = fuseq_wait_request(fq);
+	err = fuseq_wait_request(fqs);
 	if (err) {
 		return err;
 	}
-	fuseq_read_or_splice_request(fq, in);
+	err = fuseq_read_or_splice_request(fqs);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_fuseq_inb *new_inb(struct voluta_qalloc *qal)
+static struct voluta_fuseq_inb *inb_new(struct voluta_qalloc *qal)
 {
 	struct voluta_fuseq_inb *inb;
 
-	return voluta_qalloc_zalloc(qal, sizeof(*inb));
+	return voluta_qalloc_zmalloc(qal, sizeof(*inb));
 }
 
-static void del_inb(struct voluta_qalloc *qal, struct voluta_fuseq_inb *inb)
+static void inb_del(struct voluta_fuseq_inb *inb, struct voluta_qalloc *qal)
 {
-	voluta_qalloc_free(qal, inb, sizeof(*inb));
+	voluta_qalloc_zfree(qal, inb, sizeof(*inb));
 }
 
-static struct voluta_fuseq_outb *new_outb(struct voluta_qalloc *qal)
+static struct voluta_fuseq_outb *outb_new(struct voluta_qalloc *qal)
 {
 	struct voluta_fuseq_outb *outb;
 
-	outb = voluta_qalloc_zalloc(qal, sizeof(*outb));
+	outb = voluta_qalloc_zmalloc(qal, sizeof(*outb));
 	return outb;
 }
 
-static void del_outb(struct voluta_qalloc *qal, struct voluta_fuseq_outb *outb)
+static void outb_del(struct voluta_fuseq_outb *outb, struct voluta_qalloc *qal)
 {
-	voluta_qalloc_free(qal, outb, sizeof(*outb));
+	voluta_qalloc_zfree(qal, outb, sizeof(*outb));
 }
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int pipe_max_size(size_t *out_size)
 {
@@ -2859,21 +3207,30 @@ static int pipe_max_size(size_t *out_size)
 	return err;
 }
 
-static int fuseq_init_conn_info(struct voluta_fuseq *fq, size_t bufsize_max)
+static size_t fuseq_bufsize_max(const struct voluta_fuseq *fq)
+{
+	const struct voluta_fuseq_sub *fqs = &fq->fq_sub[0];
+	const size_t inbuf_max = sizeof(*fqs->inb);
+	const size_t outbuf_max = sizeof(*fqs->outb);
+
+	return max(inbuf_max, outbuf_max);
+}
+
+static int fuseq_init_conn_info(struct voluta_fuseq *fq)
 {
 	int err;
 	size_t pipe_maxsz;
-	size_t page_size;
 	size_t pipe_size;
 	size_t buff_size;
 	size_t rdwr_size;
 	const size_t mega = VOLUTA_UMEGA;
 	const size_t fuse_min_bsz = FUSE_MIN_READ_BUFFER;
-
-	page_size = voluta_sc_page_size();
+	const size_t bufsize_max = fuseq_bufsize_max(fq);
+	const size_t page_size = voluta_sc_page_size();
 
 	err = pipe_max_size(&pipe_maxsz);
 	if (err) {
+		log_err("could not resolve max pipe-size: err=%d", err);
 		return err;
 	}
 	pipe_size = (pipe_maxsz > mega) ? mega : pipe_maxsz;
@@ -2928,58 +3285,76 @@ static void fuseq_fini_pipe(struct voluta_fuseq *fq)
 	pipe_fini(&fq->fq_pipe);
 }
 
-static int fuseq_init_bufs(struct voluta_fuseq *fq)
+static int fuseq_init_bufs(struct voluta_fuseq_sub *fqs)
 {
-	struct voluta_fuseq_ctx *fqc = &fq->fq_ctx;
+	struct voluta_qalloc *qal = fqs->fq->fq_qal;
 
-	fqc->inb = NULL;
-	fqc->outb = NULL;
-
-	fqc->inb = new_inb(fq->fq_qal);
-	if (fqc->inb == NULL) {
+	fqs->inb = inb_new(qal);
+	if (fqs->inb == NULL) {
 		return -ENOMEM;
 	}
-	fqc->outb = new_outb(fq->fq_qal);
-	if (fqc->outb == NULL) {
-		del_inb(fq->fq_qal, fqc->inb);
-		fqc->inb = NULL;
+	fqs->outb = outb_new(qal);
+	if (fqs->outb == NULL) {
+		inb_del(fqs->inb, qal);
+		fqs->inb = NULL;
 		return -ENOMEM;
 	}
 	return 0;
 }
 
-static void fuseq_fini_bufs(struct voluta_fuseq *fq)
+static void fuseq_fini_bufs(struct voluta_fuseq_sub *fqs)
 {
-	struct voluta_fuseq_ctx *fqc = &fq->fq_ctx;
+	struct voluta_qalloc *qal = fqs->fq->fq_qal;
 
-	del_outb(fq->fq_qal, fqc->outb);
-	del_inb(fq->fq_qal, fqc->inb);
-	fqc->inb = NULL;
-	fqc->outb = NULL;
+	outb_del(fqs->outb, qal);
+	inb_del(fqs->inb, qal);
+	fqs->inb = NULL;
+	fqs->outb = NULL;
 }
 
-static int fuseq_init_ctx(struct voluta_fuseq *fq)
+static int fuseq_init_sub(struct voluta_fuseq_sub *fqs,
+			  struct voluta_fuseq *fq)
 {
-	struct voluta_fuseq_ctx *fqc = &fq->fq_ctx;
+	STATICASSERT_LE(sizeof(*fqs), 128);
 
-	fqc->cmd = NULL;
-	fqc->fq  = fq;
-	fqc->sbi = fq->fq_sbi;
-	fqc->inb = NULL;
-	fqc->outb = NULL;
-	return fuseq_init_bufs(fq);
+	fqs->cmd = NULL;
+	fqs->fq  = fq;
+	fqs->sbi = fq->fq_sbi;
+	fqs->inb = NULL;
+	fqs->outb = NULL;
+	return fuseq_init_bufs(fqs);
 }
 
-static void fuseq_fini_ctx(struct voluta_fuseq *fq)
+static void fuseq_fini_sub(struct voluta_fuseq_sub *fqs)
 {
-	struct voluta_fuseq_ctx *fqc = &fq->fq_ctx;
+	fuseq_fini_bufs(fqs);
+	fqs->cmd = NULL;
+	fqs->fq  = NULL;
+	fqs->sbi = NULL;
+	fqs->inb = NULL;
+	fqs->outb = NULL;
+}
 
-	fuseq_fini_bufs(fq);
-	fqc->cmd = NULL;
-	fqc->fq  = NULL;
-	fqc->sbi = NULL;
-	fqc->inb = NULL;
-	fqc->outb = NULL;
+static int fuseq_init_subs(struct voluta_fuseq *fq)
+{
+	int err;
+
+	fq->fq_nsubs = 0;
+	for (size_t i = 0; i < ARRAY_SIZE(fq->fq_sub); ++i) {
+		err = fuseq_init_sub(&fq->fq_sub[i], fq);
+		if (err) {
+			return err;
+		}
+		fq->fq_nsubs++;
+	}
+	return 0;
+}
+
+static void fuseq_fini_subs(struct voluta_fuseq *fq)
+{
+	for (size_t i = 0; i < fq->fq_nsubs; ++i) {
+		fuseq_fini_sub(&fq->fq_sub[i]);
+	}
 }
 
 static int fuseq_init_null_fd(struct voluta_fuseq *fq)
@@ -2997,37 +3372,69 @@ static void fuseq_fini_null_fd(struct voluta_fuseq *fq)
 	}
 }
 
-int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
+static int fuseq_init_locks(struct voluta_fuseq *fq)
 {
 	int err;
-	size_t bsz;
 
-	voluta_memzero(fq, sizeof(*fq));
+	err = voluta_mutex_init(&fq->fq_ch_lock);
+	if (err) {
+		return err;
+	}
+	err = voluta_mutex_init(&fq->fq_fs_lock);
+	if (err) {
+		voluta_mutex_destroy(&fq->fq_ch_lock);
+		return err;
+	}
+	return err;
+}
+
+static void fuseq_fini_locks(struct voluta_fuseq *fq)
+{
+	voluta_mutex_destroy(&fq->fq_ch_lock);
+	voluta_mutex_destroy(&fq->fq_fs_lock);
+}
+
+static void fuseq_init_common(struct voluta_fuseq *fq,
+			      struct voluta_sb_info *sbi)
+{
 	pipe_init(&fq->fq_pipe);
 	fq->fq_times = 0;
 	fq->fq_sbi = sbi;
 	fq->fq_qal = sbi->sb_qalloc;
 	fq->fq_nopers = 0;
+	fq->fq_nsubs = 0;
 	fq->fq_fuse_fd = -1;
 	fq->fq_null_fd = -1;
-	fq->fq_chan_err = 0;
-	fq->fq_got_init = 0;
-	fq->fq_got_destroy = 0;
-	fq->fq_deny_others = 0;
+	fq->fq_got_init = false;
+	fq->fq_got_destroy = false;
+	fq->fq_deny_others = false;
 	fq->fq_active = false;
 	fq->fq_umount = false;
 	fq->fq_splice_memfd = false;
+}
 
-	bsz = max(sizeof(*fq->fq_ctx.inb), sizeof(*fq->fq_ctx.outb));
-	err = fuseq_init_conn_info(fq, bsz);
+int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
+{
+	int err;
+	size_t psz;
+
+	voluta_memzero(fq, sizeof(*fq));
+	fuseq_init_common(fq, sbi);
+
+	err = fuseq_init_conn_info(fq);
 	if (err) {
 		return err;
 	}
-	err = fuseq_init_ctx(fq);
+	err = fuseq_init_locks(fq);
 	if (err) {
 		goto out;
 	}
-	err = fuseq_init_pipe(fq, fq->fq_coni.buffsize);
+	err = fuseq_init_subs(fq);
+	if (err) {
+		goto out;
+	}
+	psz = fq->fq_coni.buffsize;
+	err = fuseq_init_pipe(fq, psz);
 	if (err) {
 		goto out;
 	}
@@ -3040,7 +3447,8 @@ out:
 	if (err) {
 		fuseq_fini_null_fd(fq);
 		fuseq_fini_pipe(fq);
-		fuseq_fini_ctx(fq);
+		fuseq_fini_subs(fq);
+		fuseq_fini_locks(fq);
 	}
 	return err;
 }
@@ -3058,7 +3466,9 @@ void voluta_fuseq_fini(struct voluta_fuseq *fq)
 	fuseq_fini_fuse_fd(fq);
 	fuseq_fini_null_fd(fq);
 	fuseq_fini_pipe(fq);
-	fuseq_fini_ctx(fq);
+	fuseq_fini_subs(fq);
+	fuseq_fini_locks(fq);
+
 	fq->fq_qal = NULL;
 	fq->fq_sbi = NULL;
 }
@@ -3100,72 +3510,91 @@ void voluta_fuseq_term(struct voluta_fuseq *fq)
 	fuseq_fini_fuse_fd(fq);
 }
 
-static bool fuseq_has_input(const struct voluta_fuseq *fq)
+static int fuseq_check_input(const struct voluta_fuseq_sub *fqs)
 {
-	const struct voluta_fuseq_in *in = &fq->fq_ctx.inb->u.in;
+	int err = 0;
+	const struct voluta_fuseq_in *in = fuseq_in_of(fqs);
+	const uint32_t in_len = in->u.hdr.hdr.len;
+	const uint32_t opcode = in->u.hdr.hdr.opcode;
 
-	return in->u.hdr.hdr.len && in->u.hdr.hdr.opcode;
+	if (!in_len || !opcode) {
+		log_warn("bad fuse input: in_len=%u opcode=%u",
+			 in_len, opcode);
+		err = -ENODATA;
+	}
+	return err;
 }
 
-static int fuseq_exec_one(struct voluta_fuseq *fq)
+static int fuseq_recv_request_locked(struct voluta_fuseq_sub *fqs)
 {
 	int err;
-	struct voluta_fuseq_in *in = &fq->fq_ctx.inb->u.in;
 
-	err = fuseq_recv_request(fq, in);
+	err = fuseq_recv_request(fqs);
 	if (err) {
 		return err;
 	}
-	err = fuseq_get_chan_err(fq);
-	if (err) {
-		return err;
-	}
-	if (!fuseq_has_input(fq)) {
-		return -ENODATA;
-	}
-	fuseq_exec_request(fq, in);
-	err = fuseq_get_chan_err(fq);
+	err = fuseq_check_input(fqs);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fuseq_do_timeout(struct voluta_fuseq *fq)
+static int fuseq_exec_one(struct voluta_fuseq_sub *fqs)
 {
 	int err = 0;
-	const time_t now = voluta_time_now();
-	const time_t dif = labs(now - fq->fq_times);
-	const int flags = (dif > 20) ? VOLUTA_F_IDLE : 0;
+	bool locked;
 
-	if (fuseq_is_normal(fq) && (dif > 2)) {
-		err = voluta_exec_timeout_cycle(fq->fq_sbi, flags);
-		fq->fq_times = voluta_time_now();
+	locked = fuseq_timedlock_ch(fqs);
+	if (!locked) {
+		return 0;
+	}
+	err = fuseq_recv_request_locked(fqs);
+	fuseq_unlock_ch(fqs);
+
+	if (err) {
+		return err;
+	}
+	fqs->fq->fq_times = voluta_time_now();
+	err = fuseq_exec_request(fqs);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+static int fuseq_do_timeout(struct voluta_fuseq_sub *fqs)
+{
+	int flags;
+	int err = 0;
+	const time_t now = voluta_time_now();
+	const time_t dif = labs(now - fqs->fq->fq_times);
+
+	if (fuseq_is_normal(fqs->fq) && (dif > 2)) {
+		flags = (dif > 20) ? VOLUTA_F_IDLE : 0;
+
+		fuseq_lock_fs(fqs);
+		err = voluta_fs_timedout(fqs->fq->fq_sbi, flags);
+		fuseq_unlock_fs(fqs);
 	}
 	return err;
 }
 
-static int fuseq_exec_cycle_once(struct voluta_fuseq *fq)
+static int fuseq_exec_cycle_once(struct voluta_fuseq_sub *fqs)
 {
 	int err;
 
-	err = fuseq_exec_one(fq);
-	if (!err) {
-		fq->fq_times = voluta_time_now();
-		return 0;
-	}
+	err = fuseq_exec_one(fqs);
 	if (err == -ENODEV) {
-		fq->fq_active = false; /* umount case */
-		return 0;
-	}
-	if (err == -ETIMEDOUT) {
-		return fuseq_do_timeout(fq);
-	}
-	if (err == -ENODATA) {
+		fqs->fq->fq_active = false; /* umount case */
+		err = 0;
+	} else if (err == -ETIMEDOUT) {
+		err = fuseq_do_timeout(fqs);
+	} else if (err == -ENODATA) {
 		usleep(1);
-		return 0;
+		err = 0;
 	}
-	/* otherwise: break loop */
+	/* ok-or-error (break-loop) */
 	return err;
 }
 
@@ -3175,7 +3604,7 @@ int voluta_fuseq_exec(struct voluta_fuseq *fq)
 
 	fq->fq_active = true;
 	while (fq->fq_active) {
-		err = fuseq_exec_cycle_once(fq);
+		err = fuseq_exec_cycle_once(&fq->fq_sub[0]);
 		if (err) {
 			log_info("done fuseq-exec: err=%d", err);
 			break;
@@ -3183,5 +3612,37 @@ int voluta_fuseq_exec(struct voluta_fuseq *fq)
 	}
 	fq->fq_active = false;
 	return err;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void fuseq_lock_ch(const struct voluta_fuseq_sub *fqs)
+{
+	voluta_mutex_lock(&fqs->fq->fq_ch_lock);
+}
+
+static bool fuseq_timedlock_ch(const struct voluta_fuseq_sub *fqs)
+{
+	struct timespec ts;
+
+	voluta_rclock_now(&ts);
+	ts.tv_sec += 1;
+
+	return voluta_mutex_timedlock(&fqs->fq->fq_ch_lock, &ts);
+}
+
+static void fuseq_unlock_ch(const struct voluta_fuseq_sub *fqs)
+{
+	voluta_mutex_unlock(&fqs->fq->fq_ch_lock);
+}
+
+static void fuseq_lock_fs(const struct voluta_fuseq_sub *fqs)
+{
+	voluta_mutex_lock(&fqs->fq->fq_fs_lock);
+}
+
+static void fuseq_unlock_fs(const struct voluta_fuseq_sub *fqs)
+{
+	voluta_mutex_unlock(&fqs->fq->fq_fs_lock);
 }
 

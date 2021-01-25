@@ -288,7 +288,7 @@ void voluta_setup_globals(int argc, char *argv[]);
 
 void voluta_init_process(void);
 
-void voluta_log_process_info(void);
+void voluta_log_meta_banner(bool start);
 
 void voluta_set_verbose_mode(const char *mode);
 

@@ -24,6 +24,12 @@
 #include <time.h>
 #include "libvoluta.h"
 
+#if defined(NDEBUG)
+#define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_NORMAL
+#else
+#define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_ERRORCHECK
+#endif
+
 int voluta_thread_sigblock_common(void)
 {
 	sigset_t sigset_th;
@@ -90,7 +96,7 @@ int voluta_mutex_init(struct voluta_mutex *mutex)
 	pthread_mutexattr_t attr;
 
 	pthread_mutexattr_init(&attr);
-	err = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
+	err = pthread_mutexattr_settype(&attr, VOLUTA_MUTEX_KIND);
 	if (err) {
 		return err;
 	}
@@ -99,6 +105,7 @@ int voluta_mutex_init(struct voluta_mutex *mutex)
 	if (err) {
 		return err;
 	}
+	mutex->alive = 1;
 	return 0;
 }
 
@@ -106,9 +113,12 @@ void voluta_mutex_destroy(struct voluta_mutex *mutex)
 {
 	int err;
 
-	err = pthread_mutex_destroy(&mutex->mutex);
-	if (err) {
-		voluta_panic("pthread_mutex_destroy: %d", err);
+	if (mutex->alive) {
+		err = pthread_mutex_destroy(&mutex->mutex);
+		if (err) {
+			voluta_panic("pthread_mutex_destroy: %d", err);
+		}
+		mutex->alive = 0;
 	}
 }
 
@@ -122,7 +132,7 @@ void voluta_mutex_lock(struct voluta_mutex *mutex)
 	}
 }
 
-bool voluta_mutex_rylock(struct voluta_mutex *mutex)
+bool voluta_mutex_trylock(struct voluta_mutex *mutex)
 {
 	int err;
 	bool status = false;
@@ -134,6 +144,23 @@ bool voluta_mutex_rylock(struct voluta_mutex *mutex)
 		status = false;
 	} else {
 		voluta_panic("pthread_mutex_trylock: %d", err);
+	}
+	return status;
+}
+
+bool voluta_mutex_timedlock(struct voluta_mutex *mutex,
+			    const struct timespec *abstime)
+{
+	int err;
+	bool status = false;
+
+	err = pthread_mutex_timedlock(&mutex->mutex, abstime);
+	if (err == 0) {
+		status = true;
+	} else if (err == ETIMEDOUT) {
+		status = false;
+	} else {
+		voluta_panic("pthread_mutex_timedlock: %d", err);
 	}
 	return status;
 }

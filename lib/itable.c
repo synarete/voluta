@@ -1172,7 +1172,7 @@ static struct voluta_ino_set *ino_set_new(struct voluta_qalloc *qal)
 {
 	struct voluta_ino_set *ino_set;
 
-	ino_set = voluta_qalloc_zalloc(qal, sizeof(*ino_set));
+	ino_set = voluta_qalloc_zmalloc(qal, sizeof(*ino_set));
 	if (ino_set != NULL) {
 		ino_set->cnt = 0;
 	}

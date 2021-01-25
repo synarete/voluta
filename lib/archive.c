@@ -580,7 +580,7 @@ spec_new(struct voluta_qalloc *qal, size_t nents)
 {
 	struct voluta_ar_spec *spec;
 
-	spec = voluta_qalloc_zalloc(qal, spec_size_of(nents));
+	spec = voluta_qalloc_zmalloc(qal, spec_size_of(nents));
 	return spec;
 }
 

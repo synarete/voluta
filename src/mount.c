@@ -120,7 +120,7 @@ static char *mount_volume_clone_path(void)
 
 static void mount_prepare_volume_clone(void)
 {
-	int err;
+	int err = 0;
 	int dst_fd = -1;
 	int src_fd = -1;
 	int o_flags;

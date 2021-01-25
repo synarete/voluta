@@ -371,7 +371,7 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
 
 int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags);
 
-int voluta_timeout_cycle(struct voluta_sb_info *sbi);
+int voluta_exec_timeout_cycle(struct voluta_sb_info *sbi, int flags);
 
 int voluta_shut_super(struct voluta_sb_info *sbi);
 

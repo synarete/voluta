@@ -2773,8 +2773,6 @@ static int sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ops.op_iopen = 0;
 	sbi->sb_ops.op_time = voluta_time_now();
 	sbi->sb_ops.op_count = 0;
-	sbi->sb_timeout = 0;
-	sbi->sb_nidle = 0;
 	sbi->sb_ctl_flags = VOLUTA_F_SPLICED;
 	sbi->sb_ms_flags = MS_NODEV | MS_NOSUID;
 	sbi->sb_volpath = NULL;
@@ -3037,22 +3035,9 @@ int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags)
 	return err;
 }
 
-int voluta_timeout_cycle(struct voluta_sb_info *sbi)
+int voluta_exec_timeout_cycle(struct voluta_sb_info *sbi, int flags)
 {
-	int err = 0;
-	int flags = VOLUTA_F_TIMEOUT;
-	const time_t now = voluta_time_now();
-	const time_t dif = now - sbi->sb_timeout;
-
-	if (labs(dif) > 1) {
-		if (sbi->sb_nidle > 8) {
-			flags |= VOLUTA_F_IDLE;
-		}
-		err = voluta_flush_dirty_and_relax(sbi, flags);
-		sbi->sb_timeout = now;
-		sbi->sb_nidle++;
-	}
-	return err;
+	return voluta_flush_dirty_and_relax(sbi, flags | VOLUTA_F_TIMEOUT);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

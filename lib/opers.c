@@ -35,7 +35,6 @@ static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
 	sbi->sb_ops.op_time = op->xtime.tv_sec;
 	sbi->sb_ops.op_count++;
-	sbi->sb_nidle = 0;
 
 	return voluta_flush_dirty_and_relax(sbi, VOLUTA_F_OPSTART);
 }

@@ -27,11 +27,21 @@ static void umount_finalize(void)
 
 static void umount_setup_check_params(void)
 {
-	voluta_globals.umount_point_real =
-		voluta_realpath_safe(voluta_globals.umount_point);
+	int err;
+	struct stat st;
+	const char *mntpath;
 
-	voluta_die_if_not_mntdir(voluta_globals.umount_point_real, false);
 	voluta_die_if_no_mountd();
+
+	err = voluta_sys_stat(voluta_globals.umount_point, &st);
+	if ((err == -ENOTCONN) && voluta_globals.umount_force) {
+		voluta_log_debug("transport endpoint not connected: %s",
+				 voluta_globals.umount_point);
+	} else {
+		mntpath = voluta_globals.umount_point_real =
+				  voluta_realpath_safe(voluta_globals.umount_point);
+		voluta_die_if_not_mntdir(mntpath, false);
+	}
 }
 
 static const char *umount_dirpath(void)

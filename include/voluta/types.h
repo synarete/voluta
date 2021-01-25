@@ -409,8 +409,6 @@ struct voluta_sb_info {
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
-	time_t                          sb_timeout;
-	size_t                          sb_nidle;
 };
 
 /* de-stage dirty-vnodes set */
@@ -460,17 +458,18 @@ struct voluta_fuseq {
 	struct voluta_sb_info          *fq_sbi;
 	struct voluta_qalloc           *fq_qal;
 	struct voluta_pipe              fq_pipe;
-	unsigned long fq_nopers;
-	int fq_fuse_fd;
-	int fq_null_fd;
-	int fq_chan_err;
-	int fq_got_init;
-	int fq_got_destroy;
-	int fq_deny_others;
-	bool fq_active;
-	bool fq_mount;
-	bool fq_umount;
-	bool fq_splice_memfd;
+	time_t  fq_times;
+	size_t  fq_nopers;
+	int     fq_fuse_fd;
+	int     fq_null_fd;
+	int     fq_chan_err;
+	int     fq_got_init;
+	int     fq_got_destroy;
+	int     fq_deny_others;
+	bool    fq_active;
+	bool    fq_mount;
+	bool    fq_umount;
+	bool    fq_splice_memfd;
 };
 
 /* file-system arguments */

@@ -241,7 +241,7 @@ struct voluta_fuseq_read_in {
 struct voluta_fuseq_write_in {
 	struct fuse_in_header   hdr;
 	struct fuse_write_in    arg;
-	char buf[VOLUTA_BK_SIZE];
+	char buf[4 * VOLUTA_KILO];
 };
 
 struct voluta_fuseq_write_iter_in {
@@ -1530,9 +1530,14 @@ static bool fuseq_has_cap(const struct voluta_fuseq *fq, int cap_mask)
 	return fq->fq_got_init && ((cap_want & cap_mask) == cap_mask);
 }
 
+static bool fuseq_is_normal(const struct voluta_fuseq *fq)
+{
+	return fq->fq_got_init && !fq->fq_got_destroy && (fq->fq_nopers > 1);
+}
+
 static bool fuseq_may_splice(const struct voluta_fuseq *fq)
 {
-	return fq->fq_got_init && !fq->fq_got_destroy && (fq->fq_nopers > 10);
+	return fuseq_is_normal(fq) && (fq->fq_nopers > 4);
 }
 
 static bool fuseq_cap_splice_read(const struct voluta_fuseq *fq)
@@ -2310,14 +2315,15 @@ static void do_write(struct voluta_fuseq_ctx *fqc, ino_t ino,
 {
 	int err;
 	loff_t off1;
+	size_t lim;
 	size_t len1;
 	loff_t off2;
 	size_t len2;
 	size_t nwr = 0;
-	const size_t lim = fqc->fq->fq_coni.max_write;
 	struct voluta_fuseq_wr_iter fq_rwi;
 
 	off1 = (loff_t)(in->u.write.arg.offset);
+	lim = fqc->fq->fq_coni.max_write;
 	len1 = min3(in->u.write.arg.size, lim, sizeof(in->u.write.buf));
 	off2 = off_end(off1, len1);
 	len2 = min(in->u.write.arg.size - len1, lim - len1);
@@ -2754,8 +2760,9 @@ static int fuseq_splice_in(struct voluta_fuseq *fq, struct voluta_fuseq_in *in)
 	return 0;
 }
 
-static void fuseq_read_or_splice_request(struct voluta_fuseq *fq,
-		struct voluta_fuseq_in *in)
+static void
+fuseq_read_or_splice_request(struct voluta_fuseq *fq,
+			     struct voluta_fuseq_in *in)
 {
 	int err;
 
@@ -2795,7 +2802,7 @@ static int fuseq_wait_request(struct voluta_fuseq *fq)
 }
 
 static int fuseq_recv_request(struct voluta_fuseq *fq,
-			      struct   voluta_fuseq_in *in)
+			      struct voluta_fuseq_in *in)
 {
 	int err;
 
@@ -2997,6 +3004,7 @@ int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
 
 	voluta_memzero(fq, sizeof(*fq));
 	pipe_init(&fq->fq_pipe);
+	fq->fq_times = 0;
 	fq->fq_sbi = sbi;
 	fq->fq_qal = sbi->sb_qalloc;
 	fq->fq_nopers = 0;
@@ -3113,8 +3121,7 @@ static int fuseq_exec_one(struct voluta_fuseq *fq)
 		return err;
 	}
 	if (!fuseq_has_input(fq)) {
-		usleep(1);
-		return 0;
+		return -ENODATA;
 	}
 	fuseq_exec_request(fq, in);
 	err = fuseq_get_chan_err(fq);
@@ -3126,7 +3133,40 @@ static int fuseq_exec_one(struct voluta_fuseq *fq)
 
 static int fuseq_do_timeout(struct voluta_fuseq *fq)
 {
-	return voluta_timeout_cycle(fq->fq_sbi);
+	int err = 0;
+	const time_t now = voluta_time_now();
+	const time_t dif = labs(now - fq->fq_times);
+	const int flags = (dif > 20) ? VOLUTA_F_IDLE : 0;
+
+	if (fuseq_is_normal(fq) && (dif > 2)) {
+		err = voluta_exec_timeout_cycle(fq->fq_sbi, flags);
+		fq->fq_times = voluta_time_now();
+	}
+	return err;
+}
+
+static int fuseq_exec_cycle_once(struct voluta_fuseq *fq)
+{
+	int err;
+
+	err = fuseq_exec_one(fq);
+	if (!err) {
+		fq->fq_times = voluta_time_now();
+		return 0;
+	}
+	if (err == -ENODEV) {
+		fq->fq_active = false; /* umount case */
+		return 0;
+	}
+	if (err == -ETIMEDOUT) {
+		return fuseq_do_timeout(fq);
+	}
+	if (err == -ENODATA) {
+		usleep(1);
+		return 0;
+	}
+	/* otherwise: break loop */
+	return err;
 }
 
 int voluta_fuseq_exec(struct voluta_fuseq *fq)
@@ -3134,15 +3174,12 @@ int voluta_fuseq_exec(struct voluta_fuseq *fq)
 	int err = 0;
 
 	fq->fq_active = true;
-	while (fq->fq_active && !err) {
-		err = fuseq_exec_one(fq);
-		if (err == -ENODEV) {
-			err = 0; /* umount case */
-			fq->fq_active = false;
-		} else if (err == -ETIMEDOUT) {
-			err = fuseq_do_timeout(fq);
+	while (fq->fq_active) {
+		err = fuseq_exec_cycle_once(fq);
+		if (err) {
+			log_info("done fuseq-exec: err=%d", err);
+			break;
 		}
-		/* otherwise: break loop if err */
 	}
 	fq->fq_active = false;
 	return err;

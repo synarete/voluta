@@ -986,8 +986,8 @@ void voluta_set_verbose_mode(const char *mode)
 
 void voluta_log_process_info(void)
 {
-	voluta_log_info("version: %s", voluta_globals.version);
-	voluta_log_info("program: %s", voluta_globals.prog);
+	voluta_log_info("voluta %s %s",
+			voluta_globals.version, voluta_globals.prog);
 }
 
 

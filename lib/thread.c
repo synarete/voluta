@@ -30,7 +30,7 @@
 #define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_ERRORCHECK
 #endif
 
-int voluta_thread_sigblock_common(void)
+static int voluta_thread_sigblock_common(void)
 {
 	sigset_t sigset_th;
 
@@ -53,40 +53,69 @@ int voluta_thread_sigblock_common(void)
 	return pthread_sigmask(SIG_BLOCK, &sigset_th, NULL);
 }
 
-static void *voluta_thread_start(void *arg)
+static void voluta_thread_prepare(struct voluta_thread *th)
 {
-	struct voluta_thread *thread = (struct voluta_thread *)arg;
-
-	thread->finish_time = 0;
-	thread->start_time = time(NULL);
-	thread->exec(thread);
-	thread->finish_time = time(NULL);
-
-	return thread;
+	th->start_time = voluta_time_now();
+	th->finish_time = 0;
+	th->tid = gettid();
+	if (strlen(th->name)) {
+		pthread_setname_np(th->pth, th->name);
+	}
 }
 
-int voluta_thread_create(struct voluta_thread *thread)
+static void voluta_thread_complete(struct voluta_thread *th, int err)
+{
+	th->status = err;
+	th->finish_time = voluta_time_now();
+}
+
+static void *voluta_thread_start(void *arg)
 {
 	int err;
+	struct voluta_thread *th = (struct voluta_thread *)arg;
+
+	voluta_thread_prepare(th);
+	err = voluta_thread_sigblock_common();
+	if (!err) {
+		err = th->exec(th);
+		th->finish_time = voluta_time_now();
+	}
+	voluta_thread_complete(th, err);
+	return th;
+}
+
+int voluta_thread_create(struct voluta_thread *th,
+			 voluta_execute_fn exec, const char *name)
+{
+	int err;
+	size_t nlen = 0;
 	pthread_attr_t attr;
 	void *(*start)(void *arg) = voluta_thread_start;
 
-	if (thread->thread || !thread->exec) {
+	if (th->pth || th->exec || !exec) {
 		return -EINVAL;
 	}
-
 	err = pthread_attr_init(&attr);
-	if (!err) {
-		thread->start_time = thread->finish_time = 0;
-		err = pthread_create(&thread->thread, &attr, start, thread);
-		pthread_attr_destroy(&attr);
+	if (err) {
+		return err;
 	}
+
+	memset(th, 0, sizeof(*th));
+	th->exec = exec;
+	if (name != NULL) {
+		nlen = strlen(name);
+		memcpy(th->name, name, min(nlen, sizeof(th->name) - 1));
+	}
+
+	err = pthread_create(&th->pth, &attr, start, th);
+	pthread_attr_destroy(&attr);
+
 	return err;
 }
 
-int voluta_thread_join(struct voluta_thread *thread)
+int voluta_thread_join(struct voluta_thread *th)
 {
-	return pthread_join(thread->thread, NULL);
+	return pthread_join(th->pth, NULL);
 }
 
 

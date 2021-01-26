@@ -51,7 +51,7 @@ struct voluta_qalloc {
 	struct voluta_qastat st;
 	struct voluta_list_head free_list;
 	struct voluta_slab slabs[8];
-};
+} voluta_aligned64;
 
 
 int voluta_resolve_memsize(size_t mem_want, size_t *out_mem_size);

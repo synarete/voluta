@@ -491,7 +491,7 @@ int voluta_fse_term(struct voluta_fs_env *fse)
 void voluta_fse_halt(struct voluta_fs_env *fse, int signum)
 {
 	fse->signum = signum;
-	fse->fuseq->fq_active = false;
+	fse->fuseq->fq_active = 0;
 }
 
 int voluta_fse_sync_drop(struct voluta_fs_env *fse)

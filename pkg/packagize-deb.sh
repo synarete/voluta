@@ -45,7 +45,7 @@ run cd ${autotoolsdir}
 run ${basedir}/bootstrap
 run ${basedir}/configure
 run make
-run make distcheck
+run make disk distcheck
 
 # Prepare deb tree
 run mkdir -p ${debbuilddir}

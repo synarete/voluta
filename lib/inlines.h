@@ -34,6 +34,11 @@
 extern const struct voluta_vaddr voluta_vaddr_none;
 
 
+static inline int min_int(int x, int y)
+{
+	return (x < y) ? x : y;
+}
+
 static inline size_t min(size_t x, size_t y)
 {
 	return (x < y) ? x : y;

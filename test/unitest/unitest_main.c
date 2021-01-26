@@ -167,7 +167,8 @@ static void ut_parse_args(void)
 	}
 
 	if (optind >= ut_globals.argc) {
-		error(EXIT_FAILURE, 0, "missing test dir");
+		/* no-run without test-dir */
+		exit(EXIT_SUCCESS);
 	}
 	ut_globals.test_dir = ut_globals.argv[optind++];
 	if (optind < ut_globals.argc) {

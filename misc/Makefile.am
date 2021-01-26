@@ -11,6 +11,7 @@ EXTRA_DIST += fio2csv.sh
 EXTRA_DIST += fiocsv2plot.py
 EXTRA_DIST += fsstress.sh
 EXTRA_DIST += gitarchive.sh
+EXTRA_DIST += installdeps.sh
 EXTRA_DIST += torturefs.sh
 EXTRA_DIST += valgrind-memcheck.sh
 EXTRA_DIST += voluta-gdb-bt.sh

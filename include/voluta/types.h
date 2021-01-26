@@ -48,7 +48,7 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_fuseq;
-struct voluta_fuseq_sub;
+struct voluta_fuseq_worker;
 struct voluta_fuseq_in;
 struct voluta_fuseq_inb;
 struct voluta_fuseq_outb;
@@ -101,17 +101,17 @@ enum voluta_iattr_flags {
 };
 
 /* threading */
-typedef void (*voluta_execute_fn)(struct voluta_thread *);
+typedef int (*voluta_execute_fn)(struct voluta_thread *);
 
 /* wrapper of pthread_t */
 struct voluta_thread {
-	pthread_t thread;
-	time_t start_time;
-	time_t finish_time;
 	voluta_execute_fn exec;
-	void *arg;
-	int status;
-	int pad;
+	pthread_t       pth;
+	char            name[32];
+	time_t          start_time;
+	time_t          finish_time;
+	pid_t           tid;
+	int             status;
 };
 
 /* wrapper of pthread_mutex_t */
@@ -410,7 +410,7 @@ struct voluta_sb_info {
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
-};
+} voluta_aligned64;
 
 /* de-stage dirty-vnodes set */
 struct voluta_dset {
@@ -442,38 +442,42 @@ struct voluta_fuseq_conn_info {
 	size_t  max_background;
 	size_t  congestion_threshold;
 	size_t  time_gran;
-};
+} voluta_aligned64;
 
-struct voluta_fuseq_sub {
-	const struct voluta_fuseq_cmd  *cmd;
+struct voluta_fuseq_worker {
 	struct voluta_fuseq            *fq;
+	const struct voluta_fuseq_cmd  *cmd;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq_inb        *inb;
 	struct voluta_fuseq_outb       *outb;
 	struct voluta_oper              op;
-};
+	struct voluta_pipe              pipe;
+	struct voluta_thread            th;
+	int idx;
+} voluta_aligned64;
 
 struct voluta_fuseq {
+	struct voluta_fuseq_worker      fq_worker[8];
 	struct voluta_fuseq_conn_info   fq_coni;
-	struct voluta_fuseq_sub         fq_sub[1];
+	struct voluta_mutex             fq_recv_lock;
+	struct voluta_mutex             fq_send_lock;
+	struct voluta_mutex             fq_fs_lock;
 	struct voluta_sb_info          *fq_sbi;
 	struct voluta_qalloc           *fq_qal;
-	struct voluta_pipe              fq_pipe;
-	struct voluta_mutex             fq_ch_lock;
-	struct voluta_mutex             fq_fs_lock;
-	size_t  fq_nsubs;
-	size_t  fq_nopers;
-	time_t  fq_times;
-	int     fq_fuse_fd;
-	int     fq_null_fd;
-	bool    fq_got_init;
-	bool    fq_got_destroy;
-	bool    fq_deny_others;
-	bool    fq_active;
-	bool    fq_mount;
-	bool    fq_umount;
-	bool    fq_splice_memfd;
-};
+	size_t          fq_nopers;
+	time_t          fq_times;
+	int             fq_nworkers_avail;
+	int             fq_nworkers_active;
+	volatile int    fq_active;
+	volatile int    fq_fuse_fd;
+	volatile int    fq_null_fd;
+	bool            fq_got_init;
+	bool            fq_got_destroy;
+	bool            fq_deny_others;
+	bool            fq_mount;
+	bool            fq_umount;
+	bool            fq_splice_memfd;
+} voluta_aligned64;
 
 /* file-system arguments */
 struct voluta_fs_args {

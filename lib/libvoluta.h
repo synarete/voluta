@@ -991,11 +991,10 @@ struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
 void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
 
 /* thread */
-int voluta_thread_sigblock_common(void);
+int voluta_thread_create(struct voluta_thread *th,
+			 voluta_execute_fn exec, const char *name);
 
-int voluta_thread_create(struct voluta_thread *thread);
-
-int voluta_thread_join(struct voluta_thread *thread);
+int voluta_thread_join(struct voluta_thread *th);
 
 int voluta_mutex_init(struct voluta_mutex *mutex);
 

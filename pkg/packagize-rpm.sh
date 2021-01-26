@@ -43,7 +43,7 @@ cd ${autotoolsdir}
 run ${basedir}/bootstrap
 run ${basedir}/configure
 run make
-run make dist
+run make dist distcheck
 
 # Pre rpmbuild
 unset HOME

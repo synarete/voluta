@@ -38,6 +38,7 @@ AC_DEFUN([AX_VOLUTA_NEED_HEADERS],
   AX_VOLUTA_CHECK_HEADERS([sys/stat.h])
   AX_VOLUTA_CHECK_HEADERS([sys/statvfs.h])
   AX_VOLUTA_CHECK_HEADERS([sys/vfs.h])
+  AX_VOLUTA_CHECK_HEADERS([sys/sysinfo.h])
   AX_VOLUTA_CHECK_HEADERS([sys/resource.h])
   AX_VOLUTA_CHECK_HEADERS([sys/capability.h])
   AX_VOLUTA_CHECK_HEADERS([sys/ioctl.h])

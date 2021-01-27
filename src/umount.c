@@ -38,8 +38,10 @@ static void umount_setup_check_params(void)
 		voluta_log_debug("transport endpoint not connected: %s",
 				 voluta_globals.umount_point);
 	} else {
-		mntpath = voluta_globals.umount_point_real =
-				  voluta_realpath_safe(voluta_globals.umount_point);
+		voluta_globals.umount_point_real =
+			voluta_realpath_safe(voluta_globals.umount_point);
+
+		mntpath = voluta_globals.umount_point_real;
 		voluta_die_if_not_mntdir(mntpath, false);
 	}
 }

@@ -74,8 +74,7 @@ enum voluta_flags {
 	VOLUTA_F_IDLE           = VOLUTA_BIT(8),
 	VOLUTA_F_BRINGUP        = VOLUTA_BIT(9),
 	VOLUTA_F_OPSTART        = VOLUTA_BIT(10),
-	VOLUTA_F_RDONLY         = VOLUTA_BIT(11),
-	VOLUTA_F_ASSERTIVE      = VOLUTA_BIT(12),
+	VOLUTA_F_FORCED         = VOLUTA_BIT(11),
 };
 
 
@@ -451,7 +450,8 @@ struct voluta_fuseq_worker {
 	struct voluta_fuseq_inb        *inb;
 	struct voluta_fuseq_outb       *outb;
 	struct voluta_fuseq_rw_iter    *rwi;
-	struct voluta_oper              op;
+	struct voluta_oper             *op;
+	struct voluta_oper              oper;
 	struct voluta_pipe              pipe;
 	struct voluta_thread            th;
 	int idx;
@@ -460,8 +460,7 @@ struct voluta_fuseq_worker {
 struct voluta_fuseq {
 	struct voluta_fuseq_worker      fq_worker[8];
 	struct voluta_fuseq_conn_info   fq_coni;
-	struct voluta_mutex             fq_recv_lock;
-	struct voluta_mutex             fq_send_lock;
+	struct voluta_mutex             fq_ch_lock;
 	struct voluta_mutex             fq_fs_lock;
 	struct voluta_sb_info          *fq_sbi;
 	struct voluta_qalloc           *fq_qal;

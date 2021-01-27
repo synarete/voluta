@@ -110,6 +110,23 @@ static void clone_execute(void)
 	}
 }
 
+static void clone_reopen_and_sync(void)
+{
+	int err;
+	int fd = -1;
+	const char *path = voluta_globals.clone_volume;
+
+	err = voluta_sys_open(path, O_RDWR, 0, &fd);
+	if (err) {
+		voluta_die(err, "failed to open cloned volume: %s", path);
+	}
+	err = voluta_sys_fsync(fd);
+	if (err) {
+		voluta_die(err, "failed to sync cloned volume: %s", path);
+	}
+	voluta_sys_closefd(&fd);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_execute_clone(void)
@@ -122,6 +139,9 @@ void voluta_execute_clone(void)
 
 	/* Do actual clone */
 	clone_execute();
+
+	/* Post clone verify */
+	clone_reopen_and_sync();
 
 	/* Post execution cleanups */
 	clone_finalize();

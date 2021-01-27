@@ -1764,7 +1764,7 @@ void voluta_cache_drop(struct voluta_cache *cache)
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)
 {
 	unsigned int mem_press;
-	const int mask = VOLUTA_F_NOW | VOLUTA_F_SYNC | VOLUTA_F_IDLE;
+	const int mask = VOLUTA_F_NOW | VOLUTA_F_IDLE;
 	const struct voluta_listq *dq = &cache->c_dqs.dq_main;
 
 	if (dq->sz == 0) {
@@ -1783,14 +1783,17 @@ bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)
 bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
 				const struct voluta_inode_info *ii, int flags)
 {
+	size_t threshold;
 	unsigned int mem_press;
-	const int mask = VOLUTA_F_ASSERTIVE;
-	const struct voluta_listq *dq = dirtyqs_queue_of_ii(&cache->c_dqs, ii);
+	const struct voluta_listq *dq;
 
-	if (dq->sz && (flags & mask)) {
+	dq = dirtyqs_queue_of_ii(&cache->c_dqs, ii);
+	if (dq->sz && (flags & VOLUTA_F_FORCED)) {
 		return true;
 	}
-	if (dq->sz >= 1024) { /* TODO: use bytes-size per queue */
+	/* TODO: refine threshold; maybe use bytes-size per queue? */
+	threshold = (flags & VOLUTA_F_SYNC) ? 256 : 1024;
+	if (dq->sz >= threshold) {
 		return true;
 	}
 	mem_press = cache_memory_pressure(cache);

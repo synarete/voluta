@@ -349,7 +349,7 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 	} else {
 		voluta_statpath_safe(path, &st);
 		if (st.st_ino != VOLUTA_INO_ROOT) {
-			voluta_die(0, "not voluta mount-point: %s", path);
+			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
 	}
 }

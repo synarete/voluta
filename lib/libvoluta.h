@@ -239,9 +239,9 @@ int voluta_fs_write_iter(struct voluta_sb_info *sbi,
 			 const struct voluta_oper *op, ino_t ino,
 			 struct voluta_rwiter_ctx *rwi_ctx);
 
-int voluta_fs_write_post(struct voluta_sb_info *sbi,
-			 const struct voluta_oper *op, ino_t ino,
-			 const struct voluta_xiovec *xiov, size_t cnt);
+int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
+			const struct voluta_oper *op, ino_t ino,
+			const struct voluta_xiovec *xiov, size_t cnt);
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
 		    const struct voluta_oper *op, ino_t ino,
@@ -695,9 +695,9 @@ int voluta_do_write_iter(const struct voluta_oper *op,
 			 struct voluta_inode_info *ii,
 			 struct voluta_rwiter_ctx *rwi_ctx);
 
-int voluta_do_write_post(const struct voluta_oper *op,
-			 const struct voluta_inode_info *ii,
-			 const struct voluta_xiovec *xiov, size_t cnt);
+int voluta_do_rdwr_post(const struct voluta_oper *op,
+			const struct voluta_inode_info *ii,
+			const struct voluta_xiovec *xiov, size_t cnt);
 
 int voluta_do_read_iter(const struct voluta_oper *op,
 			struct voluta_inode_info *ii,

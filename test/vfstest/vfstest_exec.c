@@ -154,6 +154,7 @@ static void verify_fsstat(const struct vt_env *vte)
 	struct statvfs stvfs_end;
 
 	if (mask_of(vte) & VT_VERIFY) {
+		sleep(1); /* TODO: race in FUSE? */
 		statvfs_of(vte, &stvfs_end);
 		verify_consistent_statvfs(&vte->stvfs, &stvfs_end);
 	}

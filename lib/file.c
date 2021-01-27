@@ -2241,9 +2241,9 @@ int voluta_do_write(const struct voluta_oper *op,
 	return err;
 }
 
-int voluta_do_write_post(const struct voluta_oper *op,
-			 const struct voluta_inode_info *ii,
-			 const struct voluta_xiovec *xiov, size_t cnt)
+int voluta_do_rdwr_post(const struct voluta_oper *op,
+			const struct voluta_inode_info *ii,
+			const struct voluta_xiovec *xiov, size_t cnt)
 {
 	struct voluta_vnode_info *vi;
 

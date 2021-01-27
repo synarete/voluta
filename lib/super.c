@@ -2774,7 +2774,7 @@ static int sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ops.op_time = voluta_time_now();
 	sbi->sb_ops.op_count = 0;
 	sbi->sb_ctl_flags = VOLUTA_F_SPLICED;
-	sbi->sb_ms_flags = MS_NODEV | MS_NOSUID;
+	sbi->sb_ms_flags = 0;
 	sbi->sb_volpath = NULL;
 
 	return voluta_crypto_init(&sbi->sb_crypto);
@@ -3192,10 +3192,10 @@ static int fetch_inode(struct voluta_super_ctx *s_ctx)
 
 static int check_writable_fs(const struct voluta_super_ctx *s_ctx)
 {
-	const unsigned long mask = VOLUTA_F_RDONLY;
+	const unsigned long mask = MS_RDONLY;
 	const struct voluta_sb_info *sbi = s_ctx->sbi;
 
-	return ((sbi->sb_ctl_flags & mask) == mask) ? -EROFS : 0;
+	return ((sbi->sb_ms_flags & mask) == mask) ? -EROFS : 0;
 }
 
 static int stage_inode(struct voluta_super_ctx *s_ctx)

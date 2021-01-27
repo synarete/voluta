@@ -1418,7 +1418,7 @@ static int do_fsyncdir(const struct voluta_inode_info *dir_ii)
 	if (err) {
 		return err;
 	}
-	err = voluta_flush_dirty_of(dir_ii, 0);
+	err = voluta_flush_dirty_of(dir_ii, VOLUTA_F_SYNC);
 	if (err) {
 		return err;
 	}
@@ -1453,7 +1453,7 @@ static int do_fsync(const struct voluta_inode_info *ii)
 	if (err) {
 		return err;
 	}
-	err = voluta_flush_dirty_of(ii, 0);
+	err = voluta_flush_dirty_of(ii, VOLUTA_F_SYNC);
 	if (err) {
 		return err;
 	}
@@ -1478,12 +1478,12 @@ int voluta_do_fsync(const struct voluta_oper *op,
 int voluta_do_flush(const struct voluta_oper *op,
 		    struct voluta_inode_info *ii)
 {
-	int err = 0;
+	int flags = 0;
 
-	if (ii_isreg(ii) || (op->ucred.uid  == 0)) {
-		err = voluta_flush_dirty_of(ii, VOLUTA_F_ASSERTIVE);
+	if (op->ucred.uid == 0) {
+		flags = VOLUTA_F_FORCED;
 	}
-	return err;
+	return voluta_flush_dirty_of(ii, flags);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

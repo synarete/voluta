@@ -1146,8 +1146,8 @@ int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
 	return err;
 }
 
-int voluta_qalloc_fiovec(const struct voluta_qalloc *qal,
-			 void *ptr, size_t len, struct voluta_fiovec *fiov)
+int voluta_qalloc_xiovec(const struct voluta_qalloc *qal,
+			 void *ptr, size_t len, struct voluta_xiovec *xiov)
 {
 	const void *base;
 
@@ -1155,10 +1155,11 @@ int voluta_qalloc_fiovec(const struct voluta_qalloc *qal,
 	if ((base == NULL) || (base > ptr)) {
 		return -ERANGE;
 	}
-	fiov->off = qalloc_ptr_to_off(qal, ptr);
-	fiov->len = len;
-	fiov->mm = ptr;
-	fiov->fd = qal->memfd_data;
+	xiov->off = qalloc_ptr_to_off(qal, ptr);
+	xiov->len = len;
+	xiov->base = ptr;
+	xiov->fd = qal->memfd_data;
+	xiov->cookie = NULL;
 	return 0;
 }
 

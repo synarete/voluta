@@ -450,6 +450,7 @@ struct voluta_fuseq_worker {
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq_inb        *inb;
 	struct voluta_fuseq_outb       *outb;
+	struct voluta_fuseq_rw_iter    *rwi;
 	struct voluta_oper              op;
 	struct voluta_pipe              pipe;
 	struct voluta_thread            th;
@@ -542,7 +543,7 @@ struct voluta_listxattr_ctx {
 };
 
 typedef int (*voluta_rwiter_fn)(struct voluta_rwiter_ctx *rwi_ctx,
-				const struct voluta_fiovec *fiov);
+				const struct voluta_xiovec *xiov);
 
 struct voluta_rwiter_ctx {
 	voluta_rwiter_fn actor;

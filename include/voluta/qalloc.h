@@ -26,11 +26,12 @@ struct voluta_qastat {
 	size_t nbytes_used;
 };
 
-struct voluta_fiovec {
-	loff_t off;
+struct voluta_xiovec {
+	void  *base;
 	size_t len;
-	void  *mm;
+	loff_t off;
 	int    fd;
+	void  *cookie;
 };
 
 struct voluta_slab {
@@ -73,8 +74,8 @@ void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 void voluta_qalloc_stat(const struct voluta_qalloc *qal,
 			struct voluta_qastat *qast);
 
-int voluta_qalloc_fiovec(const struct voluta_qalloc *qal, void *ptr,
-			 size_t len, struct voluta_fiovec *fiov);
+int voluta_qalloc_xiovec(const struct voluta_qalloc *qal, void *ptr,
+			 size_t len, struct voluta_xiovec *xiov);
 
 int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
 			 const void *ptr, size_t nbytes);

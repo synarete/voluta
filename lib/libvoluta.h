@@ -239,6 +239,10 @@ int voluta_fs_write_iter(struct voluta_sb_info *sbi,
 			 const struct voluta_oper *op, ino_t ino,
 			 struct voluta_rwiter_ctx *rwi_ctx);
 
+int voluta_fs_write_post(struct voluta_sb_info *sbi,
+			 const struct voluta_oper *op, ino_t ino,
+			 const struct voluta_xiovec *xiov, size_t cnt);
+
 int voluta_fs_statx(struct voluta_sb_info *sbi,
 		    const struct voluta_oper *op, ino_t ino,
 		    struct statx *out_stx);
@@ -691,6 +695,9 @@ int voluta_do_write_iter(const struct voluta_oper *op,
 			 struct voluta_inode_info *ii,
 			 struct voluta_rwiter_ctx *rwi_ctx);
 
+int voluta_do_write_post(const struct voluta_oper *op,
+			 const struct voluta_inode_info *ii,
+			 const struct voluta_xiovec *xiov, size_t cnt);
 
 int voluta_do_read_iter(const struct voluta_oper *op,
 			struct voluta_inode_info *ii,
@@ -792,8 +799,8 @@ int voluta_pstore_writev(struct voluta_pstore *pstore, loff_t off,
 
 int voluta_pstore_sync(struct voluta_pstore *pstore, bool all);
 
-int voluta_pstore_fiovec(const struct voluta_pstore *pstore,
-			 loff_t off, size_t len, struct voluta_fiovec *fiov);
+int voluta_pstore_xiovec(const struct voluta_pstore *pstore,
+			 loff_t off, size_t len, struct voluta_xiovec *xiov);
 
 int voluta_pstore_flock(const struct voluta_pstore *pstore);
 

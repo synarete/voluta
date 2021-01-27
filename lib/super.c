@@ -1403,14 +1403,14 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void resolve_bk_fiovec(const struct voluta_sb_info *sbi,
+static void resolve_bk_xiovec(const struct voluta_sb_info *sbi,
 			      const struct voluta_bk_info *bki,
-			      struct voluta_fiovec *out_fiov)
+			      struct voluta_xiovec *out_xiov)
 {
-	out_fiov->mm = NULL;
-	out_fiov->off = lba_to_off(bki->bk_lba);
-	out_fiov->len = sizeof(*bki->bk);
-	out_fiov->fd = sbi->sb_pstore->ps_vfd;
+	out_xiov->base = NULL;
+	out_xiov->off = lba_to_off(bki->bk_lba);
+	out_xiov->len = sizeof(*bki->bk);
+	out_xiov->fd = sbi->sb_pstore->ps_vfd;
 }
 
 static bool has_unwritten_at(const struct voluta_vnode_info *agm_vi,
@@ -1475,12 +1475,12 @@ static int spawn_bki(struct voluta_super_ctx *s_ctx)
 
 static int load_bki(struct voluta_super_ctx *s_ctx)
 {
-	struct voluta_fiovec fiov;
+	struct voluta_xiovec xiov;
 	struct voluta_bk_info *bki = s_ctx->bki;
 	const struct voluta_pstore *pstore = s_ctx->sbi->sb_pstore;
 
-	resolve_bk_fiovec(s_ctx->sbi, bki, &fiov);
-	return voluta_pstore_read(pstore, fiov.off, fiov.len, bki->bk);
+	resolve_bk_xiovec(s_ctx->sbi, bki, &xiov);
+	return voluta_pstore_read(pstore, xiov.off, xiov.len, bki->bk);
 }
 
 static void forget_bki(struct voluta_super_ctx *s_ctx)

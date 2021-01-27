@@ -2,7 +2,6 @@
 #
 # usage: BS=<4|8|16|32|64..> RUNTIME=<30|60|90..> fio2csv <test-dir>
 #
-
 self=$(basename ${BASH_SOURCE[0]})
 msg() { echo "$self: $*" >&2; }
 die() { msg "$*"; exit 1; }
@@ -18,6 +17,8 @@ MEGA=$((KILO * KILO))
 GIGA=$((MEGA * KILO))
 DATASIZE=${GIGA}
 RUNTIME=${RUNTIME:-30}
+BS=${BS:-64}
+RWMIX=${RWMIX:-30}
 
 # TODO: echo 1 > /sys/block/<dev>/queue/iostats
 
@@ -42,8 +43,8 @@ _fio_minimal() {
     --rw=randrw \
     --rwmixwrite=${rwmix} \
     --ioengine=psync \
-    --sync=1 \
-    --direct=1 \
+    --sync=0 \
+    --direct=0 \
     --time_based \
     --runtime=${RUNTIME} \
     --thinktime=0 \
@@ -58,32 +59,19 @@ _fio_minimal() {
 
 _fio_jobs() {
   local testdir=$(realpath $1)
-  local jobs=(1 2 4 8 16 32)
-  local bs=8
-  local rwmix=50
+  local jobs=($(seq 1 $(nproc)))
 
   for job in ${jobs[@]}; do
-    _fio_minimal ${testdir} ${job} ${bs} ${rwmix}
+    _fio_minimal ${testdir} ${job} ${BS} ${RWMIX}
   done
 }
 
-_fio_rwmix() {
-  local testdir=$(realpath $1)
-  local job=1
-  local bs=8
-  local rwmixs=(10 25 50 75 90)
-
-  for rwmix in ${rwmixs[@]}; do
-    _fio_minimal ${testdir} ${job} ${bs} ${rwmix}
-  done
-}
 
 _fio_to_cvs() {
   for testdir in "$@"; do
     if [[ -d ${testdir} ]]; then
       _fio_jobs ${testdir}
-      #_fio_rwmix ${testdir}
-    fi    
+    fi
   done
 }
 

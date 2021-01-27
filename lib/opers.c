@@ -974,6 +974,29 @@ out:
 	return err;
 }
 
+int voluta_fs_write_post(struct voluta_sb_info *sbi,
+			 const struct voluta_oper *op, ino_t ino,
+			 const struct voluta_xiovec *xiov, size_t cnt)
+{
+	int err;
+	struct voluta_inode_info *ii = NULL;
+
+	err = op_start(sbi, op);
+	ok_or_goto_out(err);
+
+	err = voluta_authorize(sbi, op);
+	ok_or_goto_out(err);
+
+	err = voluta_stage_inode(sbi, ino, &ii);
+	ok_or_goto_out(err);
+
+	err = voluta_do_write_post(op, ii, xiov, cnt);
+	ok_or_goto_out(err);
+out:
+	op_finish(sbi, op);
+	return err;
+}
+
 int voluta_fs_fallocate(struct voluta_sb_info *sbi,
 			const struct voluta_oper *op, ino_t ino,
 			int mode, loff_t offset, loff_t length)

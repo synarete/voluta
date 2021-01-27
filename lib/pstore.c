@@ -569,17 +569,17 @@ int voluta_pstore_sync(struct voluta_pstore *pstore, bool all)
 	return err;
 }
 
-int voluta_pstore_fiovec(const struct voluta_pstore *pstore,
-			 loff_t off, size_t len, struct voluta_fiovec *fiov)
+int voluta_pstore_xiovec(const struct voluta_pstore *pstore,
+			 loff_t off, size_t len, struct voluta_xiovec *xiov)
 {
 	int err;
 
 	err = pstore_check_io(pstore, off, len);
 	if (!err) {
-		fiov->off = off;
-		fiov->len = len;
-		fiov->mm = NULL;
-		fiov->fd = pstore->ps_vfd;
+		xiov->off = off;
+		xiov->len = len;
+		xiov->base = NULL;
+		xiov->fd = pstore->ps_vfd;
 	}
 	return err;
 }

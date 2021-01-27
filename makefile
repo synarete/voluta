@@ -67,6 +67,7 @@ endif
 # Configure options
 CONFIGURE_OPTS += --prefix=$(PREFIX)
 CONFIGURE_OPTS += --disable-shared
+CONFIGURE_OPTS += --enable-unitests=yes
 ifeq ($(D), 1)
 CONFIGURE_OPTS += --enable-debug=yes
 else

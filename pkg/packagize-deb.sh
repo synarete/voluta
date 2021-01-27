@@ -43,9 +43,9 @@ run which dh
 run mkdir -p ${autotoolsdir}
 run cd ${autotoolsdir}
 run ${basedir}/bootstrap
-run ${basedir}/configure
+run ${basedir}/configure "--enable-unitests=no"
 run make
-run make disk distcheck
+run make distcheck
 
 # Prepare deb tree
 run mkdir -p ${debbuilddir}

@@ -46,10 +46,14 @@ voluta_unitest_SOURCES += ut_symlink.c
 voluta_unitest_SOURCES += ut_xattr.c
 
 
+if VOLUTA_RUN_UNITESTS
 ut_check_dir := "$(builddir)/ut"
 
 all-local:
 	@mkdir -p $(ut_check_dir)
+
+clean-local:
+	@rm -rf $(ut_check_dir)
 
 check-local: $(bin_PROGRAMS)
 	@mkdir -p $(ut_check_dir)
@@ -58,5 +62,4 @@ check-local: $(bin_PROGRAMS)
 	@echo "  TEST       " && $$(realpath "$^") -e 0 -s 0 $(ut_check_dir) ;
 	@rm -rf $(ut_check_dir)
 
-clean-local:
-	@rm -rf $(ut_check_dir)
+endif

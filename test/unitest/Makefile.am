@@ -6,7 +6,7 @@ voluta_unitest_CPPFLAGS += -I$(top_srcdir)/include
 voluta_unitest_CPPFLAGS += -I$(top_srcdir)/lib
 voluta_unitest_CPPFLAGS += -DVOLUTA_UNITEST=1
 voluta_unitest_LDFLAGS = $(NULL)
-voluta_unitest_LDFLAGS += $(PTHREAD_DEF)
+voluta_unitest_LDFLAGS += $(PTHREAD_CFLAGS) $(PTHREAD_DEF)
 voluta_unitest_LDFLAGS += -L$(top_builddir)/lib/
 voluta_unitest_LDFLAGS += -static
 voluta_unitest_LDADD = $(NULL)

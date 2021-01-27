@@ -189,8 +189,7 @@ bootstrap:
 
 clangscan:
 	$(call report, $@)
-	@$(TOP)/bootstrap -r
-	@$(TOP)/misc/clangscanbuild.py $(TOP)
+	@$(TOP)/misc/clangscanbuild.sh $(TOP)
 
 rpm: reset
 	$(call report, $@)

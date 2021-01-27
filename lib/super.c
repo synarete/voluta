@@ -1310,8 +1310,8 @@ static void vi_stamp_view(struct voluta_vnode_info *vi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int vtype_at(const struct voluta_vnode_info *agm_vi,
-		    const struct voluta_vaddr *vaddr)
+static enum voluta_vtype vtype_at(const struct voluta_vnode_info *agm_vi,
+				  const struct voluta_vaddr *vaddr)
 {
 	return agm_vtype_at(agm_vi->vu.agm, vaddr);
 }

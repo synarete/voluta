@@ -315,17 +315,19 @@ long *vt_new_randseq(struct vt_env *vte, size_t cnt, long base)
 	return arr;
 }
 
-static void fill_buf_nums(unsigned long base, uint8_t *buf, size_t bsz)
+static void fill_buf_nums(unsigned long base, void *buf, size_t bsz)
 {
 	uint8_t *rem;
-	uint64_t *ubuf = (uint64_t *)buf;
+	uint8_t *end;
+	uint64_t *ubuf = buf;
 	const size_t cnt = bsz / sizeof(*ubuf);
 
 	for (size_t i = 0; i < cnt; ++i) {
 		ubuf[i] = base + i;
 	}
-	rem = buf + (cnt * sizeof(*ubuf));
-	while (rem < (buf + bsz)) {
+	rem = (uint8_t *)buf + (cnt * sizeof(*ubuf));
+	end = (uint8_t *)buf + bsz;
+	while (rem < end) {
 		*rem++ = 0;
 	}
 }

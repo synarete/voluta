@@ -3,7 +3,7 @@ SUBDIRS = completions systemd
 
 EXTRA_DIST = $(NULL)
 EXTRA_DIST += checkcstyle.py
-EXTRA_DIST += clangscanbuild.py
+EXTRA_DIST += clangscanbuild.sh
 EXTRA_DIST += clangtidycheck.sh
 EXTRA_DIST += ddreadwrite.sh
 EXTRA_DIST += findtodo.sh

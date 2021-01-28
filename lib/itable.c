@@ -1263,9 +1263,13 @@ static int do_scan_subtree(struct voluta_sb_info *sbi,
 {
 	int err = 0;
 	struct voluta_vaddr vaddr;
+	const size_t nchilds = itn_nchilds(vi->vu.itn);
 	const size_t nchilds_max = itn_nchilds_max(vi->vu.itn);
 
 	scan_entries_of(sbi, vi);
+	if (!nchilds) {
+		return 0;
+	}
 	for (size_t i = 0; (i < nchilds_max) && !err; ++i) {
 		resolve_child_at(vi, i, &vaddr);
 		err = scan_subtree_at(sbi, &vaddr);

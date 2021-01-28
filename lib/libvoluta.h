@@ -280,7 +280,7 @@ int voluta_encrypt_vnode(const struct voluta_vnode_info *vi, void *buf);
 int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf);
 
 
-bool voluta_vtype_isnormal(enum voluta_vtype vtype);
+bool voluta_vtype_isubermap(enum voluta_vtype vtype);
 
 bool voluta_vtype_isdata(enum voluta_vtype vtype);
 
@@ -372,8 +372,6 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags);
 
 int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
-
-int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags);
 
 int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags);
 
@@ -809,12 +807,10 @@ int voluta_pstore_funlock(const struct voluta_pstore *pstore);
 int voluta_pstore_clone(const struct voluta_pstore *pstore,
 			const struct voluta_str *name);
 
-
-int voluta_dset_flush(const struct voluta_dset *dset,
-		      struct voluta_pstore *pstore,
-		      struct voluta_encbuf *encbuf);
-
 int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size);
+
+/* flushq */
+int voluta_collect_flush_dirty(struct voluta_sb_info *sbi, long ds_key);
 
 /* crypto */
 int voluta_init_gcrypt(void);

@@ -59,7 +59,8 @@
 	(VOLUTA_CMD_TAIL_MAX / sizeof(struct fuse_forget_one))
 
 
-#define FUSEQ_ENOINPUT  (10111)
+#define FUSEQ_ENORX     (10001)
+#define FUSEQ_ENOTX     (10101)
 
 /* local functions */
 static void fuseq_lock_ch(const struct voluta_fuseq_worker *fqw);
@@ -376,13 +377,11 @@ struct voluta_fuseq_xattrbuf {
 };
 
 union voluta_fuseq_outb_u {
-	uint8_t b[VOLUTA_IO_SIZE_MAX];
 	struct voluta_fuseq_databuf     dab;
 	struct voluta_fuseq_pathbuf     pab;
 	struct voluta_fuseq_xattrbuf    xab;
 	struct voluta_fuseq_xiter       xit;
 	struct voluta_fuseq_diter       dit;
-	struct voluta_fuseq_rd_iter     rdi;
 };
 
 struct voluta_fuseq_outb {
@@ -747,7 +746,7 @@ static int fuseq_send_msg(struct voluta_fuseq_worker *fqw,
 	const int fuse_fd = fqw->fq->fq_fuse_fd;
 
 	err = voluta_sys_writev(fuse_fd, iov, (int)iovcnt, &nwr);
-	if (err) {
+	if (err && (err != -ENOENT)) {
 		log_warn("send-to-fuse failed: fuse_fd=%d iovcnt=%lu err=%d",
 			 fuse_fd, iovcnt, err);
 	}
@@ -2790,11 +2789,11 @@ static int fuseq_exec_request(struct voluta_fuseq_worker *fqw)
 	fqw->fq->fq_nopers++;
 	fqw->fq->fq_times = voluta_time_now();
 	err = fuseq_call_oper(fqw);
-	if (err) {
-		/* TODO: logme */
-		return err;
+	if (err == -ENOENT) {
+		/* probably due to FR_ABORTED on FUSE side */
+		return -FUSEQ_ENOTX;
 	}
-	return 0;
+	return err;
 }
 
 static void fuseq_reset_inhdr(struct voluta_fuseq_worker *fqw)
@@ -2848,32 +2847,20 @@ static int fuseq_wait_request(const struct voluta_fuseq_worker *fqw)
 	return voluta_sys_pselect_rfd(fuse_fd, &ts);
 }
 
-static int
-fuseq_wait_and_recv_in(struct voluta_fuseq_worker *fqw, size_t *out_sz)
+static int fuseq_do_recv_in(struct voluta_fuseq_worker *fqw, size_t *out_sz)
 {
-	int err;
 	const int fuse_fd = fqw->fq->fq_fuse_fd;
 	struct voluta_fuseq_in *in = fuseq_in_of(fqw);
 
-	err = fuseq_wait_request(fqw);
-	if (err) {
-		return err;
-	}
-	err = voluta_sys_read(fuse_fd, in, sizeof(*in), out_sz);
-	if (err) {
-		return err;
-	}
-	return 0;
+	return voluta_sys_read(fuse_fd, in, sizeof(*in), out_sz);
 }
 
-static int fuseq_read_in(struct voluta_fuseq_worker *fqw)
+static int fuseq_recv_in(struct voluta_fuseq_worker *fqw)
 {
 	int err;
 	size_t len = 0;
-	struct voluta_fuseq_in *in = fuseq_in_of(fqw);
-	const size_t hdr_len = sizeof(in->u.hdr.hdr);
 
-	err = fuseq_wait_and_recv_in(fqw, &len);
+	err = fuseq_do_recv_in(fqw, &len);
 	if (err == -ETIMEDOUT) {
 		return err;
 	}
@@ -2882,9 +2869,8 @@ static int fuseq_read_in(struct voluta_fuseq_worker *fqw)
 			fqw->fq->fq_fuse_fd, err);
 		return err;
 	}
-	if (len < hdr_len) {
-		log_err("fuse read-in too-short: len=%lu hdr_len=%lu",
-			len, hdr_len);
+	if (len < sizeof(struct fuse_in_header)) {
+		log_err("fuse read-in too-short: len=%lu", len);
 		return -EIO;
 	}
 	return fuseq_check_inhdr(fqw, len);
@@ -2897,21 +2883,12 @@ static void *tail_of(struct voluta_fuseq_in *in, size_t head_len)
 	return (uint8_t *)p + head_len;
 }
 
-static int fuseq_wait_and_splice_in(struct voluta_fuseq_worker *fqw)
+static int fuseq_do_splice_in(struct voluta_fuseq_worker *fqw)
 {
-	int err;
 	const int fuse_fd = fqw->fq->fq_fuse_fd;
 	struct voluta_pipe *pipe = &fqw->pipe;
 
-	err = fuseq_wait_request(fqw);
-	if (err) {
-		return err;
-	}
-	err = pipe_splice_from_fd(pipe, fuse_fd, NULL, pipe->size);
-	if (err) {
-		return err;
-	}
-	return 0;
+	return pipe_splice_from_fd(pipe, fuse_fd, NULL, pipe->size);
 }
 
 static int fuseq_splice_in(struct voluta_fuseq_worker *fqw)
@@ -2926,7 +2903,7 @@ static int fuseq_splice_in(struct voluta_fuseq_worker *fqw)
 	struct voluta_fuseq_in *in = NULL;
 	struct voluta_pipe *pipe = &fqw->pipe;
 
-	err = fuseq_wait_and_splice_in(fqw);
+	err = fuseq_do_splice_in(fqw);
 	if (err == -ETIMEDOUT) {
 		return err;
 	}
@@ -2973,21 +2950,27 @@ static bool fuseq_is_active(const struct voluta_fuseq *fq)
 	return fq->fq_active > 0;
 }
 
+static bool fuseq_cap_splice_in(const struct voluta_fuseq_worker *fqw)
+{
+	return fuseq_cap_splice_read(fqw->fq);
+}
+
 static int fuseq_recv_in_locked(struct voluta_fuseq_worker *fqw)
 {
-	int err;
-	const bool do_splice_in = fuseq_cap_splice_read(fqw->fq);
+	int err = -FUSEQ_ENORX;
 
 	fuseq_lock_ch(fqw);
-	if (!fuseq_is_active(fqw->fq)) {
-		err = -FUSEQ_ENOINPUT;
-	} else if (do_splice_in) {
-		err = fuseq_splice_in(fqw);
-	} else {
-		err = fuseq_read_in(fqw);
+	if (fuseq_is_active(fqw->fq)) {
+		err = fuseq_wait_request(fqw);
+		if (!err) {
+			if (fuseq_cap_splice_in(fqw)) {
+				err = fuseq_splice_in(fqw);
+			} else {
+				err = fuseq_recv_in(fqw);
+			}
+		}
 	}
 	fuseq_unlock_ch(fqw);
-
 	return err;
 }
 
@@ -3000,16 +2983,16 @@ static int fuseq_read_or_splice_request(struct voluta_fuseq_worker *fqw)
 		return err;
 	}
 	err = fuseq_recv_in_locked(fqw);
-	if ((err == -ETIMEDOUT) || (err == -FUSEQ_ENOINPUT)) {
+	if ((err == -ETIMEDOUT) || (err == -FUSEQ_ENORX)) {
 		return err;
 	}
 	if (err == -ENOENT) {
 		/* hmmm... ok, but why? */
-		return -FUSEQ_ENOINPUT;
+		return -FUSEQ_ENORX;
 	}
 	if ((err == -EINTR) || (err == -EAGAIN)) {
 		log_dbg("fuse no-read: err=%d", err);
-		return -FUSEQ_ENOINPUT;
+		return -FUSEQ_ENORX;
 	}
 	if (err == -ENODEV) {
 		/* Filesystem unmounted, or connection aborted */
@@ -3338,7 +3321,7 @@ static int fuseq_init_locks(struct voluta_fuseq *fq)
 		voluta_mutex_destroy(&fq->fq_ch_lock);
 		return err;
 	}
-	return 0;;
+	return 0;
 }
 
 static void fuseq_fini_locks(struct voluta_fuseq *fq)
@@ -3465,7 +3448,7 @@ static int fuseq_check_input(const struct voluta_fuseq_worker *fqw)
 	if (!in_len || !opcode) {
 		log_warn("bad fuse input: in_len=%u opcode=%u",
 			 in_len, opcode);
-		err = -FUSEQ_ENOINPUT;
+		err = -FUSEQ_ENORX;
 	}
 	return err;
 }
@@ -3475,7 +3458,7 @@ static int fuseq_exec_one(struct voluta_fuseq_worker *fqw)
 	int err;
 
 	if (!fuseq_is_active(fqw->fq)) {
-		return -FUSEQ_ENOINPUT;
+		return -FUSEQ_ENORX;
 	}
 	err = fuseq_recv_request(fqw);
 	if (err) {
@@ -3520,24 +3503,24 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 			continue;
 		}
 
+
 		/* serve single in-comming request */
 		err = fuseq_exec_one(fqw);
 
-		/* no-lock & interrupt cases */
-		if (err == -FUSEQ_ENOINPUT) {
-			usleep(1);
-			err = 0;
+		/* timeout case */
+		if (err == -ETIMEDOUT) {
+			err = fuseq_do_timeout(fqw);
 			continue;
 		}
 		/* umount case */
 		if (err == -ENODEV) {
 			fqw->fq->fq_active = 0; /* umount case */
-			err = 0;
 			break;
 		}
-		/* timeout case */
-		if (err == -ETIMEDOUT) {
-			err = fuseq_do_timeout(fqw);
+		/* no-lock & interrupt cases */
+		if ((err == -FUSEQ_ENORX) || (err == -FUSEQ_ENOTX)) {
+			usleep(1);
+			err = 0;
 		}
 	}
 	return err;

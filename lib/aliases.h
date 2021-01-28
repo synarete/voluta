@@ -63,7 +63,7 @@
 #define vtype_nkbs(vt)                  voluta_vtype_nkbs(vt)
 #define vtype_size(vt)                  voluta_vtype_size(vt)
 #define vtype_ssize(vt)                 voluta_vtype_ssize(vt)
-#define vtype_isnormal(vt)              voluta_vtype_isnormal(vt)
+#define vtype_isumap(vt)                voluta_vtype_isubermap(vt)
 #define vtype_isdata(vt)                voluta_vtype_isdata(vt)
 #define vtype_ismeta(vt)                voluta_vtype_ismeta(vt)
 

@@ -74,7 +74,6 @@ enum voluta_flags {
 	VOLUTA_F_IDLE           = VOLUTA_BIT(8),
 	VOLUTA_F_BRINGUP        = VOLUTA_BIT(9),
 	VOLUTA_F_OPSTART        = VOLUTA_BIT(10),
-	VOLUTA_F_FORCED         = VOLUTA_BIT(11),
 };
 
 
@@ -291,10 +290,15 @@ struct voluta_vnode_info {
 };
 
 /* dirty-queues of cached-elements */
+struct voluta_dirtyq {
+	struct voluta_listq             dq_list;
+	size_t dq_accum_nbytes;
+};
+
 struct voluta_dirtyqs {
 	struct voluta_qalloc           *dq_qalloc;
-	struct voluta_listq            *dq_bins;
-	struct voluta_listq             dq_main;
+	struct voluta_dirtyq           *dq_bins;
+	struct voluta_dirtyq            dq_main;
 	size_t dq_nbins;
 };
 
@@ -458,7 +462,7 @@ struct voluta_fuseq_worker {
 } voluta_aligned64;
 
 struct voluta_fuseq {
-	struct voluta_fuseq_worker      fq_worker[8];
+	struct voluta_fuseq_worker      fq_worker[4];
 	struct voluta_fuseq_conn_info   fq_coni;
 	struct voluta_mutex             fq_ch_lock;
 	struct voluta_mutex             fq_fs_lock;

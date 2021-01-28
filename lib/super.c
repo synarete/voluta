@@ -1441,15 +1441,19 @@ static int find_cached_bki_of(struct voluta_super_ctx *s_ctx)
 	return find_cached_bki(s_ctx->sbi, s_ctx->vaddr->lba, &s_ctx->bki);
 }
 
+static size_t total_dirty_size(const struct voluta_sb_info *sbi)
+{
+	return sbi->sb_cache->c_dqs.dq_main.dq_accum_nbytes;
+}
+
 static int commit_dirty_now(const struct voluta_super_ctx *s_ctx)
 {
 	int err;
-	const struct voluta_cache *cache = cache_of(s_ctx);
 
 	err = voluta_flush_dirty(s_ctx->sbi, VOLUTA_F_NOW);
 	if (err) {
-		log_dbg("commit dirty failure: ndirty=%lu err=%d",
-			cache->c_dqs.dq_main.sz, err);
+		log_dbg("commit dirty failure: dirty=%lu err=%d",
+			total_dirty_size(s_ctx->sbi), err);
 	}
 	return err;
 }
@@ -1548,13 +1552,6 @@ static int verify_vnode_view(struct voluta_vnode_info *vi)
 static bool encrypted_mode(const struct voluta_sb_info *sbi)
 {
 	const unsigned long mask = VOLUTA_F_ENCRYPT;
-
-	return (sbi->sb_ctl_flags & mask) == mask;
-}
-
-static bool spliced_mode(const struct voluta_sb_info *sbi)
-{
-	const unsigned long mask = VOLUTA_F_SPLICED;
 
 	return (sbi->sb_ctl_flags & mask) == mask;
 }
@@ -2006,8 +2003,8 @@ static int spawn_vi_now(struct voluta_super_ctx *s_ctx, bool expect_ok)
 		return 0;
 	}
 	if (expect_ok) {
-		log_dbg("can not spawn vi: nvi=%lu ndirty=%lu",
-			cache->c_vlm.count, cache->c_dqs.dq_main.sz);
+		log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
+			cache->c_vlm.count, total_dirty_size(s_ctx->sbi));
 	}
 	return -ENOMEM;
 }
@@ -2064,8 +2061,8 @@ static int spawn_ii_now(struct voluta_super_ctx *s_ctx, bool expect_ok)
 		return 0;
 	}
 	if (expect_ok) {
-		log_dbg("can not spawn ii: nii=%lu ndirty=%lu",
-			cache->c_ilm.count, cache->c_dqs.dq_main.sz);
+		log_dbg("can not spawn ii: nii=%lu dirty=%lu",
+			cache->c_ilm.count, total_dirty_size(s_ctx->sbi));
 	}
 	return -ENOMEM;
 }
@@ -2905,41 +2902,6 @@ void voluta_sbi_addflags(struct voluta_sb_info *sbi, enum voluta_flags flags)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void seal_dirty_vnodes(const struct voluta_dset *dset)
-{
-	const struct voluta_vnode_info *vi = dset->ds_viq;
-
-	while (vi != NULL) {
-		if (!vi_isdata(vi)) {
-			voluta_seal_meta(vi);
-		}
-		vi = vi->v_ds_next;
-	}
-}
-
-static bool with_encbuf(const struct voluta_sb_info *sbi)
-{
-	return encrypted_mode(sbi) || !spliced_mode(sbi);
-}
-
-static int collect_and_flush_dirty(struct voluta_sb_info *sbi,
-				   const struct voluta_inode_info *ii)
-{
-	int err;
-	long ds_key;
-	struct voluta_dset dset;
-	struct voluta_encbuf *eb =
-		with_encbuf(sbi) ? sbi->sb_encbuf : NULL;
-
-	ds_key = (ii != NULL) ? ii->i_vi.v_ds_key : 0;
-	voluta_dset_build(&dset, sbi->sb_cache, ds_key);
-	seal_dirty_vnodes(&dset);
-
-	err = voluta_dset_flush(&dset, sbi->sb_pstore, eb);
-	voluta_dset_cleanup(&dset);
-	return err;
-}
-
 static int fetch_agmap_of(struct voluta_super_ctx *s_ctx)
 {
 	int err;
@@ -2968,7 +2930,7 @@ static int fetch_parents(struct voluta_super_ctx *s_ctx)
 	if (err) {
 		return err;
 	}
-	if (!vtype_isnormal(vtype)) {
+	if (vtype_isumap(vtype)) {
 		return 0;
 	}
 	err = fetch_agmap_of(s_ctx);
@@ -2982,10 +2944,14 @@ static int fetch_parents(struct voluta_super_ctx *s_ctx)
 	return 0;
 }
 
-static int commit_last(struct voluta_sb_info *sbi, int flags)
+static int commit_last(const struct voluta_sb_info *sbi, int flags)
 {
-	return (flags & VOLUTA_F_SYNC) ?
-	       voluta_pstore_sync(sbi->sb_pstore, 0) : 0;
+	int err = 0;
+
+	if (flags & VOLUTA_F_NOW) {
+		err = voluta_pstore_sync(sbi->sb_pstore, 0);
+	}
+	return err;
 }
 
 int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
@@ -2997,7 +2963,7 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = collect_and_flush_dirty(sbi, NULL);
+	err = voluta_collect_flush_dirty(sbi, 0);
 	if (err) {
 		return err;
 	}
@@ -3018,26 +2984,11 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = collect_and_flush_dirty(sbi, ii);
+	err = voluta_collect_flush_dirty(sbi, ii->i_vi.v_ds_key);
 	if (err) {
 		return err;
 	}
 	return 0;
-}
-
-int voluta_flush_dirty_and_relax(struct voluta_sb_info *sbi, int flags)
-{
-	int err;
-
-	err = voluta_flush_dirty(sbi, flags);
-	voluta_cache_relax(sbi->sb_cache, flags);
-
-	return err;
-}
-
-int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
-{
-	return voluta_flush_dirty_and_relax(sbi, flags | VOLUTA_F_TIMEOUT);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -18,14 +18,14 @@
 #include "libvoluta.h"
 
 
-bool voluta_vtype_isnormal(enum voluta_vtype vtype)
+bool voluta_vtype_isubermap(enum voluta_vtype vtype)
 {
 	bool ret;
 
 	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
-		ret = false;
+		ret = true;
 		break;
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
@@ -37,7 +37,7 @@ bool voluta_vtype_isnormal(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_NONE:
 	default:
-		ret = true;
+		ret = false;
 		break;
 	}
 	return ret;

@@ -33,10 +33,16 @@
 
 static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
+	int err;
+
 	sbi->sb_ops.op_time = op->xtime.tv_sec;
 	sbi->sb_ops.op_count++;
 
-	return voluta_flush_dirty_and_relax(sbi, VOLUTA_F_OPSTART);
+	err = voluta_flush_dirty(sbi, 0);
+	if (!err) {
+		voluta_cache_relax(sbi->sb_cache, VOLUTA_F_OPSTART);
+	}
+	return err;
 }
 
 static void op_finish(struct voluta_sb_info *sbi, const struct voluta_oper *op)
@@ -1281,4 +1287,16 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
 out:
 	op_finish(sbi, op);
 	return err;
+}
+
+int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
+{
+	int err;
+
+	err = voluta_flush_dirty(sbi, flags | VOLUTA_F_TIMEOUT);
+	if (err) {
+		return err;
+	}
+	voluta_cache_relax(sbi->sb_cache, VOLUTA_F_TIMEOUT);
+	return 0;
 }

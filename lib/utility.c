@@ -470,7 +470,7 @@ const char *voluta_basename(const char *path)
 	return (name == NULL) ? path : (name + 1);
 }
 
-/* Optimal prime-value for hash-table of n-elements */
+/* prime-value for hash-table of n-elements */
 static const size_t voluta_primes[] = {
 	13UL,
 	53UL,
@@ -485,8 +485,11 @@ static const size_t voluta_primes[] = {
 	24593UL,
 	49157UL,
 	98317UL,
+	147377UL,
 	196613UL,
+	294979UL,
 	393241UL,
+	589933UL,
 	786433UL,
 	1572869UL,
 	3145739UL,

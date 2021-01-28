@@ -19,6 +19,7 @@ libvoluta_la_SOURCES += crypto.c
 libvoluta_la_SOURCES += dir.c
 libvoluta_la_SOURCES += execfs.c
 libvoluta_la_SOURCES += file.c
+libvoluta_la_SOURCES += flushq.c
 libvoluta_la_SOURCES += fuseq.c
 libvoluta_la_SOURCES += init.c
 libvoluta_la_SOURCES += inlines.h

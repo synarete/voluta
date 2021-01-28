@@ -23,13 +23,6 @@
 	{ .tests = &(t_), .name = VOLUTA_STR(t_) }
 
 static struct ut_tgroup const g_ut_tgroups[] = {
-
-
-	/* XXX */
-	UT_DEFTGRP(ut_test_file_basic),
-
-
-
 	UT_DEFTGRP(ut_test_strings),
 	UT_DEFTGRP(ut_test_avl),
 	UT_DEFTGRP(ut_test_qalloc),

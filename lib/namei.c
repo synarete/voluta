@@ -1478,11 +1478,8 @@ int voluta_do_fsync(const struct voluta_oper *op,
 int voluta_do_flush(const struct voluta_oper *op,
 		    struct voluta_inode_info *ii)
 {
-	int flags = 0;
+	const int flags = (op->ucred.uid == 0) ? VOLUTA_F_NOW : 0;
 
-	if (op->ucred.uid == 0) {
-		flags = VOLUTA_F_FORCED;
-	}
 	return voluta_flush_dirty_of(ii, flags);
 }
 

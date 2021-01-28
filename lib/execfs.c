@@ -423,7 +423,7 @@ static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
 {
 	int err;
 
-	err = voluta_flush_dirty(sbi, VOLUTA_F_SYNC | VOLUTA_F_NOW);
+	err = voluta_flush_dirty(sbi, VOLUTA_F_NOW);
 	if (!err && drop_caches) {
 		voluta_cache_drop(sbi->sb_cache);
 	}

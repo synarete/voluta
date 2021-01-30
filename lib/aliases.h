@@ -131,6 +131,7 @@
 #define listq_finin(lq, n)              voluta_listq_finin(lq, n)
 #define listq_isempty(lq)               voluta_listq_isempty(lq)
 #define listq_push_back(lq, lh)         voluta_listq_push_back(lq, lh)
+#define listq_push_front(lq, lh)        voluta_listq_push_front(lq, lh)
 #define listq_pop_front(lq)             voluta_listq_pop_front(lq)
 #define listq_remove(lq, lh)            voluta_listq_remove(lq, lh)
 #define listq_front(lq)                 voluta_listq_front(lq)

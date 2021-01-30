@@ -65,6 +65,7 @@ struct voluta_file_ctx {
 	int     fm_stop;
 	int     cp_flags;
 	int     whence;
+	int     with_cookie;
 };
 
 static bool fl_keep_size(const struct voluta_file_ctx *f_ctx);
@@ -190,7 +191,7 @@ static int xiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
 	err = xiovec_by_qalloc(f_ctx, dat, oib, len, out_xiov);
-	if (!err) {
+	if (!err && f_ctx->with_cookie) {
 		vi_incref(vi);
 		out_xiov->cookie = unconst(vi);
 	}
@@ -1605,25 +1606,32 @@ static int do_read_iter(struct voluta_file_ctx *f_ctx)
 	return err;
 }
 
+static int read_iter(struct voluta_file_ctx *f_ctx)
+{
+	int err;
+	struct voluta_inode_info *ii = f_ctx->ii;
+
+	ii_incref(ii);
+	err = do_read_iter(f_ctx);
+	ii_decref(ii);
+
+	return err;
+}
+
 int voluta_do_read_iter(const struct voluta_oper *op,
 			struct voluta_inode_info *ii,
 			struct voluta_rwiter_ctx *rwi)
 {
-	int err;
 	struct voluta_file_ctx f_ctx = {
 		.op = op,
 		.sbi = ii_sbi(ii),
 		.ii = ii,
-		.op_mask = OP_READ
+		.op_mask = OP_READ,
+		.with_cookie = 1,
 	};
 
 	update_with_rw_iter(&f_ctx, rwi);
-
-	ii_incref(ii);
-	err = do_read_iter(&f_ctx);
-	ii_decref(ii);
-
-	return err;
+	return read_iter(&f_ctx);
 }
 
 int voluta_do_read(const struct voluta_oper *op,
@@ -1637,10 +1645,18 @@ int voluta_do_read(const struct voluta_oper *op,
 		.rwi.len = len,
 		.rwi.off = off,
 		.dat = buf,
-		.dat_max = len
+		.dat_max = len,
+	};
+	struct voluta_file_ctx f_ctx = {
+		.op = op,
+		.sbi = ii_sbi(ii),
+		.ii = ii,
+		.op_mask = OP_READ,
+		.with_cookie = 0,
 	};
 
-	err = voluta_do_read_iter(op, ii, &rdi.rwi);
+	update_with_rw_iter(&f_ctx, &rdi.rwi);
+	err = read_iter(&f_ctx);
 	*out_len = rdi.dat_len;
 	return err;
 }
@@ -2205,6 +2221,7 @@ int voluta_do_write_iter(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.op_mask = OP_WRITE,
+		.with_cookie = 1,
 	};
 
 	update_with_rw_iter(&f_ctx, rwi);
@@ -2230,6 +2247,7 @@ int voluta_do_write(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.op_mask = OP_WRITE,
+		.with_cookie = 0,
 	};
 
 	update_with_rw_iter(&f_ctx, &wri.rwi);

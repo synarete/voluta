@@ -244,9 +244,11 @@ struct voluta_iaddr {
 struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
-	long ce_refcnt;
 	long ce_key;
 	long ce_tick;
+	int  ce_refcnt;
+	bool ce_mapped;
+	bool ce_forgot;
 };
 
 /* block caching info */
@@ -314,11 +316,11 @@ struct voluta_inode_info {
 
 /* caching */
 struct voluta_lrumap {
-	struct voluta_list_head  lru;
+	struct voluta_listq      lru;
 	struct voluta_list_head *htbl;
 	long (*hash_fn)(long);
-	size_t hsize;
-	size_t count;
+	size_t htbl_nelems;
+	size_t htbl_size;
 };
 
 struct voluta_cache {

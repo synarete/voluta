@@ -208,11 +208,15 @@ static void ce_init(struct voluta_cache_elem *ce)
 	lh_init(&ce->ce_htb_lh);
 	lh_init(&ce->ce_lru_lh);
 	ce->ce_refcnt = 0;
+	ce->ce_mapped = false;
+	ce->ce_forgot = false;
 	ce->ce_tick = 0;
 }
 
 static void ce_fini(struct voluta_cache_elem *ce)
 {
+	voluta_assert(!ce->ce_mapped);
+
 	lh_fini(&ce->ce_htb_lh);
 	lh_fini(&ce->ce_lru_lh);
 	ce->ce_refcnt = 0;
@@ -222,12 +226,18 @@ static void ce_fini(struct voluta_cache_elem *ce)
 static void ce_hmap(struct voluta_cache_elem *ce,
 		    struct voluta_list_head *hlst)
 {
+	voluta_assert(!ce->ce_mapped);
+
 	list_push_front(hlst, &ce->ce_htb_lh);
+	ce->ce_mapped = true;
 }
 
 static void ce_hunmap(struct voluta_cache_elem *ce)
 {
+	voluta_assert(ce->ce_mapped);
+
 	list_head_remove(&ce->ce_htb_lh);
+	ce->ce_mapped = false;
 }
 
 static struct voluta_list_head *ce_lru_link(struct voluta_cache_elem *ce)
@@ -235,27 +245,26 @@ static struct voluta_list_head *ce_lru_link(struct voluta_cache_elem *ce)
 	return &ce->ce_lru_lh;
 }
 
-static void ce_lru(struct voluta_cache_elem *ce, struct voluta_list_head *lru)
+static void ce_lru(struct voluta_cache_elem *ce, struct voluta_listq *lru)
 {
-	list_push_front(lru, ce_lru_link(ce));
+	listq_push_front(lru, ce_lru_link(ce));
 }
 
-static void ce_unlru(struct voluta_cache_elem *ce)
+static void ce_unlru(struct voluta_cache_elem *ce, struct voluta_listq *lru)
 {
-	list_head_remove(ce_lru_link(ce));
+	listq_remove(lru, ce_lru_link(ce));
 }
 
 static bool ce_islru_front(struct voluta_cache_elem *ce,
-			   struct voluta_list_head *lru)
+			   struct voluta_listq *lru)
 {
-	return (list_front(lru) == ce_lru_link(ce));
+	return (listq_front(lru) == ce_lru_link(ce));
 }
 
-static void ce_relru(struct voluta_cache_elem *ce,
-		     struct voluta_list_head *lru)
+static void ce_relru(struct voluta_cache_elem *ce, struct voluta_listq *lru)
 {
 	if (!ce_islru_front(ce, lru)) {
-		ce_unlru(ce);
+		ce_unlru(ce, lru);
 		ce_lru(ce, lru);
 	}
 }
@@ -265,17 +274,21 @@ static size_t ce_refcnt(const struct voluta_cache_elem *ce)
 	return (size_t)ce->ce_refcnt;
 }
 
-static void ce_incref(struct voluta_cache_elem *ce)
+static size_t ce_incref(struct voluta_cache_elem *ce)
 {
 	voluta_assert_lt(ce->ce_refcnt, INT_MAX / 2);
 	voluta_assert_ge(ce->ce_refcnt, 0);
 	ce->ce_refcnt++;
+
+	return ce_refcnt(ce);
 }
 
-static void ce_decref(struct voluta_cache_elem *ce)
+static size_t ce_decref(struct voluta_cache_elem *ce)
 {
 	voluta_assert_gt(ce->ce_refcnt, 0);
 	ce->ce_refcnt--;
+
+	return ce_refcnt(ce);
 }
 
 static bool ce_is_evictable(const struct voluta_cache_elem *ce)
@@ -360,10 +373,26 @@ void voluta_vi_incref(struct voluta_vnode_info *vi)
 	}
 }
 
+static void vi_decref_fixup(struct voluta_vnode_info *vi)
+{
+	size_t refcnt_post;
+	struct voluta_cache_elem *ce = vi_ce(vi);
+
+	refcnt_post = ce_decref(ce);
+
+	/*
+	 * Special case where data-node has been unmapped due to forget, yet
+	 * it still had a live ref-count due to on-going I/O operation.
+	 */
+	if (!refcnt_post && ce->ce_forgot) {
+		voulta_cache_forget_vi(vi_cache(vi), vi);
+	}
+}
+
 void voluta_vi_decref(struct voluta_vnode_info *vi)
 {
 	if (likely(vi != NULL)) {
-		ce_decref(vi_ce(vi));
+		vi_decref_fixup(vi);
 	}
 }
 
@@ -608,33 +637,33 @@ static int lrumap_init(struct voluta_lrumap *lm, struct voluta_qalloc *qal,
 	if (htbl == NULL) {
 		return -ENOMEM;
 	}
-	list_init(&lm->lru);
+	listq_init(&lm->lru);
 	lm->htbl = htbl;
 	lm->hash_fn = hash_fn;
-	lm->hsize = htbl_size;
-	lm->count = 0;
+	lm->htbl_nelems = htbl_size;
+	lm->htbl_size = 0;
 	return 0;
 }
 
 static void lrumap_fini(struct voluta_lrumap *lm, struct voluta_qalloc *qal)
 {
 	if (lm->htbl != NULL) {
-		del_htbl(qal, lm->htbl, lm->hsize);
-		list_fini(&lm->lru);
+		del_htbl(qal, lm->htbl, lm->htbl_nelems);
+		listq_fini(&lm->lru);
 		lm->htbl = NULL;
 		lm->hash_fn = NULL;
-		lm->hsize = 0;
+		lm->htbl_nelems = 0;
 	}
 }
 
 static size_t lrumap_usage(const struct voluta_lrumap *lm)
 {
-	return lm->count;
+	return lm->htbl_size;
 }
 
 static size_t lrumap_key_to_bin(const struct voluta_lrumap *lm, long ckey)
 {
-	return (size_t)(lm->hash_fn(ckey)) % lm->hsize;
+	return (size_t)(lm->hash_fn(ckey)) % lm->htbl_nelems;
 }
 
 static void lrumap_store(struct voluta_lrumap *lm,
@@ -645,7 +674,7 @@ static void lrumap_store(struct voluta_lrumap *lm,
 	ce->ce_key = ckey;
 	ce_hmap(ce, &lm->htbl[bin]);
 	ce_lru(ce, &lm->lru);
-	lm->count += 1;
+	lm->htbl_size += 1;
 }
 
 static struct voluta_cache_elem *
@@ -669,12 +698,26 @@ lrumap_find(const struct voluta_lrumap *lm, long ckey)
 	return NULL;
 }
 
-static void lrumap_remove(struct voluta_lrumap *lm,
+static void lrumap_unmap(struct voluta_lrumap *lm,
 			  struct voluta_cache_elem *ce)
 {
 	ce_hunmap(ce);
-	ce_unlru(ce);
-	lm->count -= 1;
+	lm->htbl_size -= 1;
+}
+
+static void lrumap_unlru(struct voluta_lrumap *lm,
+			  struct voluta_cache_elem *ce)
+{
+	voluta_assert_gt(lm->lru.sz, 0);
+
+	ce_unlru(ce, &lm->lru);
+}
+
+static void lrumap_remove(struct voluta_lrumap *lm,
+			  struct voluta_cache_elem *ce)
+{
+	lrumap_unmap(lm, ce);
+	lrumap_unlru(lm, ce);
 }
 
 static void lrumap_promote_lru(struct voluta_lrumap *lm,
@@ -683,13 +726,12 @@ static void lrumap_promote_lru(struct voluta_lrumap *lm,
 	ce_relru(ce, &lm->lru);
 }
 
-static struct voluta_cache_elem *
-lrumap_get_lru(const struct voluta_lrumap *cq)
+static struct voluta_cache_elem *lrumap_get_lru(const struct voluta_lrumap *lm)
 {
 	struct voluta_cache_elem *ce = NULL;
 
-	if (cq->count > 0) {
-		ce = ce_from_lru_link(cq->lru.prev);
+	if (lm->lru.sz > 0) {
+		ce = ce_from_lru_link(lm->lru.ls.prev);
 	}
 	return ce;
 }
@@ -700,11 +742,11 @@ static void lrumap_foreach_backward(struct voluta_lrumap *lm,
 	int ret = 0;
 	size_t count;
 	struct voluta_cache_elem *ce;
-	struct voluta_list_head *lru = &lm->lru;
-	struct voluta_list_head *itr = lru->prev;
+	struct voluta_listq *lru = &lm->lru;
+	struct voluta_list_head *itr = lru->ls.prev;
 
-	count = lm->count;
-	while (!ret && count-- && (itr != lru)) {
+	count = lru->sz;
+	while (!ret && count-- && (itr != &lru->ls)) {
 		ce = ce_from_lru_link(itr);
 		itr = itr->prev;
 		ret = cb(ce, arg);
@@ -713,7 +755,13 @@ static void lrumap_foreach_backward(struct voluta_lrumap *lm,
 
 static size_t lrumap_overpop(const struct voluta_lrumap *lm)
 {
-	return (lm->count > lm->hsize) ? (lm->count - lm->hsize) : 0;
+	if (lm->htbl_size > lm->htbl_nelems) {
+		return (lm->htbl_size - lm->htbl_nelems);
+	}
+	if (lm->lru.sz > lm->htbl_size) {
+		return (lm->lru.sz - lm->htbl_size);
+	}
+	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1112,7 +1160,7 @@ static int visit_evictable_bki(struct voluta_cache_elem *ce, void *arg)
 
 static size_t calc_search_evictable_max(const struct voluta_lrumap *lm)
 {
-	return clamp(lm->count / 4, 1, 256);
+	return clamp(lm->htbl_size / 4, 1, 16);
 }
 
 static struct voluta_bk_info *
@@ -1202,7 +1250,7 @@ static void cache_shrink_or_relru_bkis(struct voluta_cache *cache, size_t cnt)
 {
 	bool ok = true;
 	struct voluta_bk_info *bki;
-	const size_t n = min(cnt, cache->c_blm.count);
+	const size_t n = min(cnt, cache->c_blm.lru.sz);
 
 	for (size_t i = 0; (i < n) && ok; ++i) {
 		bki = cache_get_lru_bki(cache);
@@ -1253,12 +1301,33 @@ cache_find_vi(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 	return vi_from_ce(ce);
 }
 
+static void cache_unmap_vi(struct voluta_cache *cache,
+			       struct voluta_vnode_info *vi)
+{
+	if (vi->v_ce.ce_mapped) {
+		lrumap_remove(&cache->c_vlm, vi_ce(vi));
+	}
+}
+
+static void cache_remove_vi(struct voluta_cache *cache,
+			       struct voluta_vnode_info *vi)
+{
+	struct voluta_lrumap *lm = &cache->c_vlm;
+	struct voluta_cache_elem *ce = vi_ce(vi);
+
+	if (ce->ce_mapped) {
+		lrumap_remove(lm, ce);
+	} else {
+		lrumap_unlru(lm, ce);
+	}
+}
+
 static void cache_evict_vi(struct voluta_cache *cache,
-			   struct voluta_vnode_info *vi)
+			       struct voluta_vnode_info *vi)
 {
 	voluta_assert(!vi->v_dirty);
 
-	lrumap_remove(&cache->c_vlm, vi_ce(vi));
+	cache_remove_vi(cache, vi);
 	vi_detach_all(vi);
 	cache_del_vi(cache, vi);
 }
@@ -1364,10 +1433,13 @@ voluta_cache_spawn_vi(struct voluta_cache *cache,
 void voulta_cache_forget_vi(struct voluta_cache *cache,
 			    struct voluta_vnode_info *vi)
 {
-	voluta_assert_eq(vi_refcnt(vi), 0);
-
 	vi_undirtify(vi);
-	cache_evict_vi(cache, vi);
+	if (vi_refcnt(vi) > 0) {
+		cache_unmap_vi(cache, vi);
+		vi->v_ce.ce_forgot = true;
+	} else {
+		cache_evict_vi(cache, vi);
+	}
 }
 
 void voluta_attach_to(struct voluta_vnode_info *vi,
@@ -1442,7 +1514,7 @@ static void cache_shrink_or_relru_vis(struct voluta_cache *cache, size_t cnt)
 {
 	bool ok = true;
 	struct voluta_vnode_info *vi;
-	const size_t n = min(cnt, cache->c_vlm.count);
+	const size_t n = min(cnt, cache->c_vlm.lru.sz);
 
 	for (size_t i = 0; (i < n) && ok; ++i) {
 		vi = cache_get_lru_vi(cache);
@@ -1654,7 +1726,7 @@ static void cache_shrink_or_relru_iis(struct voluta_cache *cache, size_t cnt)
 {
 	bool ok = true;
 	struct voluta_inode_info *ii;
-	const size_t n = min(cnt, cache->c_ilm.count);
+	const size_t n = min(cnt, cache->c_ilm.lru.sz);
 
 	for (size_t i = 0; (i < n) && ok; ++i) {
 		ii = cache_get_lru_ii(cache);
@@ -1756,7 +1828,7 @@ void voluta_cache_relax(struct voluta_cache *cache, int flags)
 void voluta_cache_shrink_once(struct voluta_cache *cache)
 {
 	const size_t bk_size = VOLUTA_BK_SIZE;
-	const size_t memsz_bkis = bk_size * cache->c_blm.count;
+	const size_t memsz_bkis = bk_size * cache->c_blm.htbl_size;
 	const size_t memsz_data = cache->c_qalloc->st.memsz_data;
 
 	if ((8 * memsz_bkis) > memsz_data) {

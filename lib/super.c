@@ -2004,7 +2004,7 @@ static int spawn_vi_now(struct voluta_super_ctx *s_ctx, bool expect_ok)
 	}
 	if (expect_ok) {
 		log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
-			cache->c_vlm.count, total_dirty_size(s_ctx->sbi));
+			cache->c_vlm.htbl_size, total_dirty_size(s_ctx->sbi));
 	}
 	return -ENOMEM;
 }
@@ -2062,7 +2062,7 @@ static int spawn_ii_now(struct voluta_super_ctx *s_ctx, bool expect_ok)
 	}
 	if (expect_ok) {
 		log_dbg("can not spawn ii: nii=%lu dirty=%lu",
-			cache->c_ilm.count, total_dirty_size(s_ctx->sbi));
+			cache->c_ilm.htbl_size, total_dirty_size(s_ctx->sbi));
 	}
 	return -ENOMEM;
 }

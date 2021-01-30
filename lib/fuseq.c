@@ -3510,6 +3510,7 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 		/* timeout case */
 		if (err == -ETIMEDOUT) {
 			err = fuseq_do_timeout(fqw);
+			voluta_assert_ok(err);
 			continue;
 		}
 		/* umount case */
@@ -3520,6 +3521,13 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 		/* no-lock & interrupt cases */
 		if ((err == -FUSEQ_ENORX) || (err == -FUSEQ_ENOTX)) {
 			usleep(1);
+			err = 0;
+		}
+
+		/* XXX FIXME */
+		if (err == -ENOENT) {
+			log_err("unexpected: err=%d", err);
+			sleep(1);
 			err = 0;
 		}
 	}

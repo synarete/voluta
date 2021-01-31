@@ -218,6 +218,7 @@ static void *safe_malloc(size_t size)
 	ptr = malloc(size);
 	if (ptr == NULL) {
 		error(EXIT_FAILURE, errno, "malloc failed: size=%lu", size);
+		abort(); /* makes gcc '-fanalyzer' happy */
 	}
 	return ptr;
 }

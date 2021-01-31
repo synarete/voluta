@@ -15,6 +15,7 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <error.h>
 #include "unitest.h"
 
 #define UT_VOLUME_SIZE (2L * VOLUTA_GIGA)
@@ -175,14 +176,28 @@ static void ut_done_tests(struct ut_env *ute)
 	voluta_assert_ok(err);
 }
 
+static void *ut_malloc_safe(size_t size)
+{
+	void *ptr;
+
+	ptr = malloc(size);
+	if (ptr == NULL) {
+		error(EXIT_FAILURE, errno, "malloc failed: size=%lu", size);
+		abort(); /* makes gcc '-fanalyzer' happy */
+	}
+	return ptr;
+}
+
 static char *ut_joinpath(const char *path, const char *base)
 {
 	char *rpath;
+	size_t len;
 	const size_t plen = strlen(path);
 	const size_t blen = strlen(base);
 
-	rpath = calloc(plen + blen + 2, 1);
-	voluta_assert_not_null(rpath);
+	len = plen + blen + 2;
+	rpath = ut_malloc_safe(len);
+	memset(rpath, 0, len);
 
 	strncpy(rpath, path, plen + 1);
 	rpath[plen] = '/';
@@ -255,9 +270,7 @@ ut_malloc_chunk(struct ut_env *ute, size_t nbytes)
 	struct ut_malloc_chunk *mchunk;
 
 	total_size = malloc_total_size(nbytes);
-	mchunk = (struct ut_malloc_chunk *)malloc(total_size);
-	voluta_assert_not_null(mchunk);
-
+	mchunk = (struct ut_malloc_chunk *)ut_malloc_safe(total_size);
 	mchunk->size = total_size;
 	mchunk->next = ute->malloc_list;
 	ute->malloc_list = mchunk;
@@ -424,9 +437,7 @@ static struct ut_env *ute_new(void)
 {
 	struct ut_env *ute;
 
-	ute = (struct ut_env *)malloc(sizeof(*ute));
-	voluta_assert_not_null(ute);
-
+	ute = (struct ut_env *)ut_malloc_safe(sizeof(*ute));
 	ute_init(ute);
 	return ute;
 }

@@ -103,12 +103,20 @@
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
 
+/* minimal number of allocation-groups in volume */
+#define VOLUTA_VOLUME_NAG_MIN           (2)
+
+/* maximal number of allocation-groups in volume */
+#define VOLUTA_VOLUME_NAG_MAX \
+	((VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG) / 2)
+
 /* minimal bytes-size of underlying volume */
-#define VOLUTA_VOLUME_SIZE_MIN          (4 * VOLUTA_AG_SIZE)
+#define VOLUTA_VOLUME_SIZE_MIN \
+	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
 /* maximal bytes-size of underlying volume (32T) */
 #define VOLUTA_VOLUME_SIZE_MAX  \
-	((VOLUTA_AG_SIZE * VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG) / 2)
+	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
 /* max path-length (including null) of volume-path */
 #define VOLUTA_VOLUME_PATH_MAX          (2032)

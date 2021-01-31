@@ -2488,12 +2488,13 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 {
 	int err;
 	const size_t hs_count = 1; /* TODO: format more then one? */
+	const size_t ag_count = VOLUTA_VOLUME_NAG_MIN - 1;
 
 	voluta_assert_gt(hs_count, 0);
 	voluta_assert_gt(sbi->sb_spi.sp_ag_count, VOLUTA_NAG_IN_HS_PREFIX);
 
 	for (size_t hs_index = 1; hs_index <= hs_count; ++hs_index) {
-		err = format_spmaps_at(sbi, hs_index, 3);
+		err = format_spmaps_at(sbi, hs_index, ag_count);
 		if (err) {
 			return err;
 		}

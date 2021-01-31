@@ -19,6 +19,7 @@ DATASIZE=${GIGA}
 RUNTIME=${RUNTIME:-30}
 BS=${BS:-64}
 RWMIX=${RWMIX:-30}
+RW=${RW:-readwrite}
 
 # TODO: echo 1 > /sys/block/<dev>/queue/iostats
 
@@ -28,6 +29,7 @@ _fio_minimal() {
   local bs=$3
   local bs_size=$((${bs} * 1024))
   local rwmix=$4
+  local rw=$5
   local ioengine="psync"
   local size=$((DATASIZE / ${jobs}))
   local base=$(basename ${testdir})
@@ -40,7 +42,7 @@ _fio_minimal() {
     --bs=${bs_size} \
     --size=${size} \
     --fallocate=none \
-    --rw=randrw \
+    --rw=$rw \
     --rwmixwrite=${rwmix} \
     --ioengine=psync \
     --sync=0 \
@@ -52,25 +54,34 @@ _fio_minimal() {
     --group_reporting \
     --randrepeat=1 \
     --unlink=1 \
-    --fsync_on_close=1 \
+    --fsync_on_close=0 \
     --minimal \
     ;
 }
 
 _fio_jobs() {
-  local testdir=$(realpath $1)
+  local testdir="$1"
   local jobs=($(seq 1 $(nproc)))
 
   for job in ${jobs[@]}; do
-    _fio_minimal ${testdir} ${job} ${BS} ${RWMIX}
+    _fio_minimal ${testdir} ${job} ${BS} ${RWMIX} ${RW}
   done
 }
 
+_fio_bss() {
+  local testdir="$1"
+  local bss=(8 64 512)
+
+  for bs in ${bss[@]}; do
+    _fio_minimal ${testdir} 1 ${bs} ${RWMIX} ${RW}
+  done
+}
 
 _fio_to_cvs() {
   for testdir in "$@"; do
     if [[ -d ${testdir} ]]; then
-      _fio_jobs ${testdir}
+      #_fio_jobs $(realpath ${testdir})
+      _fio_bss $(realpath ${testdir})
     fi
   done
 }
@@ -79,6 +90,8 @@ _fio_verify() {
   try which fio > /dev/null
 }
 
+
+# main
 _fio_verify
 _fio_to_cvs "$@"
 

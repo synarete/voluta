@@ -191,17 +191,14 @@ static void *ut_malloc_safe(size_t size)
 static char *ut_joinpath(const char *path, const char *base)
 {
 	char *rpath;
-	size_t len;
 	const size_t plen = strlen(path);
 	const size_t blen = strlen(base);
+	const size_t len = plen + blen + 2;
 
-	len = plen + blen + 2;
 	rpath = ut_malloc_safe(len);
-	memset(rpath, 0, len);
-
-	strncpy(rpath, path, plen + 1);
+	memcpy(rpath, path, plen);
 	rpath[plen] = '/';
-	strncpy(rpath + plen + 1, base, blen + 1);
+	memcpy(rpath + plen + 1, base, blen);
 	rpath[plen + 1 + blen] = '\0';
 
 	return rpath;

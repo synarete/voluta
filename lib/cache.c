@@ -699,14 +699,14 @@ lrumap_find(const struct voluta_lrumap *lm, long ckey)
 }
 
 static void lrumap_unmap(struct voluta_lrumap *lm,
-			  struct voluta_cache_elem *ce)
+			 struct voluta_cache_elem *ce)
 {
 	ce_hunmap(ce);
 	lm->htbl_size -= 1;
 }
 
 static void lrumap_unlru(struct voluta_lrumap *lm,
-			  struct voluta_cache_elem *ce)
+			 struct voluta_cache_elem *ce)
 {
 	voluta_assert_gt(lm->lru.sz, 0);
 
@@ -1302,7 +1302,7 @@ cache_find_vi(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 }
 
 static void cache_unmap_vi(struct voluta_cache *cache,
-			       struct voluta_vnode_info *vi)
+			   struct voluta_vnode_info *vi)
 {
 	if (vi->v_ce.ce_mapped) {
 		lrumap_remove(&cache->c_vlm, vi_ce(vi));
@@ -1310,7 +1310,7 @@ static void cache_unmap_vi(struct voluta_cache *cache,
 }
 
 static void cache_remove_vi(struct voluta_cache *cache,
-			       struct voluta_vnode_info *vi)
+			    struct voluta_vnode_info *vi)
 {
 	struct voluta_lrumap *lm = &cache->c_vlm;
 	struct voluta_cache_elem *ce = vi_ce(vi);
@@ -1323,7 +1323,7 @@ static void cache_remove_vi(struct voluta_cache *cache,
 }
 
 static void cache_evict_vi(struct voluta_cache *cache,
-			       struct voluta_vnode_info *vi)
+			   struct voluta_vnode_info *vi)
 {
 	voluta_assert(!vi->v_dirty);
 

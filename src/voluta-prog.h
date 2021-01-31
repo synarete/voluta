@@ -115,6 +115,7 @@ struct voluta_globals {
 	char   *umount_point;
 	char   *umount_point_real;
 	bool    umount_force;
+	bool    umount_lazy;
 
 	/* Options for 'fsck' sub-command */
 	char   *fsck_volume;

@@ -81,7 +81,8 @@ int voluta_rpc_handshake(uid_t uid, gid_t gid);
 int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
 		     size_t max_read, unsigned long ms_flags, int *out_fd);
 
-int voluta_rpc_umount(const char *mountpoint, uid_t uid, gid_t gid);
+int voluta_rpc_umount(const char *mountpoint,
+		      uid_t uid, gid_t gid, int mnt_flags);
 
 long voluta_fuse_super_magic(void);
 

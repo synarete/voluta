@@ -804,8 +804,8 @@ struct voluta_ar_blobrefs {
 
 struct voluta_ar_spec {
 	struct voluta_zero_block4       ar_zero;
-	struct voluta_meta_block4        ar_meta;
-	struct voluta_rand_block4        ar_rand[2];
+	struct voluta_meta_block4       ar_meta;
+	struct voluta_rand_block4       ar_rand[2];
 	struct voluta_ar_blobrefs       ar_brefs[1];
 } voluta_packed_aligned64;
 

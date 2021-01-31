@@ -120,6 +120,7 @@ static const char *voluta_import_usage[] = {
 	"import <archive-file> <volume-dir>",
 	"",
 	"options:",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -P, --passphrase-file=PATH   Passphrase input file (unsafe)",
 	NULL
 };
@@ -128,14 +129,17 @@ void voluta_getopt_import(void)
 {
 	int opt_chr = 1;
 	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
 		{ "passphrase-file", required_argument, NULL, 'P' },
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, no_argument, NULL, 0 },
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("P:h", opts);
-		if (opt_chr == 'P') {
+		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'P') {
 			voluta_globals.import_passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_import_usage);
@@ -146,6 +150,6 @@ void voluta_getopt_import(void)
 	voluta_globals.import_src =
 		voluta_consume_cmdarg("archive-file", false);
 	voluta_globals.import_dst =
-		voluta_consume_cmdarg("olume-dir", true);
+		voluta_consume_cmdarg("volume-dir", true);
 }
 

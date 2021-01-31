@@ -180,7 +180,7 @@ static const char *voluta_mountd_usage[] = {
 	"",
 	"options:",
 	"  -f, --conf=CONF              Mount-rules config file",
-	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -v, --version                Show version and exit",
 	NULL
 };

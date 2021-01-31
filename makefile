@@ -104,7 +104,11 @@ CFLAGS += -Wdeclaration-after-statement -Wnested-externs -Wstrict-prototypes
 CFLAGS += -Wold-style-definition -Winit-self -std=gnu11
 
 # Debug flags
-CFLAGS += -g -ggdb -fno-omit-frame-pointer -DDEBUG=$(D)
+CFLAGS += -DDEBUG=$(D)
+ifeq ($(D), 1)
+CFLAGS += -g -ggdb -fno-omit-frame-pointer
+CFLAGS += -fasynchronous-unwind-tables
+endif
 
 # Optimization flags
 ifeq ($(O), 0)

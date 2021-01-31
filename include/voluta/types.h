@@ -58,7 +58,7 @@ struct voluta_rwiter_ctx;
 struct voluta_readdir_ctx;
 struct voluta_readdir_info;
 struct voluta_listxattr_ctx;
-struct voluta_ub_info;
+struct voluta_ar_blob_info;
 
 
 /* file-system control flags */
@@ -155,7 +155,6 @@ struct voluta_ino_dt {
 /* name-buffer */
 struct voluta_namebuf {
 	char name[VOLUTA_NAME_MAX + 1];
-	long last;
 };
 
 /* pass-phrase + salt buffers */
@@ -571,10 +570,11 @@ struct voluta_archiver {
 	struct voluta_qalloc           *ar_qalloc;
 	struct voluta_crypto           *ar_crypto;
 	struct voluta_bstore           *ar_bstore;
-	struct voluta_ar_blob          *ar_blob;
+	struct voluta_ar_blob_info     *ar_bli;
 	struct voluta_ar_spec          *ar_spec;
 	size_t ar_spec_nents;
 	size_t ar_spec_nents_max;
+	int try_clone;
 };
 
 #endif /* VOLUTA_TYPES_H_ */

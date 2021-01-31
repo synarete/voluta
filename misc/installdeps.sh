@@ -5,7 +5,8 @@
 #
 
 _install_deb() {
-  apt-get install \
+  echo "# run as privileged user:"
+  echo apt-get install \
     gcc \
     git \
     make \
@@ -22,7 +23,8 @@ _install_deb() {
 }
 
 _install_rpm() {
-  dnf install \
+  echo "# run as privileged user:"
+  echo dnf install \
     gcc \
     git \
     make \
@@ -36,6 +38,11 @@ _install_rpm() {
     python3-docutils
 }
 
-[[ -f '/etc/redhat-release' ]] && _install_rpm
-[[ -f '/etc/debian_version' ]] && _install_deb
+if [[ -f '/etc/redhat-release' ]]; then
+  _install_rpm
+elif [[ -f '/etc/debian_version' ]]; then
+  _install_deb
+else
+  echo "# unknown packaging manager"
+fi
 

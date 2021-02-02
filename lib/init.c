@@ -98,7 +98,7 @@ int voluta_lib_init(void)
 {
 	int err;
 
-	voluta_verify_persistent_format();
+	voluta_guarantee_persistent_format();
 
 	if (g_libvoluta_init) {
 		return 0;

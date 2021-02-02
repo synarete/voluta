@@ -1410,7 +1410,7 @@ static void resolve_bk_xiovec(const struct voluta_sb_info *sbi,
 	out_xiov->base = NULL;
 	out_xiov->off = lba_to_off(bki->bk_lba);
 	out_xiov->len = sizeof(*bki->bk);
-	out_xiov->fd = sbi->sb_pstore->ps_vfd;
+	out_xiov->fd = sbi->sb_vstore->vs_pstore.ps_vfd;
 }
 
 static bool has_unwritten_at(const struct voluta_vnode_info *agm_vi,
@@ -1481,10 +1481,10 @@ static int load_bki(struct voluta_super_ctx *s_ctx)
 {
 	struct voluta_xiovec xiov;
 	struct voluta_bk_info *bki = s_ctx->bki;
-	const struct voluta_pstore *pstore = s_ctx->sbi->sb_pstore;
+	const struct voluta_vstore *vstore = s_ctx->sbi->sb_vstore;
 
 	resolve_bk_xiovec(s_ctx->sbi, bki, &xiov);
-	return voluta_pstore_read(pstore, xiov.off, xiov.len, bki->bk);
+	return voluta_vstore_read(vstore, xiov.off, xiov.len, bki->bk);
 }
 
 static void forget_bki(struct voluta_super_ctx *s_ctx)
@@ -2526,12 +2526,12 @@ static int unlimit_agmap_on_pstore(struct voluta_sb_info *sbi, size_t ag_index)
 {
 	loff_t cap;
 	struct voluta_vaddr vaddr;
-	struct voluta_pstore *pstore = sbi->sb_pstore;
+	struct voluta_vstore *vstore = sbi->sb_vstore;
 	const loff_t ag_size = VOLUTA_AG_SIZE;
 
 	voluta_vaddr_of_agmap(&vaddr, ag_index);
 	cap = ((vaddr.off + ag_size) / ag_size) * ag_size;
-	return voluta_pstore_expand(pstore, cap);
+	return voluta_vstore_expand(vstore, cap);
 }
 
 static int do_format_agmap(struct voluta_sb_info *sbi,
@@ -2785,7 +2785,7 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 	sbi->sb = NULL;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
-	sbi->sb_pstore = NULL;
+	sbi->sb_vstore = NULL;
 	sbi->sb_ctl_flags = 0;
 	sbi->sb_ms_flags = 0;
 }
@@ -2854,13 +2854,13 @@ static int sbi_init_subs(struct voluta_sb_info *sbi)
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
 		    struct voluta_super_block *sb,
-		    struct voluta_cache *cache, struct voluta_pstore *pstore)
+		    struct voluta_cache *cache, struct voluta_vstore *vstore)
 {
 	int err;
 
 	sbi->sb = sb;
 	sbi->sb_cache = cache;
-	sbi->sb_pstore = pstore;
+	sbi->sb_vstore = vstore;
 
 	err = sbi_init_commons(sbi);
 	if (err) {
@@ -2950,7 +2950,7 @@ static int commit_last(const struct voluta_sb_info *sbi, int flags)
 	int err = 0;
 
 	if (flags & VOLUTA_F_NOW) {
-		err = voluta_pstore_sync(sbi->sb_pstore, 0);
+		err = voluta_vstore_sync(sbi->sb_vstore);
 	}
 	return err;
 }

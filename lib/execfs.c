@@ -34,7 +34,7 @@ struct voluta_fs_core {
 	struct voluta_sb_info   sbi;
 	struct voluta_fuseq     fuseq;
 	struct voluta_cache     cache;
-	struct voluta_pstore    pstore;
+	struct voluta_vstore    vstore;
 };
 
 union voluta_fs_core_u {
@@ -147,7 +147,7 @@ static int fse_init_sbi(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbi;
 
-	err = voluta_sbi_init(sbi, fse->sb, fse->cache, fse->pstore);
+	err = voluta_sbi_init(sbi, fse->sb, fse->cache, fse->vstore);
 	if (err) {
 		return err;
 	}
@@ -163,23 +163,23 @@ static void fse_fini_sbi(struct voluta_fs_env *fse)
 	}
 }
 
-static int fse_init_pstore(struct voluta_fs_env *fse)
+static int fse_init_vstore(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_pstore *pstore = &fse_obj_of(fse)->fs_core.c.pstore;
+	struct voluta_vstore *vstore = &fse_obj_of(fse)->fs_core.c.vstore;
 
-	err = voluta_pstore_init(pstore);
+	err = voluta_vstore_init(vstore, fse->qalloc);
 	if (!err) {
-		fse->pstore = pstore;
+		fse->vstore = vstore;
 	}
 	return err;
 }
 
-static void fse_fini_pstore(struct voluta_fs_env *fse)
+static void fse_fini_vstore(struct voluta_fs_env *fse)
 {
-	if (fse->pstore != NULL) {
-		voluta_pstore_fini(fse->pstore);
-		fse->pstore = NULL;
+	if (fse->vstore != NULL) {
+		voluta_vstore_fini(fse->vstore);
+		fse->vstore = NULL;
 	}
 }
 
@@ -220,7 +220,7 @@ static int fse_init(struct voluta_fs_env *fse, size_t memwant)
 	if (err) {
 		return err;
 	}
-	err = fse_init_pstore(fse);
+	err = fse_init_vstore(fse);
 	if (err) {
 		return err;
 	}
@@ -244,7 +244,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_fuseq(fse);
 	fse_fini_sbi(fse);
 	fse_fini_sb(fse);
-	fse_fini_pstore(fse);
+	fse_fini_vstore(fse);
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
 	fse_fini_qalloc(fse);
@@ -307,9 +307,9 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 	return 0;
 }
 
-static loff_t fse_pstore_size(const struct voluta_fs_env *fse)
+static loff_t fse_vstore_size(const struct voluta_fs_env *fse)
 {
-	return fse->pstore->ps_size;
+	return fse->vstore->vs_pstore.ps_size;
 }
 
 static int fse_reload_space(struct voluta_fs_env *fse)
@@ -324,7 +324,7 @@ static int fse_reload_space(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	psize = fse_pstore_size(fse);
+	psize = fse_vstore_size(fse);
 	if (psize > vsize) {
 		log_err("illegal volume: vsize=%lu psize=%ld", vsize, psize);
 		return -EINVAL;
@@ -361,7 +361,7 @@ static int fse_reload_meta(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_open_pstore(struct voluta_fs_env *fse)
+static int fse_open_vstore(struct voluta_fs_env *fse)
 {
 	int err;
 	const char *path = fse->args.volume;
@@ -370,15 +370,15 @@ static int fse_open_pstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_open(fse->pstore, path, true);
+	err = voluta_vstore_open(fse->vstore, path, true);
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_check_volsize(fse->pstore);
+	err = voluta_vstore_check_size(fse->vstore);
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_flock(fse->pstore);
+	err = voluta_vstore_flock(fse->vstore);
 	if (err) {
 		return err;
 	}
@@ -389,20 +389,17 @@ static int fse_open_pstore(struct voluta_fs_env *fse)
 static int fse_create_pstore(struct voluta_fs_env *fse)
 {
 	int err;
-	const loff_t vsize_min = VOLUTA_VOLUME_SIZE_MIN;
+	const char *path = fse->args.volume;
 
-	err = voluta_pstore_create(fse->pstore, fse->args.volume, 0);
+	err = voluta_vstore_create(fse->vstore, path, 0);
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_expand(fse->pstore, vsize_min);
+	err = voluta_vstore_flock(fse->vstore);
 	if (err) {
 		return err;
 	}
-	err = voluta_pstore_flock(fse->pstore);
-	if (err) {
-		return err;
-	}
+	fse->sbi->sb_volpath = path;
 	return 0;
 }
 
@@ -410,11 +407,11 @@ static int fse_close_pstore(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_pstore_funlock(fse->pstore);
+	err = voluta_vstore_funlock(fse->vstore);
 	if (err) {
 		return err;
 	}
-	voluta_pstore_close(fse->pstore);
+	voluta_vstore_close(fse->vstore);
 	fse->sbi->sb_volpath = NULL;
 	return 0;
 }
@@ -608,7 +605,7 @@ static int fse_save_sb(struct voluta_fs_env *fse)
 	int err;
 	const struct voluta_super_block *sb = fse->sb;
 
-	err = voluta_pstore_write(fse->pstore, 0, sizeof(*sb), sb);
+	err = voluta_vstore_write(fse->vstore, 0, sizeof(*sb), sb);
 	if (err) {
 		log_err("write sb failed: err=%d", err);
 		return err;
@@ -644,7 +641,7 @@ static int fse_load_sb(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_super_block *sb = fse->sb;
 
-	err = voluta_pstore_read(fse->pstore, 0, sizeof(*sb), sb);
+	err = voluta_vstore_read(fse->vstore, 0, sizeof(*sb), sb);
 	if (err) {
 		log_err("read sb failed: err=%d", err);
 		return err;
@@ -721,7 +718,7 @@ int voluta_fse_reload(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = fse_open_pstore(fse);
+	err = fse_open_vstore(fse);
 	if (err) {
 		return err;
 	}
@@ -741,7 +738,7 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = fse_open_pstore(fse);
+	err = fse_open_vstore(fse);
 	if (err) {
 		return err;
 	}

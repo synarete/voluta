@@ -101,7 +101,7 @@
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void static_assert_fundamental_types_size(void)
+static void guarantee_fundamental_types_size(void)
 {
 	REQUIRE_SIZEOF(uint8_t, 1);
 	REQUIRE_SIZEOF(uint16_t, 2);
@@ -116,7 +116,7 @@ static void static_assert_fundamental_types_size(void)
 	REQUIRE_SIZEOF(ino_t, 8);
 }
 
-static void static_assert_persistent_types_size(void)
+static void guarantee_persistent_types_size(void)
 {
 	REQUIRE_SIZEOF(struct voluta_vaddr56, 7);
 	REQUIRE_SIZEOF(struct voluta_vaddr64, 8);
@@ -171,7 +171,7 @@ static void static_assert_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_ar_spec, 32 * VOLUTA_KILO);
 }
 
-static void static_assert_persistent_types_members(void)
+static void guarantee_persistent_types_members(void)
 {
 	REQUIRE_NBITS(struct voluta_header, h_vtype, 8);
 	REQUIRE_NBITS(struct voluta_bk_rec, bk_allocated, VOLUTA_NKB_IN_BK);
@@ -186,7 +186,7 @@ static void static_assert_persistent_types_members(void)
 	REQUIRE_NBITS(struct voluta_bk_info, bk_mask, VOLUTA_NKB_IN_BK);
 }
 
-static void static_assert_persistent_types_alignment(void)
+static void guarantee_persistent_types_alignment(void)
 {
 	REQUIRE_AOFFSET64(struct voluta_super_block, s_zero, 0);
 	REQUIRE_AOFFSET64(struct voluta_super_block, s_meta, 4096);
@@ -229,7 +229,7 @@ static void static_assert_persistent_types_alignment(void)
 	REQUIRE_AOFFSET64(struct voluta_lnk_value, lv_value, 64);
 }
 
-static void static_assert_defs_consistency(void)
+static void guarantee_defs_consistency(void)
 {
 	REQUIRE_EQ(CHAR_BIT, 8);
 	REQUIRE_LT(VOLUTA_DIR_HTREE_DEPTH_MAX, VOLUTA_HASH256_LEN);
@@ -245,7 +245,7 @@ static void static_assert_defs_consistency(void)
 	REQUIRE_BK_SIZE(VOLUTA_FILE_HEAD_LEAF_SIZE * VOLUTA_FILE_HEAD_NLEAVES);
 }
 
-static void static_assert_external_constants(void)
+static void guarantee_external_constants(void)
 {
 	REQUIRE_EQ(VOLUTA_NAME_MAX, NAME_MAX);
 	REQUIRE_EQ(VOLUTA_PATH_MAX, PATH_MAX);
@@ -262,12 +262,12 @@ static void static_assert_external_constants(void)
 	REQUIRE_EQ(VOLUTA_KDF_SCRYPT, GCRY_KDF_SCRYPT);
 }
 
-void voluta_verify_persistent_format(void)
+void voluta_guarantee_persistent_format(void)
 {
-	static_assert_fundamental_types_size();
-	static_assert_persistent_types_size();
-	static_assert_persistent_types_members();
-	static_assert_persistent_types_alignment();
-	static_assert_defs_consistency();
-	static_assert_external_constants();
+	guarantee_fundamental_types_size();
+	guarantee_persistent_types_size();
+	guarantee_persistent_types_members();
+	guarantee_persistent_types_alignment();
+	guarantee_defs_consistency();
+	guarantee_external_constants();
 }

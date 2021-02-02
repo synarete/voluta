@@ -79,6 +79,7 @@
 #define vi_incref(vi)                   voluta_vi_incref(vi)
 #define vi_decref(vi)                   voluta_vi_decref(vi)
 #define vi_dirtify(vi)                  voluta_vi_dirtify(vi)
+#define vi_undirtify(vi)                voluta_vi_undirtify(vi)
 #define vi_isdata(vi)                   voluta_vi_isdata(vi)
 #define vi_dat_of(vi)                   voluta_vi_dat_of(vi)
 #define ii_refcnt(ii)                   vi_refcnt(ii_vi(ii))

@@ -170,14 +170,14 @@ static int xiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
 	return voluta_qalloc_xiovec(qalloc, qamem, len, out_xiov);
 }
 
-static int xiovec_by_pstore(const struct voluta_file_ctx *f_ctx,
+static int xiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
 			    loff_t bk_start, loff_t off_in_bk, size_t len,
 			    struct voluta_xiovec *out_xiov)
 {
 	const loff_t ps_off = bk_start + off_in_bk;
-	const struct voluta_pstore *pstore = f_ctx->sbi->sb_pstore;
+	const struct voluta_vstore *vstore = f_ctx->sbi->sb_vstore;
 
-	return voluta_pstore_xiovec(pstore, ps_off, len, out_xiov);
+	return voluta_vstore_xiovec(vstore, ps_off, len, out_xiov);
 }
 
 static int xiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
@@ -202,7 +202,7 @@ static int xiovec_of_data(const struct voluta_file_ctx *f_ctx,
 			  loff_t bk_start, loff_t off_in_bk, size_t len,
 			  struct voluta_xiovec *out_xiov)
 {
-	return xiovec_by_pstore(f_ctx, bk_start, off_in_bk, len, out_xiov);
+	return xiovec_by_vstore(f_ctx, bk_start, off_in_bk, len, out_xiov);
 }
 
 static int xiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,

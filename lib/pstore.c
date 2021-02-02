@@ -242,6 +242,7 @@ int voluta_require_volume_path(const char *path, int access_mode)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 int voluta_pstore_init(struct voluta_pstore *pstore)
 {
 	pstore->ps_dfd = -1;
@@ -426,14 +427,6 @@ int voluta_pstore_expand(struct voluta_pstore *pstore, loff_t cap)
 	return 0;
 }
 
-int voluta_pstore_check_volsize(const struct voluta_pstore *pstore)
-{
-	const loff_t size_min = VOLUTA_VOLUME_SIZE_MIN;
-	const loff_t size_max = VOLUTA_VOLUME_SIZE_MAX;
-	const loff_t size = pstore->ps_size;
-
-	return ((size < size_min) || (size > size_max)) ? -EINVAL : 0;
-}
 
 static bool pstore_has_open_vfd(const struct voluta_pstore *pstore)
 {
@@ -469,7 +462,7 @@ int voluta_pstore_close(struct voluta_pstore *pstore)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int pstore_check_io(const struct voluta_pstore *pstore,
+int voluta_pstore_check_io(const struct voluta_pstore *pstore,
 			   loff_t off, size_t len)
 {
 	loff_t end;
@@ -493,7 +486,7 @@ int voluta_pstore_read(const struct voluta_pstore *pstore,
 	int err;
 	size_t nrd = 0;
 
-	err = pstore_check_io(pstore, off, bsz);
+	err = voluta_pstore_check_io(pstore, off, bsz);
 	if (err) {
 		return err;
 	}
@@ -523,7 +516,7 @@ int voluta_pstore_write(struct voluta_pstore *pstore,
 {
 	int err;
 
-	err = pstore_check_io(pstore, off, bsz);
+	err = voluta_pstore_check_io(pstore, off, bsz);
 	if (err) {
 		return err;
 	}
@@ -541,7 +534,7 @@ int voluta_pstore_writev(struct voluta_pstore *pstore, loff_t off,
 	int err;
 	size_t nwr = 0;
 
-	err = pstore_check_io(pstore, off, len);
+	err = voluta_pstore_check_io(pstore, off, len);
 	if (err) {
 		return err;
 	}
@@ -569,20 +562,6 @@ int voluta_pstore_sync(struct voluta_pstore *pstore, bool all)
 	return err;
 }
 
-int voluta_pstore_xiovec(const struct voluta_pstore *pstore,
-			 loff_t off, size_t len, struct voluta_xiovec *xiov)
-{
-	int err;
-
-	err = pstore_check_io(pstore, off, len);
-	if (!err) {
-		xiov->off = off;
-		xiov->len = len;
-		xiov->base = NULL;
-		xiov->fd = pstore->ps_vfd;
-	}
-	return err;
-}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

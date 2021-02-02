@@ -54,6 +54,7 @@ struct voluta_fuseq_inb;
 struct voluta_fuseq_outb;
 struct voluta_sb_info;
 struct voluta_oper;
+struct voluta_dset;
 struct voluta_rwiter_ctx;
 struct voluta_readdir_ctx;
 struct voluta_readdir_info;
@@ -360,6 +361,16 @@ struct voluta_pstore {
 	loff_t  ps_capacity;
 };
 
+/* volume storage controller */
+struct voluta_vstore {
+	struct voluta_super_block      *vs_sb;
+	struct voluta_qalloc           *vs_qalloc;
+	struct voluta_crypto            vs_crypto;
+	struct voluta_pstore            vs_pstore;
+	const char *vs_volpath;
+	int vs_encrypted_mode;
+};
+
 /* inodes-table in-memory hash-map cache */
 struct voluta_itcentry {
 	ino_t   ino;
@@ -398,10 +409,10 @@ struct voluta_encbuf {
 
 /* super-block in-memory info */
 struct voluta_sb_info {
-	struct voluta_super_block     *sb;
+	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_pstore           *sb_pstore;
+	struct voluta_vstore           *sb_vstore;
 	struct voluta_encbuf           *sb_encbuf;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -416,8 +427,12 @@ struct voluta_sb_info {
 } voluta_aligned64;
 
 /* de-stage dirty-vnodes set */
+typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
+				   struct voluta_vnode_info *vi);
+
 struct voluta_dset {
 	struct voluta_cache            *ds_cache;
+	voluta_dset_add_fn              ds_add_fn;
 	struct voluta_vnode_info       *ds_viq;
 	struct voluta_avl               ds_avl;
 	long ds_key;
@@ -510,11 +525,10 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_pstore           *pstore;
-	struct voluta_super_block     *sb;
+	struct voluta_vstore           *vstore;
+	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;
-	const char *volume_path;
 	loff_t volume_size;
 	int signum;
 };

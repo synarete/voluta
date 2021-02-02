@@ -19,7 +19,8 @@ _install_deb() {
     libgcrypt-dev \
     python3-docutils \
     dpkg-dev \
-    debhelper
+    debhelper \
+    kernel-headers
 }
 
 _install_rpm() {
@@ -35,7 +36,8 @@ _install_rpm() {
     libcap-devel \
     libunwind-devel \
     libgcrypt-devel \
-    python3-docutils
+    python3-docutils \
+    kernel-headers
 }
 
 if [[ -f '/etc/redhat-release' ]]; then

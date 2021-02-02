@@ -122,11 +122,8 @@ struct voluta_globals {
 
 	/* Options for 'show' sub-command */
 	char   *show_path;
-	bool    show_public_only;
-
-	/* Options for 'query' sub-command */
-	char   *query_path;
-	int     query_type;
+	bool    show_volume;
+	bool    show_version;
 
 	/* Options for 'clone' sub-command */
 	char   *clone_point;
@@ -173,8 +170,6 @@ void voluta_execute_fsck(void);
 
 void voluta_execute_show(void);
 
-void voluta_execute_query(void);
-
 void voluta_execute_clone(void);
 
 void voluta_execute_export(void);
@@ -185,13 +180,12 @@ void voluta_getopt_mkfs(void);
 
 void voluta_getopt_fsck(void);
 
-void voluta_getopt_show(void);
 
 void voluta_getopt_mount(void);
 
 void voluta_getopt_umount(void);
 
-void voluta_getopt_query(void);
+void voluta_getopt_show(void);
 
 void voluta_getopt_clone(void);
 

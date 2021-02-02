@@ -56,7 +56,6 @@ AC_DEFUN([AX_VOLUTA_NEED_HEADERS],
   AX_VOLUTA_CHECK_HEADERS([linux/falloc.h])
   AX_VOLUTA_CHECK_HEADERS([linux/fs.h])
   AX_VOLUTA_CHECK_HEADERS([linux/fuse.h])
-  AX_VOLUTA_CHECK_HEADERS([linux/mount.h])
   AX_VOLUTA_CHECK_HEADERS([linux/fiemap.h])
   AX_VOLUTA_CHECK_HEADERS([linux/limits.h])
 ])

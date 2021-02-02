@@ -57,6 +57,7 @@ Development files for voluta
 %exclude %{_libdir}/lib%{name}*.la
 %config(noreplace) %{_sysconfdir}/%{name}/*.conf
 %{_mandir}/man1/%{name}.1*
+%{_mandir}/man8/%{name}-*.8*
 %{_datarootdir}/bash-completion/completions/%{name}
 %{_unitdir}/%{name}-mountd.service
 

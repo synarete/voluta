@@ -107,7 +107,7 @@ CFLAGS += -Wold-style-definition -Winit-self -std=gnu11
 CFLAGS += -DDEBUG=$(D)
 ifeq ($(D), 1)
 CFLAGS += -g -ggdb -fno-omit-frame-pointer
-CFLAGS += -fasynchronous-unwind-tables
+CFLAGS += -fasynchronous-unwind-tables -fstack-clash-protection
 endif
 
 # Optimization flags

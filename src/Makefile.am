@@ -12,10 +12,9 @@ libvoluta_prog_a_SOURCES += import.c
 libvoluta_prog_a_SOURCES += mkfs.c
 libvoluta_prog_a_SOURCES += mntconf.c
 libvoluta_prog_a_SOURCES += mount.c
-libvoluta_prog_a_SOURCES += query.c
-libvoluta_prog_a_SOURCES += voluta-prog.h
 libvoluta_prog_a_SOURCES += show.c
 libvoluta_prog_a_SOURCES += umount.c
+libvoluta_prog_a_SOURCES += voluta-prog.h
 
 bin_PROGRAMS = voluta
 voluta_CPPFLAGS = -I$(top_srcdir)/include

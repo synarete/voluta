@@ -30,15 +30,6 @@ _voluta_umount() {
   fi
 }
 
-_voluta_query() {
-  local cur prev words cword
-  _init_completion || return
-
-  if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $( compgen -W '-v --version -p --volume -h' -- "$cur" ) )
-  fi
-}
-
 _voluta_clone() {
   local cur prev words cword
   _init_completion || return
@@ -66,13 +57,45 @@ _voluta_import() {
   fi
 }
 
-_voluta_show() {
+_voluta_show_version() {
   local cur prev words cword
   _init_completion || return
 
   if [[ "$cur" == -* ]]; then
     COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
   fi
+}
+
+_voluta_show_volume() {
+  local cur prev words cword
+  _init_completion || return
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
+  fi
+}
+
+_voluta_show() {
+  local cur prev words cword
+  _init_completion || return
+
+  case "${words[2]}" in
+    "version")
+      _voluta_show_version
+      return
+      ;;
+    "volume")
+      _voluta_show_volume
+      return
+      ;;
+  esac
+
+  if [[ "$cur" == -* ]]; then
+    COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
+  else
+    COMPREPLY+=( $(compgen -W 'version volume' -- "$cur") )
+  fi
+
 }
 
 _voluta_subcmd() {
@@ -88,9 +111,6 @@ _voluta_subcmd() {
       ;;
     "umount")
       _voluta_umount
-      ;;
-    "query")
-      _voluta_query
       ;;
     "clone")
       _voluta_clone
@@ -114,8 +134,8 @@ _voluta_main() {
   if [[ "$cur" == -* ]]; then
     COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
   else
-    COMPREPLY+=( $(compgen -W 'mkfs mount umount query' -- "$cur") )
-    COMPREPLY+=( $(compgen -W 'clone show export import' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'mkfs mount umount show' -- "$cur") )
+    COMPREPLY+=( $(compgen -W 'clone export import' -- "$cur") )
   fi
 }
 

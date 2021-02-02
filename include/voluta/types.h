@@ -108,7 +108,6 @@ struct voluta_thread {
 	char            name[32];
 	time_t          start_time;
 	time_t          finish_time;
-	pid_t           tid;
 	int             status;
 };
 

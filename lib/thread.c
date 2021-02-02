@@ -57,7 +57,6 @@ static void voluta_thread_prepare(struct voluta_thread *th)
 {
 	th->start_time = voluta_time_now();
 	th->finish_time = 0;
-	th->tid = gettid();
 	if (strlen(th->name)) {
 		pthread_setname_np(th->pth, th->name);
 	}
@@ -78,7 +77,6 @@ static void *voluta_thread_start(void *arg)
 	err = voluta_thread_sigblock_common();
 	if (!err) {
 		err = th->exec(th);
-		th->finish_time = voluta_time_now();
 	}
 	voluta_thread_complete(th, err);
 	return th;

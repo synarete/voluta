@@ -28,7 +28,6 @@
 #include <sys/time.h>
 #include <sys/mount.h>
 #include <sys/sysinfo.h>
-#include <linux/mount.h>
 #include <linux/fs.h>
 #include <linux/fuse.h>
 #include <unistd.h>
@@ -2665,8 +2664,10 @@ static const struct voluta_fuseq_cmd fuseq_cmd_tbl[] = {
 	FUSEQ_CMDDEF(FUSE_RENAME2, do_rename2, 1),
 	FUSEQ_CMDDEF(FUSE_LSEEK, do_lseek, 0),
 	FUSEQ_CMDDEF(FUSE_COPY_FILE_RANGE, do_copy_file_range, 1),
+#if FUSE_KERNEL_MINOR_VERSION > 31
 	FUSEQ_CMDDEF(FUSE_SETUPMAPPING, NULL, 0),
 	FUSEQ_CMDDEF(FUSE_REMOVEMAPPING, NULL, 0),
+#endif
 };
 
 static const struct voluta_fuseq_cmd *cmd_of(unsigned int opc)
@@ -3543,13 +3544,11 @@ thread_to_fuseq_worker(struct voluta_thread *th)
 static int fuseq_start(struct voluta_thread *th)
 {
 	int err;
-	const pid_t tid = th->tid;
 	struct voluta_fuseq_worker *fqw = thread_to_fuseq_worker(th);
 
-	log_info("exec fuseq-worker: %s tid=%ld", th->name, (long)tid);
+	log_info("exec fuseq-worker: %s", th->name);
 	err = fuseq_sub_exec_loop(fqw);
-	log_info("done fuseq-worker: %s tid=%ld err=%d",
-		 th->name, (long)tid, err);
+	log_info("done fuseq-worker: %s err=%d", th->name, err);
 	return err;
 }
 

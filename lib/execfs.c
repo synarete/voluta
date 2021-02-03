@@ -61,13 +61,18 @@ static struct voluta_fs_env_obj *fse_obj_of(struct voluta_fs_env *fse)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void fse_init_defaults(struct voluta_fs_env *fse)
+static void fse_init_commons(struct voluta_fs_env *fse)
 {
 	voluta_memzero(fse, sizeof(*fse));
+	voluta_kivam_init(&fse->kivam);
+	voluta_passphrase_reset(&fse->passph);
 	fse->args.uid = getuid();
 	fse->args.gid = getgid();
 	fse->args.pid = getpid();
 	fse->args.umask = 0022;
+
+	fse->volume_size = -1;
+	fse->signum = 0;
 }
 
 static int fse_init_qalloc(struct voluta_fs_env *fse, size_t memwant)
@@ -207,7 +212,7 @@ static int fse_init(struct voluta_fs_env *fse, size_t memwant)
 {
 	int err;
 
-	fse_init_defaults(fse);
+	fse_init_commons(fse);
 	err = fse_init_qalloc(fse, memwant);
 	if (err) {
 		return err;
@@ -239,6 +244,13 @@ static int fse_init(struct voluta_fs_env *fse, size_t memwant)
 	return 0;
 }
 
+static void fse_fini_commons(struct voluta_fs_env *fse)
+{
+	voluta_kivam_fini(&fse->kivam);
+	voluta_passphrase_reset(&fse->passph);
+	fse->volume_size = -1;
+}
+
 static void fse_fini(struct voluta_fs_env *fse)
 {
 	fse_fini_fuseq(fse);
@@ -248,6 +260,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
 	fse_fini_qalloc(fse);
+	fse_fini_commons(fse);
 }
 
 int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse)
@@ -303,7 +316,6 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 		return err;
 	}
 	voluta_sbi_setspace(fse->sbi, sp_size);
-	fse->sbi->sb_volpath = fse->args.volume;
 	return 0;
 }
 
@@ -365,12 +377,13 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 {
 	int err;
 	const char *path = fse->args.volume;
+	const bool rw = !fse->args.rdonly;
 
-	err = voluta_require_volume_path(path, R_OK | W_OK);
+	err = voluta_require_volume_path(path, rw);
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_open(fse->vstore, path, true);
+	err = voluta_vstore_open(fse->vstore, path, rw);
 	if (err) {
 		return err;
 	}
@@ -382,7 +395,6 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	fse->sbi->sb_volpath = path;
 	return 0;
 }
 
@@ -399,7 +411,6 @@ static int fse_create_pstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	fse->sbi->sb_volpath = path;
 	return 0;
 }
 
@@ -412,7 +423,6 @@ static int fse_close_pstore(struct voluta_fs_env *fse)
 		return err;
 	}
 	voluta_vstore_close(fse->vstore);
-	fse->sbi->sb_volpath = NULL;
 	return 0;
 }
 
@@ -495,9 +505,18 @@ int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 {
 	return fse_flush_dirty(fse, true);
 }
-static void fse_update_owner(struct voluta_fs_env *fse)
+
+static void fse_update_qalloc(struct voluta_fs_env *fse,
+			      const struct voluta_fs_args *args)
 {
-	const struct voluta_fs_args *args = &fse->args;
+	if (args->pedantic) {
+		fse->qalloc->mode = true;
+	}
+}
+
+static void fse_update_owner(struct voluta_fs_env *fse,
+			     const struct voluta_fs_args *args)
+{
 	const struct voluta_ucred ucred = {
 		.uid = args->uid,
 		.gid = args->gid,
@@ -507,12 +526,13 @@ static void fse_update_owner(struct voluta_fs_env *fse)
 
 	voluta_sbi_setowner(fse->sbi, &ucred);
 }
-static void fse_update_mnt_flags(struct voluta_fs_env *fse)
+
+static void fse_update_mount_flags(struct voluta_fs_env *fse,
+				   const struct voluta_fs_args *args)
 {
 	unsigned long ms_flag_with = 0;
 	unsigned long ms_flag_dont = 0;
 	struct voluta_sb_info *sbi = fse->sbi;
-	const struct voluta_fs_args *args = &fse->args;
 
 	if (args->lazytime) {
 		ms_flag_with |= MS_LAZYTIME;
@@ -543,31 +563,58 @@ static void fse_update_mnt_flags(struct voluta_fs_env *fse)
 	sbi->sb_ms_flags &= ~ms_flag_dont;
 }
 
+static int fse_check_copy_args(struct voluta_fs_env *fse,
+			       const struct voluta_fs_args *args)
+{
+	int err;
+	struct voluta_passphrase *passph = &fse->passph;
+
+	/* TODO: check more */
+	if (args->encrypted || args->encryptwr || args->passwd) {
+		err = voluta_passphrase_setup(passph, args->passwd);
+		if (err) {
+			return err;
+		}
+	}
+
+	/* TODO: maybe strdup? */
+	memcpy(&fse->args, args, sizeof(fse->args));
+	return 0;
+}
+
+static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
+{
+	enum voluta_flags ctl_flags = 0;
+
+	if (args->encrypted || args->encryptwr) {
+		if (args->encrypted) {
+			ctl_flags |= VOLUTA_F_ENCRYPTED;
+		}
+		if (args->encryptwr) {
+			ctl_flags |= VOLUTA_F_ENCRYPTWR;
+		}
+	}
+	if (args->spliced) {
+		ctl_flags |= VOLUTA_F_SPLICED;
+	}
+	return ctl_flags;
+}
+
 int voluta_fse_setargs(struct voluta_fs_env *fse,
 		       const struct voluta_fs_args *args)
 {
 	int err;
-	struct voluta_passphrase passph;
+	const enum voluta_flags ctl_flags = fs_args_to_ctlflags(args);
 
-	/* TODO: check params, strdup */
-	memcpy(&fse->args, args, sizeof(fse->args));
-	fse_update_owner(fse);
-	fse_update_mnt_flags(fse);
-
-	if (args->encrypted) {
-		err = voluta_passphrase_setup(&passph, args->passwd);
-		if (err) {
-			return err;
-		}
-		voluta_sbi_addflags(fse->sbi, VOLUTA_F_ENCRYPT);
+	err = fse_check_copy_args(fse, args);
+	if (!err) {
+		fse_update_owner(fse, args);
+		fse_update_mount_flags(fse, args);
+		fse_update_qalloc(fse, args);
+		voluta_vstore_add_ctlflags(fse->vstore, ctl_flags);
+		voluta_sbi_add_ctlflags(fse->sbi, ctl_flags);
 	}
-	if (args->spliced) {
-		voluta_sbi_addflags(fse->sbi, VOLUTA_F_SPLICED);
-	}
-	if (args->pedantic) {
-		fse->qalloc->mode = true;
-	}
-	return 0;
+	return err;
 }
 
 void voluta_fse_stats(const struct voluta_fs_env *fse,
@@ -585,7 +632,12 @@ void voluta_fse_stats(const struct voluta_fs_env *fse,
 
 static const struct voluta_crypto *fse_crypto(const struct voluta_fs_env *fse)
 {
-	return &fse->sbi->sb_crypto;
+	return &fse->sbi->sb_vstore->vs_crypto;
+}
+
+static const struct voluta_cipher *fse_cipher(const struct voluta_fs_env *fse)
+{
+	return &fse_crypto(fse)->ci;
 }
 
 static const struct voluta_mdigest *
@@ -594,43 +646,31 @@ fse_mdigest(const struct voluta_fs_env *fse)
 	return &fse_crypto(fse)->md;
 }
 
-static int fse_encrypt_sb(struct voluta_fs_env *fse)
+static int fse_encrypt_sb(const struct voluta_fs_env *fse)
 {
-	return !fse->args.encrypted ? 0 :
-	       voluta_sb_encrypt(fse->sb, fse_crypto(fse), fse->args.passwd);
+	int err = 0;
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+
+	if (!(ctl_flags & VOLUTA_F_ENCRYPTWR)) {
+		return 0;
+	}
+	err = voluta_sb_encrypt_tail(fse->sb, fse_cipher(fse), &fse->kivam);
+	if (err) {
+		return err;
+	}
+	voluta_zb_set_encrypted(&fse->sb->s_zero, true);
+	return 0;
 }
 
 static int fse_save_sb(struct voluta_fs_env *fse)
 {
 	int err;
+	const loff_t off = lba_to_off(VOLUTA_LBA_SB);
 	const struct voluta_super_block *sb = fse->sb;
 
-	err = voluta_vstore_write(fse->vstore, 0, sizeof(*sb), sb);
+	err = voluta_vstore_write(fse->vstore, off, sizeof(*sb), sb);
 	if (err) {
 		log_err("write sb failed: err=%d", err);
-		return err;
-	}
-	return 0;
-}
-
-static int fse_store_sb(struct voluta_fs_env *fse)
-{
-	int err;
-
-	err = voluta_sb_check_volume(fse->sb);
-	if (err) {
-		return err;
-	}
-	err = voluta_sb_check_rand(fse->sb, fse_mdigest(fse));
-	if (err) {
-		return err;
-	}
-	err = fse_encrypt_sb(fse);
-	if (err) {
-		return err;
-	}
-	err = fse_save_sb(fse);
-	if (err) {
 		return err;
 	}
 	return 0;
@@ -639,9 +679,10 @@ static int fse_store_sb(struct voluta_fs_env *fse)
 static int fse_load_sb(struct voluta_fs_env *fse)
 {
 	int err;
+	const loff_t off = lba_to_off(VOLUTA_LBA_SB);
 	struct voluta_super_block *sb = fse->sb;
 
-	err = voluta_vstore_read(fse->vstore, 0, sizeof(*sb), sb);
+	err = voluta_vstore_read(fse->vstore, off, sizeof(*sb), sb);
 	if (err) {
 		log_err("read sb failed: err=%d", err);
 		return err;
@@ -653,30 +694,62 @@ static int fse_load_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
+static int fse_check_zb_mode(const struct voluta_fs_env *fse)
+{
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
+	const bool zb_enc = voluta_zb_is_encrypted(zb);
+
+	if (zb_enc && !(ctl_flags & VOLUTA_F_ENCRYPTED)) {
+		log_err("encrypted zb: %s", fse->args.volume);
+		return -ENOKEY;
+	}
+	if (!zb_enc && (ctl_flags & VOLUTA_F_ENCRYPTED)) {
+		log_err("non encrypted zb: %s", fse->args.volume);
+		return -EKEYREJECTED;
+	}
+	return 0;
+}
+
+static int fse_prepare_sb_key(struct voluta_fs_env *fse)
+{
+	int err;
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
+
+	if (!(ctl_flags & VOLUTA_F_ENCRYPTED)) {
+		return 0;
+	}
+	if (!fse->passph.passlen) {
+		log_err("missing passphrase for: %s", fse->args.volume);
+		return -ENOKEY;
+	}
+	voluta_zb_crypt_params(zb, &fse->zcryp);
+	err = voluta_derive_iv_key(&fse->passph, &fse->zcryp.kdf,
+				   fse_mdigest(fse), &fse->kivam);
+	if (err) {
+		log_err("derive iv-key failed: %s err=%d",
+			fse->args.volume, err);
+		return err;
+	}
+	fse->kivam.algo = fse->zcryp.cipher_algo;
+	fse->kivam.mode = fse->zcryp.cipher_mode;
+	return 0;
+}
+
 static int fse_decrypt_sb(struct voluta_fs_env *fse)
 {
 	int err;
-	int zb_enc;
-	enum voluta_zbf zbf;
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
 
-	zbf = voluta_zb_flags(&fse->sb->s_zero);
-	zb_enc = (int)zbf & VOLUTA_ZBF_ENCRYPTED;
-	if (zb_enc && !fse->args.encrypted) {
-		log_err("encrypted zb: flags=0x%x", zbf);
-		return -ENOKEY;
-	}
-	if (!zb_enc && fse->args.encrypted) {
-		log_err("non encrypted zb: flags=0x%x", zbf);
-		return -EKEYREJECTED;
-	}
-	if (!zb_enc) {
+	if (!(ctl_flags & VOLUTA_F_ENCRYPTED)) {
 		return 0;
 	}
-	err = voluta_sb_decrypt(fse->sb, fse_crypto(fse), fse->args.passwd);
+	err = voluta_sb_decrypt_tail(fse->sb, fse_cipher(fse), &fse->kivam);
 	if (err) {
-		log_err("decrypt sb tail failed: err=%d", err);
 		return err;
 	}
+	voluta_zb_set_encrypted(&fse->sb->s_zero, false);
 	return 0;
 }
 
@@ -700,6 +773,41 @@ static int fse_stage_sb(struct voluta_fs_env *fse)
 	int err;
 
 	err = fse_load_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_check_zb_mode(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_prepare_sb_key(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_decrypt_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_recheck_sb(fse);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+static int fse_store_sb(struct voluta_fs_env *fse)
+{
+	int err;
+
+	err = fse_recheck_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_encrypt_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_save_sb(fse);
 	if (err) {
 		return err;
 	}
@@ -810,7 +918,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	vol_size = (size_t)fse->args.vsize;
 	ag_count = voluta_size_to_ag_count(vol_size);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
-	voluta_sb_setup_ivks(sb);
+	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
 	voluta_sb_set_ag_count(sb, ag_count);
 	voluta_zb_set_size(&sb->s_zero, vol_size);
@@ -837,18 +945,29 @@ static int fse_prepare_volume(struct voluta_fs_env *fse,
 	return 0;
 }
 
+static int fs_make_oper_self(struct voluta_fs_env *fse, struct voluta_oper *op)
+{
+	voluta_memzero(op, sizeof(*op));
+
+	op->ucred.uid = fse->args.uid;
+	op->ucred.gid = fse->args.gid;
+	op->ucred.pid = fse->args.pid;
+	op->ucred.umask = fse->args.umask;
+	op->unique = -1; /* TODO: make me a negative running sequence no */
+
+	return voluta_ts_gettime(&op->xtime, true);
+}
+
 int voluta_fse_format(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_oper op = {
-		.ucred.uid = fse->args.uid,
-		.ucred.gid = fse->args.gid,
-		.ucred.pid = fse->args.pid,
-		.ucred.umask = fse->args.umask,
-		.unique = 1,
-	};
+	struct voluta_oper op;
 
-	err = voluta_ts_gettime(&op.xtime, true);
+	err = fs_make_oper_self(fse, &op);
+	if (err) {
+		return err;
+	}
+	err = fse_prepare_sb_key(fse);
 	if (err) {
 		return err;
 	}

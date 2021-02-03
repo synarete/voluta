@@ -839,7 +839,7 @@ void *voluta_qalloc_malloc(struct voluta_qalloc *qal, size_t nbytes)
 
 	err = qalloc_malloc(qal, nbytes, &ptr);
 	if (err) {
-		log_warn("malloc failed: nbytes=%lu err=%d", nbytes, err);
+		log_dbg("malloc failed: nbytes=%lu err=%d", nbytes, err);
 	}
 	return ptr;
 }

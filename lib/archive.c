@@ -912,6 +912,8 @@ static int arc_init(struct voluta_archiver *arc, size_t memwant)
 	int err;
 
 	arc->try_clone = 1;
+	voluta_kivam_init(&arc->ar_kivam);
+
 	err = arc_init_qalloc(arc, memwant);
 	if (err) {
 		return err;
@@ -942,6 +944,7 @@ static void arc_fini(struct voluta_archiver *arc)
 	arc_fini_bstore(arc);
 	arc_fini_crypto(arc);
 	arc_fini_qalloc(arc);
+	voluta_kivam_fini(&arc->ar_kivam);
 }
 
 int voluta_archiver_new(size_t memwant, struct voluta_archiver **out_arc)
@@ -1038,7 +1041,7 @@ static int arc_close(struct voluta_archiver *arc)
 static int arc_setup_keys(struct voluta_archiver *arc)
 {
 	int err = 0;
-	struct voluta_kdf_pair kdf;
+	struct voluta_zcrypt_params zcp;
 	struct voluta_passphrase passph;
 	const struct voluta_mdigest *md = arc_mdigest(arc);
 
@@ -1049,8 +1052,8 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	voluta_zb_kdf(&arc->ar_spec->ar_zero, &kdf);
-	err = voluta_derive_iv_key(&passph, &kdf, md, &arc->ar_iv_key);
+	voluta_zb_crypt_params(&arc->ar_spec->ar_zero, &zcp);
+	err = voluta_derive_iv_key(&passph, &zcp.kdf, md, &arc->ar_kivam);
 	if (err) {
 		return err;
 	}

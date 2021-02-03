@@ -230,8 +230,10 @@ void voluta_die_if_bad_zb(const char *path, const char *pass,
 			  enum voluta_ztype *out_ztype,
 			  enum voluta_zbf *out_zbf);
 
-void voluta_die_if_not_volume(const char *path, const char *pass,
-			      enum voluta_zbf *out_zbf);
+void voluta_die_if_bad_sb(const char *path, const char *pass);
+
+void voluta_die_if_not_volume_zb(const char *path, const char *pass,
+				 bool rw, enum voluta_zbf *out_zbf);
 
 void voluta_die_if_not_archive(const char *path, const char *pass);
 

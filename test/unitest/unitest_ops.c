@@ -39,7 +39,7 @@ static const struct voluta_oper *op(struct ut_env *ute)
 	oper->ucred.gid = getgid();
 	oper->ucred.pid = getpid();
 	oper->ucred.umask = 0002;
-	oper->unique = ute->unique_count++;
+	oper->unique = ute->unique_opid++;
 	voluta_ts_gettime(&oper->xtime, true);
 
 	return oper;

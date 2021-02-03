@@ -64,17 +64,18 @@ struct voluta_ar_blob_info;
 
 /* file-system control flags */
 enum voluta_flags {
-	VOLUTA_F_ENCRYPT        = VOLUTA_BIT(0),
-	VOLUTA_F_SPLICED        = VOLUTA_BIT(1),
-	VOLUTA_F_SYNC           = VOLUTA_BIT(2),
-	VOLUTA_F_NOW            = VOLUTA_BIT(3),
-	VOLUTA_F_BLKDEV         = VOLUTA_BIT(4),
-	VOLUTA_F_MEMFD          = VOLUTA_BIT(5),
-	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(6),
-	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(7),
-	VOLUTA_F_IDLE           = VOLUTA_BIT(8),
-	VOLUTA_F_BRINGUP        = VOLUTA_BIT(9),
-	VOLUTA_F_OPSTART        = VOLUTA_BIT(10),
+	VOLUTA_F_ENCRYPTED      = VOLUTA_BIT(0),
+	VOLUTA_F_ENCRYPTWR      = VOLUTA_BIT(1),
+	VOLUTA_F_SPLICED        = VOLUTA_BIT(2),
+	VOLUTA_F_SYNC           = VOLUTA_BIT(3),
+	VOLUTA_F_NOW            = VOLUTA_BIT(4),
+	VOLUTA_F_BLKDEV         = VOLUTA_BIT(5),
+	VOLUTA_F_MEMFD          = VOLUTA_BIT(6),
+	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(7),
+	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(8),
+	VOLUTA_F_IDLE           = VOLUTA_BIT(9),
+	VOLUTA_F_BRINGUP        = VOLUTA_BIT(10),
+	VOLUTA_F_OPSTART        = VOLUTA_BIT(11),
 };
 
 
@@ -186,12 +187,11 @@ struct voluta_crypto {
 };
 
 
-/* zero-block public attributes */
-struct voluta_zattr {
-	enum voluta_ztype za_type;
-	long    za_version;
-	loff_t  za_vsize;
-	struct voluta_kdf_pair za_kdf_pair;
+/* zero-block cryptographic params */
+struct voluta_zcrypt_params {
+	struct voluta_kdf_pair kdf;
+	uint32_t cipher_algo;
+	uint32_t cipher_mode;
 };
 
 /* user-credentials */
@@ -352,6 +352,11 @@ struct voluta_space_info {
 	ssize_t sp_nfiles;
 };
 
+/* encrypted output buffer */
+struct voluta_encbuf {
+	uint8_t b[VOLUTA_MEGA];
+};
+
 /* persistent-storage I/O-control */
 struct voluta_pstore {
 	int     ps_dfd;
@@ -363,12 +368,12 @@ struct voluta_pstore {
 
 /* volume storage controller */
 struct voluta_vstore {
-	struct voluta_super_block      *vs_sb;
-	struct voluta_qalloc           *vs_qalloc;
-	struct voluta_crypto            vs_crypto;
 	struct voluta_pstore            vs_pstore;
+	struct voluta_crypto            vs_crypto;
+	struct voluta_qalloc           *vs_qalloc;
+	struct voluta_encbuf           *vs_encbuf;
 	const char *vs_volpath;
-	int vs_encrypted_mode;
+	long vs_ctl_flags;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -402,25 +407,17 @@ struct voluta_oper_stat {
 	/* TODO: Have counter per-operation */
 };
 
-/* encrypted output buffer */
-struct voluta_encbuf {
-	uint8_t b[VOLUTA_MEGA];
-};
-
 /* super-block in-memory info */
 struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_vstore           *sb_vstore;
-	struct voluta_encbuf           *sb_encbuf;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
-	struct voluta_crypto            sb_crypto;
 	struct voluta_space_info        sb_spi;
 	struct voluta_itable_info       sb_iti;
 	struct voluta_oper_stat         sb_ops;
-	const char                     *sb_volpath;
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
@@ -442,7 +439,7 @@ struct voluta_dset {
 struct voluta_oper {
 	struct voluta_ucred ucred;
 	struct timespec     xtime;
-	unsigned long       unique;
+	long                unique;
 	int                 opcode;
 };
 
@@ -511,6 +508,7 @@ struct voluta_fs_args {
 	mode_t umask;
 	bool   pedantic;
 	bool   encrypted;
+	bool   encryptwr;
 	bool   spliced;
 	bool   lazytime;
 	bool   noexec;
@@ -522,6 +520,9 @@ struct voluta_fs_args {
 /* file-system environment context */
 struct voluta_fs_env {
 	struct voluta_fs_args           args;
+	struct voluta_zcrypt_params     zcryp;
+	struct voluta_passphrase        passph;
+	struct voluta_kivam             kivam;
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
@@ -579,7 +580,7 @@ struct voluta_ar_args {
 
 struct voluta_archiver {
 	struct voluta_ar_args           ar_args;
-	struct voluta_iv_key            ar_iv_key;
+	struct voluta_kivam             ar_kivam;
 	struct voluta_qalloc           *ar_qalloc;
 	struct voluta_crypto           *ar_crypto;
 	struct voluta_bstore           *ar_bstore;

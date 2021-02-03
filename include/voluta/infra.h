@@ -81,4 +81,6 @@ int voluta_ts_gettime(struct timespec *ts, bool realtime);
 /* getentropy wrapper */
 void voluta_getentropy(void *buf, size_t len);
 
+uint32_t voluta_getentropy32(void);
+
 #endif /* VOLUTA_INFRA_H_ */

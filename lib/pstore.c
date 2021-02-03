@@ -203,12 +203,13 @@ int voluta_resolve_volume_size(const char *path,
 	return 0;
 }
 
-int voluta_require_volume_path(const char *path, int access_mode)
+int voluta_require_volume_path(const char *path, bool rw)
 {
 	int err;
 	loff_t size;
 	size_t len;
 	struct stat st;
+	const int access_mode = rw ? (R_OK | W_OK) : R_OK;
 
 	len = strlen(path);
 	if (!len) {

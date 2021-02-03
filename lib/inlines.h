@@ -226,7 +226,7 @@ struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 static inline
 const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 {
-	return &vi->v_sbi->sb_crypto.md;
+	return &vi->v_sbi->sb_vstore->vs_crypto.md;
 }
 
 static inline

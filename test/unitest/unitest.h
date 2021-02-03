@@ -108,7 +108,7 @@ struct ut_env {
 	const char              *tname;
 	size_t                   ualloc_start;
 	size_t                   nbytes_alloc;
-	size_t                   unique_count;
+	long                     unique_opid;
 	int                      silent;
 };
 

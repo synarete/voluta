@@ -48,7 +48,7 @@ int voluta_lib_init(void); /* TODO: have fini_lib */
 int voluta_resolve_volume_size(const char *path,
 			       loff_t size_want, loff_t *out_size);
 
-int voluta_require_volume_path(const char *path, int access_mode);
+int voluta_require_volume_path(const char *path, bool rw);
 
 int voluta_check_mntdir_fstype(long vfstype);
 

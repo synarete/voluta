@@ -731,7 +731,7 @@ static void fuseq_fill_out_header(struct voluta_fuseq_worker *fqw,
 {
 	out_hdr->len = (uint32_t)len;
 	out_hdr->error = -abs(err);
-	out_hdr->unique = fqw->op->unique;
+	out_hdr->unique = (uint64_t)fqw->op->unique;
 
 	voluta_assert_gt(fqw->op->unique, 0);
 	voluta_assert_gt(fqw->op->opcode, 0);
@@ -2730,7 +2730,7 @@ static void fuseq_assign_curr_oper(struct voluta_fuseq_worker *fqw,
 	fqw->op->ucred.gid = (gid_t)(hdr->gid);
 	fqw->op->ucred.pid = (pid_t)(hdr->pid);
 	fqw->op->ucred.umask = 0;
-	fqw->op->unique = hdr->unique;
+	fqw->op->unique = (long)hdr->unique;
 	fqw->op->opcode = (int)hdr->opcode;
 }
 

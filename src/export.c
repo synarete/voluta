@@ -54,8 +54,9 @@ static void export_setup_check_dest(void)
 static void export_setup_check_pass(void)
 {
 	enum voluta_zbf zbf;
+	const char *path = voluta_globals.export_src_real;
 
-	voluta_die_if_not_volume(voluta_globals.export_src_real, NULL, &zbf);
+	voluta_die_if_not_volume_zb(path, NULL, false, &zbf);
 }
 
 static void export_setup_check_params(void)

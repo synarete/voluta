@@ -213,9 +213,18 @@ int voluta_ts_gettime(struct timespec *ts, bool realtime)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* random generator */
-void voluta_getentropy(void *buf, size_t len)
+static void do_getentropy(void *buf, size_t len)
 {
 	int err;
+
+	err = getentropy(buf, len);
+	if (err) {
+		voluta_panic("getentropy failed err=%d", errno);
+	}
+}
+
+void voluta_getentropy(void *buf, size_t len)
+{
 	size_t cnt;
 	uint8_t *ptr = buf;
 	const uint8_t *end = ptr + len;
@@ -223,12 +232,17 @@ void voluta_getentropy(void *buf, size_t len)
 
 	while (ptr < end) {
 		cnt = min((size_t)(end - ptr), getentropy_max);
-		err = getentropy(ptr, cnt);
-		if (err) {
-			voluta_panic("getentropy failed err=%d", errno);
-		}
+		do_getentropy(ptr, cnt);
 		ptr += cnt;
 	}
+}
+
+uint32_t voluta_getentropy32(void)
+{
+	uint32_t r;
+
+	do_getentropy(&r, sizeof(r));
+	return r;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

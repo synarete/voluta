@@ -75,6 +75,7 @@ static void mkfs_create_setup_fs_env(void)
 		.volume = voluta_globals.mkfs_volume,
 		.passwd = voluta_globals.mkfs_passphrase,
 		.encrypted = voluta_globals.mkfs_encrypted,
+		.encryptwr = voluta_globals.mkfs_encrypted,
 		.vsize = voluta_globals.mkfs_volume_size,
 		.uid = getuid(),
 		.gid = getgid(),

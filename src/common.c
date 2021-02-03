@@ -236,12 +236,6 @@ void voluta_die_if_bad_zb(const char *path, const char *pass,
 	if (pass == NULL) {
 		goto out;
 	}
-
-
-
-	/* FIXME
-	err = voluta_zb_decipher(zb, pass);
-	*/
 out:
 	zb_del(zb);
 	if (err == -EAGAIN) {
@@ -255,13 +249,96 @@ out:
 	}
 }
 
-void voluta_die_if_not_volume(const char *path, const char *pass,
-			      enum voluta_zbf *out_zbf)
+static struct voluta_super_block *sb_new(void)
+{
+	struct voluta_super_block *sb = NULL;
+
+	sb = voluta_malloc_safe(sizeof(*sb));
+	memset(sb, 0, sizeof(*sb));
+	return sb;
+}
+
+static void sb_del(struct voluta_super_block *sb)
+{
+	memset(sb, 0xEF, sizeof(*sb));
+	free(sb);
+}
+
+static struct voluta_super_block *read_sb_or_die(const char *path)
+{
+	int fd = -1;
+	int err;
+	struct stat st;
+	struct voluta_super_block *sb = sb_new();
+
+	voluta_stat_reg(path, &st);
+	if (st.st_size == 0) {
+		voluta_die(0, "empty file: %s", path);
+	}
+	if (st.st_size < (int)sizeof(*sb)) {
+		voluta_die(0, "no super-block in: %s", path);
+	}
+	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
+	if (err) {
+		voluta_die(err, "open failed: %s", path);
+	}
+	err = voluta_sys_readn(fd, sb, sizeof(*sb));
+	if (err) {
+		voluta_die(err, "read error: %s", path);
+	}
+	voluta_sys_close(fd);
+	return sb;
+}
+
+void voluta_die_if_bad_sb(const char *path, const char *pass)
+{
+	int err;
+	enum voluta_zbf zbf;
+	enum voluta_ztype ztype;
+	struct voluta_super_block *sb = NULL;
+
+	sb = read_sb_or_die(path);
+	err = voluta_zb_check(&sb->s_zero);
+	if (err) {
+		goto out;
+	}
+	ztype = voluta_zb_type(&sb->s_zero);
+	if (ztype != VOLUTA_ZTYPE_VOLUME) {
+		err = -EUCLEAN;
+		goto out;
+	}
+	zbf = voluta_zb_flags(&sb->s_zero);
+	if (!(zbf & VOLUTA_ZBF_ENCRYPTED)) {
+		err = 0;
+		goto out;
+	}
+	if (pass == NULL) {
+		err = -ENOKEY;
+		goto out;
+	}
+	err = voluta_sb_decipher(sb, pass);
+out:
+	sb_del(sb);
+	if (err == -EAGAIN) {
+		voluta_die(err, "already in use: %s", path);
+	} else if (err == -EUCLEAN) {
+		voluta_die(0, "not a voluta file: %s", path);
+	} else if (err == -ENOKEY) {
+		voluta_die(0, "missing passphrase for encrypted: %s", path);
+	} else if (err == -EKEYEXPIRED) {
+		voluta_die(0, "illegal passphrase: %s", path);
+	} else if (err) {
+		voluta_die(err, "failed to parse zero block: %s", path);
+	}
+}
+
+void voluta_die_if_not_volume_zb(const char *path, const char *pass,
+				 bool rw, enum voluta_zbf *out_zbf)
 {
 	int err;
 	enum voluta_ztype ztype;
 
-	err = voluta_require_volume_path(path, R_OK | W_OK);
+	err = voluta_require_volume_path(path, rw);
 	if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}

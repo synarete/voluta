@@ -82,22 +82,20 @@ static void mount_setup_check_volume(void)
 	enum voluta_zbf zbf;
 	const char *pass = NULL;
 	const char *path = NULL;
+	const bool rw = !voluta_globals.mount_rdonly;
 
 	voluta_globals.mount_volume_real =
 		voluta_realpath_safe(voluta_globals.mount_volume);
 
 	path = voluta_globals.mount_volume_real;
-	voluta_die_if_not_volume(path, pass, &zbf);
+	voluta_die_if_not_volume_zb(path, pass, rw, &zbf);
 
 	if (zbf & VOLUTA_ZBF_ENCRYPTED) {
 		voluta_globals.mount_passphrase =
 			voluta_getpass(voluta_globals.mount_passphrase_file);
-
-		pass = voluta_globals.mount_passphrase;
-		voluta_die_if_not_volume(path, pass, &zbf);
-
 		voluta_globals.mount_encrypted = true;
 	}
+	voluta_die_if_bad_sb(path, voluta_globals.mount_passphrase);
 }
 
 static char *mount_volume_clone_path(void)
@@ -253,6 +251,7 @@ static void mount_setup_fs_args(struct voluta_fs_args *args)
 	args->mountp = voluta_globals.mount_point_real;
 	args->passwd = voluta_globals.mount_passphrase;
 	args->encrypted = voluta_globals.mount_encrypted;
+	args->encryptwr = voluta_globals.mount_encrypted;
 	args->lazytime = voluta_globals.mount_lazytime;
 	args->noexec = voluta_globals.mount_noexec;
 	args->nosuid = voluta_globals.mount_nosuid;
@@ -275,7 +274,6 @@ static void mount_create_setup_env(void)
 
 	mount_setup_fs_args(&args);
 	voluta_init_fs_env();
-
 	fse = voluta_fs_env_inst();
 	err = voluta_fse_setargs(fse, &args);
 	if (err) {

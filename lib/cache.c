@@ -1884,24 +1884,25 @@ static size_t flush_threshold_of(int flags)
 static bool cache_dq_need_flush(const struct voluta_cache *cache,
 				const struct voluta_dirtyq *dq, int flags)
 {
-	unsigned int mem_press;
 	const size_t threshold = flush_threshold_of(flags);
 
-	if (dq->dq_accum_nbytes > threshold) {
-		return true;
-	}
-	mem_press = cache_memory_pressure(cache);
-	if (mem_press > 50) {
-		return true;
-	}
-	return false;
+	voluta_unused(cache);
+	return (dq->dq_accum_nbytes > threshold);
+}
+
+static bool cache_mem_press_need_flush(const struct voluta_cache *cache)
+{
+	const unsigned int mem_press = cache_memory_pressure(cache);
+
+	return (mem_press > 30);
 }
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)
 {
 	const struct voluta_dirtyq *dq = &cache->c_dqs.dq_main;
 
-	return cache_dq_need_flush(cache, dq, flags);
+	return cache_dq_need_flush(cache, dq, flags) ||
+	       cache_mem_press_need_flush(cache);
 }
 
 bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
@@ -1910,7 +1911,8 @@ bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
 	const struct voluta_dirtyq *dq =
 		dirtyqs_queue_of_ii(&cache->c_dqs, ii);
 
-	return cache_dq_need_flush(cache, dq, flags);
+	return cache_dq_need_flush(cache, dq, flags) ||
+	       cache_mem_press_need_flush(cache);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

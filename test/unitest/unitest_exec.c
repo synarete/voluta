@@ -204,38 +204,34 @@ static char *ut_joinpath(const char *path, const char *base)
 	return rpath;
 }
 
-static void ut_unlinkpath(char *path)
+static void ut_removepath(char **path)
 {
-	voluta_sys_unlink(path);
+	voluta_sys_unlink(*path);
+	free(*path);
+	*path = NULL;
 }
 
 void ut_execute_tests(void)
 {
-	char *volpath;
-	struct ut_env *ute;
+	char *volpath = ut_joinpath(ut_globals.test_dir_real, "ut.voluta");
+	struct ut_env *ute = ute_new();
 
-	ute = ute_new();
-
-	volpath = ut_joinpath(ut_globals.test_dir_real, "ut.voluta");
 	ute->fs_args.volume = volpath;
 	ute->fs_args.encrypted = (ut_globals.encrypt_mode > 0);
+	ute->fs_args.encryptwr = (ut_globals.encrypt_mode > 0);
 	ute->fs_args.spliced = (ut_globals.spliced_mode > 0);
 	ute->ar_args.volume = volpath;
 	ute->ar_args.blobsdir = ut_globals.test_dir_real;
 	ute->ar_args.arcname = "ut_archive.voluta";
 	ute->tname = ut_globals.test_name;
 
-	ut_unlinkpath(volpath);
 	ute_setup(ute);
-
 	ut_prep_tests(ute);
 	ut_exec_tests(ute);
 	ut_done_tests(ute);
-
 	ute_del(ute);
 
-	ut_unlinkpath(volpath);
-	free(volpath);
+	ut_removepath(&volpath);
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
@@ -387,7 +383,7 @@ static void ute_init(struct ut_env *ute)
 	ute->silent = false;
 	ute->malloc_list = NULL;
 	ute->nbytes_alloc = 0;
-	ute->unique_count = 1;
+	ute->unique_opid = 1;
 
 	ute_init_passphrase(ute);
 }

@@ -53,8 +53,7 @@ static void import_setup_check_dest(void)
 
 static void import_setup_check_pass(void)
 {
-	voluta_die_if_not_archive(voluta_globals.import_src_real,
-				  voluta_globals.import_passphrase);
+	voluta_die_if_not_archive(voluta_globals.import_src_real);
 }
 
 static void import_setup_check_params(void)

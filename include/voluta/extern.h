@@ -95,6 +95,8 @@ int voluta_fse_reload(struct voluta_fs_env *fse);
 
 int voluta_fse_format(struct voluta_fs_env *fse);
 
+int voluta_fse_encrypt(struct voluta_fs_env *fse);
+
 int voluta_fse_serve(struct voluta_fs_env *fse);
 
 int voluta_fse_verify(struct voluta_fs_env *fse);

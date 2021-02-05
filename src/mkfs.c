@@ -139,7 +139,6 @@ static const char *voluta_mkfs_usage[] = {
 	NULL
 };
 
-
 void voluta_getopt_mkfs(void)
 {
 	int opt_chr = 1;

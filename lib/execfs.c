@@ -398,7 +398,7 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_create_pstore(struct voluta_fs_env *fse)
+static int fse_create_vstore(struct voluta_fs_env *fse)
 {
 	int err;
 	const char *path = fse->args.volume;
@@ -717,7 +717,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
 	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
 
-	if (!(ctl_flags & VOLUTA_F_ENCRYPTED)) {
+	if (!(ctl_flags & (VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR))) {
 		return 0;
 	}
 	if (!fse->passph.passlen) {
@@ -812,10 +812,6 @@ static int fse_store_sb(struct voluta_fs_env *fse)
 		return err;
 	}
 	err = fse_decrypt_sb(fse);
-	if (err) {
-		return err;
-	}
-	err = fse_recheck_sb(fse);
 	if (err) {
 		return err;
 	}
@@ -934,7 +930,7 @@ static int fse_prepare_volume(struct voluta_fs_env *fse,
 	if (err) {
 		return err;
 	}
-	err = fse_create_pstore(fse);
+	err = fse_create_vstore(fse);
 	if (err) {
 		return err;
 	}
@@ -976,6 +972,34 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 		return err;
 	}
 	err = fse_format_fs_meta(fse, &op);
+	if (err) {
+		return err;
+	}
+	err = fse_flush_dirty(fse, true);
+	if (err) {
+		return err;
+	}
+	err = fse_store_sb(fse);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+int voluta_fse_encrypt(struct voluta_fs_env *fse)
+{
+	int err;
+	struct voluta_oper op;
+
+	err = fs_make_oper_self(fse, &op);
+	if (err) {
+		return err;
+	}
+	err = voluta_fse_reload(fse);
+	if (err) {
+		return err;
+	}
+	err = voluta_traverse_by_spmaps(fse->sbi);
 	if (err) {
 		return err;
 	}

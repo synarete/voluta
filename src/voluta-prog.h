@@ -130,6 +130,12 @@ struct voluta_globals {
 	char   *clone_volume;
 	char   *clone_volume_tmp;
 
+	/* Options for 'encrypt' sub-command */
+	char   *encrypt_passphrase;
+	char   *encrypt_passphrase_file;
+	char   *encrypt_volume;
+	char   *encrypt_volume_real;
+
 	/* Options for 'export' sub-command */
 	char   *export_passphrase;
 	char   *export_passphrase_file;
@@ -172,14 +178,16 @@ void voluta_execute_show(void);
 
 void voluta_execute_clone(void);
 
+void voluta_execute_encrypt(void);
+
 void voluta_execute_export(void);
 
 void voluta_execute_import(void);
 
+
 void voluta_getopt_mkfs(void);
 
 void voluta_getopt_fsck(void);
-
 
 void voluta_getopt_mount(void);
 
@@ -188,6 +196,8 @@ void voluta_getopt_umount(void);
 void voluta_getopt_show(void);
 
 void voluta_getopt_clone(void);
+
+void voluta_getopt_encrypt(void);
 
 void voluta_getopt_export(void);
 
@@ -226,16 +236,12 @@ void voluta_die_if_not_reg(const char *path, bool w_ok);
 
 void voluta_die_if_exists(const char *path);
 
-void voluta_die_if_bad_zb(const char *path, const char *pass,
-			  enum voluta_ztype *out_ztype,
-			  enum voluta_zbf *out_zbf);
-
 void voluta_die_if_bad_sb(const char *path, const char *pass);
 
-void voluta_die_if_not_volume_zb(const char *path, const char *pass,
-				 bool rw, enum voluta_zbf *out_zbf);
+void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
+			      bool mustnot_be_enc, bool *out_is_encrypted);
 
-void voluta_die_if_not_archive(const char *path, const char *pass);
+void voluta_die_if_not_archive(const char *path);
 
 void voluta_die_if_no_mountd(void);
 

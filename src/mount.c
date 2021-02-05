@@ -79,8 +79,7 @@ static void mount_setup_check_mntpoint(void)
 
 static void mount_setup_check_volume(void)
 {
-	enum voluta_zbf zbf;
-	const char *pass = NULL;
+	bool is_enc = false;
 	const char *path = NULL;
 	const bool rw = !voluta_globals.mount_rdonly;
 
@@ -88,9 +87,8 @@ static void mount_setup_check_volume(void)
 		voluta_realpath_safe(voluta_globals.mount_volume);
 
 	path = voluta_globals.mount_volume_real;
-	voluta_die_if_not_volume_zb(path, pass, rw, &zbf);
-
-	if (zbf & VOLUTA_ZBF_ENCRYPTED) {
+	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
+	if (is_enc) {
 		voluta_globals.mount_passphrase =
 			voluta_getpass(voluta_globals.mount_passphrase_file);
 		voluta_globals.mount_encrypted = true;
@@ -301,9 +299,13 @@ static void mount_trace_start(void)
 	voluta_log_meta_banner(true);
 	voluta_log_info("executable: %s", voluta_globals.prog);
 	voluta_log_info("mount-point: %s", voluta_globals.mount_point_real);
-	if (voluta_globals.mount_volume) {
-		voluta_log_info("volume: %s", voluta_globals.mount_volume);
-	}
+	voluta_log_info("volume: %s", voluta_globals.mount_volume);
+	voluta_log_info("encrypted=%d rdonly=%d noexec=%d nodev=%d nosuid=%d",
+			(int)voluta_globals.mount_encrypted,
+			(int)voluta_globals.mount_rdonly,
+			(int)voluta_globals.mount_noexec,
+			(int)voluta_globals.mount_nodev,
+			(int)voluta_globals.mount_nosuid);
 }
 
 static void mount_trace_finish(void)

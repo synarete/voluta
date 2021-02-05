@@ -77,7 +77,7 @@ static void assign_statx_ts(struct statx_timestamp *stx_ts,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static ino_t inode_ino(const struct voluta_inode *inode)
+ino_t voluta_inode_ino(const struct voluta_inode *inode)
 {
 	return cpu_to_ino(inode->i_ino);
 }
@@ -1169,7 +1169,7 @@ int voluta_verify_inode(const struct voluta_inode *inode)
 {
 	int err;
 
-	err = voluta_verify_ino(inode_ino(inode));
+	err = voluta_verify_ino(voluta_inode_ino(inode));
 	if (err) {
 		return err;
 	}

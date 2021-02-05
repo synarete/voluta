@@ -30,7 +30,8 @@ static const struct voluta_zcrypt_params voluta_default_zcrypt = {
 		.kdf_key.kd_iterations = 256
 	},
 	.cipher_algo = VOLUTA_CIPHER_AES256,
-	.cipher_mode = VOLUTA_CIPHER_MODE_GCM
+	.cipher_mode = VOLUTA_CIPHER_MODE_GCM,
+	.iv_md_hash = VOLUTA_MD_SHA3_512,
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -507,15 +508,13 @@ int voluta_sb_decipher(struct voluta_super_block *sb, const char *pass)
 {
 	int err;
 	struct voluta_crypto crypto;
-	struct voluta_kdf_pair kdf;
 	struct voluta_passphrase passph;
 
-	zb_kdf(&sb->s_zero, &kdf);
-	err = voluta_passphrase_setup(&passph, pass);
+	err = voluta_crypto_init(&crypto);
 	if (err) {
 		return err;
 	}
-	err = voluta_crypto_init(&crypto);
+	err = voluta_passphrase_setup(&passph, pass);
 	if (err) {
 		goto out;
 	}

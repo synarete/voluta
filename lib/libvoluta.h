@@ -416,6 +416,8 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi);
 
 int voluta_reload_itable(struct voluta_sb_info *sbi);
 
+int voluta_traverse_by_spmaps(struct voluta_sb_info *sbi);
+
 void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 		       struct statvfs *out_stvfs);
 
@@ -607,6 +609,8 @@ int voluta_do_clone(const struct voluta_oper *op,
 		    const struct voluta_inode_info *ii, char *str, size_t lim);
 
 /* inode */
+ino_t voluta_inode_ino(const struct voluta_inode *inode);
+
 ino_t voluta_ino_of(const struct voluta_inode_info *ii);
 
 ino_t voluta_ii_parent(const struct voluta_inode_info *ii);

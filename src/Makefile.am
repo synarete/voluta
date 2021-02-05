@@ -5,6 +5,7 @@ libvoluta_prog_a_CPPFLAGS = -I$(top_srcdir)/include
 libvoluta_prog_a_SOURCES = $(NULL)
 libvoluta_prog_a_SOURCES += clone.c
 libvoluta_prog_a_SOURCES += common.c
+libvoluta_prog_a_SOURCES += encrypt.c
 libvoluta_prog_a_SOURCES += export.c
 libvoluta_prog_a_SOURCES += fsck.c
 libvoluta_prog_a_SOURCES += getpass.c

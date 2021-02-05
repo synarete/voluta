@@ -437,17 +437,21 @@ static void vi_detach_pvi(struct voluta_vnode_info *vi)
 static void vi_setup_ds_key(struct voluta_vnode_info *vi,
 			    const struct voluta_inode_info *pii)
 {
+	ino_t ino = VOLUTA_INO_NULL;
 	const enum voluta_vtype vtype = vi_vtype(vi);
 
 	if (pii != NULL) {
-		vi->v_ds_key = (long)ii_ino(pii);
+		ino = ii_ino(pii);
 	} else if (vtype_isinode(vtype)) {
-		vi->v_ds_key = (long)ii_ino(ii_from_vi(vi));
-		voluta_assert_gt(vi->v_ds_key, 0);
-	} else {
-		voluta_assert(vtype_isumap(vtype) ||
-			      (vtype == VOLUTA_VTYPE_ITNODE));
+		ino = ii_ino(ii_from_vi(vi));
+		voluta_assert_gt(ino, VOLUTA_INO_NULL);
+		voluta_assert_lt(ino, VOLUTA_INO_MAX);
+	}
+
+	if (ino_isnull(ino)) {
 		vi->v_ds_key = 0;
+	} else {
+		vi->v_ds_key = (long)ino;
 	}
 }
 

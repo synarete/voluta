@@ -219,9 +219,9 @@ static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 	return zb;
 }
 
-void voluta_die_if_bad_zb(const char *path, const char *pass,
-			  enum voluta_ztype *out_ztype,
-			  enum voluta_zbf *out_zbf)
+static void voluta_die_if_bad_zb(const char *path,
+				 enum voluta_ztype *out_ztype,
+				 enum voluta_zbf *out_zbf)
 {
 	int err;
 	struct voluta_zero_block4 *zb = NULL;
@@ -233,9 +233,6 @@ void voluta_die_if_bad_zb(const char *path, const char *pass,
 	}
 	*out_ztype = voluta_zb_type(zb);
 	*out_zbf = voluta_zb_flags(zb);
-	if (pass == NULL) {
-		goto out;
-	}
 out:
 	zb_del(zb);
 	if (err == -EAGAIN) {
@@ -332,29 +329,41 @@ out:
 	}
 }
 
-void voluta_die_if_not_volume_zb(const char *path, const char *pass,
-				 bool rw, enum voluta_zbf *out_zbf)
+void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
+			      bool mustnot_be_enc, bool *out_is_encrypted)
 {
 	int err;
 	enum voluta_ztype ztype;
+	enum voluta_zbf zbf;
+	bool is_enc;
 
 	err = voluta_require_volume_path(path, rw);
 	if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}
-	voluta_die_if_bad_zb(path, pass, &ztype, out_zbf);
+	voluta_die_if_bad_zb(path, &ztype, &zbf);
 	if (ztype != VOLUTA_ZTYPE_VOLUME) {
 		voluta_die(0, "not a volume: %s", path);
 	}
+	is_enc = (zbf & VOLUTA_ZBF_ENCRYPTED);
+	if (must_be_enc && !is_enc) {
+		voluta_die(0, "not an encrypted volume: %s", path);
+	}
+	if (mustnot_be_enc && is_enc) {
+		voluta_die(0, "encrypted volume: %s", path);
+	}
+	if (out_is_encrypted != NULL) {
+		*out_is_encrypted = is_enc;
+	}
 }
 
-void voluta_die_if_not_archive(const char *path, const char *pass)
+void voluta_die_if_not_archive(const char *path)
 {
 	enum voluta_ztype ztype;
 	enum voluta_zbf zbf;
 
 	voluta_die_if_not_reg(path, false); /* TODO: Check size  */
-	voluta_die_if_bad_zb(path, pass, &ztype, &zbf);
+	voluta_die_if_bad_zb(path, &ztype, &zbf);
 	if (ztype != VOLUTA_ZTYPE_ARCHIVE) {
 		voluta_die(0, "not an archive: %s", path);
 	}

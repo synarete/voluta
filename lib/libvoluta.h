@@ -416,7 +416,7 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi);
 
 int voluta_reload_itable(struct voluta_sb_info *sbi);
 
-int voluta_traverse_by_spmaps(struct voluta_sb_info *sbi);
+int voluta_traverse_space(struct voluta_sb_info *sbi);
 
 void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 		       struct statvfs *out_stvfs);

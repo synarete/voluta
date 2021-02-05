@@ -31,14 +31,14 @@
 
 static void clone_finalize(void)
 {
-	voluta_pfree_string(&voluta_globals.clone_volume_tmp);
+	voluta_pfree_string(&voluta_globals.cmd.clone.volume_tmp);
 }
 
 static void clone_setup_check_params(void)
 {
 	int err;
 	struct stat st;
-	const char *path = voluta_globals.clone_point;
+	const char *path = voluta_globals.cmd.clone.point;
 
 	voluta_statpath_safe(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
@@ -47,7 +47,7 @@ static void clone_setup_check_params(void)
 	if (st.st_ino != VOLUTA_INO_ROOT) {
 		voluta_die(0, "not a voluta mount-point: %s", path);
 	}
-	path = voluta_globals.clone_volume;
+	path = voluta_globals.cmd.clone.volume;
 	err = voluta_sys_stat(path, &st);
 	if (!err) {
 		voluta_die(-EEXIST, "clone volume exists: %s", path);
@@ -71,7 +71,7 @@ static void clone_execute(void)
 		.qtype = VOLUTA_QUERY_VOLUME
 	};
 
-	path = voluta_globals.clone_point;
+	path = voluta_globals.cmd.clone.point;
 	err = voluta_sys_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
 	if (err) {
 		voluta_die(err, "failed to open-dir: %s", path);
@@ -97,16 +97,16 @@ static void clone_execute(void)
 	}
 	*last = '\0';
 
-	voluta_globals.clone_volume_tmp =
+	voluta_globals.cmd.clone.volume_tmp =
 		path = voluta_joinpath_safe(path, clone.name);
 	err = voluta_sys_stat(path, &st);
 	if (err) {
 		voluta_die(err, "can not stat clone: %s", path);
 	}
-	err = voluta_sys_rename(path, voluta_globals.clone_volume);
+	err = voluta_sys_rename(path, voluta_globals.cmd.clone.volume);
 	if (err) {
 		voluta_die(err, "rename failed: %s -> %s",
-			   path, voluta_globals.clone_volume);
+			   path, voluta_globals.cmd.clone.volume);
 	}
 }
 
@@ -114,7 +114,7 @@ static void clone_reopen_and_sync(void)
 {
 	int err;
 	int fd = -1;
-	const char *path = voluta_globals.clone_volume;
+	const char *path = voluta_globals.cmd.clone.volume;
 
 	err = voluta_sys_open(path, O_RDWR, 0, &fd);
 	if (err) {
@@ -171,9 +171,9 @@ void voluta_getopt_clone(void)
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.clone_point =
+	voluta_globals.cmd.clone.point =
 		voluta_consume_cmdarg("mount-point", false);
-	voluta_globals.clone_volume =
+	voluta_globals.cmd.clone.volume =
 		voluta_consume_cmdarg("volume-path", true);
 }
 

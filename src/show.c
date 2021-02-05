@@ -27,7 +27,7 @@ static void show_setup_check_params(void)
 {
 	struct stat st;
 
-	voluta_stat_dir_or_reg(voluta_globals.show_path, &st);
+	voluta_stat_dir_or_reg(voluta_globals.cmd.show.pathname, &st);
 }
 
 static void show_ioctl_query(const char *path, struct voluta_ioc_query *query)
@@ -52,7 +52,7 @@ static void show_version(void)
 		.qtype = VOLUTA_QUERY_VERSION
 	};
 
-	show_ioctl_query(voluta_globals.show_path, &query);
+	show_ioctl_query(voluta_globals.cmd.show.pathname, &query);
 	printf("%s\n", query.u.version.string);
 }
 
@@ -62,16 +62,16 @@ static void show_volume(void)
 		.qtype = VOLUTA_QUERY_VOLUME
 	};
 
-	show_ioctl_query(voluta_globals.show_path, &query);
+	show_ioctl_query(voluta_globals.cmd.show.pathname, &query);
 	printf("%s\n", query.u.volume.path);
 }
 
 static void show_execute(void)
 {
-	if (voluta_globals.show_version) {
+	if (voluta_globals.cmd.show.version) {
 		show_version();
 	}
-	if (voluta_globals.show_volume) {
+	if (voluta_globals.cmd.show.volume) {
 		show_volume();
 	}
 }
@@ -121,13 +121,13 @@ void voluta_getopt_show(void)
 	}
 	subcmd = voluta_consume_cmdarg("<sub-command>", false);
 	if (!strcmp(subcmd, "version")) {
-		voluta_globals.show_version = true;
+		voluta_globals.cmd.show.version = true;
 	} else if (!strcmp(subcmd, "volume")) {
-		voluta_globals.show_volume = true;
+		voluta_globals.cmd.show.volume = true;
 	} else {
 		voluta_die(0, "unknown sub-command: %s", subcmd);
 	}
-	voluta_globals.show_path =
+	voluta_globals.cmd.show.pathname =
 		voluta_consume_cmdarg("pathname", true);
 }
 

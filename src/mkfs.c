@@ -21,7 +21,7 @@
 static void mkfs_finalize(void)
 {
 	voluta_fini_fs_env();
-	voluta_delpass(&voluta_globals.mkfs_passphrase);
+	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
 }
 
 static void mkfs_setup_check_params(void)
@@ -33,7 +33,7 @@ static void mkfs_setup_check_params(void)
 	loff_t *psz;
 	struct stat st;
 	const char *passfile;
-	const char *path = voluta_globals.mkfs_volume;
+	const char *path = voluta_globals.cmd.mkfs.volume;
 
 	len = strlen(path);
 	if (len >= VOLUTA_VOLUME_PATH_MAX) {
@@ -45,24 +45,25 @@ static void mkfs_setup_check_params(void)
 	if (exists && S_ISDIR(st.st_mode)) {
 		voluta_die(-EISDIR, "illegal volume path: %s", path);
 	}
-	if (exists && !voluta_globals.mkfs_force && !S_ISBLK(st.st_mode)) {
+	if (exists && !S_ISBLK(st.st_mode) &&
+	    !voluta_globals.cmd.mkfs.force && !S_ISBLK(st.st_mode)) {
 		voluta_die(err, "file exists: %s", path);
 	}
 	if (err && (err != -ENOENT)) {
 		voluta_die(err, "stat failure: %s", path);
 	}
-	if (!voluta_globals.mkfs_size) {
+	if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
 	}
-	psz = &voluta_globals.mkfs_volume_size;
-	size = voluta_globals.mkfs_volume_size;
+	psz = &voluta_globals.cmd.mkfs.volume_size;
+	size = voluta_globals.cmd.mkfs.volume_size;
 	err = voluta_resolve_volume_size(path, size, psz);
 	if (err) {
-		voluta_die(0, "unsupported size: %s", voluta_globals.mkfs_size);
+		voluta_die(0, "unsupported size: %ld", size);
 	}
-	if (voluta_globals.mkfs_encrypted) {
-		passfile = voluta_globals.mkfs_passphrase_file;
-		voluta_globals.mkfs_passphrase = voluta_getpass2(passfile);
+	if (voluta_globals.cmd.mkfs.encrypted) {
+		passfile = voluta_globals.cmd.mkfs.passphrase_file;
+		voluta_globals.cmd.mkfs.passphrase = voluta_getpass2(passfile);
 	}
 }
 
@@ -71,12 +72,12 @@ static void mkfs_create_setup_fs_env(void)
 	int err;
 	struct voluta_fs_env *fse = NULL;
 	const struct voluta_fs_args args = {
-		.fsname = voluta_globals.mkfs_name,
-		.volume = voluta_globals.mkfs_volume,
-		.passwd = voluta_globals.mkfs_passphrase,
-		.encrypted = voluta_globals.mkfs_encrypted,
-		.encryptwr = voluta_globals.mkfs_encrypted,
-		.vsize = voluta_globals.mkfs_volume_size,
+		.fsname = voluta_globals.cmd.mkfs.name,
+		.volume = voluta_globals.cmd.mkfs.volume,
+		.passwd = voluta_globals.cmd.mkfs.passphrase,
+		.encrypted = voluta_globals.cmd.mkfs.encrypted,
+		.encryptwr = voluta_globals.cmd.mkfs.encrypted,
+		.vsize = voluta_globals.cmd.mkfs.volume_size,
 		.uid = getuid(),
 		.gid = getgid(),
 		.pid = getpid(),
@@ -95,7 +96,7 @@ static void mkfs_format_volume(void)
 {
 	int err;
 	struct voluta_fs_env *fse;
-	const char *volume_path = voluta_globals.mkfs_volume;
+	const char *volume_path = voluta_globals.cmd.mkfs.volume;
 
 	fse = voluta_fs_env_inst();
 	err = voluta_fse_format(fse);
@@ -155,24 +156,24 @@ void voluta_getopt_mkfs(void)
 	while (opt_chr > 0) {
 		opt_chr = voluta_getopt_subcmd("s:n:eFP:h", opts);
 		if (opt_chr == 's') {
-			voluta_globals.mkfs_size = optarg;
-			voluta_globals.mkfs_volume_size =
+			voluta_globals.cmd.mkfs.size = optarg;
+			voluta_globals.cmd.mkfs.volume_size =
 				voluta_parse_size(optarg);
 		} else if (opt_chr == 'n') {
-			voluta_globals.mkfs_name = optarg;
+			voluta_globals.cmd.mkfs.name = optarg;
 		} else if (opt_chr == 'e') {
-			voluta_globals.mkfs_encrypted = true;
+			voluta_globals.cmd.mkfs.encrypted = true;
 		} else if (opt_chr == 'F') {
-			voluta_globals.mkfs_force = true;
+			voluta_globals.cmd.mkfs.force = true;
 		} else if (opt_chr == 'P') {
-			voluta_globals.mkfs_passphrase_file = optarg;
+			voluta_globals.cmd.mkfs.passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
 			voluta_show_help_and_exit(voluta_mkfs_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.mkfs_volume =
+	voluta_globals.cmd.mkfs.volume =
 		voluta_consume_cmdarg("volume-path", true);
 }
 

@@ -18,37 +18,37 @@
 #include "voluta-prog.h"
 
 
-static void encrypt_finalize(void)
+static void decrypt_finalize(void)
 {
 	voluta_fini_fs_env();
-	voluta_delpass(&voluta_globals.cmd.encrypt.passphrase);
-	voluta_pfree_string(&voluta_globals.cmd.encrypt.volume_real);
+	voluta_delpass(&voluta_globals.cmd.decrypt.passphrase);
+	voluta_pfree_string(&voluta_globals.cmd.decrypt.volume_real);
 }
 
-static void encrypt_setup_check_params(void)
+static void decrypt_setup_check_params(void)
 {
 	const char *passfile;
 	const char *path;
 
-	voluta_globals.cmd.encrypt.volume_real =
-		voluta_realpath_safe(voluta_globals.cmd.encrypt.volume);
+	voluta_globals.cmd.decrypt.volume_real =
+		voluta_realpath_safe(voluta_globals.cmd.decrypt.volume);
 
-	path = voluta_globals.cmd.encrypt.volume_real;
-	voluta_die_if_not_volume(path, true, false, true, NULL);
-	passfile = voluta_globals.cmd.encrypt.passphrase_file;
-	voluta_globals.cmd.encrypt.passphrase = voluta_getpass2(passfile);
-	voluta_die_if_bad_sb(path, voluta_globals.cmd.encrypt.passphrase);
+	path = voluta_globals.cmd.decrypt.volume_real;
+	voluta_die_if_not_volume(path, true, true, false, NULL);
+	passfile = voluta_globals.cmd.decrypt.passphrase_file;
+	voluta_globals.cmd.decrypt.passphrase = voluta_getpass2(passfile);
+	voluta_die_if_bad_sb(path, voluta_globals.cmd.decrypt.passphrase);
 }
 
-static void encrypt_create_setup_fs_env(void)
+static void decrypt_create_setup_fs_env(void)
 {
 	int err;
 	struct voluta_fs_env *fse = NULL;
 	const struct voluta_fs_args args = {
-		.volume = voluta_globals.cmd.encrypt.volume,
-		.passwd = voluta_globals.cmd.encrypt.passphrase,
-		.encrypted = false,
-		.encryptwr = true,
+		.volume = voluta_globals.cmd.decrypt.volume,
+		.passwd = voluta_globals.cmd.decrypt.passphrase,
+		.encrypted = true,
+		.encryptwr = false,
 		.uid = getuid(),
 		.gid = getgid(),
 		.pid = getpid(),
@@ -59,47 +59,47 @@ static void encrypt_create_setup_fs_env(void)
 	fse = voluta_fs_env_inst();
 	err = voluta_fse_setargs(fse, &args);
 	if (err) {
-		voluta_die(err, "illegal encrypt params");
+		voluta_die(err, "illegal decrypt params");
 	}
 }
 
-static void encrypt_apply_volume(void)
+static void decrypt_apply_volume(void)
 {
 	int err;
 	struct voluta_fs_env *fse;
-	const char *volume_path = voluta_globals.cmd.encrypt.volume;
+	const char *volume_path = voluta_globals.cmd.decrypt.volume;
 
 	fse = voluta_fs_env_inst();
 	err = voluta_fse_traverse(fse);
 	if (err) {
-		voluta_die(err, "encrypt failure: %s", volume_path);
+		voluta_die(err, "decrypt failure: %s", volume_path);
 	}
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_execute_encrypt(void)
+void voluta_execute_decrypt(void)
 {
 	/* Do all cleanups upon exits */
-	atexit(encrypt_finalize);
+	atexit(decrypt_finalize);
 
 	/* Verify user's arguments */
-	encrypt_setup_check_params();
+	decrypt_setup_check_params();
 
 	/* Prepare environment */
-	encrypt_create_setup_fs_env();
+	decrypt_create_setup_fs_env();
 
-	/* Do actual encrypt */
-	encrypt_apply_volume();
+	/* Do actual decrypt */
+	decrypt_apply_volume();
 
 	/* Post execution cleanups */
-	encrypt_finalize();
+	decrypt_finalize();
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-static const char *voluta_encrypt_usage[] = {
-	"encrypt [options] <volume-path>",
+static const char *voluta_decrypt_usage[] = {
+	"decrypt [options] <volume-path>",
 	"",
 	"options:",
 	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
@@ -107,7 +107,7 @@ static const char *voluta_encrypt_usage[] = {
 	NULL
 };
 
-void voluta_getopt_encrypt(void)
+void voluta_getopt_decrypt(void)
 {
 	int opt_chr = 1;
 	const struct option opts[] = {
@@ -122,14 +122,14 @@ void voluta_getopt_encrypt(void)
 		if (opt_chr == 'V') {
 			voluta_set_verbose_mode(optarg);
 		} else if (opt_chr == 'P') {
-			voluta_globals.cmd.encrypt.passphrase_file = optarg;
+			voluta_globals.cmd.decrypt.passphrase_file = optarg;
 		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_encrypt_usage);
+			voluta_show_help_and_exit(voluta_decrypt_usage);
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.cmd.encrypt.volume =
+	voluta_globals.cmd.decrypt.volume =
 		voluta_consume_cmdarg("volume-path", true);
 }
 

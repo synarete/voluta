@@ -986,7 +986,7 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	return 0;
 }
 
-int voluta_fse_encrypt(struct voluta_fs_env *fse)
+int voluta_fse_traverse(struct voluta_fs_env *fse)
 {
 	int err;
 	struct voluta_oper op;
@@ -999,7 +999,7 @@ int voluta_fse_encrypt(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_traverse_by_spmaps(fse->sbi);
+	err = voluta_traverse_space(fse->sbi);
 	if (err) {
 		return err;
 	}

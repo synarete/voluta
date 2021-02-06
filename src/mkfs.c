@@ -20,7 +20,7 @@
 
 static void mkfs_finalize(void)
 {
-	voluta_fini_fs_env();
+	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
 }
 
@@ -67,10 +67,8 @@ static void mkfs_setup_check_params(void)
 	}
 }
 
-static void mkfs_create_setup_fs_env(void)
+static void mkfs_create_fs_env(void)
 {
-	int err;
-	struct voluta_fs_env *fse = NULL;
 	const struct voluta_fs_args args = {
 		.fsname = voluta_globals.cmd.mkfs.name,
 		.volume = voluta_globals.cmd.mkfs.volume,
@@ -84,12 +82,7 @@ static void mkfs_create_setup_fs_env(void)
 		.umask = 0022,
 	};
 
-	voluta_init_fs_env();
-	fse = voluta_fs_env_inst();
-	err = voluta_fse_setargs(fse, &args);
-	if (err) {
-		voluta_die(err, "illegal mkfs params");
-	}
+	voluta_create_fse_inst(&args);
 }
 
 static void mkfs_format_volume(void)
@@ -98,7 +91,7 @@ static void mkfs_format_volume(void)
 	struct voluta_fs_env *fse;
 	const char *volume_path = voluta_globals.cmd.mkfs.volume;
 
-	fse = voluta_fs_env_inst();
+	fse = voluta_fse_inst();
 	err = voluta_fse_format(fse);
 	if (err) {
 		voluta_die(err, "format error: %s", volume_path);
@@ -116,7 +109,7 @@ void voluta_execute_mkfs(void)
 	mkfs_setup_check_params();
 
 	/* Prepare environment */
-	mkfs_create_setup_fs_env();
+	mkfs_create_fs_env();
 
 	/* Do actual mkfs */
 	mkfs_format_volume();

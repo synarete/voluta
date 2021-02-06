@@ -19,7 +19,7 @@
 
 static void import_finalize(void)
 {
-	voluta_fini_archiver_inst();
+	voluta_destroy_arc_inst();
 	voluta_delpass(&voluta_globals.cmd.import.passphrase);
 	voluta_pfree_string(&voluta_globals.cmd.import.archive_real);
 	voluta_pfree_string(&voluta_globals.cmd.import.archive_dir);
@@ -63,29 +63,23 @@ static void import_setup_check_params(void)
 	import_setup_check_pass();
 }
 
-static void import_create_setup_env(void)
+static void import_create_arc_inst(void)
 {
-	int err;
-	struct voluta_archiver *arc = NULL;
 	struct voluta_ar_args args = {
 		.passph = voluta_globals.cmd.import.passphrase,
 		.volume = voluta_globals.cmd.import.volume_path,
 		.blobsdir = voluta_globals.cmd.import.archive_dir,
 		.arcname = voluta_globals.cmd.import.archive_name,
+		.memwant = 4 * VOLUTA_GIGA /* TODO: from command line */
 	};
 
-	voluta_init_archiver_inst();
-	arc = voluta_archiver_inst();
-	err = voluta_archiver_setargs(arc, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
+	voluta_create_arc_inst(&args);
 }
 
 static void import_run(void)
 {
 	int err;
-	struct voluta_archiver *arc = voluta_archiver_inst();
+	struct voluta_archiver *arc = voluta_arc_inst();
 
 	err = voluta_archiver_import(arc);
 	if (err) {
@@ -104,7 +98,7 @@ void voluta_execute_import(void)
 	import_setup_check_params();
 
 	/* Setup environment instance */
-	import_create_setup_env();
+	import_create_arc_inst();
 
 	/* Do actual import */
 	import_run();

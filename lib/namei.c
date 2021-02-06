@@ -1965,7 +1965,7 @@ static int gen_clone_name(char *str, size_t lim, struct voluta_str *name)
 	}
 	voluta_uuid_generate(&uu);
 	voluta_uuid_name(&uu, &nb);
-	len = snprintf(str, lim, "%s.voluta", nb.name);
+	len = snprintf(str, lim, "%s.voluta~", nb.name);
 	if (len >= (int)lim) {
 		return -EINVAL;
 	}

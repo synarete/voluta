@@ -31,7 +31,7 @@
 
 static void mount_halt_by_signal(int signum)
 {
-	struct voluta_fs_env *fse = voluta_fs_env_inst();
+	struct voluta_fs_env *fse = voluta_fse_inst();
 
 	if (fse) {
 		voluta_fse_halt(fse, signum);
@@ -47,7 +47,7 @@ static void mount_enable_signals(void)
 static void mount_execute_fs(void)
 {
 	int err;
-	struct voluta_fs_env *fse = voluta_fs_env_inst();
+	struct voluta_fs_env *fse = voluta_fse_inst();
 
 	err = voluta_fse_serve(fse);
 	if (err) {
@@ -59,7 +59,7 @@ static void mount_execute_fs(void)
 
 static void mount_finalize(void)
 {
-	voluta_fini_fs_env();
+	voluta_destrpy_fse_inst();
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_clone);
 	voluta_pfree_string(&voluta_globals.cmd.mount.point_real);
@@ -85,6 +85,8 @@ static void mount_setup_check_volume(void)
 
 	voluta_globals.cmd.mount.volume_real =
 		voluta_realpath_safe(voluta_globals.cmd.mount.volume);
+	voluta_globals.cmd.mount.volume_active =
+		voluta_globals.cmd.mount.volume_real;
 
 	path = voluta_globals.cmd.mount.volume_real;
 	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
@@ -169,6 +171,7 @@ out:
 		voluta_pfree_string(&volume_clone);
 	}
 	voluta_globals.cmd.mount.volume_clone = volume_clone;
+	voluta_globals.cmd.mount.volume_active = volume_clone;
 }
 
 static void mount_complete_volume_clone(void)
@@ -239,51 +242,44 @@ static void mount_boostrap_process(void)
 	}
 }
 
-static void mount_setup_fs_args(struct voluta_fs_args *args)
+static void mount_create_fs_env(void)
 {
-	memset(args, 0, sizeof(*args));
-	args->uid = getuid();
-	args->gid = getgid();
-	args->pid = getpid();
-	args->umask = 0022;
-	args->mountp = voluta_globals.cmd.mount.point_real;
-	args->passwd = voluta_globals.cmd.mount.passphrase;
-	args->encrypted = voluta_globals.cmd.mount.encrypted;
-	args->encryptwr = voluta_globals.cmd.mount.encrypted;
-	args->lazytime = voluta_globals.cmd.mount.lazytime;
-	args->noexec = voluta_globals.cmd.mount.noexec;
-	args->nosuid = voluta_globals.cmd.mount.nosuid;
-	args->nodev = voluta_globals.cmd.mount.nodev;
-	args->rdonly = voluta_globals.cmd.mount.rdonly;
-	args->pedantic = false;
-	args->spliced = true;
-	if (voluta_globals.cmd.mount.volume_clone != NULL) {
-		args->volume = voluta_globals.cmd.mount.volume_clone;
-	} else {
-		args->volume = voluta_globals.cmd.mount.volume_real;
-	}
+	const struct voluta_fs_args args = {
+		.uid = getuid(),
+		.gid = getgid(),
+		.pid = getpid(),
+		.umask = 0022,
+		.volume = voluta_globals.cmd.mount.volume_active,
+		.mountp = voluta_globals.cmd.mount.point_real,
+		.passwd = voluta_globals.cmd.mount.passphrase,
+		.encrypted = voluta_globals.cmd.mount.encrypted,
+		.encryptwr = voluta_globals.cmd.mount.encrypted,
+		.lazytime = voluta_globals.cmd.mount.lazytime,
+		.noexec = voluta_globals.cmd.mount.noexec,
+		.nosuid = voluta_globals.cmd.mount.nosuid,
+		.nodev = voluta_globals.cmd.mount.nodev,
+		.rdonly = voluta_globals.cmd.mount.rdonly,
+		.pedantic = false,
+		.spliced = true,
+		.with_fuseq = true,
+
+	};
+	voluta_create_fse_inst(&args);
 }
 
-static void mount_create_setup_env(void)
+static void mount_verify_fs_env(void)
 {
 	int err;
-	struct voluta_fs_args args;
-	struct voluta_fs_env *fse = NULL;
+	struct voluta_fs_env *fse = voluta_fse_inst();
+	const char *volume = voluta_globals.cmd.mount.volume;
 
-	mount_setup_fs_args(&args);
-	voluta_init_fs_env();
-	fse = voluta_fs_env_inst();
-	err = voluta_fse_setargs(fse, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
 	err = voluta_fse_verify(fse);
 	if (err == -EUCLEAN) {
-		voluta_die(0, "not a voluta volume: %s", args.volume);
+		voluta_die(0, "not a voluta volume: %s", volume);
 	} else if (err == -EKEYEXPIRED) {
-		voluta_die(0, "wrong passphrase: %s", args.volume);
+		voluta_die(0, "wrong passphrase: %s", volume);
 	} else if (err != 0) {
-		voluta_die(err, "illegal volume: %s", args.volume);
+		voluta_die(err, "illegal volume: %s", volume);
 	}
 }
 
@@ -337,7 +333,10 @@ void voluta_execute_mount(void)
 	mount_boostrap_process();
 
 	/* Setup environment instance */
-	mount_create_setup_env();
+	mount_create_fs_env();
+
+	/* Re-verify input arguments */
+	mount_verify_fs_env();
 
 	/* Report beginning-of-mount */
 	mount_trace_start();

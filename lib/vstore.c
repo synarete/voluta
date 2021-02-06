@@ -261,8 +261,8 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_ITNODE, off);
 }
 
-void voluta_vaddr_of_vnode(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
-			   size_t ag_index, size_t bn, size_t kbn)
+void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
+			size_t ag_index, size_t bn, size_t kbn)
 {
 	const loff_t lba = lba_by_ag(ag_index, bn);
 	const loff_t off = lba_kbn_to_off(lba, kbn);

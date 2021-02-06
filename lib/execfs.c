@@ -31,15 +31,19 @@
 struct voluta_fs_core {
 	struct voluta_qalloc    qalloc;
 	struct voluta_mpool     mpool;
-	struct voluta_sb_info   sbi;
-	struct voluta_fuseq     fuseq;
 	struct voluta_cache     cache;
 	struct voluta_vstore    vstore;
+	struct voluta_sb_info   sbi;
 };
 
 union voluta_fs_core_u {
 	struct voluta_fs_core c;
 	uint8_t dat[ROUND_TO_HK(sizeof(struct voluta_fs_core))];
+};
+
+union voluta_fuseq_page {
+	struct voluta_fuseq     fuseq;
+	uint8_t page[VOLUTA_PAGE_SIZE];
 };
 
 struct voluta_fs_env_obj {
@@ -75,12 +79,12 @@ static void fse_init_commons(struct voluta_fs_env *fse)
 	fse->signum = 0;
 }
 
-static int fse_init_qalloc(struct voluta_fs_env *fse, size_t memwant)
+static int fse_init_qalloc(struct voluta_fs_env *fse)
 {
 	int err;
 	struct voluta_qalloc *qalloc = &fse_obj_of(fse)->fs_core.c.qalloc;
 
-	err = voluta_qalloc_init2(qalloc, memwant);
+	err = voluta_qalloc_init2(qalloc, fse->args.memwant);
 	if (!err) {
 		fse->qalloc = qalloc;
 		fse->qalloc->mode = fse->args.pedantic;
@@ -188,32 +192,184 @@ static void fse_fini_vstore(struct voluta_fs_env *fse)
 	}
 }
 
+static union voluta_fuseq_page *fuseq_to_page(struct voluta_fuseq *fuseq)
+{
+	return container_of(fuseq, union voluta_fuseq_page, fuseq);
+}
+
 static int fse_init_fuseq(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_fuseq *fuseq = &fse_obj_of(fse)->fs_core.c.fuseq;
+	void *mem;
+	union voluta_fuseq_page *fuseq_pg = NULL;
+	const size_t fuseq_pg_size = sizeof(*fuseq_pg);
 
-	err = voluta_fuseq_init(fuseq, fse->sbi);
-	if (!err) {
-		fse->fuseq = fuseq;
+	STATICASSERT_EQ(sizeof(*fuseq_pg), VOLUTA_PAGE_SIZE);
+
+	if (!fse->args.with_fuseq) {
+		return 0;
 	}
-	return err;
+	mem = voluta_qalloc_malloc(fse->qalloc, fuseq_pg_size);
+	if (mem == NULL) {
+		log_warn("failed to allocate fuseq: size=%lu", fuseq_pg_size);
+		return -ENOMEM;
+	}
+	fuseq_pg = mem;
+	err = voluta_fuseq_init(&fuseq_pg->fuseq, fse->sbi);
+	if (err) {
+		voluta_qalloc_free(fse->qalloc, mem, fuseq_pg_size);
+		return err;
+	}
+	fse->fuseq = &fuseq_pg->fuseq;
+	return 0;
 }
 
 static void fse_fini_fuseq(struct voluta_fs_env *fse)
 {
+	union voluta_fuseq_page *fuseq_pg = NULL;
+
 	if (fse->fuseq != NULL) {
+		fuseq_pg = fuseq_to_page(fse->fuseq);
+
 		voluta_fuseq_fini(fse->fuseq);
 		fse->fuseq = NULL;
+
+		voluta_qalloc_free(fse->qalloc, fuseq_pg, sizeof(*fuseq_pg));
 	}
 }
 
-static int fse_init(struct voluta_fs_env *fse, size_t memwant)
+static void fse_update_qalloc(struct voluta_fs_env *fse,
+			      const struct voluta_fs_args *args)
+{
+	if (args->pedantic) {
+		fse->qalloc->mode = true;
+	}
+}
+
+static void fse_update_owner(struct voluta_fs_env *fse,
+			     const struct voluta_fs_args *args)
+{
+	const struct voluta_ucred ucred = {
+		.uid = args->uid,
+		.gid = args->gid,
+		.pid = args->pid,
+		.umask = args->umask
+	};
+
+	voluta_sbi_setowner(fse->sbi, &ucred);
+}
+
+static void fse_update_mount_flags(struct voluta_fs_env *fse,
+				   const struct voluta_fs_args *args)
+{
+	unsigned long ms_flag_with = 0;
+	unsigned long ms_flag_dont = 0;
+	struct voluta_sb_info *sbi = fse->sbi;
+
+	if (args->lazytime) {
+		ms_flag_with |= MS_LAZYTIME;
+	} else {
+		ms_flag_dont |= MS_LAZYTIME;
+	}
+	if (args->noexec) {
+		ms_flag_with |= MS_NOEXEC;
+	} else {
+		ms_flag_dont |= MS_NOEXEC;
+	}
+	if (args->nosuid) {
+		ms_flag_with |= MS_NOSUID;
+	} else {
+		ms_flag_dont |= MS_NOSUID;
+	}
+	if (args->nodev) {
+		ms_flag_with |= MS_NODEV;
+	} else {
+		ms_flag_dont |= MS_NODEV;
+	}
+	if (args->rdonly) {
+		ms_flag_with |= MS_RDONLY;
+	} else {
+		ms_flag_dont |= MS_RDONLY;
+	}
+	sbi->sb_ms_flags |= ms_flag_with;
+	sbi->sb_ms_flags &= ~ms_flag_dont;
+}
+
+static int fse_check_args(const struct voluta_fs_args *args)
+{
+	int err;
+	struct voluta_passphrase passph;
+
+	/* TODO: check more */
+	if (args->encrypted || args->encryptwr || args->passwd) {
+		err = voluta_passphrase_setup(&passph, args->passwd);
+		if (err) {
+			return err;
+		}
+	}
+	return 0;
+}
+
+static int fse_copy_args(struct voluta_fs_env *fse,
+			 const struct voluta_fs_args *args)
+{
+	int err;
+	struct voluta_passphrase *passph = &fse->passph;
+
+	/* TODO: check more */
+	if (args->encrypted || args->encryptwr || args->passwd) {
+		err = voluta_passphrase_setup(passph, args->passwd);
+		if (err) {
+			return err;
+		}
+	}
+	/* TODO: maybe strdup? */
+	memcpy(&fse->args, args, sizeof(fse->args));
+	return 0;
+}
+
+static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
+{
+	enum voluta_flags ctl_flags = 0;
+
+	if (args->encrypted || args->encryptwr) {
+		if (args->encrypted) {
+			ctl_flags |= VOLUTA_F_ENCRYPTED;
+		}
+		if (args->encryptwr) {
+			ctl_flags |= VOLUTA_F_ENCRYPTWR;
+		}
+	}
+	if (args->spliced) {
+		ctl_flags |= VOLUTA_F_SPLICED;
+	}
+	return ctl_flags;
+}
+
+static int fse_update_by_args(struct voluta_fs_env *fse)
+{
+	const struct voluta_fs_args *args = &fse->args;
+	const enum voluta_flags ctl_flags = fs_args_to_ctlflags(args);
+
+	fse_update_owner(fse, args);
+	fse_update_mount_flags(fse, args);
+	fse_update_qalloc(fse, args);
+	voluta_vstore_add_ctlflags(fse->vstore, ctl_flags);
+	voluta_sbi_add_ctlflags(fse->sbi, ctl_flags);
+	return 0;
+}
+
+static int fse_init(struct voluta_fs_env *fse,
+		    const struct voluta_fs_args *args)
 {
 	int err;
 
 	fse_init_commons(fse);
-	err = fse_init_qalloc(fse, memwant);
+	err = fse_copy_args(fse, args);
+	if (err) {
+		return err;
+	}
+	err = fse_init_qalloc(fse);
 	if (err) {
 		return err;
 	}
@@ -241,6 +397,10 @@ static int fse_init(struct voluta_fs_env *fse, size_t memwant)
 	if (err) {
 		return err;
 	}
+	err = fse_update_by_args(fse);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
@@ -263,13 +423,18 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_commons(fse);
 }
 
-int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse)
+int voluta_fse_new(const struct voluta_fs_args *args,
+		   struct voluta_fs_env **out_fse)
 {
 	int err;
 	void *mem = NULL;
 	struct voluta_fs_env *fse = NULL;
 	struct voluta_fs_env_obj *fse_obj = NULL;
 
+	err = fse_check_args(args);
+	if (err) {
+		return err;
+	}
 	err = voluta_zalloc_aligned(sizeof(*fse_obj), &mem);
 	if (err) {
 		return err;
@@ -277,7 +442,7 @@ int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse)
 	fse_obj = mem;
 	fse = &fse_obj->fs_env;
 
-	err = fse_init(fse, memwant);
+	err = fse_init(fse, args);
 	if (err) {
 		fse_fini(fse);
 		free(mem);
@@ -498,123 +663,14 @@ int voluta_fse_term(struct voluta_fs_env *fse)
 void voluta_fse_halt(struct voluta_fs_env *fse, int signum)
 {
 	fse->signum = signum;
-	fse->fuseq->fq_active = 0;
+	if (fse->fuseq != NULL) {
+		fse->fuseq->fq_active = 0;
+	}
 }
 
 int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 {
 	return fse_flush_dirty(fse, true);
-}
-
-static void fse_update_qalloc(struct voluta_fs_env *fse,
-			      const struct voluta_fs_args *args)
-{
-	if (args->pedantic) {
-		fse->qalloc->mode = true;
-	}
-}
-
-static void fse_update_owner(struct voluta_fs_env *fse,
-			     const struct voluta_fs_args *args)
-{
-	const struct voluta_ucred ucred = {
-		.uid = args->uid,
-		.gid = args->gid,
-		.pid = args->pid,
-		.umask = args->umask
-	};
-
-	voluta_sbi_setowner(fse->sbi, &ucred);
-}
-
-static void fse_update_mount_flags(struct voluta_fs_env *fse,
-				   const struct voluta_fs_args *args)
-{
-	unsigned long ms_flag_with = 0;
-	unsigned long ms_flag_dont = 0;
-	struct voluta_sb_info *sbi = fse->sbi;
-
-	if (args->lazytime) {
-		ms_flag_with |= MS_LAZYTIME;
-	} else {
-		ms_flag_dont |= MS_LAZYTIME;
-	}
-	if (args->noexec) {
-		ms_flag_with |= MS_NOEXEC;
-	} else {
-		ms_flag_dont |= MS_NOEXEC;
-	}
-	if (args->nosuid) {
-		ms_flag_with |= MS_NOSUID;
-	} else {
-		ms_flag_dont |= MS_NOSUID;
-	}
-	if (args->nodev) {
-		ms_flag_with |= MS_NODEV;
-	} else {
-		ms_flag_dont |= MS_NODEV;
-	}
-	if (args->rdonly) {
-		ms_flag_with |= MS_RDONLY;
-	} else {
-		ms_flag_dont |= MS_RDONLY;
-	}
-	sbi->sb_ms_flags |= ms_flag_with;
-	sbi->sb_ms_flags &= ~ms_flag_dont;
-}
-
-static int fse_check_copy_args(struct voluta_fs_env *fse,
-			       const struct voluta_fs_args *args)
-{
-	int err;
-	struct voluta_passphrase *passph = &fse->passph;
-
-	/* TODO: check more */
-	if (args->encrypted || args->encryptwr || args->passwd) {
-		err = voluta_passphrase_setup(passph, args->passwd);
-		if (err) {
-			return err;
-		}
-	}
-
-	/* TODO: maybe strdup? */
-	memcpy(&fse->args, args, sizeof(fse->args));
-	return 0;
-}
-
-static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
-{
-	enum voluta_flags ctl_flags = 0;
-
-	if (args->encrypted || args->encryptwr) {
-		if (args->encrypted) {
-			ctl_flags |= VOLUTA_F_ENCRYPTED;
-		}
-		if (args->encryptwr) {
-			ctl_flags |= VOLUTA_F_ENCRYPTWR;
-		}
-	}
-	if (args->spliced) {
-		ctl_flags |= VOLUTA_F_SPLICED;
-	}
-	return ctl_flags;
-}
-
-int voluta_fse_setargs(struct voluta_fs_env *fse,
-		       const struct voluta_fs_args *args)
-{
-	int err;
-	const enum voluta_flags ctl_flags = fs_args_to_ctlflags(args);
-
-	err = fse_check_copy_args(fse, args);
-	if (!err) {
-		fse_update_owner(fse, args);
-		fse_update_mount_flags(fse, args);
-		fse_update_qalloc(fse, args);
-		voluta_vstore_add_ctlflags(fse->vstore, ctl_flags);
-		voluta_sbi_add_ctlflags(fse->sbi, ctl_flags);
-	}
-	return err;
 }
 
 void voluta_fse_stats(const struct voluta_fs_env *fse,
@@ -1020,6 +1076,9 @@ int voluta_fse_serve(struct voluta_fs_env *fse)
 	const char *volume = fse->args.volume;
 	const char *mntpath = fse->args.mountp;
 
+	if (!fse->args.with_fuseq || (fse->fuseq == NULL)) {
+		return -EINVAL;
+	}
 	err = voluta_fse_reload(fse);
 	if (err) {
 		log_err("load-fs error: %s %d", volume, err);

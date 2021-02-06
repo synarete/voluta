@@ -386,8 +386,12 @@ enum voluta_kdf_algos {
 	VOLUTA_KDF_SCRYPT       = 48
 };
 
+/* memory page size */
 #define VOLUTA_PAGE_SHIFT       (12)
 #define VOLUTA_PAGE_SIZE        (1U << VOLUTA_PAGE_SHIFT)
+
+#define VOLUTA_PAGE_SHIFT_MAX   (16)
+#define VOLUTA_PAGE_SIZE_MAX    (1U << VOLUTA_PAGE_SHIFT_MAX)
 
 /* minimal required size for system LEVELx_CACHE_LINESIZE */
 #define VOLUTA_CACHELINE_SHIFT  (6)

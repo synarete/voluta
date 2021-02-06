@@ -22,17 +22,8 @@
 #include <limits.h>
 #include "libvoluta.h"
 
-static void bki_init(struct voluta_bk_info *bki, struct voluta_block *bk);
-static void bki_fini(struct voluta_bk_info *bki);
-static void bki_incref(struct voluta_bk_info *bki);
-static void bki_decref(struct voluta_bk_info *bki);
-static void vi_init(struct voluta_vnode_info *vi);
-static void vi_fini(struct voluta_vnode_info *vi);
-static void ii_init(struct voluta_inode_info *ii);
-static void ii_fini(struct voluta_inode_info *ii);
+
 static void cache_evict_some(struct voluta_cache *cache);
-static struct voluta_inode_info *
-ii_from_vi(const struct voluta_vnode_info *vi);
 
 typedef int (*voluta_cache_elem_fn)(struct voluta_cache_elem *, void *);
 
@@ -297,11 +288,65 @@ static bool ce_is_evictable(const struct voluta_cache_elem *ce)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_bk_info *bki_from_ce(const struct voluta_cache_elem *ce)
+{
+	const struct voluta_bk_info *bki = NULL;
+
+	if (ce != NULL) {
+		bki = container_of2(ce, struct voluta_bk_info, bki_ce);
+	}
+	return unconst(bki);
+}
+
+static struct voluta_cache_elem *bki_ce(const struct voluta_bk_info *bki)
+{
+	const struct voluta_cache_elem *ce = &bki->bki_ce;
+
+	return unconst(ce);
+}
+
+static void bki_set_lba(struct voluta_bk_info *bki, loff_t lba)
+{
+	bki->bk_lba = lba;
+}
+
+static void bki_init(struct voluta_bk_info *bki, struct voluta_block *bk)
+{
+	ce_init(&bki->bki_ce);
+	bki_set_lba(bki, VOLUTA_LBA_NULL);
+	bki->bk_mask = 0;
+	bki->bk = bk;
+}
+
+static void bki_fini(struct voluta_bk_info *bki)
+{
+	ce_fini(&bki->bki_ce);
+	bki_set_lba(bki, VOLUTA_LBA_NULL);
+	bki->bk = NULL;
+}
+
+static void bki_incref(struct voluta_bk_info *bki)
+{
+	ce_incref(bki_ce(bki));
+}
+
+static void bki_decref(struct voluta_bk_info *bki)
+{
+	ce_decref(bki_ce(bki));
+}
+
+static bool bki_is_evictable(const struct voluta_bk_info *bki)
+{
+	return ce_is_evictable(bki_ce(bki));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static struct voluta_vnode_info *vi_from_ce(const struct voluta_cache_elem *ce)
 {
 	const struct voluta_vnode_info *vi = NULL;
 
-	if (ce != NULL) {
+	if (likely(ce != NULL)) {
 		vi = container_of2(ce, struct voluta_vnode_info, v_ce);
 	}
 	return unconst(vi);
@@ -434,27 +479,6 @@ static void vi_detach_pvi(struct voluta_vnode_info *vi)
 	}
 }
 
-static void vi_setup_ds_key(struct voluta_vnode_info *vi,
-			    const struct voluta_inode_info *pii)
-{
-	ino_t ino = VOLUTA_INO_NULL;
-	const enum voluta_vtype vtype = vi_vtype(vi);
-
-	if (pii != NULL) {
-		ino = ii_ino(pii);
-	} else if (vtype_isinode(vtype)) {
-		ino = ii_ino(ii_from_vi(vi));
-		voluta_assert_gt(ino, VOLUTA_INO_NULL);
-		voluta_assert_lt(ino, VOLUTA_INO_MAX);
-	}
-
-	if (ino_isnull(ino)) {
-		vi->v_ds_key = 0;
-	} else {
-		vi->v_ds_key = (long)ino;
-	}
-}
-
 static void vi_detach_all(struct voluta_vnode_info *vi)
 {
 	vi_detach_pvi(vi);
@@ -477,7 +501,7 @@ static struct voluta_inode_info *ii_from_vi(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_inode_info *ii = NULL;
 
-	if (vi != NULL) {
+	if (likely(vi != NULL)) {
 		ii = container_of2(vi, struct voluta_inode_info, i_vi);
 	}
 	return unconst(ii);
@@ -522,60 +546,6 @@ static void ii_assign(struct voluta_inode_info *ii,
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 {
 	return !ii->i_nopen && vi_is_evictable(ii_vi(ii));
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static struct voluta_bk_info *bki_from_ce(const struct voluta_cache_elem *ce)
-{
-	const struct voluta_bk_info *bki = NULL;
-
-	if (ce != NULL) {
-		bki = container_of2(ce, struct voluta_bk_info, bki_ce);
-	}
-	return unconst(bki);
-}
-
-static struct voluta_cache_elem *bki_ce(const struct voluta_bk_info *bki)
-{
-	const struct voluta_cache_elem *ce = &bki->bki_ce;
-
-	return unconst(ce);
-}
-
-static void bki_set_lba(struct voluta_bk_info *bki, loff_t lba)
-{
-	bki->bk_lba = lba;
-}
-
-static void bki_init(struct voluta_bk_info *bki, struct voluta_block *bk)
-{
-	ce_init(&bki->bki_ce);
-	bki_set_lba(bki, VOLUTA_LBA_NULL);
-	bki->bk_mask = 0;
-	bki->bk = bk;
-}
-
-static void bki_fini(struct voluta_bk_info *bki)
-{
-	ce_fini(&bki->bki_ce);
-	bki_set_lba(bki, VOLUTA_LBA_NULL);
-	bki->bk = NULL;
-}
-
-static void bki_incref(struct voluta_bk_info *bki)
-{
-	ce_incref(bki_ce(bki));
-}
-
-static void bki_decref(struct voluta_bk_info *bki)
-{
-	ce_decref(bki_ce(bki));
-}
-
-static bool bki_is_evictable(const struct voluta_bk_info *bki)
-{
-	return ce_is_evictable(bki_ce(bki));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1445,16 +1415,14 @@ void voulta_cache_forget_vi(struct voluta_cache *cache,
 	}
 }
 
-void voluta_attach_to(struct voluta_vnode_info *vi,
-		      struct voluta_bk_info *bki,
-		      struct voluta_vnode_info *pvi,
-		      struct voluta_inode_info *pii)
+void voluta_vi_attach_to(struct voluta_vnode_info *vi,
+			 struct voluta_bk_info *bki,
+			 struct voluta_vnode_info *pvi)
 {
 	voluta_assert_null(vi->v_bki);
 
 	vi_attach_bk(vi, bki);
 	vi_attach_pvi(vi, pvi);
-	vi_setup_ds_key(vi, pii);
 }
 
 static struct voluta_vnode_info *cache_get_lru_vi(struct voluta_cache *cache)

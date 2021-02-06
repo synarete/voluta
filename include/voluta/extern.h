@@ -63,6 +63,41 @@ enum voluta_ztype voluta_zb_type(const struct voluta_zero_block4 *zb);
 
 enum voluta_zbf voluta_zb_flags(const struct voluta_zero_block4 *zb);
 
+/* file-system */
+int voluta_fse_new(const struct voluta_fs_args *args,
+		   struct voluta_fs_env **out_fse);
+
+void voluta_fse_del(struct voluta_fs_env *fse);
+
+int voluta_fse_reload(struct voluta_fs_env *fse);
+
+int voluta_fse_format(struct voluta_fs_env *fse);
+
+int voluta_fse_traverse(struct voluta_fs_env *fse);
+
+int voluta_fse_serve(struct voluta_fs_env *fse);
+
+int voluta_fse_verify(struct voluta_fs_env *fse);
+
+int voluta_fse_term(struct voluta_fs_env *fse);
+
+void voluta_fse_halt(struct voluta_fs_env *fse, int signum);
+
+int voluta_fse_sync_drop(struct voluta_fs_env *fse);
+
+void voluta_fse_stats(const struct voluta_fs_env *fse,
+		      struct voluta_fs_stats *st);
+
+/* archiver */
+int voluta_archiver_new(const struct voluta_ar_args *args,
+			struct voluta_archiver **out_arc);
+
+void voluta_archiver_del(struct voluta_archiver *arc);
+
+int voluta_archiver_export(struct voluta_archiver *arc);
+
+int voluta_archiver_import(struct voluta_archiver *arc);
+
 /* mount-service */
 struct voluta_ms_env;
 
@@ -85,45 +120,5 @@ int voluta_rpc_umount(const char *mountpoint,
 		      uid_t uid, gid_t gid, int mnt_flags);
 
 long voluta_fuse_super_magic(void);
-
-/* file-system */
-int voluta_fse_new(size_t memwant, struct voluta_fs_env **out_fse);
-
-void voluta_fse_del(struct voluta_fs_env *fse);
-
-int voluta_fse_reload(struct voluta_fs_env *fse);
-
-int voluta_fse_format(struct voluta_fs_env *fse);
-
-int voluta_fse_traverse(struct voluta_fs_env *fse);
-
-int voluta_fse_serve(struct voluta_fs_env *fse);
-
-int voluta_fse_verify(struct voluta_fs_env *fse);
-
-int voluta_fse_term(struct voluta_fs_env *fse);
-
-void voluta_fse_halt(struct voluta_fs_env *fse, int signum);
-
-int voluta_fse_sync_drop(struct voluta_fs_env *fse);
-
-int voluta_fse_setargs(struct voluta_fs_env *fse,
-		       const struct voluta_fs_args *args);
-
-void voluta_fse_stats(const struct voluta_fs_env *fse,
-		      struct voluta_fs_stats *st);
-
-/* archiver */
-int voluta_archiver_new(size_t memwant, struct voluta_archiver **out_arc);
-
-void voluta_archiver_del(struct voluta_archiver *arc);
-
-int voluta_archiver_setargs(struct voluta_archiver *arc,
-			    const struct voluta_ar_args *args);
-
-int voluta_archiver_export(struct voluta_archiver *arc);
-
-int voluta_archiver_import(struct voluta_archiver *arc);
-
 
 #endif /* VOLUTA_EXTERN_H_ */

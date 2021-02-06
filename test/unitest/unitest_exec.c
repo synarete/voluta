@@ -216,11 +216,11 @@ void ut_execute_tests(void)
 	char *volpath = ut_joinpath(ut_globals.test_dir_real, "ut.voluta");
 	struct ut_env *ute = ute_new();
 
+	ute->fs_args.memwant = UT_GIGA;
 	ute->fs_args.volume = volpath;
 	ute->fs_args.encrypted = (ut_globals.encrypt_mode > 0);
 	ute->fs_args.encryptwr = (ut_globals.encrypt_mode > 0);
 	ute->fs_args.spliced = (ut_globals.spliced_mode > 0);
-	ute->ar_args.volume = volpath;
 	ute->ar_args.blobsdir = ut_globals.test_dir_real;
 	ute->ar_args.arcname = "ut_archive.voluta";
 	ute->tname = ut_globals.test_name;
@@ -406,24 +406,12 @@ static void ute_fini(struct ut_env *ute)
 static void ute_setup(struct ut_env *ute)
 {
 	int err;
-	size_t mem_want = VOLUTA_GIGA;
-	struct voluta_fs_env *fse = NULL;
-	struct voluta_archiver *arc = NULL;
 
-	err = voluta_fse_new(mem_want, &fse);
+	err = voluta_fse_new(&ute->fs_args, &ute->fse);
 	voluta_assert_ok(err);
 
-	err = voluta_fse_setargs(fse, &ute->fs_args);
+	err = voluta_archiver_new(&ute->ar_args, &ute->arc);
 	voluta_assert_ok(err);
-
-	err = voluta_archiver_new(mem_want, &arc);
-	voluta_assert_ok(err);
-
-	err = voluta_archiver_setargs(arc, &ute->ar_args);
-	voluta_assert_ok(err);
-
-	ute->fse = fse;
-	ute->arc = arc;
 }
 
 static struct ut_env *ute_new(void)

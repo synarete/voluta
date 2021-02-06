@@ -77,7 +77,8 @@ static int stage_agmap(struct voluta_sb_info *sbi, size_t ag_index,
 static int format_spmaps_at(struct voluta_sb_info *sbi,
 			    size_t hs_index, size_t nags);
 static int load_agmap(struct voluta_sb_info *sbi, size_t ag_index);
-static int fetch_parents(struct voluta_super_ctx *s_ctx);
+static int fetch_parents(struct voluta_super_ctx *s_ctx,
+			 const struct voluta_vaddr *vaddr);
 static int format_next_agmaps(struct voluta_sb_info *sbi,
 			      struct voluta_vnode_info *hsm_vi,
 			      size_t nags_want, size_t *out_nags_fmt);
@@ -1136,7 +1137,7 @@ static int agm_find_free_space(const struct voluta_agroup_map *agm,
 		return err;
 	}
 	ag_index = agm_index(agm);
-	voluta_vaddr_of_vnode(out_vaddr, vtype, ag_index, bn, kbn);
+	vaddr_by_ag(out_vaddr, vtype, ag_index, bn, kbn);
 	return 0;
 }
 
@@ -1494,9 +1495,10 @@ static int find_cached_bki(struct voluta_sb_info *sbi, loff_t lba,
 	return (*out_bki != NULL) ? 0 : -ENOENT;
 }
 
-static int find_cached_bki_of(struct voluta_super_ctx *s_ctx)
+static int find_cached_bki_of(struct voluta_super_ctx *s_ctx,
+			      const struct voluta_vaddr *vaddr)
 {
-	return find_cached_bki(s_ctx->sbi, s_ctx->vaddr->lba, &s_ctx->bki);
+	return find_cached_bki(s_ctx->sbi, vaddr->lba, &s_ctx->bki);
 }
 
 static size_t total_dirty_size(const struct voluta_sb_info *sbi)
@@ -1555,7 +1557,7 @@ static int fetch_bki(struct voluta_super_ctx *s_ctx)
 {
 	int err;
 
-	err = find_cached_bki_of(s_ctx);
+	err = find_cached_bki_of(s_ctx, s_ctx->vaddr);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
@@ -2012,13 +2014,27 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 	}
 }
 
+static void vi_assign_ds_key(struct voluta_vnode_info *vi,
+			     const struct voluta_inode_info *parent_ii)
+{
+	if (parent_ii != NULL) {
+		vi->v_ds_key = (long)ii_ino(parent_ii);
+	} else {
+		vi->v_ds_key = 0;
+	}
+}
+
 static void attach_vnode(const struct voluta_super_ctx *s_ctx)
 {
+	struct voluta_vnode_info *vi = s_ctx->vi;
+	struct voluta_inode_info *ii = s_ctx->ii;
+	struct voluta_inode_info *parent_ii = s_ctx->pii;
 	struct voluta_vnode_info *parent_vi =
 			s_ctx->agm_vi ? s_ctx->agm_vi : s_ctx->hsm_vi;
 
 	s_ctx->vi->v_sbi = s_ctx->sbi;
-	voluta_attach_to(s_ctx->vi, s_ctx->bki, parent_vi, s_ctx->pii);
+	voluta_vi_attach_to(vi, s_ctx->bki, parent_vi);
+	vi_assign_ds_key(vi, ii ? ii : parent_ii);
 }
 
 static int bind_vnode(struct voluta_super_ctx *s_ctx)
@@ -2093,7 +2109,7 @@ static int spawn_bind_vi(struct voluta_super_ctx *s_ctx)
 {
 	int err;
 
-	err = fetch_parents(s_ctx);
+	err = fetch_parents(s_ctx, s_ctx->vaddr);
 	if (err) {
 		return err;
 	}
@@ -2113,26 +2129,25 @@ static void forget_cached_vi(struct voluta_vnode_info *vi)
 	voulta_cache_forget_vi(vi_cache(vi), vi);
 }
 
-static int spawn_ii_now(struct voluta_super_ctx *s_ctx, bool expect_ok)
+static int spawn_ii_now(struct voluta_super_ctx *s_ctx,
+			const struct voluta_iaddr *iaddr, bool expect_ok)
 {
 	struct voluta_cache *cache = cache_of(s_ctx);
 
-	s_ctx->ii = voluta_cache_spawn_ii(cache, s_ctx->iaddr);
-	if (s_ctx->ii != NULL) {
-		return 0;
-	}
-	if (expect_ok) {
+	s_ctx->ii = voluta_cache_spawn_ii(cache, iaddr);
+	if ((s_ctx->ii == NULL) && expect_ok) {
 		log_dbg("can not spawn ii: nii=%lu dirty=%lu",
 			cache->c_ilm.htbl_size, total_dirty_size(s_ctx->sbi));
 	}
-	return -ENOMEM;
+	return (s_ctx->ii == NULL) ? -ENOMEM : 0;
 }
 
-static int spawn_ii(struct voluta_super_ctx *s_ctx)
+static int spawn_ii(struct voluta_super_ctx *s_ctx,
+		    const struct voluta_iaddr *iaddr)
 {
 	int err;
 
-	err = spawn_ii_now(s_ctx, false);
+	err = spawn_ii_now(s_ctx, iaddr, false);
 	if (!err) {
 		return 0;
 	}
@@ -2140,7 +2155,7 @@ static int spawn_ii(struct voluta_super_ctx *s_ctx)
 	if (err) {
 		return err;
 	}
-	err = spawn_ii_now(s_ctx, true);
+	err = spawn_ii_now(s_ctx, iaddr, true);
 	if (err) {
 		return err;
 	}
@@ -2148,15 +2163,16 @@ static int spawn_ii(struct voluta_super_ctx *s_ctx)
 	return 0;
 }
 
-static int spawn_bind_ii(struct voluta_super_ctx *s_ctx)
+static int spawn_bind_ii(struct voluta_super_ctx *s_ctx,
+			 const struct voluta_iaddr *iaddr)
 {
 	int err;
 
-	err = fetch_parents(s_ctx);
+	err = fetch_parents(s_ctx, &iaddr->vaddr);
 	if (err) {
 		return err;
 	}
-	err = spawn_ii(s_ctx);
+	err = spawn_ii(s_ctx, iaddr);
 	if (err) {
 		return err;
 	}
@@ -2176,7 +2192,7 @@ static int find_cached_bki_or_spawn(struct voluta_super_ctx *s_ctx)
 {
 	int err;
 
-	err = find_cached_bki_of(s_ctx);
+	err = find_cached_bki_of(s_ctx, s_ctx->vaddr);
 	if (err) {
 		err = spawn_bki(s_ctx);
 	}
@@ -2714,38 +2730,11 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int traverse_by_view_at(struct voluta_sb_info *sbi,
-			       const struct voluta_bk_info *bki,
-			       const struct voluta_vaddr *vaddr)
-{
-	int err;
-	ino_t ino;
-	const struct voluta_view *view = NULL;
-	struct voluta_inode_info *ii = NULL;
-	struct voluta_vnode_info *vi = NULL;
-
-	view = view_at(bki, vaddr->off);
-	if (vtype_isinode(vaddr->vtype)) {
-		ino = voluta_inode_ino(&view->u.inode);
-		err = voluta_fetch_inode(sbi, ino, &ii);
-		if (err) {
-			return err;
-		}
-		ii_dirtify(ii);
-	} else {
-		err = voluta_fetch_vnode(sbi, vaddr, NULL, &vi);
-		if (err) {
-			return err;
-		}
-		vi_dirtify(vi);
-	}
-	return 0;
-}
-
 static int traverse_by_vaddr(struct voluta_sb_info *sbi,
 			     const struct voluta_vaddr *vaddr)
 {
 	int err;
+	struct voluta_vnode_info *vi = NULL;
 	struct voluta_super_ctx s_ctx = {
 		.sbi = sbi,
 		.vaddr = &s_ctx.via.vaddr
@@ -2756,10 +2745,11 @@ static int traverse_by_vaddr(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = traverse_by_view_at(sbi, s_ctx.bki, vaddr);
+	err = voluta_fetch_vnode(sbi, vaddr, NULL, &vi);
 	if (err) {
 		return err;
 	}
+	vi_dirtify(vi);
 	return 0;
 }
 
@@ -2767,13 +2757,15 @@ static int traverse_by_balloc_info(struct voluta_super_ctx *s_ctx,
 				   const struct voluta_balloc_info *bai)
 {
 	int err;
+	struct voluta_vaddr vaddr;
 	const struct voluta_vnode_info *agm_vi = s_ctx->agm_vi;
 	const size_t ag_index = agm_index(agm_vi->vu.agm);
 
 	for (size_t i = 0; i < bai->cnt; ++i) {
-		voluta_vaddr_of_vnode(s_ctx->vaddr, bai->vtype,
-				      ag_index, bai->bn, bai->kbn[i]);
-		err = traverse_by_vaddr(s_ctx->sbi, s_ctx->vaddr);
+		vaddr_by_ag(&vaddr, bai->vtype,
+			    ag_index, bai->bn, bai->kbn[i]);
+
+		err = traverse_by_vaddr(s_ctx->sbi, &vaddr);
 		if (err) {
 			return err;
 		}
@@ -3122,16 +3114,17 @@ void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int fetch_agmap_of(struct voluta_super_ctx *s_ctx)
+static int stage_agmap_of(struct voluta_sb_info *sbi,
+			  const struct voluta_vaddr *vaddr,
+			  struct voluta_vnode_info **out_vi)
 {
-	int err;
-	const size_t ag_index = vaddr_ag_index(s_ctx->vaddr);
+	return stage_agmap(sbi, vaddr_ag_index(vaddr), out_vi);
+}
 
-	err = stage_agmap(s_ctx->sbi, ag_index, &s_ctx->agm_vi);
-	if (err) {
-		return err;
-	}
-	return 0;
+static int fetch_agmap_of(struct voluta_super_ctx *s_ctx,
+			  const struct voluta_vaddr *vaddr)
+{
+	return stage_agmap_of(s_ctx->sbi, vaddr, &s_ctx->agm_vi);
 }
 
 static int require_stable(const struct voluta_super_ctx *s_ctx)
@@ -3141,19 +3134,19 @@ static int require_stable(const struct voluta_super_ctx *s_ctx)
 	return  vtype_isequal(vtype, s_ctx->vaddr->vtype) ? 0 : -EFSCORRUPTED;
 }
 
-static int fetch_parents(struct voluta_super_ctx *s_ctx)
+static int fetch_parents(struct voluta_super_ctx *s_ctx,
+			 const struct voluta_vaddr *vaddr)
 {
 	int err;
-	const enum voluta_vtype vtype = s_ctx->vaddr->vtype;
 
 	err = fetch_bki(s_ctx);
 	if (err) {
 		return err;
 	}
-	if (vtype_isumap(vtype)) {
+	if (vtype_isumap(vaddr->vtype)) {
 		return 0;
 	}
-	err = fetch_agmap_of(s_ctx);
+	err = fetch_agmap_of(s_ctx, vaddr);
 	if (err) {
 		return err;
 	}
@@ -3311,7 +3304,7 @@ static int spawn_vnode(struct voluta_super_ctx *s_ctx)
 {
 	int err;
 
-	err = fetch_parents(s_ctx);
+	err = fetch_parents(s_ctx, s_ctx->vaddr);
 	if (err) {
 		return err;
 	}
@@ -3322,9 +3315,10 @@ static int spawn_vnode(struct voluta_super_ctx *s_ctx)
 	return 0;
 }
 
-static int find_cached_ii(struct voluta_super_ctx *s_ctx)
+static int find_cached_ii(struct voluta_super_ctx *s_ctx,
+			  const struct voluta_iaddr *iaddr)
 {
-	s_ctx->ii = voluta_cache_lookup_ii(cache_of(s_ctx), s_ctx->iaddr);
+	s_ctx->ii = voluta_cache_lookup_ii(cache_of(s_ctx), iaddr);
 	return (s_ctx->ii != NULL) ? 0 : -ENOENT;
 }
 
@@ -3347,11 +3341,11 @@ static int fetch_inode_at(struct voluta_super_ctx *s_ctx,
 	int err;
 
 	iaddr_copyto(iaddr, s_ctx->iaddr);
-	err = find_cached_ii(s_ctx);
+	err = find_cached_ii(s_ctx, iaddr);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bind_ii(s_ctx);
+	err = spawn_bind_ii(s_ctx, iaddr);
 	if (err) {
 		return err;
 	}
@@ -3557,17 +3551,24 @@ static int require_supported_itype(mode_t mode)
 	return (((mode & S_IFMT) | sup) == sup) ? 0 : -ENOTSUP;
 }
 
-static int acquire_ino(struct voluta_super_ctx *s_ctx)
+static int acquire_ino(struct voluta_super_ctx *s_ctx,
+		       struct voluta_iaddr *out_iaddr)
 {
 	int err;
-	struct voluta_vnode_info *hsm_vi;
+	struct voluta_vnode_info *hsm_vi = NULL;
+	struct voluta_vnode_info *agm_vi = NULL;
 	struct voluta_sb_info *sbi = s_ctx->sbi;
+	const struct voluta_vaddr *vaddr = &out_iaddr->vaddr;
 
-	err = voluta_acquire_ino(sbi, s_ctx->iaddr);
+	err = voluta_acquire_ino(sbi, out_iaddr);
 	if (err) {
 		return err;
 	}
-	err = stage_hsmap_of(sbi, &s_ctx->iaddr->vaddr, &hsm_vi);
+	err = stage_hsmap_of(sbi, vaddr, &hsm_vi);
+	if (err) {
+		return err;
+	}
+	err = stage_agmap_of(sbi, vaddr, &agm_vi);
 	if (err) {
 		return err;
 	}
@@ -3593,11 +3594,11 @@ static int create_inode(struct voluta_super_ctx *s_ctx,
 	if (err) {
 		return err;
 	}
-	err = acquire_ino(s_ctx);
+	err = acquire_ino(s_ctx, s_ctx->iaddr);
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_ii(s_ctx);
+	err = spawn_bind_ii(s_ctx, s_ctx->iaddr);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;
@@ -3787,7 +3788,7 @@ int voluta_probe_unwritten(struct voluta_sb_info *sbi,
 	};
 
 	vaddr_copyto(vaddr, s_ctx.vaddr);
-	err = fetch_agmap_of(&s_ctx);
+	err = fetch_agmap_of(&s_ctx, s_ctx.vaddr);
 	if (err) {
 		return err;
 	}
@@ -3800,17 +3801,11 @@ int voluta_clear_unwritten(struct voluta_sb_info *sbi,
 {
 	int err;
 	struct voluta_vnode_info *agm_vi = NULL;
-	struct voluta_super_ctx s_ctx = {
-		.sbi = sbi,
-		.vaddr = &s_ctx.via.vaddr
-	};
 
-	vaddr_copyto(vaddr, s_ctx.vaddr);
-	err = fetch_agmap_of(&s_ctx);
+	err = stage_agmap_of(sbi, vaddr, &agm_vi);
 	if (err) {
 		return err;
 	}
-	agm_vi = s_ctx.agm_vi;
 	if (has_unwritten_at(agm_vi, vaddr)) {
 		clear_unwritten_at(agm_vi, vaddr);
 		vi_dirtify(agm_vi);

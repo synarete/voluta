@@ -19,7 +19,7 @@
 
 static void export_finalize(void)
 {
-	voluta_fini_archiver_inst();
+	voluta_destroy_arc_inst();
 	voluta_delpass(&voluta_globals.cmd.export.passphrase);
 	voluta_pfree_string(&voluta_globals.cmd.export.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.export.volume_name);
@@ -64,29 +64,23 @@ static void export_setup_check_params(void)
 	export_setup_check_pass();
 }
 
-static void export_create_setup_env(void)
+static void export_create_arc_inst(void)
 {
-	int err;
-	struct voluta_archiver *arc = NULL;
 	struct voluta_ar_args args = {
 		.passph = voluta_globals.cmd.export.passphrase,
 		.volume = voluta_globals.cmd.export.volume_real,
 		.blobsdir = voluta_globals.cmd.export.archive_real,
 		.arcname = voluta_globals.cmd.export.volume_name,
+		.memwant = 4 * VOLUTA_GIGA /* TODO: from command line */
 	};
 
-	voluta_init_archiver_inst();
-	arc = voluta_archiver_inst();
-	err = voluta_archiver_setargs(arc, &args);
-	if (err) {
-		voluta_die(err, "illegal params");
-	}
+	voluta_create_arc_inst(&args);
 }
 
 static void export_run(void)
 {
 	int err;
-	struct voluta_archiver *arc = voluta_archiver_inst();
+	struct voluta_archiver *arc = voluta_arc_inst();
 
 	err = voluta_archiver_export(arc);
 	if (err) {
@@ -105,7 +99,7 @@ void voluta_execute_export(void)
 	export_setup_check_params();
 
 	/* Setup environment instance */
-	export_create_setup_env();
+	export_create_arc_inst();
 
 	/* Do actual export */
 	export_run();

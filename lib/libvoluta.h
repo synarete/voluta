@@ -317,8 +317,8 @@ void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, size_t ag_index);
 
 void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off);
 
-void voluta_vaddr_of_vnode(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
-			   size_t ag_index, size_t bn, size_t kbn);
+void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
+			size_t ag_index, size_t bn, size_t kbn);
 
 
 void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off);
@@ -989,10 +989,9 @@ bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
 
-void voluta_attach_to(struct voluta_vnode_info *vi,
-		      struct voluta_bk_info *bki,
-		      struct voluta_vnode_info *pvi,
-		      struct voluta_inode_info *pii);
+void voluta_vi_attach_to(struct voluta_vnode_info *vi,
+			 struct voluta_bk_info *bki,
+			 struct voluta_vnode_info *pvi);
 
 void voluta_vi_incref(struct voluta_vnode_info *vi);
 

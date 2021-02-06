@@ -498,15 +498,17 @@ struct voluta_fuseq {
 
 /* file-system arguments */
 struct voluta_fs_args {
-	const char *mountp;
 	const char *volume;
+	const char *mountp;
 	const char *fsname;
 	const char *passwd;
+	size_t memwant;
 	loff_t vsize;
 	uid_t  uid;
 	gid_t  gid;
 	pid_t  pid;
 	mode_t umask;
+	bool   with_fuseq;
 	bool   pedantic;
 	bool   encrypted;
 	bool   encryptwr;
@@ -577,6 +579,7 @@ struct voluta_ar_args {
 	const char *volume;
 	const char *blobsdir;
 	const char *arcname;
+	size_t memwant;
 };
 
 struct voluta_archiver {

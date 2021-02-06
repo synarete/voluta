@@ -74,6 +74,7 @@
 #define vaddr_ag_index(va)              voluta_vaddr_ag_index(va)
 #define vaddr_hs_index(va)              voluta_vaddr_hs_index(va)
 #define vaddr_setup(va, t, o)           voluta_vaddr_setup(va, t, o)
+#define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)

@@ -20,7 +20,7 @@
 
 static void fsck_finalize(void)
 {
-	voluta_fini_fs_env();
+	voluta_destrpy_fse_inst();
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

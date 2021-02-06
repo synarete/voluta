@@ -66,6 +66,7 @@ struct voluta_subcmd_mount {
 	char   *volume;
 	char   *volume_real;
 	char   *volume_clone;
+	char   *volume_active;
 	char   *point;
 	char   *point_real;
 	bool    encrypted;
@@ -350,23 +351,23 @@ void voluta_show_version_and_exit(const char *prog);
 void voluta_pretty_size(size_t n, char *buf, size_t bsz);
 
 /* singleton instances */
-void voluta_init_fs_env(void);
+void voluta_create_fse_inst(const struct voluta_fs_args *args);
 
-void voluta_fini_fs_env(void);
+void voluta_destrpy_fse_inst(void);
 
-struct voluta_fs_env *voluta_fs_env_inst(void);
+struct voluta_fs_env *voluta_fse_inst(void);
 
-void voluta_init_ms_env(void);
+void voluta_create_mse_inst(void);
 
-void voluta_fini_ms_env(void);
+void voluta_destroy_mse_inst(void);
 
 struct voluta_ms_env *voluta_ms_env_inst(void);
 
-void voluta_init_archiver_inst(void);
+void voluta_create_arc_inst(const struct voluta_ar_args *args);
 
-void voluta_fini_archiver_inst(void);
+void voluta_destroy_arc_inst(void);
 
-struct voluta_archiver *voluta_archiver_inst(void);
+struct voluta_archiver *voluta_arc_inst(void);
 
 
 /* signal call-back hook */

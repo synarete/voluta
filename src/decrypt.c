@@ -20,7 +20,7 @@
 
 static void decrypt_finalize(void)
 {
-	voluta_fini_fs_env();
+	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.decrypt.passphrase);
 	voluta_pfree_string(&voluta_globals.cmd.decrypt.volume_real);
 }
@@ -40,10 +40,8 @@ static void decrypt_setup_check_params(void)
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.decrypt.passphrase);
 }
 
-static void decrypt_create_setup_fs_env(void)
+static void decrypt_create_fs_env(void)
 {
-	int err;
-	struct voluta_fs_env *fse = NULL;
 	const struct voluta_fs_args args = {
 		.volume = voluta_globals.cmd.decrypt.volume,
 		.passwd = voluta_globals.cmd.decrypt.passphrase,
@@ -55,21 +53,15 @@ static void decrypt_create_setup_fs_env(void)
 		.umask = 0022,
 	};
 
-	voluta_init_fs_env();
-	fse = voluta_fs_env_inst();
-	err = voluta_fse_setargs(fse, &args);
-	if (err) {
-		voluta_die(err, "illegal decrypt params");
-	}
+	voluta_create_fse_inst(&args);
 }
 
-static void decrypt_apply_volume(void)
+static void decrypt_volume_inplace(void)
 {
 	int err;
-	struct voluta_fs_env *fse;
+	struct voluta_fs_env *fse = voluta_fse_inst();
 	const char *volume_path = voluta_globals.cmd.decrypt.volume;
 
-	fse = voluta_fs_env_inst();
 	err = voluta_fse_traverse(fse);
 	if (err) {
 		voluta_die(err, "decrypt failure: %s", volume_path);
@@ -87,10 +79,10 @@ void voluta_execute_decrypt(void)
 	decrypt_setup_check_params();
 
 	/* Prepare environment */
-	decrypt_create_setup_fs_env();
+	decrypt_create_fs_env();
 
 	/* Do actual decrypt */
-	decrypt_apply_volume();
+	decrypt_volume_inplace();
 
 	/* Post execution cleanups */
 	decrypt_finalize();

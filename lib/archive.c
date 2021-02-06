@@ -907,9 +907,10 @@ static void arc_fini_spec(struct voluta_archiver *arc)
 	}
 }
 
-static int arc_init(struct voluta_archiver *arc, size_t memwant)
+static int arc_init(struct voluta_archiver *arc)
 {
 	int err;
+	const size_t memwant = arc->ar_args.memwant;
 
 	arc->try_clone = 1;
 	voluta_kivam_init(&arc->ar_kivam);
@@ -947,7 +948,16 @@ static void arc_fini(struct voluta_archiver *arc)
 	voluta_kivam_fini(&arc->ar_kivam);
 }
 
-int voluta_archiver_new(size_t memwant, struct voluta_archiver **out_arc)
+static int arc_setargs(struct voluta_archiver *arc,
+		       const struct voluta_ar_args *args)
+{
+	/* TODO: check, strdup */
+	memcpy(&arc->ar_args, args, sizeof(arc->ar_args));
+	return 0;
+}
+
+int voluta_archiver_new(const struct voluta_ar_args *args,
+			struct voluta_archiver **out_arc)
 {
 	int err;
 	void *mem = NULL;
@@ -961,7 +971,12 @@ int voluta_archiver_new(size_t memwant, struct voluta_archiver **out_arc)
 	arc_obj = mem;
 	arc = &arc_obj->arc;
 
-	err = arc_init(arc, memwant);
+	err = arc_setargs(arc, args);
+	if (err) {
+		free(mem);
+		return err;
+	}
+	err = arc_init(arc);
 	if (err) {
 		arc_fini(arc);
 		free(mem);
@@ -982,14 +997,6 @@ void voluta_archiver_del(struct voluta_archiver *arc)
 	memset(arc_obj, 11, sizeof(*arc_obj));
 	free(arc_obj);
 	voluta_burnstack();
-}
-
-int voluta_archiver_setargs(struct voluta_archiver *arc,
-			    const struct voluta_ar_args *args)
-{
-	/* TODO: check, strdup */
-	memcpy(&arc->ar_args, args, sizeof(arc->ar_args));
-	return 0;
 }
 
 static int arc_open_for_export(struct voluta_archiver *arc, loff_t *out_vsize)
@@ -1315,9 +1322,8 @@ static int arc_rclone_blob(struct voluta_archiver *arc,
 {
 	int err;
 	const loff_t voff = bli->b_voff;
-	struct voluta_ar_blob *blob = bli->blob;
 	const size_t idx = bli->b_xbin;
-	const size_t bsz = sizeof(*blob);
+	const size_t bsz = sizeof(*bli->blob);
 	const char *name = bli->b_name.name;
 
 	if (!arc->try_clone) {

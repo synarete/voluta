@@ -850,29 +850,25 @@ static struct voluta_fs_env *g_fs_env_inst;
 static struct voluta_ms_env *g_ms_env_inst;
 static struct voluta_archiver *g_archiver_inst;
 
-static void require_no_inst(const void *inst)
+static void voluta_require_no_inst(const void *inst)
 {
 	if (inst != NULL) {
 		voluta_die(0, "internal error: singleton already at %p", inst);
 	}
 }
 
-void voluta_init_fs_env(void)
+void voluta_create_fse_inst(const struct voluta_fs_args *args)
 {
-	/*
-	 * TODO-0020: Propagate wanted-memory-size from command line
-	 */
-	const size_t memwant = 16 * VOLUTA_GIGA;
 	int err;
 
-	require_no_inst(g_fs_env_inst);
-	err = voluta_fse_new(memwant, &g_fs_env_inst);
+	voluta_require_no_inst(g_fs_env_inst);
+	err = voluta_fse_new(args, &g_fs_env_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_fs_env(void)
+void voluta_destrpy_fse_inst(void)
 {
 	if (g_fs_env_inst) {
 		voluta_fse_del(g_fs_env_inst);
@@ -880,23 +876,23 @@ void voluta_fini_fs_env(void)
 	}
 }
 
-struct voluta_fs_env *voluta_fs_env_inst(void)
+struct voluta_fs_env *voluta_fse_inst(void)
 {
 	return g_fs_env_inst;
 }
 
-void voluta_init_ms_env(void)
+void voluta_create_mse_inst(void)
 {
 	int err;
 
-	require_no_inst(g_ms_env_inst);
+	voluta_require_no_inst(g_ms_env_inst);
 	err = voluta_mse_new(&g_ms_env_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_ms_env(void)
+void voluta_destroy_mse_inst(void)
 {
 	if (g_ms_env_inst) {
 		voluta_mse_del(g_ms_env_inst);
@@ -909,19 +905,18 @@ struct voluta_ms_env *voluta_ms_env_inst(void)
 	return g_ms_env_inst;
 }
 
-void voluta_init_archiver_inst(void)
+void voluta_create_arc_inst(const struct voluta_ar_args *args)
 {
 	int err;
-	const size_t memwant = 8 * VOLUTA_GIGA; /* TODO: from command lone */
 
-	require_no_inst(g_archiver_inst);
-	err = voluta_archiver_new(memwant, &g_archiver_inst);
+	voluta_require_no_inst(g_archiver_inst);
+	err = voluta_archiver_new(args, &g_archiver_inst);
 	if (err) {
 		voluta_die(err, "failed to create instance");
 	}
 }
 
-void voluta_fini_archiver_inst(void)
+void voluta_destroy_arc_inst(void)
 {
 	if (g_archiver_inst) {
 		voluta_archiver_del(g_archiver_inst);
@@ -929,7 +924,7 @@ void voluta_fini_archiver_inst(void)
 	}
 }
 
-struct voluta_archiver *voluta_archiver_inst(void)
+struct voluta_archiver *voluta_arc_inst(void)
 {
 	return g_archiver_inst;
 }

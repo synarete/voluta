@@ -350,7 +350,7 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 		voluta_die(0, "not an encrypted volume: %s", path);
 	}
 	if (mustnot_be_enc && is_enc) {
-		voluta_die(0, "encrypted volume: %s", path);
+		voluta_die(0, "already an encrypted volume: %s", path);
 	}
 	if (out_is_encrypted != NULL) {
 		*out_is_encrypted = is_enc;
@@ -438,6 +438,75 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
 	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static char *discover_unused_tmppath(const char *path)
+{
+	int err;
+	char *tmppath = NULL;
+	struct stat st = { .st_ino = 0 };
+
+	for (int i = 1; i < 100; ++i) {
+		tmppath = voluta_sprintf_path("%s.%02d~", path, i);
+		err = voluta_sys_stat(tmppath, &st);
+		if (err == -ENOENT) {
+			break;
+		}
+		voluta_pfree_string(&tmppath);
+	}
+	return tmppath;
+}
+
+char *voluta_clone_as_tmppath(const char *path)
+{
+	int err = 0;
+	int dst_fd = -1;
+	int src_fd = -1;
+	int o_flags;
+	loff_t off_out = 0;
+	char *tmppath = NULL;
+	struct stat st;
+
+	err = voluta_sys_stat(path, &st);
+	if (err) {
+		goto out;
+	}
+	tmppath = discover_unused_tmppath(path);
+	if (tmppath == NULL) {
+		goto out;
+	}
+	o_flags = O_CREAT | O_RDWR | O_EXCL;
+	err = voluta_sys_open(tmppath, o_flags, S_IRUSR | S_IWUSR, &dst_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ftruncate(dst_fd, st.st_size);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_llseek(dst_fd, 0, SEEK_SET, &off_out);
+	if (err) {
+		goto out;
+	}
+	o_flags = O_RDONLY;
+	err = voluta_sys_open(path, o_flags, 0, &src_fd);
+	if (err) {
+		goto out;
+	}
+	err = voluta_sys_ioctl_ficlone(dst_fd, src_fd);
+	if (err) {
+		goto out;
+	}
+out:
+	voluta_sys_closefd(&src_fd);
+	voluta_sys_closefd(&dst_fd);
+	if (err && tmppath) {
+		voluta_sys_unlink(tmppath);
+		voluta_pfree_string(&tmppath);
+	}
+	return tmppath;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -740,7 +809,7 @@ char *voluta_realpath_safe(const char *path)
 
 	real_path = realpath(path, NULL);
 	if (real_path == NULL) {
-		voluta_die(-errno, "realpath error: '%s'", path);
+		voluta_die(-errno, "realpath failure: '%s'", path);
 	}
 	return real_path;
 }

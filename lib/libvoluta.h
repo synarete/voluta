@@ -489,6 +489,7 @@ void voluta_iti_reinit(struct voluta_itable_info *iti);
 void voluta_iti_fini(struct voluta_itable_info *iti);
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
+		       const struct voluta_vaddr *vaddr,
 		       struct voluta_iaddr *out_iaddr);
 
 int voluta_update_ino(struct voluta_sb_info *sbi,

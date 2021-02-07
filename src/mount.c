@@ -98,86 +98,21 @@ static void mount_setup_check_volume(void)
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.mount.passphrase);
 }
 
-static char *mount_volume_clone_path(void)
-{
-	int err;
-	struct stat st = { .st_ino = 0 };
-	char *volume_clone = NULL;
-	const char *volume_real = voluta_globals.cmd.mount.volume_real;
-
-	for (int i = 1; i < 100; ++i) {
-		volume_clone = voluta_sprintf_path("%s.%02d~", volume_real, i);
-		err = voluta_sys_stat(volume_clone, &st);
-		if (err == -ENOENT) {
-			return volume_clone;
-		}
-		voluta_pfree_string(&volume_clone);
-	}
-	return NULL;
-}
-
 static void mount_prepare_volume_clone(void)
 {
-	int err = 0;
-	int dst_fd = -1;
-	int src_fd = -1;
-	int o_flags;
-	loff_t off_out = 0;
-	mode_t mode = 0;
-	struct stat st = { .st_ino = 0 };
-	char *volume_clone = NULL;
-	const char *volume_real = voluta_globals.cmd.mount.volume_real;
+	char *volume_real = voluta_globals.cmd.mount.volume_real;
+	char *volume_clone = voluta_clone_as_tmppath(volume_real);
 
-	if (voluta_globals.cmd.mount.rdonly) {
-		goto out;
-	}
-	err = voluta_sys_stat(volume_real, &st);
-	if (err) {
-		goto out;
-	}
-	volume_clone = mount_volume_clone_path();
-	if (volume_clone == NULL) {
-		goto out;
-	}
-	o_flags = O_CREAT | O_RDWR | O_EXCL;
-	mode = S_IRUSR | S_IWUSR;
-	err = voluta_sys_open(volume_clone, o_flags, mode, &dst_fd);
-	if (err) {
-		goto out;
-	}
-	err = voluta_sys_ftruncate(dst_fd, st.st_size);
-	if (err) {
-		goto out;
-	}
-	err = voluta_sys_llseek(dst_fd, 0, SEEK_SET, &off_out);
-	if (err) {
-		goto out;
-	}
-	o_flags = O_RDONLY;
-	mode = 0;
-	err = voluta_sys_open(volume_real, o_flags, mode, &src_fd);
-	if (err) {
-		goto out;
-	}
-	err = voluta_sys_ioctl_ficlone(dst_fd, src_fd);
-	if (err) {
-		goto out;
-	}
-out:
-	voluta_sys_closefd(&src_fd);
-	voluta_sys_closefd(&dst_fd);
-	if (err && volume_clone) {
-		voluta_sys_unlink(volume_clone);
-		voluta_pfree_string(&volume_clone);
-	}
 	voluta_globals.cmd.mount.volume_clone = volume_clone;
-	voluta_globals.cmd.mount.volume_active = volume_clone;
+	if (volume_clone != NULL) {
+		voluta_globals.cmd.mount.volume_active = volume_clone;
+	}
 }
 
-static void mount_complete_volume_clone(void)
+static void mount_fixup_volume_clone(void)
 {
-	const char *volume_real = voluta_globals.cmd.mount.volume_real;
-	const char *volume_clone = voluta_globals.cmd.mount.volume_clone;
+	char *volume_real = voluta_globals.cmd.mount.volume_real;
+	char *volume_clone = voluta_globals.cmd.mount.volume_clone;
 
 	if (volume_clone != NULL) {
 		voluta_sys_rename(volume_clone, volume_real);
@@ -351,7 +286,7 @@ void voluta_execute_mount(void)
 	mount_trace_finish();
 
 	/* Override volume with updated clone */
-	mount_complete_volume_clone();
+	mount_fixup_volume_clone();
 
 	/* Post execution cleanups */
 	mount_finalize();

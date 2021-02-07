@@ -222,6 +222,7 @@ void ut_execute_tests(void)
 	ute->fs_args.encryptwr = (ut_globals.encrypt_mode > 0);
 	ute->fs_args.spliced = (ut_globals.spliced_mode > 0);
 	ute->ar_args.blobsdir = ut_globals.test_dir_real;
+	ute->ar_args.volume = volpath;
 	ute->ar_args.arcname = "ut_archive.voluta";
 	ute->tname = ut_globals.test_name;
 

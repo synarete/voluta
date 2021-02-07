@@ -1065,13 +1065,15 @@ static int remove_itentry(struct voluta_sb_info *sbi, ino_t ino)
 }
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
+		       const struct voluta_vaddr *vaddr,
 		       struct voluta_iaddr *out_iaddr)
 {
 	int err;
+	ino_t ino;
 	struct voluta_vnode_info *vi;
 	struct voluta_itable_info *iti = iti_of(sbi);
 
-	err = iti_next_ino(iti, &out_iaddr->ino);
+	err = iti_next_ino(iti, &ino);
 	if (err) {
 		return err;
 	}
@@ -1079,6 +1081,7 @@ int voluta_acquire_ino(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
+	iaddr_setup(out_iaddr, ino, vaddr);
 	err = insert_iref(sbi, vi, out_iaddr);
 	if (err) {
 		return err;

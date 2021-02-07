@@ -86,6 +86,8 @@ static void ut_setup_globals(int argc, char *argv[])
 {
 	ut_globals.argc = argc;
 	ut_globals.argv = argv;
+	ut_globals.program = program_invocation_short_name;
+	ut_globals.version = voluta_version.string;
 
 	umask(0002);
 	setlocale(LC_ALL, "");
@@ -102,7 +104,7 @@ static void ut_setup_tracing(void)
 static void ut_show_program_info(void)
 {
 	printf("%s %s (encrypt=%d spliced=%d)\n",
-	       program_invocation_short_name, voluta_version.string,
+	       ut_globals.program, ut_globals.version,
 	       ut_globals.encrypt_mode, ut_globals.spliced_mode);
 }
 

@@ -31,15 +31,19 @@
 
 static void clone_finalize(void)
 {
+	voluta_pfree_string(&voluta_globals.cmd.clone.point_real);
+	voluta_pfree_string(&voluta_globals.cmd.clone.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.clone.volume_tmp);
 }
 
 static void clone_setup_check_params(void)
 {
 	int err;
+	int fd = -1;
 	struct stat st;
-	const char *path = voluta_globals.cmd.clone.point;
+	const char *path;
 
+	path = voluta_globals.cmd.clone.point;
 	voluta_statpath_safe(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(-ENOTDIR, "bad mount-point: %s", path);
@@ -47,6 +51,8 @@ static void clone_setup_check_params(void)
 	if (st.st_ino != VOLUTA_INO_ROOT) {
 		voluta_die(0, "not a voluta mount-point: %s", path);
 	}
+	voluta_globals.cmd.clone.point_real = voluta_realpath_safe(path);
+
 	path = voluta_globals.cmd.clone.volume;
 	err = voluta_sys_stat(path, &st);
 	if (!err) {
@@ -54,6 +60,18 @@ static void clone_setup_check_params(void)
 	}
 	if (err != -ENOENT) {
 		voluta_die(err, "illegal clone volume: %s", path);
+	}
+	err = voluta_sys_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	if (err) {
+		voluta_die(err, "failed to create: %s", path);
+	}
+	voluta_globals.cmd.clone.volume_real = voluta_realpath_safe(path);
+	voluta_sys_closefd(&fd);
+
+	path = voluta_globals.cmd.clone.volume_real;
+	err = voluta_sys_unlink(path);
+	if (err) {
+		voluta_die(err, "unlink failed: %s", path);
 	}
 }
 
@@ -71,7 +89,7 @@ static void clone_execute(void)
 		.qtype = VOLUTA_QUERY_VOLUME
 	};
 
-	path = voluta_globals.cmd.clone.point;
+	path = voluta_globals.cmd.clone.point_real;
 	err = voluta_sys_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
 	if (err) {
 		voluta_die(err, "failed to open-dir: %s", path);
@@ -103,10 +121,10 @@ static void clone_execute(void)
 	if (err) {
 		voluta_die(err, "can not stat clone: %s", path);
 	}
-	err = voluta_sys_rename(path, voluta_globals.cmd.clone.volume);
+	err = voluta_sys_rename(path, voluta_globals.cmd.clone.volume_real);
 	if (err) {
 		voluta_die(err, "rename failed: %s -> %s",
-			   path, voluta_globals.cmd.clone.volume);
+			   path, voluta_globals.cmd.clone.volume_real);
 	}
 }
 
@@ -114,7 +132,7 @@ static void clone_reopen_and_sync(void)
 {
 	int err;
 	int fd = -1;
-	const char *path = voluta_globals.cmd.clone.volume;
+	const char *path = voluta_globals.cmd.clone.volume_real;
 
 	err = voluta_sys_open(path, O_RDWR, 0, &fd);
 	if (err) {

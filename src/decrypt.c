@@ -23,6 +23,7 @@ static void decrypt_finalize(void)
 	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.decrypt.passphrase);
 	voluta_pfree_string(&voluta_globals.cmd.decrypt.volume_real);
+	voluta_pfree_string(&voluta_globals.cmd.decrypt.volume_clone);
 }
 
 static void decrypt_setup_check_params(void)
@@ -32,6 +33,8 @@ static void decrypt_setup_check_params(void)
 
 	voluta_globals.cmd.decrypt.volume_real =
 		voluta_realpath_safe(voluta_globals.cmd.decrypt.volume);
+	voluta_globals.cmd.decrypt.volume_active =
+		voluta_globals.cmd.decrypt.volume_real;
 
 	path = voluta_globals.cmd.decrypt.volume_real;
 	voluta_die_if_not_volume(path, true, true, false, NULL);
@@ -40,10 +43,21 @@ static void decrypt_setup_check_params(void)
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.decrypt.passphrase);
 }
 
+static void decrypt_prepare_volume_clone(void)
+{
+	char *volume_real = voluta_globals.cmd.decrypt.volume_real;
+	char *volume_clone = voluta_clone_as_tmppath(volume_real);
+
+	voluta_globals.cmd.decrypt.volume_clone = volume_clone;
+	if (volume_clone != NULL) {
+		voluta_globals.cmd.decrypt.volume_active = volume_clone;
+	}
+}
+
 static void decrypt_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
-		.volume = voluta_globals.cmd.decrypt.volume,
+		.volume = voluta_globals.cmd.decrypt.volume_active,
 		.passwd = voluta_globals.cmd.decrypt.passphrase,
 		.encrypted = true,
 		.encryptwr = false,
@@ -68,6 +82,16 @@ static void decrypt_volume_inplace(void)
 	}
 }
 
+static void decrypt_fixup_volume_clone(void)
+{
+	char *volume_real = voluta_globals.cmd.decrypt.volume_real;
+	char *volume_clone = voluta_globals.cmd.decrypt.volume_clone;
+
+	if (volume_clone != NULL) {
+		voluta_sys_rename(volume_clone, volume_real);
+	}
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_execute_decrypt(void)
@@ -78,11 +102,17 @@ void voluta_execute_decrypt(void)
 	/* Verify user's arguments */
 	decrypt_setup_check_params();
 
+	/* Try to use a clone */
+	decrypt_prepare_volume_clone();
+
 	/* Prepare environment */
 	decrypt_create_fs_env();
 
 	/* Do actual decrypt */
 	decrypt_volume_inplace();
+
+	/* Override volume with updated clone */
+	decrypt_fixup_volume_clone();
 
 	/* Post execution cleanups */
 	decrypt_finalize();

@@ -140,6 +140,8 @@ struct ut_globals {
 	char          **argv;
 	int             argc;
 	int             log_mask;
+	const char     *program;
+	const char     *version;
 	char           *test_dir_real;
 	const char     *test_dir;
 	const char     *test_name;

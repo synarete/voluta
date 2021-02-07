@@ -997,7 +997,8 @@ static int fse_prepare_volume(struct voluta_fs_env *fse,
 	return 0;
 }
 
-static int fs_make_oper_self(struct voluta_fs_env *fse, struct voluta_oper *op)
+static int fse_make_oper_self(struct voluta_fs_env *fse,
+			      struct voluta_oper *op)
 {
 	voluta_memzero(op, sizeof(*op));
 
@@ -1015,7 +1016,7 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_oper op;
 
-	err = fs_make_oper_self(fse, &op);
+	err = fse_make_oper_self(fse, &op);
 	if (err) {
 		return err;
 	}
@@ -1047,7 +1048,7 @@ int voluta_fse_traverse(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_oper op;
 
-	err = fs_make_oper_self(fse, &op);
+	err = fse_make_oper_self(fse, &op);
 	if (err) {
 		return err;
 	}

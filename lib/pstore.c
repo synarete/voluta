@@ -72,6 +72,7 @@ static int split_path(const char *path, char *buf, size_t bsz,
 	strncpy(buf, path, len);
 	str = strrchr(buf, '/');
 	if (str == NULL) {
+		log_dbg("missing slash in path: '%s'", path);
 		return -EINVAL;
 	}
 	*str = '\0';
@@ -91,7 +92,7 @@ static int parse_vpath(struct voluta_vpath_info *vpi, const char *path)
 	char *head = NULL;
 	char *tail = NULL;
 
-	memset(vpi, 0, sizeof(*vpi));
+	voluta_memzero(vpi, sizeof(*vpi));
 	err = split_path(path, vpi->path, sizeof(vpi->path), &head, &tail);
 	if (!err) {
 		vpi->dpath = head;

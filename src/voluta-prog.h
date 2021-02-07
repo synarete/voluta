@@ -88,7 +88,9 @@ struct voluta_subcmd_umount {
 /* arguments for 'clone' sub-command */
 struct voluta_subcmd_clone {
 	char   *point;
+	char   *point_real;
 	char   *volume;
+	char   *volume_real;
 	char   *volume_tmp;
 };
 
@@ -98,6 +100,8 @@ struct voluta_subcmd_encrypt {
 	char   *passphrase_file;
 	char   *volume;
 	char   *volume_real;
+	char   *volume_clone;
+	char   *volume_active;
 };
 
 /* arguments for 'encrypt' sub-command */
@@ -106,6 +110,8 @@ struct voluta_subcmd_decrypt {
 	char   *passphrase_file;
 	char   *volume;
 	char   *volume_real;
+	char   *volume_clone;
+	char   *volume_active;
 };
 
 /* arguments for 'export' sub-command */
@@ -293,6 +299,8 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 void voluta_die_if_not_archive(const char *path);
 
 void voluta_die_if_no_mountd(void);
+
+char *voluta_clone_as_tmppath(const char *path);
 
 char *voluta_consume_cmdarg(const char *arg_name, bool last);
 

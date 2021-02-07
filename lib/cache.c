@@ -1779,7 +1779,7 @@ static size_t cache_calc_factor(const struct voluta_cache *cache, int flags)
 	if (flags & VOLUTA_F_OPSTART) {
 		factor += 1;
 	}
-	if (mem_press > 50) {
+	if (mem_press > 30) {
 		factor *= 2;
 	}
 	return factor;

@@ -44,6 +44,7 @@ struct voluta_kbn_vtype {
 };
 
 struct voluta_balloc_info {
+	loff_t lba;
 	size_t bn;
 	size_t kbn[VOLUTA_NKB_IN_BK];
 	size_t cnt;
@@ -967,10 +968,12 @@ agm_bkr_at(const struct voluta_agroup_map *agm, size_t slot)
 static void agm_balloc_info_at(const struct voluta_agroup_map *agm,
 			       size_t slot, struct voluta_balloc_info *bai)
 {
+	const size_t ag_index = agm_index(agm);
 	const struct voluta_bk_rec *bkr = agm_bkr_at(agm, slot);
 
 	bkr_alloc_info(bkr, bai);
 	bai->bn = slot;
+	bai->lba = voluta_lba_by_ag(ag_index, bai->bn);
 }
 
 static size_t agm_nslots(const struct voluta_agroup_map *agm)
@@ -1528,11 +1531,17 @@ static int spawn_bki_of(struct voluta_super_ctx *s_ctx,
 	return -ENOMEM;
 }
 
+static const struct voluta_vstore *
+vstore_of(const struct voluta_super_ctx *s_ctx)
+{
+	return s_ctx->sbi->sb_vstore;
+}
+
 static int load_bki(struct voluta_super_ctx *s_ctx)
 {
 	struct voluta_xiovec xiov;
 	struct voluta_bk_info *bki = s_ctx->bki;
-	const struct voluta_vstore *vstore = s_ctx->sbi->sb_vstore;
+	const struct voluta_vstore *vstore = vstore_of(s_ctx);
 
 	resolve_bk_xiovec(s_ctx->sbi, bki, &xiov);
 	return voluta_vstore_read(vstore, xiov.off, xiov.len, bki->bk);
@@ -2332,6 +2341,7 @@ int voluta_reload_itable(struct voluta_sb_info *sbi)
 	int err;
 	struct voluta_vaddr vaddr;
 
+	vaddr_reset(&vaddr);
 	err = sbi_resolve_itroot(sbi, &vaddr);
 	if (err) {
 		return err;
@@ -2410,6 +2420,17 @@ static void relax_bringup_cache(struct voluta_sb_info *sbi)
 static int flush_dirty_cache(struct voluta_sb_info *sbi, bool all)
 {
 	return voluta_flush_dirty(sbi, all ? VOLUTA_F_NOW : 0);
+}
+
+static int flush_and_relax(struct voluta_sb_info *sbi, int flags)
+{
+	int err;
+
+	err = voluta_flush_dirty(sbi, flags);
+	if (!err) {
+		voluta_cache_relax(sbi->sb_cache, flags);
+	}
+	return err;
 }
 
 static void update_spi_by_hsm(struct voluta_sb_info *sbi,
@@ -2743,43 +2764,46 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int traverse_by_vaddr(struct voluta_sb_info *sbi,
-			     const struct voluta_vaddr *vaddr)
+static void vaddr_by_bai(struct voluta_vaddr *vaddr,
+			 const struct voluta_vnode_info *agm_vi,
+			 const struct voluta_balloc_info *bai, size_t idx)
 {
-	int err;
-	struct voluta_vnode_info *vi = NULL;
-	struct voluta_super_ctx s_ctx = { .sbi = sbi, };
+	const size_t ag_index = agm_index(agm_vi->vu.agm);
 
-	err = fetch_bki_of(&s_ctx, vaddr);
-	if (err) {
-		return err;
-	}
-	err = voluta_fetch_vnode(sbi, vaddr, NULL, &vi);
-	if (err) {
-		return err;
-	}
-	vi_dirtify(vi);
-	return 0;
+	vaddr_by_ag(vaddr, bai->vtype, ag_index, bai->bn, bai->kbn[idx]);
 }
 
 static int traverse_by_balloc_info(struct voluta_super_ctx *s_ctx,
 				   const struct voluta_balloc_info *bai)
 {
 	int err;
+	size_t nvis = 0;
 	struct voluta_vaddr vaddr;
-	const struct voluta_vnode_info *agm_vi = s_ctx->agm_vi;
-	const size_t ag_index = agm_index(agm_vi->vu.agm);
+	struct voluta_vnode_info *vi;
+	struct voluta_vnode_info *vis[VOLUTA_NKB_IN_BK];
+
+	STATICASSERT_EQ(ARRAY_SIZE(vis), ARRAY_SIZE(bai->kbn));
 
 	for (size_t i = 0; i < bai->cnt; ++i) {
-		vaddr_by_ag(&vaddr, bai->vtype,
-			    ag_index, bai->bn, bai->kbn[i]);
-
-		err = traverse_by_vaddr(s_ctx->sbi, &vaddr);
+		vaddr_by_bai(&vaddr, s_ctx->agm_vi, bai, i);
+		err = voluta_fetch_vnode(s_ctx->sbi, &vaddr, NULL, &vi);
 		if (err) {
-			return err;
+			goto out;
 		}
+		vis[nvis++] = vi;
+		vi_incref(vi);
 	}
-	return 0;
+	for (size_t i = 0; i < nvis; ++i) {
+		vi = vis[i];
+		vi_dirtify(vi);
+	}
+	err = voluta_vstore_punch_bk(vstore_of(s_ctx), bai->lba);
+out:
+	for (size_t i = 0; i < nvis; ++i) {
+		vi = vis[i];
+		vi_decref(vi);
+	}
+	return err;
 }
 
 static int do_traverse_by_agmap(struct voluta_super_ctx *s_ctx)
@@ -2791,11 +2815,14 @@ static int do_traverse_by_agmap(struct voluta_super_ctx *s_ctx)
 
 	for (size_t slot = 0; slot < nslots; ++slot) {
 		agm_balloc_info_at(agm_vi->vu.agm, slot, &bai);
-		if (vtype_isnone(bai.vtype) ||
-		    vtype_isumap(bai.vtype)) {
+		if (vtype_isumap(bai.vtype)) {
 			continue;
 		}
 		err = traverse_by_balloc_info(s_ctx, &bai);
+		if (err) {
+			return err;
+		}
+		err = flush_and_relax(s_ctx->sbi, VOLUTA_F_OPSTART);
 		if (err) {
 			return err;
 		}
@@ -2837,7 +2864,7 @@ static int do_traverse_by_hsmap(struct voluta_super_ctx *s_ctx)
 		if (err) {
 			return err;
 		}
-		err = flush_dirty_cache(s_ctx->sbi, false);
+		err = flush_and_relax(s_ctx->sbi, VOLUTA_F_OPSTART);
 		if (err) {
 			return err;
 		}
@@ -3555,6 +3582,7 @@ static int create_inode(struct voluta_super_ctx *s_ctx,
 	struct voluta_vaddr vaddr;
 	struct voluta_iaddr iaddr;
 
+	vaddr_reset(&vaddr);
 	err = alloc_ispace(s_ctx, &vaddr);
 	if (err) {
 		return err;
@@ -3599,6 +3627,7 @@ static int create_vnode(struct voluta_super_ctx *s_ctx,
 	int err;
 	struct voluta_vaddr vaddr;
 
+	vaddr_reset(&vaddr);
 	err = allocate_vnode_space(s_ctx, vtype, &vaddr);
 	if (err) {
 		return err;

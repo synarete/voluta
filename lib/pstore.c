@@ -720,3 +720,12 @@ int voluta_pstore_clone(const struct voluta_pstore *pstore,
 	}
 	return err;
 }
+
+int voluta_pstore_punch_hole(const struct voluta_pstore *pstore,
+			     loff_t off, size_t len)
+{
+	const int mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
+
+	return voluta_sys_fallocate(pstore->ps_vfd, mode,
+				    off, (loff_t)len);
+}

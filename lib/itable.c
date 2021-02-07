@@ -1073,6 +1073,7 @@ int voluta_acquire_ino(struct voluta_sb_info *sbi,
 	struct voluta_vnode_info *vi;
 	struct voluta_itable_info *iti = iti_of(sbi);
 
+	iaddr_reset(out_iaddr);
 	err = iti_next_ino(iti, &ino);
 	if (err) {
 		return err;

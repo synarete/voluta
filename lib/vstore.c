@@ -70,32 +70,45 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 
 size_t voluta_vtype_size(enum voluta_vtype vtype)
 {
+	size_t sz;
+
 	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
-		return sizeof(struct voluta_hspace_map);
+		sz = sizeof(struct voluta_hspace_map);
+		break;
 	case VOLUTA_VTYPE_AGMAP:
-		return sizeof(struct voluta_agroup_map);
+		sz = sizeof(struct voluta_agroup_map);
+		break;
 	case VOLUTA_VTYPE_ITNODE:
-		return sizeof(struct voluta_itable_tnode);
+		sz = sizeof(struct voluta_itable_tnode);
+		break;
 	case VOLUTA_VTYPE_INODE:
-		return sizeof(struct voluta_inode);
+		sz = sizeof(struct voluta_inode);
+		break;
 	case VOLUTA_VTYPE_XANODE:
-		return sizeof(struct voluta_xattr_node);
+		sz = sizeof(struct voluta_xattr_node);
+		break;
 	case VOLUTA_VTYPE_HTNODE:
-		return sizeof(struct voluta_dir_htnode);
+		sz = sizeof(struct voluta_dir_htnode);
+		break;
 	case VOLUTA_VTYPE_RTNODE:
-		return sizeof(struct voluta_radix_tnode);
+		sz = sizeof(struct voluta_radix_tnode);
+		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		return sizeof(struct voluta_lnk_value);
+		sz = sizeof(struct voluta_lnk_value);
+		break;
 	case VOLUTA_VTYPE_DATA4K:
-		return sizeof(struct voluta_data_block4);
+		sz = sizeof(struct voluta_data_block4);
+		break;
 	case VOLUTA_VTYPE_DATABK:
-		return sizeof(struct voluta_data_block);
+		sz = sizeof(struct voluta_data_block);
+		break;
 	case VOLUTA_VTYPE_NONE:
 	default:
+		sz = 0;
 		break;
 	}
-	return 0;
+	return sz;
 }
 
 ssize_t voluta_vtype_ssize(enum voluta_vtype vtype)
@@ -135,6 +148,11 @@ static loff_t lba_by_ag(size_t ag_index, size_t bn)
 	voluta_assert_lt(bn, VOLUTA_NBK_IN_AG);
 
 	return nbk_in_ag * (loff_t)ag_index + (loff_t)bn;
+}
+
+loff_t voluta_lba_by_ag(size_t ag_index, size_t bn)
+{
+	return lba_by_ag(ag_index, bn);
 }
 
 static loff_t hsmap_lba_by_index(size_t hs_index)
@@ -1188,5 +1206,15 @@ int voluta_vstore_flush(struct voluta_vstore *vstore,
 	err = dset_collect_flush(&dset, cache, vstore);
 	dset_fini(&dset);
 	return err;
+}
+
+int voluta_vstore_punch_bk(const struct voluta_vstore *vstore, loff_t lba)
+{
+	const loff_t off = lba_to_off(lba);
+	const size_t len = VOLUTA_BK_SIZE;
+
+	voluta_assert_eq(off % (long)len, 0);
+
+	return voluta_pstore_punch_hole(&vstore->vs_pstore, off, len);
 }
 

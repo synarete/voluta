@@ -46,7 +46,8 @@ _clang_scan_build() {
   _setup_clang_env
 
   run scan-build \
-    --use-analyzer=${analyzer} ../configure
+    --use-analyzer=${analyzer} \
+    ../configure CFLAGS='-O2 -pthread'
 
   run scan-build \
     --use-analyzer=${analyzer} \
@@ -55,7 +56,7 @@ _clang_scan_build() {
     make all
 }
 
-_do_bootstrap() {
+_bootstrap_regen() {
   local topdir="$1"
 
   ${topdir}/bootstrap -r
@@ -69,7 +70,8 @@ rootdir=${1:-${basedir}}
 
 cd ${rootdir}
 _require_clang_bin
-_do_bootstrap ${rootdir}
+_bootstrap_regen ${rootdir}
 _clang_scan_build ${rootdir}
+
 
 

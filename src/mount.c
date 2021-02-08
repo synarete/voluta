@@ -195,7 +195,6 @@ static void mount_create_fs_env(void)
 		.nodev = voluta_globals.cmd.mount.nodev,
 		.rdonly = voluta_globals.cmd.mount.rdonly,
 		.pedantic = false,
-		.spliced = true,
 		.with_fuseq = true,
 
 	};

@@ -95,21 +95,22 @@ struct ut_malloc_chunk {
 	uint8_t data[32];
 };
 
+struct ut_args {
+	struct voluta_fs_args fs_args;
+	struct voluta_ar_args ar_args;
+};
+
 struct ut_env {
-	struct voluta_passphrase pass;
-	struct voluta_fs_args    fs_args;
+	struct ut_args           args;
 	struct voluta_fs_env    *fse;
-	struct voluta_ar_args    ar_args;
 	struct voluta_archiver  *arc;
 	struct voluta_oper       oper;
 	struct timespec          ts_start;
 	struct statvfs           stvfs_start;
 	struct ut_malloc_chunk  *malloc_list;
-	const char              *tname;
 	size_t                   ualloc_start;
 	size_t                   nbytes_alloc;
 	long                     unique_opid;
-	int                      silent;
 };
 
 struct ut_dvec {
@@ -142,12 +143,8 @@ struct ut_globals {
 	int             log_mask;
 	const char     *program;
 	const char     *version;
-	char           *test_dir_real;
 	const char     *test_dir;
-	const char     *test_name;
-	const char     *passphrase;
-	int             encrypt_mode;
-	int             spliced_mode;
+	char           *test_dir_real;
 	struct timespec start_ts;
 };
 

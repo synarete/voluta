@@ -51,11 +51,77 @@ static struct ut_tgroup const g_ut_tgroups[] = {
 	UT_DEFTGRP(ut_test_archive),
 };
 
-/* Local functions forward declarations */
-static struct ut_env *ute_new(void);
-static void ute_del(struct ut_env *ute);
-static void ute_setup(struct ut_env *ute);
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static void *ut_malloc_safe(size_t size)
+{
+	void *ptr;
+
+	ptr = malloc(size);
+	if (ptr == NULL) {
+		error(EXIT_FAILURE, errno, "malloc failed: size=%lu", size);
+		abort(); /* makes gcc '-fanalyzer' happy */
+	}
+	return ptr;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void ute_init(struct ut_env *ute, const struct ut_args *args)
+{
+	memset(ute, 0, sizeof(*ute));
+	memcpy(&ute->args, args, sizeof(ute->args));
+
+	ute->malloc_list = NULL;
+	ute->nbytes_alloc = 0;
+	ute->unique_opid = 1;
+}
+
+static void ute_cleanup(struct ut_env *ute)
+{
+	if (ute->arc != NULL) {
+		voluta_archiver_del(ute->arc);
+		ute->arc = NULL;
+	}
+	if (ute->fse != NULL) {
+		voluta_fse_term(ute->fse);
+		voluta_fse_del(ute->fse);
+		ute->fse = NULL;
+	}
+}
+
+static void ute_fini(struct ut_env *ute)
+{
+	ut_freeall(ute);
+	ute_cleanup(ute);
+	memset(ute, 0xFF, sizeof(*ute));
+}
+
+static void ute_setup(struct ut_env *ute)
+{
+	int err;
+
+	err = voluta_fse_new(&ute->args.fs_args, &ute->fse);
+	voluta_assert_ok(err);
+
+	err = voluta_archiver_new(&ute->args.ar_args, &ute->arc);
+	voluta_assert_ok(err);
+}
+
+static struct ut_env *ute_new(const struct ut_args *args)
+{
+	struct ut_env *ute;
+
+	ute = (struct ut_env *)ut_malloc_safe(sizeof(*ute));
+	ute_init(ute, args);
+	return ute;
+}
+
+static void ute_del(struct ut_env *ute)
+{
+	ute_fini(ute);
+	free(ute);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -65,9 +131,6 @@ static void ut_track_test(struct ut_env *ute,
 	FILE *fp = stdout;
 	struct timespec dur;
 
-	if (ute->silent) {
-		return;
-	}
 	if (pre_execute) {
 		fprintf(fp, "  %-32s", td->name);
 		voluta_mclock_now(&ute->ts_start);
@@ -123,34 +186,25 @@ static void ut_probe_stats(struct ut_env *ute, bool pre_execute)
 	}
 }
 
-static bool ut_is_runnable(const struct ut_env *ute,
-			   const struct ut_testdef *td)
-{
-	return (!ute->tname || strstr(td->name, ute->tname));
-}
-
-static void ut_run_tgroup(struct ut_env *ute,
-			  const struct ut_tgroup *tgroup)
+static void ut_run_tests_group(struct ut_env *ute, const struct ut_tgroup *tg)
 {
 	const struct ut_testdef *td;
 
-	for (size_t i = 0; i < tgroup->tests->len; ++i) {
-		td = &tgroup->tests->arr[i];
-		if (ut_is_runnable(ute, td)) {
-			ut_track_test(ute, td, true);
-			ut_probe_stats(ute, true);
-			td->hook(ute);
-			ut_probe_stats(ute, false);
-			ut_track_test(ute, td, false);
-			ut_freeall(ute);
-		}
+	for (size_t i = 0; i < tg->tests->len; ++i) {
+		td = &tg->tests->arr[i];
+		ut_track_test(ute, td, true);
+		ut_probe_stats(ute, true);
+		td->hook(ute);
+		ut_probe_stats(ute, false);
+		ut_track_test(ute, td, false);
+		ut_freeall(ute);
 	}
 }
 
 static void ut_exec_tests(struct ut_env *ute)
 {
 	for (size_t i = 0; i < UT_ARRAY_SIZE(g_ut_tgroups); ++i) {
-		ut_run_tgroup(ute, &g_ut_tgroups[i]);
+		ut_run_tests_group(ute, &g_ut_tgroups[i]);
 	}
 }
 
@@ -176,18 +230,6 @@ static void ut_done_tests(struct ut_env *ute)
 	voluta_assert_ok(err);
 }
 
-static void *ut_malloc_safe(size_t size)
-{
-	void *ptr;
-
-	ptr = malloc(size);
-	if (ptr == NULL) {
-		error(EXIT_FAILURE, errno, "malloc failed: size=%lu", size);
-		abort(); /* makes gcc '-fanalyzer' happy */
-	}
-	return ptr;
-}
-
 static char *ut_joinpath(const char *path, const char *base)
 {
 	char *rpath;
@@ -211,26 +253,75 @@ static void ut_removepath(char **path)
 	*path = NULL;
 }
 
-void ut_execute_tests(void)
+static const char *ut_make_passphrase(struct voluta_passphrase *pp)
 {
-	char *volpath = ut_joinpath(ut_globals.test_dir_real, "ut.voluta");
-	struct ut_env *ute = ute_new();
+	voluta_memzero(pp, sizeof(*pp));
 
-	ute->fs_args.memwant = UT_GIGA;
-	ute->fs_args.volume = volpath;
-	ute->fs_args.encrypted = (ut_globals.encrypt_mode > 0);
-	ute->fs_args.encryptwr = (ut_globals.encrypt_mode > 0);
-	ute->fs_args.spliced = (ut_globals.spliced_mode > 0);
-	ute->ar_args.blobsdir = ut_globals.test_dir_real;
-	ute->ar_args.volume = volpath;
-	ute->ar_args.arcname = "ut_archive.voluta";
-	ute->tname = ut_globals.test_name;
+	pp->passlen = sizeof(pp->pass) - 1;
+	voluta_fill_random_ascii((char *)pp->pass, pp->passlen);
 
+	return (const char *)(pp->pass);
+}
+
+static void ut_execute_tests_cycle(const struct ut_args *args)
+{
+	struct ut_env *ute;
+
+	ute = ute_new(args);
 	ute_setup(ute);
 	ut_prep_tests(ute);
 	ut_exec_tests(ute);
 	ut_done_tests(ute);
+	ut_freeall(ute);
+	ute_cleanup(ute);
 	ute_del(ute);
+}
+
+static void ut_print_tests_start(const struct ut_args *args)
+{
+	printf("  %s %s encrypt=%d\n", ut_globals.program,
+	       ut_globals.version, (int)args->fs_args.encrypted);
+}
+
+void ut_execute_tests(void)
+{
+	char *testdir;
+	char *volpath;
+	struct ut_args args = {
+		.fs_args = {
+			.uid = getuid(),
+			.gid = getgid(),
+			.pid = getpid(),
+			.umask = 0002,
+			.mountp = "/",
+			.volume = NULL,
+			.fsname = "unitests",
+			.vsize = UT_VOLUME_SIZE,
+			.memwant = UT_GIGA,
+			.pedantic = false /* TODO: make me a knob (true) */
+		},
+		.ar_args = {
+			.arcname = "unitests-archive.voluta",
+			.memwant = UT_GIGA,
+		}
+	};
+	struct voluta_passphrase passph;
+
+	testdir = ut_globals.test_dir_real;
+	volpath = ut_joinpath(testdir, "unitests.voluta");
+	args.fs_args.volume = volpath;
+	args.ar_args.volume = volpath;
+	args.ar_args.blobsdir = testdir;
+
+	args.fs_args.passwd = args.ar_args.passwd =
+				      ut_make_passphrase(&passph);
+	args.fs_args.encrypted = args.fs_args.encryptwr = false;
+	ut_print_tests_start(&args);
+	ut_execute_tests_cycle(&args);
+
+	args.fs_args.encrypted = args.fs_args.encryptwr = true;
+	ut_print_tests_start(&args);
+	ut_execute_tests_cycle(&args);
 
 	ut_removepath(&volpath);
 }
@@ -344,93 +435,8 @@ const char *ut_make_name(struct ut_env *ute, const char *pre, size_t idx)
 	}
 	return name;
 }
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static const char *ut_make_passphrase(struct ut_env *ute)
-{
-	struct voluta_passphrase *pp = &ute->pass;
-	const size_t nn = ((size_t)time(NULL) % sizeof(pp->pass));
-
-	voluta_memzero(pp, sizeof(*pp));
-
-	pp->passlen = voluta_min(nn + 1, sizeof(pp->pass) - 1);
-	voluta_fill_random_ascii((char *)pp->pass, pp->passlen);
-
-	return (const char *)(pp->pass);
-}
-
-static void ute_init_passphrase(struct ut_env *ute)
-{
-	const char *pass = ut_make_passphrase(ute);
-
-	ute->ar_args.passph = pass;
-	ute->fs_args.passwd = pass;
-}
-
-static void ute_init(struct ut_env *ute)
-{
-	memset(ute, 0, sizeof(*ute));
-	ute->fs_args.uid = getuid();
-	ute->fs_args.gid = getgid();
-	ute->fs_args.pid = getpid();
-	ute->fs_args.umask = 0002;
-	ute->fs_args.mountp = "/";
-	ute->fs_args.volume = NULL;
-	ute->fs_args.fsname = "voluta-ut";
-	ute->fs_args.vsize = UT_VOLUME_SIZE;
-	ute->fs_args.pedantic = false; /* TODO: make me a nob (true) */
-	ute->ar_args.arcname = "unitest.voluta";
-
-	ute->silent = false;
-	ute->malloc_list = NULL;
-	ute->nbytes_alloc = 0;
-	ute->unique_opid = 1;
-
-	ute_init_passphrase(ute);
-}
-
-static void ute_fini(struct ut_env *ute)
-{
-	struct voluta_archiver *arc = ute->arc;
-	struct voluta_fs_env *fse = ute->fse;
-
-	if (arc != NULL) {
-		voluta_archiver_del(arc);
-	}
-	if (fse != NULL) {
-		voluta_fse_term(fse);
-		voluta_fse_del(fse);
-	}
-	memset(ute, 0, sizeof(*ute));
-}
-
-static void ute_setup(struct ut_env *ute)
-{
-	int err;
-
-	err = voluta_fse_new(&ute->fs_args, &ute->fse);
-	voluta_assert_ok(err);
-
-	err = voluta_archiver_new(&ute->ar_args, &ute->arc);
-	voluta_assert_ok(err);
-}
-
-static struct ut_env *ute_new(void)
-{
-	struct ut_env *ute;
-
-	ute = (struct ut_env *)ut_malloc_safe(sizeof(*ute));
-	ute_init(ute);
-	return ute;
-}
-
-static void ute_del(struct ut_env *ute)
-{
-	ut_freeall(ute);
-	ute_fini(ute);
-	memset(ute, 0, sizeof(*ute));
-	free(ute);
-}
 
 void *ut_zerobuf(struct ut_env *ute, size_t bsz)
 {

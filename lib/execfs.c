@@ -340,9 +340,6 @@ static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
 			ctl_flags |= VOLUTA_F_ENCRYPTWR;
 		}
 	}
-	if (args->spliced) {
-		ctl_flags |= VOLUTA_F_SPLICED;
-	}
 	return ctl_flags;
 }
 

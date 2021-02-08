@@ -66,16 +66,15 @@ struct voluta_ar_blob_info;
 enum voluta_flags {
 	VOLUTA_F_ENCRYPTED      = VOLUTA_BIT(0),
 	VOLUTA_F_ENCRYPTWR      = VOLUTA_BIT(1),
-	VOLUTA_F_SPLICED        = VOLUTA_BIT(2),
-	VOLUTA_F_SYNC           = VOLUTA_BIT(3),
-	VOLUTA_F_NOW            = VOLUTA_BIT(4),
-	VOLUTA_F_BLKDEV         = VOLUTA_BIT(5),
-	VOLUTA_F_MEMFD          = VOLUTA_BIT(6),
-	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(7),
-	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(8),
-	VOLUTA_F_IDLE           = VOLUTA_BIT(9),
-	VOLUTA_F_BRINGUP        = VOLUTA_BIT(10),
-	VOLUTA_F_OPSTART        = VOLUTA_BIT(11),
+	VOLUTA_F_SYNC           = VOLUTA_BIT(1),
+	VOLUTA_F_NOW            = VOLUTA_BIT(2),
+	VOLUTA_F_BLKDEV         = VOLUTA_BIT(3),
+	VOLUTA_F_MEMFD          = VOLUTA_BIT(4),
+	VOLUTA_F_NLOOKUP        = VOLUTA_BIT(5),
+	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(6),
+	VOLUTA_F_IDLE           = VOLUTA_BIT(7),
+	VOLUTA_F_BRINGUP        = VOLUTA_BIT(8),
+	VOLUTA_F_OPSTART        = VOLUTA_BIT(9),
 };
 
 
@@ -512,7 +511,6 @@ struct voluta_fs_args {
 	bool   pedantic;
 	bool   encrypted;
 	bool   encryptwr;
-	bool   spliced;
 	bool   lazytime;
 	bool   noexec;
 	bool   nosuid;
@@ -575,7 +573,7 @@ struct voluta_rwiter_ctx {
 
 /* archiving */
 struct voluta_ar_args {
-	const char *passph;
+	const char *passwd;
 	const char *volume;
 	const char *blobsdir;
 	const char *arcname;

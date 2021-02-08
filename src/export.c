@@ -67,7 +67,7 @@ static void export_setup_check_params(void)
 static void export_create_arc_inst(void)
 {
 	struct voluta_ar_args args = {
-		.passph = voluta_globals.cmd.export.passphrase,
+		.passwd = voluta_globals.cmd.export.passphrase,
 		.volume = voluta_globals.cmd.export.volume_real,
 		.blobsdir = voluta_globals.cmd.export.archive_real,
 		.arcname = voluta_globals.cmd.export.volume_name,

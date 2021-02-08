@@ -1052,10 +1052,10 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 	struct voluta_passphrase passph;
 	const struct voluta_mdigest *md = arc_mdigest(arc);
 
-	if (arc->ar_args.passph == NULL) {
+	if (arc->ar_args.passwd == NULL) {
 		return 0;
 	}
-	err = voluta_passphrase_setup(&passph, arc->ar_args.passph);
+	err = voluta_passphrase_setup(&passph, arc->ar_args.passwd);
 	if (err) {
 		return err;
 	}

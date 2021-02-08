@@ -92,7 +92,7 @@ int voluta_mdigest_init(struct voluta_mdigest *md)
 		GCRY_MD_BLAKE2S_128,
 	};
 
-	err = gcry_md_open(&md->md_hd, 0, GCRY_MD_FLAG_SECURE);
+	err = gcry_md_open(&md->md_hd, 0, 0 /* GCRY_MD_FLAG_SECURE */);
 	if (err) {
 		log_gcrypt_err("gcry_md_open", err);
 		return gcrypt_err(err);
@@ -218,7 +218,7 @@ static int cipher_init(struct voluta_cipher *ci)
 	gcry_error_t err;
 	const int algo = GCRY_CIPHER_AES256;
 	const int mode = GCRY_CIPHER_MODE_GCM;
-	const unsigned int flags = GCRY_CIPHER_SECURE;
+	const unsigned int flags = 0; /* XXX GCRY_CIPHER_SECURE ? */
 
 	err = gcry_cipher_open(&ci->cipher_hd, algo, mode, flags);
 	if (err) {

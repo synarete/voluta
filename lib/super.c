@@ -3015,7 +3015,7 @@ static int sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ops.op_iopen = 0;
 	sbi->sb_ops.op_time = voluta_time_now();
 	sbi->sb_ops.op_count = 0;
-	sbi->sb_ctl_flags = VOLUTA_F_SPLICED;
+	sbi->sb_ctl_flags = 0;
 	sbi->sb_ms_flags = 0;
 	return 0;
 }

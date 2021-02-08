@@ -66,7 +66,7 @@ static void import_setup_check_params(void)
 static void import_create_arc_inst(void)
 {
 	struct voluta_ar_args args = {
-		.passph = voluta_globals.cmd.import.passphrase,
+		.passwd = voluta_globals.cmd.import.passphrase,
 		.volume = voluta_globals.cmd.import.volume_path,
 		.blobsdir = voluta_globals.cmd.import.archive_dir,
 		.arcname = voluta_globals.cmd.import.archive_name,

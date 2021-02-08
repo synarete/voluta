@@ -57,10 +57,7 @@ clean-local:
 
 check-local: $(bin_PROGRAMS)
 	@mkdir -p $(ut_check_dir)
-	@rm -rf $(ut_check_dir)/*
-	@echo "  TEST       " && $$(realpath "$^") -e 1 -s 0 $(ut_check_dir) ;
-	@echo "  TEST       " && $$(realpath "$^") -e 0 -s 1 $(ut_check_dir) ;
-	@echo "  TEST       " && $$(realpath "$^") -e 0 -s 0 $(ut_check_dir) ;
+	@echo "  TEST       " && $$(realpath "$^") $(ut_check_dir) ;
 	@rm -rf $(ut_check_dir)
 
 endif

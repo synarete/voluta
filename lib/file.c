@@ -888,10 +888,9 @@ static int seek_tree_recursive(struct voluta_file_ctx *f_ctx,
 static bool kcopy_mode(const struct voluta_file_ctx *f_ctx)
 {
 	const long unsigned flags = f_ctx->sbi->sb_ctl_flags;
-	const long unsigned mask =
-		VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR | VOLUTA_F_SPLICED;
+	const long unsigned mask = VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR;
 
-	return ((flags & mask) == VOLUTA_F_SPLICED);
+	return ((flags & mask) == 0);
 }
 
 static bool is_mapping_boundaries(const struct voluta_file_ctx *f_ctx)

@@ -98,6 +98,8 @@ struct ut_malloc_chunk {
 struct ut_args {
 	struct voluta_fs_args fs_args;
 	struct voluta_ar_args ar_args;
+	const char *program;
+	const char *version;
 };
 
 struct ut_env {
@@ -174,6 +176,7 @@ extern const struct ut_tests ut_test_file_fallocate;
 extern const struct ut_tests ut_test_file_fiemap;
 extern const struct ut_tests ut_test_file_lseek;
 extern const struct ut_tests ut_test_reload;
+extern const struct ut_tests ut_test_recrypt;
 extern const struct ut_tests ut_test_fillfs;
 extern const struct ut_tests ut_test_archive;
 
@@ -435,6 +438,8 @@ void ut_sync_drop(struct ut_env *ute);
 void ut_drop_caches_fully(struct ut_env *ute);
 
 void ut_reload_ok(struct ut_env *ute, ino_t ino);
+
+void ut_recrypt_flip_ok(struct ut_env *ute, ino_t ino);
 
 /* utilities */
 void ut_prandom_seq(long *arr, size_t len, long base);

@@ -47,6 +47,7 @@ static struct ut_tgroup const g_ut_tgroups[] = {
 	UT_DEFTGRP(ut_test_file_lseek),
 	UT_DEFTGRP(ut_test_file_fiemap),
 	UT_DEFTGRP(ut_test_reload),
+	UT_DEFTGRP(ut_test_recrypt),
 	UT_DEFTGRP(ut_test_fillfs),
 	UT_DEFTGRP(ut_test_archive),
 };
@@ -279,8 +280,8 @@ static void ut_execute_tests_cycle(const struct ut_args *args)
 
 static void ut_print_tests_start(const struct ut_args *args)
 {
-	printf("  %s %s encrypt=%d\n", ut_globals.program,
-	       ut_globals.version, (int)args->fs_args.encrypted);
+	printf("  %s %s encrypt=%d\n", args->program, args->version,
+	       (int)args->fs_args.encrypted);
 }
 
 void ut_execute_tests(void)
@@ -303,7 +304,9 @@ void ut_execute_tests(void)
 		.ar_args = {
 			.arcname = "unitests-archive.voluta",
 			.memwant = UT_GIGA,
-		}
+		},
+		.program = ut_globals.program,
+		.version = ut_globals.version
 	};
 	struct voluta_passphrase passph;
 

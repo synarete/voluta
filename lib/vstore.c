@@ -827,7 +827,7 @@ vstore_cipher(const struct voluta_vstore *vstore)
 
 static bool vstore_encryptwr(const struct voluta_vstore *vstore)
 {
-	const long mask = VOLUTA_F_ENCRYPTWR;
+	const unsigned long mask = VOLUTA_F_ENCRYPTWR;
 
 	return ((vstore->vs_ctl_flags & mask) == mask);
 }

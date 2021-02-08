@@ -81,6 +81,10 @@ static void encrypt_volume_inplace(void)
 	if (err) {
 		voluta_die(err, "encrypt failure: %s", volume_path);
 	}
+	err = voluta_fse_term(fse);
+	if (err) {
+		voluta_die(err, "terminate-fs failure: %s", volume_path);
+	}
 }
 
 static void encrypt_fixup_volume_clone(void)

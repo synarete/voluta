@@ -373,7 +373,7 @@ struct voluta_vstore {
 	struct voluta_qalloc           *vs_qalloc;
 	struct voluta_encbuf           *vs_encbuf;
 	const char *vs_volpath;
-	long vs_ctl_flags;
+	unsigned long vs_ctl_flags;
 };
 
 /* inodes-table in-memory hash-map cache */

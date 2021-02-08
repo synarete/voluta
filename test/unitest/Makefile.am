@@ -38,6 +38,7 @@ voluta_unitest_SOURCES += ut_file_trunc.c
 voluta_unitest_SOURCES += ut_fillfs.c
 voluta_unitest_SOURCES += ut_ioctl.c
 voluta_unitest_SOURCES += ut_namei.c
+voluta_unitest_SOURCES += ut_recrypt.c
 voluta_unitest_SOURCES += ut_reload.c
 voluta_unitest_SOURCES += ut_rename.c
 voluta_unitest_SOURCES += ut_strings.c

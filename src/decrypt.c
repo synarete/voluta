@@ -80,6 +80,10 @@ static void decrypt_volume_inplace(void)
 	if (err) {
 		voluta_die(err, "decrypt failure: %s", volume_path);
 	}
+	err = voluta_fse_term(fse);
+	if (err) {
+		voluta_die(err, "terminate-fs failure: %s", volume_path);
+	}
 }
 
 static void decrypt_fixup_volume_clone(void)

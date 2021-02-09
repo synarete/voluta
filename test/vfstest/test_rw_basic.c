@@ -210,22 +210,24 @@ static void test_basic_reserve_at(struct vt_env *vte,
 {
 	int fd;
 	loff_t pos = -1;
-	size_t i, nwr, nrd;
-	uint8_t buf[1];
+	size_t nwr = 0;
+	size_t nrd = 0;
+	uint8_t buf[2] = { 0, 0 };
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0644, &fd);
-	for (i = 0; i < ssz; ++i) {
+	for (size_t i = 0; i < ssz; ++i) {
 		buf[0] = (uint8_t)i;
 		pos = off + (loff_t)(ssz - i - 1);
 		vt_pwrite(fd, buf, 1, pos, &nwr);
 		vt_expect_eq(nwr, 1);
 	}
-	for (i = 0; i < ssz; ++i) {
+	for (size_t i = 0; i < ssz; ++i) {
 		pos = off + (loff_t)(ssz - i - 1);
 		vt_pread(fd, buf, 1, pos, &nrd);
 		vt_expect_eq(nrd, 1);
 		vt_expect_eq(buf[0], (uint8_t)i);
+		vt_expect_eq(buf[1], 0);
 	}
 	vt_close(fd);
 	vt_unlink(path);
@@ -352,12 +354,11 @@ static void test_basic_unaligned(struct vt_env *vte)
 static void test_basic_chunk_(struct vt_env *vte,
 			      loff_t off, size_t bsz)
 {
-	int fd;
-	void *buf1, *buf2;
+	int fd = -1;
+	void *buf1 = vt_new_buf_rands(vte, bsz);
+	void *buf2 = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 
-	buf1 = vt_new_buf_rands(vte, bsz);
-	buf2 = vt_new_buf_rands(vte, bsz);
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_pwriten(fd, buf1, bsz, off);
 	vt_preadn(fd, buf2, bsz, off);

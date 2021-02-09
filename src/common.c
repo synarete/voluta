@@ -313,19 +313,19 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 		err = -ENOKEY;
 		goto out;
 	}
-	err = voluta_sb_decipher(sb, pass);
+	err = voluta_decipher_sb(sb, pass);
 out:
 	sb_del(sb);
 	if (err == -EAGAIN) {
 		voluta_die(err, "already in use: %s", path);
 	} else if (err == -EUCLEAN) {
-		voluta_die(0, "not a voluta file: %s", path);
+		voluta_die(0, "not a valid voluta volume: %s", path);
 	} else if (err == -ENOKEY) {
-		voluta_die(0, "missing passphrase for encrypted: %s", path);
+		voluta_die(0, "missing passphrase: %s", path);
 	} else if (err == -EKEYEXPIRED) {
 		voluta_die(0, "illegal passphrase: %s", path);
 	} else if (err) {
-		voluta_die(err, "failed to parse zero block: %s", path);
+		voluta_die(err, "failed to parse super block: %s", path);
 	}
 }
 

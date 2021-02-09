@@ -57,11 +57,11 @@ int voluta_check_name(const char *name);
 /* zero-block */
 int voluta_zb_check(const struct voluta_zero_block4 *zb);
 
-int voluta_sb_decipher(struct voluta_super_block *sb, const char *pass);
-
 enum voluta_ztype voluta_zb_type(const struct voluta_zero_block4 *zb);
 
 enum voluta_zbf voluta_zb_flags(const struct voluta_zero_block4 *zb);
+
+int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass);
 
 /* file-system */
 int voluta_fse_new(const struct voluta_fs_args *args,

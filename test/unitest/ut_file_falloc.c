@@ -293,11 +293,9 @@ static loff_t off_to_nbk_up(loff_t off)
 
 static blkcnt_t blocks_count_of(loff_t off, loff_t len)
 {
-	loff_t lba_beg, lba_end, length;
-
-	lba_beg = off_to_nbk(off);
-	lba_end = off_to_nbk_up(off + len);
-	length = (lba_end - lba_beg) * UT_BK_SIZE;
+	const loff_t lba_beg = off_to_nbk(off);
+	const loff_t lba_end = off_to_nbk_up(off + len);
+	const loff_t length = (lba_end - lba_beg) * UT_BK_SIZE;
 
 	return length / 512;
 }

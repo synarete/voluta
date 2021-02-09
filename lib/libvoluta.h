@@ -57,6 +57,9 @@ voluta_sb_new(struct voluta_qalloc *qal, enum voluta_ztype ztype);
 void voluta_sb_del(struct voluta_super_block *sb,
 		   struct voluta_qalloc *qal);
 
+void voluta_sb_set_pass_hash(struct voluta_super_block *sb,
+			     const struct voluta_hash512 *hash);
+
 void voluta_sb_set_birth_time(struct voluta_super_block *sb, time_t btime);
 
 void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count);
@@ -70,6 +73,9 @@ void voluta_sb_setup_rand(struct voluta_super_block *sb,
 			  const struct voluta_mdigest *md);
 
 int voluta_sb_check_volume(const struct voluta_super_block *sb);
+
+int voluta_sb_check_pass_hash(const struct voluta_super_block *sb,
+			      const struct voluta_hash512 *hash);
 
 int voluta_sb_check_rand(const struct voluta_super_block *sb,
 			 const struct voluta_mdigest *md);
@@ -880,11 +886,10 @@ int voluta_crypto_init(struct voluta_crypto *crypto);
 
 void voluta_crypto_fini(struct voluta_crypto *crypto);
 
-
-int voluta_derive_iv_key(const struct voluta_passphrase *pp,
-			 const struct voluta_kdf_pair *kdf,
-			 const struct voluta_mdigest *md,
-			 struct voluta_kivam *kivam);
+int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+			const struct voluta_passphrase *pp,
+			const struct voluta_mdigest *md,
+			struct voluta_kivam *kivam);
 
 int voluta_mdigest_init(struct voluta_mdigest *md);
 

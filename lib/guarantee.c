@@ -121,6 +121,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_vaddr56, 7);
 	REQUIRE_SIZEOF(struct voluta_vaddr64, 8);
 	REQUIRE_SIZEOF(struct voluta_timespec, 16);
+	REQUIRE_SIZEOF(struct voluta_kdf_desc, 16);
 	REQUIRE_SIZEOF(struct voluta_kdf_pair, 32);
 	REQUIRE_SIZEOF(struct voluta_iv, VOLUTA_IV_SIZE);
 	REQUIRE_SIZEOF(struct voluta_key, VOLUTA_KEY_SIZE);

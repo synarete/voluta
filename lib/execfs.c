@@ -748,29 +748,34 @@ static int fse_check_zb_mode(const struct voluta_fs_env *fse)
 	return 0;
 }
 
+static bool fse_encrypt_mode(const struct voluta_fs_env *fse)
+{
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+
+	return (ctl_flags & (VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR)) > 0;
+}
+
 static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 {
 	int err;
-	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+	struct voluta_zcrypt_params *zcp = &fse->zcryp;
+	const struct voluta_passphrase *pp = &fse->passph;
 	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
 
+	if (fse_encrypt_mode(fse) && !fse->passph.passlen) {
+		log_err("missing passphrase of: %s", fse->args.volume);
+		return -ENOKEY;
+	}
 	if (!fse->passph.passlen) {
-		if (ctl_flags & (VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR)) {
-			log_err("missing passphrase of: %s", fse->args.volume);
-			return -ENOKEY;
-		}
 		return 0;
 	}
-	voluta_zb_crypt_params(zb, &fse->zcryp);
-	err = voluta_derive_iv_key(&fse->passph, &fse->zcryp.kdf,
-				   fse_mdigest(fse), &fse->kivam);
+	voluta_zb_crypt_params(zb, zcp);
+	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
 			fse->args.volume, err);
 		return err;
 	}
-	fse->kivam.algo = fse->zcryp.cipher_algo;
-	fse->kivam.mode = fse->zcryp.cipher_mode;
 	return 0;
 }
 
@@ -789,11 +794,40 @@ static int fse_decrypt_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_recheck_sb(struct voluta_fs_env *fse)
+static void fse_calc_pass_hash(const struct voluta_fs_env *fse,
+			       struct voluta_hash512 *out_hash)
+{
+	const struct voluta_mdigest *md = fse_mdigest(fse);
+	const struct voluta_passphrase *pp = &fse->passph;
+
+	if (pp->passlen) {
+		voluta_sha3_512_of(md, pp->pass, pp->passlen, out_hash);
+	} else {
+		voluta_memzero(out_hash, sizeof(*out_hash));
+	}
+}
+
+static int fse_recheck_pass_hash(const struct voluta_fs_env *fse)
+{
+	int err = 0;
+	struct voluta_hash512 hash;
+
+	if (fse->passph.passlen && fse_encrypt_mode(fse)) {
+		fse_calc_pass_hash(fse, &hash);
+		err = voluta_sb_check_pass_hash(fse->sb, &hash);
+	}
+	return err;
+}
+
+static int fse_recheck_sb(const struct voluta_fs_env *fse)
 {
 	int err;
 
 	err = voluta_sb_check_volume(fse->sb);
+	if (err) {
+		return err;
+	}
+	err = fse_recheck_pass_hash(fse);
 	if (err) {
 		return err;
 	}
@@ -967,9 +1001,13 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	size_t vol_size;
 	size_t ag_count;
 	struct voluta_super_block *sb = fse->sb;
+	struct voluta_hash512 pass_hash;
+
+	fse_calc_pass_hash(fse, &pass_hash);
 
 	vol_size = (size_t)fse->args.vsize;
 	ag_count = voluta_size_to_ag_count(vol_size);
+	voluta_sb_set_pass_hash(sb, &pass_hash);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
 	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
@@ -978,8 +1016,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	return 0;
 }
 
-static int fse_prepare_volume(struct voluta_fs_env *fse,
-			      const struct voluta_oper *op)
+static int fse_prepare_volume(struct voluta_fs_env *fse)
 {
 	int err;
 
@@ -988,10 +1025,6 @@ static int fse_prepare_volume(struct voluta_fs_env *fse,
 		return err;
 	}
 	err = fse_create_vstore(fse);
-	if (err) {
-		return err;
-	}
-	err = fse_setup_sb(fse, op);
 	if (err) {
 		return err;
 	}
@@ -1021,7 +1054,11 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_prepare_volume(fse, &op);
+	err = fse_setup_sb(fse, &op);
+	if (err) {
+		return err;
+	}
+	err = fse_prepare_volume(fse);
 	if (err) {
 		return err;
 	}

@@ -431,25 +431,39 @@ static void ut_del_mpool(struct voluta_mpool *mpool)
 	ut_del_qalloc(qal);
 }
 
-static void ut_mpool_simple(struct ut_env *ute)
+static void ut_mpool_simple_(struct ut_env *ute, size_t nbks)
 {
-	struct voluta_mpool *mpool;
-	struct voluta_bk_info *bki[64];
+	size_t nbytes;
+	struct voluta_mpool *mpool = NULL;
+	struct voluta_bk_info **bki_arr = NULL;
 
 	mpool = ut_new_mpool(ute);
-	for (size_t i = 0; i < UT_ARRAY_SIZE(bki); ++i) {
-		bki[i] = voluta_malloc_bki(mpool);
-		ut_expect_not_null(bki[i]);
+
+	nbytes = nbks * sizeof(struct voluta_bk_info *);
+	bki_arr = voluta_qalloc_malloc(mpool->mp_qal, nbytes);
+	ut_expect_not_null(bki_arr);
+
+	for (size_t i = 0; i < nbks; ++i) {
+		bki_arr[i] = voluta_malloc_bki(mpool);
+		ut_expect_not_null(bki_arr[i]);
 	}
-	for (size_t i = 1; i < UT_ARRAY_SIZE(bki); i += 2) {
-		voluta_free_bki(mpool, bki[i]);
-		bki[i] = NULL;
+	for (size_t i = 1; i < nbks; i += 2) {
+		voluta_free_bki(mpool, bki_arr[i]);
+		bki_arr[i] = NULL;
 	}
-	for (size_t i = 0; i < UT_ARRAY_SIZE(bki); i += 2) {
-		voluta_free_bki(mpool, bki[i]);
-		bki[i] = NULL;
+	for (size_t i = 0; i < nbks; i += 2) {
+		voluta_free_bki(mpool, bki_arr[i]);
+		bki_arr[i] = NULL;
 	}
+
+	voluta_qalloc_free(mpool->mp_qal, bki_arr, nbytes);
 	ut_del_mpool(mpool);
+}
+
+static void ut_mpool_simple(struct ut_env *ute)
+{
+	ut_mpool_simple_(ute, 64);
+	ut_mpool_simple_(ute, 271);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -29,14 +29,14 @@ struct ut_ioparams {
 	{ .offset = (o_), .length = (l_), .nskip = (s_), .count = (c_) }
 
 
-static struct ut_dvec **
-new_dvecs(struct ut_env *ute, const struct ut_ioparams *params)
+static struct ut_dvec **new_dvecs(struct ut_env *ute,
+				  const struct ut_ioparams *params)
 {
 	loff_t off;
 	struct ut_dvec **list;
 	const size_t step = params->length + params->nskip;
 
-	list = ut_zerobuf(ute, params->count * sizeof(*list));
+	list = ut_zerobuf(ute, params->count * sizeof(struct ut_dvec *));
 	for (size_t i = 0; i < params->count; ++i) {
 		off = params->offset + (loff_t)(i * step);
 		list[i] = ut_new_dvec(ute, off, params->length);
@@ -140,9 +140,8 @@ static void ut_file_random_(struct ut_env *ute,
 	ut_rmdir_at_root(ute, name);
 }
 
-static void
-ut_file_random_arr_(struct ut_env *ute,
-		    const struct ut_ioparams *arr, size_t nelems)
+static void ut_file_random_arr_(struct ut_env *ute,
+				const struct ut_ioparams *arr, size_t nelems)
 {
 	for (size_t i = 0; i < nelems; ++i) {
 		ut_file_random_(ute, &arr[i]);

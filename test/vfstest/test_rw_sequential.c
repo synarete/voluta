@@ -42,13 +42,13 @@ static void test_sequencial_(struct vt_env *vte, loff_t from,
 	for (size_t i = 0; i < nitr; ++i) {
 		vt_llseek(fd, from, SEEK_SET, &pos);
 		for (size_t j = 0; j < cnt; ++j) {
-			buf1 = vt_new_buf_nums(vte, j, bsz);
+			buf1 = vt_new_buf_nums(vte, (long)j, bsz);
 			vt_write(fd, buf1, bsz, &nwr);
 			vt_expect_eq(nwr, bsz);
 		}
 		vt_llseek(fd, from, SEEK_SET, &pos);
 		for (size_t j = 0; j < cnt; ++j) {
-			buf1 = vt_new_buf_nums(vte, j, bsz);
+			buf1 = vt_new_buf_nums(vte, (long)j, bsz);
 			vt_read(fd, buf2, bsz, &nrd);
 			vt_expect_eq(nrd, bsz);
 			vt_expect_eqm(buf1, buf2, bsz);

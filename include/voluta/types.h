@@ -191,7 +191,6 @@ struct voluta_zcrypt_params {
 	struct voluta_kdf_pair kdf;
 	uint32_t cipher_algo;
 	uint32_t cipher_mode;
-	uint32_t iv_md_hash; /* TODO: fill & use me */
 };
 
 /* user-credentials */

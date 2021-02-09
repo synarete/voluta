@@ -39,7 +39,7 @@ static void decrypt_setup_check_params(void)
 	path = voluta_globals.cmd.decrypt.volume_real;
 	voluta_die_if_not_volume(path, true, true, false, NULL);
 	passfile = voluta_globals.cmd.decrypt.passphrase_file;
-	voluta_globals.cmd.decrypt.passphrase = voluta_getpass2(passfile);
+	voluta_globals.cmd.decrypt.passphrase = voluta_getpass(passfile);
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.decrypt.passphrase);
 }
 

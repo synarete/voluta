@@ -382,20 +382,26 @@ static int passphrase_check(const struct voluta_passphrase *pp)
 	return 0;
 }
 
-static int derive_iv(const void *pass, size_t passlen,
-		     const void *salt, size_t saltlen,
-		     const struct voluta_kdf_desc *kd,
-		     struct voluta_iv *iv)
+static int derive_iv(const struct voluta_kdf_desc *kdf,
+		     const struct voluta_passphrase *pp,
+		     const struct voluta_mdigest *md,
+		     struct voluta_iv *out_iv)
 {
 	int ret = 0;
 	gpg_error_t gcry_err;
+	struct voluta_hash256 salt;
 
-	gcry_err = gcry_kdf_derive(pass, passlen,
-				   (int)kd->kd_algo, /* GCRY_KDF_PBKDF2 */
-				   (int)kd->kd_subalgo, /* GCRY_MD_SHA256 */
-				   salt, saltlen,
-				   kd->kd_iterations, /* 4096 */
-				   sizeof(iv->iv), iv->iv);
+	if (kdf->kd_salt_md != VOLUTA_MD_SHA3_256) {
+		return -ENOTSUP;
+	}
+	voluta_sha3_256_of(md, pp->pass, pp->passlen, &salt);
+
+	gcry_err = gcry_kdf_derive(pp->pass, pp->passlen,
+				   (int)kdf->kd_algo, /* GCRY_KDF_PBKDF2 */
+				   (int)kdf->kd_subalgo, /* GCRY_MD_SHA256 */
+				   salt.hash, sizeof(salt.hash),
+				   kdf->kd_iterations, /* 4096 */
+				   sizeof(out_iv->iv), out_iv->iv);
 	if (gcry_err) {
 		log_gcrypt_err("gcry_kdf_derive", gcry_err);
 		ret = gcrypt_err(gcry_err);
@@ -403,20 +409,26 @@ static int derive_iv(const void *pass, size_t passlen,
 	return ret;
 }
 
-static int derive_key(const void *pass, size_t passlen,
-		      const void *salt, size_t saltlen,
-		      const struct voluta_kdf_desc *kd,
-		      struct voluta_key *key)
+static int derive_key(const struct voluta_kdf_desc *kdf,
+		      const struct voluta_passphrase *pp,
+		      const struct voluta_mdigest *md,
+		      struct voluta_key *out_key)
 {
 	int ret = 0;
 	gpg_error_t gcry_err;
+	struct voluta_hash512 salt;
 
-	gcry_err = gcry_kdf_derive(pass, passlen,
-				   (int)kd->kd_algo, /* GCRY_KDF_SCRYPT */
-				   (int)kd->kd_subalgo, /* 8 */
-				   salt, saltlen,
-				   kd->kd_iterations, /* 1024 */
-				   sizeof(key->key), key->key);
+	if (kdf->kd_salt_md != VOLUTA_MD_SHA3_512) {
+		return -ENOTSUP;
+	}
+	voluta_sha3_512_of(md, pp->pass, pp->passlen, &salt);
+
+	gcry_err = gcry_kdf_derive(pp->pass, pp->passlen,
+				   (int)kdf->kd_algo, /* GCRY_KDF_SCRYPT */
+				   (int)kdf->kd_subalgo, /* 8 */
+				   salt.hash, sizeof(salt.hash),
+				   kdf->kd_iterations, /* 1024 */
+				   sizeof(out_key->key), out_key->key);
 	if (gcry_err) {
 		log_gcrypt_err("gcry_kdf_derive", gcry_err);
 		ret = gcrypt_err(gcry_err);
@@ -424,30 +436,32 @@ static int derive_key(const void *pass, size_t passlen,
 	return ret;
 }
 
-int voluta_derive_iv_key(const struct voluta_passphrase *pp,
-			 const struct voluta_kdf_pair *kdf,
-			 const struct voluta_mdigest *md,
-			 struct voluta_kivam *kivam)
+int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+			const struct voluta_passphrase *pp,
+			const struct voluta_mdigest *md,
+			struct voluta_kivam *kivam)
 {
 	int err;
-	struct voluta_hash512 sha;
 
 	err = passphrase_check(pp);
 	if (err) {
-		return err;
+		goto out;
 	}
-	voluta_sha3_512_of(md, pp->pass, pp->passlen, &sha);
-	err = derive_iv(pp->pass, pp->passlen, sha.hash, sizeof(sha.hash),
-			&kdf->kdf_iv, &kivam->iv);
+	err = derive_iv(&zcp->kdf.kdf_iv, pp, md, &kivam->iv);
 	if (err) {
-		return err;
+		goto out;
 	}
-	err = derive_key(pp->pass, pp->passlen, sha.hash, sizeof(sha.hash),
-			 &kdf->kdf_key, &kivam->key);
+	err = derive_key(&zcp->kdf.kdf_key, pp, md, &kivam->key);
 	if (err) {
-		return err;
+		goto out;
 	}
-	return 0;
+	kivam->cipher_algo = zcp->cipher_algo;
+	kivam->cipher_mode = zcp->cipher_mode;
+out:
+	if (err) {
+		voluta_memzero(kivam, sizeof(*kivam));
+	}
+	return err;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -527,21 +541,21 @@ static void key_rand(struct voluta_key *key)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void kivam_set_algo(struct voluta_kivam *kivam, uint32_t algo)
+static void kivam_set_cipher_algo(struct voluta_kivam *kivam, uint32_t algo)
 {
-	kivam->algo = cpu_to_le32(algo);
+	kivam->cipher_algo = cpu_to_le32(algo);
 }
 
-static void kivam_set_mode(struct voluta_kivam *kivam, uint32_t mode)
+static void kivam_set_cipher_mode(struct voluta_kivam *kivam, uint32_t mode)
 {
-	kivam->mode = cpu_to_le32(mode);
+	kivam->cipher_mode = cpu_to_le32(mode);
 }
 
 void voluta_kivam_init(struct voluta_kivam *kivam)
 {
 	memset(kivam, 0, sizeof(*kivam));
-	kivam_set_algo(kivam, VOLUTA_CIPHER_AES256);
-	kivam_set_mode(kivam, VOLUTA_CIPHER_MODE_GCM);
+	kivam_set_cipher_algo(kivam, VOLUTA_CIPHER_AES256);
+	kivam_set_cipher_mode(kivam, VOLUTA_CIPHER_MODE_GCM);
 }
 
 void voluta_kivam_fini(struct voluta_kivam *kivam)

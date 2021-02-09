@@ -1060,7 +1060,7 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 		return err;
 	}
 	voluta_zb_crypt_params(&arc->ar_spec->ar_zero, &zcp);
-	err = voluta_derive_iv_key(&passph, &zcp.kdf, md, &arc->ar_kivam);
+	err = voluta_derive_kivam(&zcp, &passph, md, &arc->ar_kivam);
 	if (err) {
 		return err;
 	}
@@ -1114,16 +1114,14 @@ static int arc_stat_blob(const struct voluta_archiver *arc,
 	const char *name = bli->b_name.name;
 
 	err = bstore_stat_blob(arc->ar_bstore, idx, name, &len);
-	if (err) {
+	if (!err) {
 		if (len == bsz) {
 			log_info("blob-exists: %s", name);
-			return 0;
 		} else {
 			log_info("wrong-blob-size: %s size=%lu", name, len);
-			return -ENOENT;
+			err = -ENOENT;
 		}
-	}
-	if (err != -ENOENT) {
+	} else if (err != -ENOENT) {
 		log_warn("stat-blob: %s err=%d", name, err);
 	}
 	return err;

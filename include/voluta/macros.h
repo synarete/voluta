@@ -34,7 +34,7 @@
 #define VOLUTA_CONCAT(x_, y_)   x_ ## y_
 
 /* array number of elements */
-#define VOLUTA_ARRAY_SIZE(x_)   ( (sizeof((x_))) / (sizeof((x_)[0])) )
+#define VOLUTA_ARRAY_SIZE(x_)   ( (sizeof((x_))) / (sizeof(((x_)[0]))) )
 
 /* utility macros */
 #define VOLUTA_CONTAINER_OF(ptr_, type_, member_) \

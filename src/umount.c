@@ -133,7 +133,7 @@ static const char *voluta_umount_usage[] = {
 	"umount [options] <mount-point>",
 	"",
 	"options:",
-	"  -l, --lazy                   Detach umount"
+	"  -l, --lazy                   Detach umount",
 	"  -f, --force                  Forced umount",
 	NULL
 };

@@ -476,17 +476,18 @@ struct voluta_iv {
 struct voluta_kivam {
 	struct voluta_key key;
 	struct voluta_iv  iv;
-	uint32_t algo;
-	uint32_t mode;
+	uint32_t cipher_algo;
+	uint32_t cipher_mode;
 	uint64_t reserved;
 } voluta_packed_aligned32;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_kdf_desc {
-	uint32_t kd_algo;
-	uint32_t kd_subalgo;
 	uint32_t kd_iterations;
+	uint32_t kd_algo;
+	uint16_t kd_subalgo;
+	uint16_t kd_salt_md;
 	uint32_t kd_reserved;
 } voluta_packed_aligned16;
 
@@ -494,7 +495,7 @@ struct voluta_kdf_desc {
 struct voluta_kdf_pair {
 	struct voluta_kdf_desc  kdf_iv;
 	struct voluta_kdf_desc  kdf_key;
-} voluta_packed_aligned16;
+} voluta_packed_aligned32;
 
 
 struct voluta_zero_block4 {
@@ -518,10 +519,11 @@ struct voluta_zero_block4 {
 
 struct voluta_meta_block4 {
 	struct voluta_name      m_name;
+	struct voluta_hash512   m_pass_hash;
 	uint64_t                m_birth_time;
 	uint64_t                m_ag_count;
 	uint64_t                m_ar_nents;
-	uint8_t                 m_reserved[3808];
+	uint8_t                 m_reserved[3744];
 } voluta_packed_aligned64;
 
 

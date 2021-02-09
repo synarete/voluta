@@ -2514,17 +2514,21 @@ static int do_ioc_query(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 	if (!bsz_out && (flags | FUSE_IOCTL_RETRY)) {
 		err = -ENOSYS;
-	} else if (bsz_out != sizeof(query)) {
-		err = -EINVAL;
-	} else if (bsz_in < sizeof(query.qtype)) {
-		err = -EINVAL;
-	} else {
-		query.qtype = ((const struct voluta_ioc_query *)buf_in)->qtype;
-
-		fuseq_lock_fs(fqw);
-		err = voluta_fs_query(fqw->sbi, fqw->op, ino, &query);
-		fuseq_unlock_fs(fqw);
+		goto out;
 	}
+	if (bsz_out != sizeof(query)) {
+		err = -EINVAL;
+		goto out;
+	}
+	if (bsz_in < sizeof(query.qtype)) {
+		err = -EINVAL;
+		goto out;
+	}
+	query.qtype = ((const struct voluta_ioc_query *)buf_in)->qtype;
+	fuseq_lock_fs(fqw);
+	err = voluta_fs_query(fqw->sbi, fqw->op, ino, &query);
+	fuseq_unlock_fs(fqw);
+out:
 	return fuseq_reply_ioctl(fqw, 0, &query, sizeof(query), err);
 }
 

@@ -284,8 +284,7 @@ static void vt_create_seq(long *arr, size_t n, long base)
 	}
 }
 
-static long *vt_new_seq(struct vt_env *vte, size_t cnt,
-			long base)
+static long *vt_new_seq(struct vt_env *vte, size_t cnt, long base)
 {
 	long *arr = vt_new_buf_zeros(vte, cnt * sizeof(*arr));
 
@@ -302,7 +301,7 @@ static void swap(long *arr, size_t i, size_t j)
 	arr[j] = tmp;
 }
 
-long *vt_new_randseq(struct vt_env *vte, size_t cnt, long base)
+long *vt_new_buf_randseq(struct vt_env *vte, size_t cnt, long base)
 {
 	long *arr;
 	size_t *pos;
@@ -315,15 +314,15 @@ long *vt_new_randseq(struct vt_env *vte, size_t cnt, long base)
 	return arr;
 }
 
-static void fill_buf_nums(unsigned long base, void *buf, size_t bsz)
+static void fill_buf_nums(long base, void *buf, size_t bsz)
 {
 	uint8_t *rem;
 	uint8_t *end;
-	uint64_t *ubuf = buf;
+	int64_t *ubuf = buf;
 	const size_t cnt = bsz / sizeof(*ubuf);
 
 	for (size_t i = 0; i < cnt; ++i) {
-		ubuf[i] = base + i;
+		ubuf[i] = base + (long)i;
 	}
 	rem = (uint8_t *)buf + (cnt * sizeof(*ubuf));
 	end = (uint8_t *)buf + bsz;
@@ -332,8 +331,7 @@ static void fill_buf_nums(unsigned long base, void *buf, size_t bsz)
 	}
 }
 
-void *vt_new_buf_nums(struct vt_env *vte,
-		      unsigned long base, size_t bsz)
+void *vt_new_buf_nums(struct vt_env *vte, long base, size_t bsz)
 {
 	void *buf;
 

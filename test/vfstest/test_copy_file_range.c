@@ -39,19 +39,21 @@ static void test_copy_file_range_(struct vt_env *vte,
 				  const struct vt_copy_range_info *cri)
 
 {
-	int src_fd, dst_fd;
-	size_t nb;
-	loff_t src_off;
-	loff_t dst_off;
-	size_t cnt = 0;
-	char *src_path, *dst_path;
-	void *src_data, *dst_data;
+	int src_fd = -1;
+	int dst_fd = -1;
+	size_t nb = 0;
+	size_t ncp = 0;
+	loff_t src_off = -1;
+	loff_t dst_off = -1;
+	void *src_data = NULL;
+	void *dst_data = NULL;
 
-	src_path = vt_new_path_unique(vte);
+	char *src_path = vt_new_path_unique(vte);
+	char *dst_path = vt_new_path_unique(vte);
+
 	vt_open(src_path, O_CREAT | O_RDWR, 0600, &src_fd);
 	vt_ftruncate(src_fd, cri->src_fsize);
 
-	dst_path = vt_new_path_unique(vte);
 	vt_open(dst_path, O_CREAT | O_RDWR, 0600, &dst_fd);
 	vt_ftruncate(dst_fd, cri->dst_fsize);
 
@@ -72,8 +74,8 @@ static void test_copy_file_range_(struct vt_env *vte,
 	src_off = cri->src_doff;
 	dst_off = cri->dst_doff;
 	vt_copy_file_range(src_fd, &src_off, dst_fd,
-			   &dst_off, cri->copysz, &cnt);
-	vt_expect_eq(cnt, cri->copysz);
+			   &dst_off, cri->copysz, &ncp);
+	vt_expect_eq(cri->copysz, ncp);
 
 	src_data = vt_new_buf_rands(vte, cri->copysz);
 	vt_pread(src_fd, src_data, cri->copysz, cri->src_doff, &nb);

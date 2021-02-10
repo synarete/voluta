@@ -228,34 +228,43 @@ static void test_mmap_msync(struct vt_env *vte)
 /*
  * Tests mmap-ed I/O for unlinked file-path.
  */
-static void test_mmap_unlinked(struct vt_env *vte)
+static void test_mmap_unlinked_(struct vt_env *vte, loff_t off, size_t msz)
 {
 	int fd = -1;
-	size_t k = 0;
-	size_t nn = 2111;
-	char *data;
-	void *addr;
-	struct stat st;
-	const size_t mlen = 7 * VT_UMEGA;
+	long val = 0;
+	long *dat = NULL;
+	void *addr = NULL;
+	const size_t cnt = msz / sizeof(*dat);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_fallocate(fd, 0, 0, (loff_t)mlen);
-	vt_mmap(NULL, mlen, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0, &addr);
+	vt_fallocate(fd, 0, off, (loff_t)msz);
+	vt_mmap(NULL, msz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off, &addr);
 	vt_unlink(path);
-	vt_fstat(fd, &st);
 
-	data = (char *)addr;
-	for (size_t i = 0; i < (mlen - nn); i += nn) {
-		snprintf(data + i, nn, "%lu", i);
+	for (size_t i = 0; i < cnt; ++i) {
+		dat = ((long *)addr) + i;
+		*dat = (long)i;
 	}
-	for (size_t i = 0; i < (mlen - nn); i += nn) {
-		vt_expect_eq(1, sscanf(data + i, "%lu", &k));
-		vt_expect_eq(i, k);
+	for (size_t i = 1; i < cnt; i += 2) {
+		dat = ((long *)addr) + i;
+		val = *dat;
+		vt_expect_eq(val, i);
 	}
-	vt_munmap(addr, mlen);
+	for (size_t i = 0; i < cnt; i += 2) {
+		dat = ((long *)addr) + i;
+		val = *dat;
+		vt_expect_eq(val, i);
+	}
+	vt_munmap(addr, msz);
 	vt_close(fd);
 	vt_stat_noent(path);
+}
+
+static void test_mmap_unlinked(struct vt_env *vte)
+{
+	test_mmap_unlinked_(vte, 0, VT_MEGA);
+	test_mmap_unlinked_(vte, VT_GIGA - VT_MEGA, 2 * VT_MEGA);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

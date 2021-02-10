@@ -464,21 +464,20 @@ char *voluta_clone_as_tmppath(const char *path)
 	int err = 0;
 	int dst_fd = -1;
 	int src_fd = -1;
-	int o_flags;
 	loff_t off_out = 0;
-	char *tmppath = NULL;
 	struct stat st;
+	const mode_t mode = S_IRUSR | S_IWUSR;
+	char *tpath = NULL;
 
 	err = voluta_sys_stat(path, &st);
 	if (err) {
 		goto out;
 	}
-	tmppath = discover_unused_tmppath(path);
-	if (tmppath == NULL) {
+	tpath = discover_unused_tmppath(path);
+	if (tpath == NULL) {
 		goto out;
 	}
-	o_flags = O_CREAT | O_RDWR | O_EXCL;
-	err = voluta_sys_open(tmppath, o_flags, S_IRUSR | S_IWUSR, &dst_fd);
+	err = voluta_sys_open(tpath, O_CREAT | O_RDWR | O_EXCL, mode, &dst_fd);
 	if (err) {
 		goto out;
 	}
@@ -490,8 +489,7 @@ char *voluta_clone_as_tmppath(const char *path)
 	if (err) {
 		goto out;
 	}
-	o_flags = O_RDONLY;
-	err = voluta_sys_open(path, o_flags, 0, &src_fd);
+	err = voluta_sys_open(path, O_RDONLY, 0, &src_fd);
 	if (err) {
 		goto out;
 	}
@@ -502,11 +500,11 @@ char *voluta_clone_as_tmppath(const char *path)
 out:
 	voluta_sys_closefd(&src_fd);
 	voluta_sys_closefd(&dst_fd);
-	if (err && tmppath) {
-		voluta_sys_unlink(tmppath);
-		voluta_pfree_string(&tmppath);
+	if (err && tpath) {
+		voluta_sys_unlink(tpath);
+		voluta_pfree_string(&tpath);
 	}
-	return tmppath;
+	return tpath;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

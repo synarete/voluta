@@ -1726,13 +1726,14 @@ static void cache_shrink_some(struct voluta_cache *cache, size_t factor)
 	cache_shrink_or_relru_bkis(cache, nshrink);
 }
 
-static unsigned int cache_memory_pressure(const struct voluta_cache *cache)
+static uint64_t cache_memory_pressure(const struct voluta_cache *cache)
 {
 	const size_t npages_used = cache->c_qalloc->st.npages_used;
 	const size_t npages_tota = cache->c_qalloc->st.npages;
+	const uint64_t nbits = (uint32_t)((31 * npages_used) / npages_tota);
 
-	/* percentage ration */
-	return (unsigned int)((100 * npages_used) / npages_tota);
+	/* returns memory-pressure represented as bit-mask */
+	return ((1UL << nbits) - 1);
 }
 
 static bool cache_has_overpop(const struct voluta_cache *cache)
@@ -1744,55 +1745,42 @@ static bool cache_has_overpop(const struct voluta_cache *cache)
 
 static size_t cache_calc_niter(const struct voluta_cache *cache, int flags)
 {
-	size_t niter = 0;
-	const uint32_t mem_press = cache_memory_pressure(cache);
+	size_t niter;
+	const uint64_t mem_press = cache_memory_pressure(cache);
 
-	if (mem_press > 16) {
-		niter = 8;
-	} else if (mem_press > 8) {
-		niter = 4;
-	} else if (mem_press > 4) {
-		niter = 2;
-	} else if (mem_press > 2) {
-		niter = 1;
+	niter = voluta_popcount64(mem_press >> 4);
+	if (cache_has_overpop(cache)) {
+		niter += 1;
 	}
 	if (flags & VOLUTA_F_TIMEOUT) {
-		niter = max(niter, 1);
+		niter += 1;
 	}
-	if (cache_has_overpop(cache)) {
+	if (flags & VOLUTA_F_TIMEOUT) {
+		niter += 1;
+	}
+	if (flags & VOLUTA_F_IDLE) {
+		niter += 1;
+	}
+	if (flags & VOLUTA_F_BRINGUP) {
+		niter += 1;
+	}
+	if (flags & VOLUTA_F_OPSTART) {
 		niter += 1;
 	}
 	return niter;
 }
 
-static size_t cache_calc_factor(const struct voluta_cache *cache, int flags)
-{
-	size_t factor = 1;
-	const size_t mem_press = cache_memory_pressure(cache);
-
-	if (flags & VOLUTA_F_TIMEOUT) {
-		factor = (flags & VOLUTA_F_IDLE) ? 8 : 2;
-	}
-	if (flags & VOLUTA_F_BRINGUP) {
-		factor += 1;
-	}
-	if (flags & VOLUTA_F_OPSTART) {
-		factor += 1;
-	}
-	if (mem_press > 30) {
-		factor *= 2;
-	}
-	return factor;
-}
-
 void voluta_cache_relax(struct voluta_cache *cache, int flags)
 {
-	const size_t factor = cache_calc_factor(cache, flags);
-	const size_t niter = factor * cache_calc_niter(cache, flags);
+	size_t factor;
+	size_t niter = cache_calc_niter(cache, flags);
+	uint64_t mem_press = cache_memory_pressure(cache);
 
-	for (size_t i = 0; i < niter; ++i) {
+	while (niter-- && (mem_press > 0x7)) {
+		factor = 1 + voluta_popcount64(mem_press >> 3);
 		cache_tick_once(cache);
 		cache_shrink_some(cache, factor);
+		mem_press = cache_memory_pressure(cache);
 	}
 }
 
@@ -1864,9 +1852,9 @@ static bool cache_dq_need_flush(const struct voluta_cache *cache,
 
 static bool cache_mem_press_need_flush(const struct voluta_cache *cache)
 {
-	const unsigned int mem_press = cache_memory_pressure(cache);
+	const uint64_t mem_press = cache_memory_pressure(cache);
 
-	return (mem_press > 30);
+	return (mem_press > 0x0F);
 }
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)

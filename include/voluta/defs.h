@@ -661,8 +661,8 @@ struct voluta_xattr_node {
 
 
 struct voluta_reg_ispec {
-	struct voluta_vaddr64   r_head_leaf[VOLUTA_FILE_HEAD_NLEAVES];
 	struct voluta_vaddr64   r_tree_root;
+	struct voluta_vaddr64   r_head_leaf[VOLUTA_FILE_HEAD_NLEAVES];
 	uint8_t                 r_reserved[376];
 } voluta_packed_aligned8;
 

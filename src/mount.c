@@ -230,7 +230,8 @@ static void mount_trace_start(void)
 	voluta_log_info("executable: %s", voluta_globals.prog);
 	voluta_log_info("mount-point: %s", voluta_globals.cmd.mount.point_real);
 	voluta_log_info("volume: %s", voluta_globals.cmd.mount.volume);
-	voluta_log_info("encrypted=%d rdonly=%d noexec=%d nodev=%d nosuid=%d",
+	voluta_log_info("modes: encrypted=%d rdonly=%d noexec=%d "
+			"nodev=%d nosuid=%d",
 			(int)voluta_globals.cmd.mount.encrypted,
 			(int)voluta_globals.cmd.mount.rdonly,
 			(int)voluta_globals.cmd.mount.noexec,

@@ -748,11 +748,40 @@ static int fse_check_zb_mode(const struct voluta_fs_env *fse)
 	return 0;
 }
 
+static bool fse_encrypted_mode(const struct voluta_fs_env *fse)
+{
+	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
+
+	return (ctl_flags & VOLUTA_F_ENCRYPTED) > 0;
+}
+
 static bool fse_encrypt_mode(const struct voluta_fs_env *fse)
 {
 	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
 
 	return (ctl_flags & (VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR)) > 0;
+}
+
+static void fse_calc_pass_hash(const struct voluta_fs_env *fse,
+			       struct voluta_hash512 *out_hash)
+{
+	const struct voluta_mdigest *md = fse_mdigest(fse);
+	const struct voluta_passphrase *pp = &fse->passph;
+
+	if (pp->passlen) {
+		voluta_sha3_512_of(md, pp->pass, pp->passlen, out_hash);
+	} else {
+		voluta_memzero(out_hash, sizeof(*out_hash));
+	}
+}
+
+static int fse_update_sb(struct voluta_fs_env *fse)
+{
+	struct voluta_hash512 pass_hash;
+
+	fse_calc_pass_hash(fse, &pass_hash);
+	voluta_sb_set_pass_hash(fse->sb, &pass_hash);
+	return 0;
 }
 
 static int fse_prepare_sb_key(struct voluta_fs_env *fse)
@@ -794,25 +823,12 @@ static int fse_decrypt_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static void fse_calc_pass_hash(const struct voluta_fs_env *fse,
-			       struct voluta_hash512 *out_hash)
-{
-	const struct voluta_mdigest *md = fse_mdigest(fse);
-	const struct voluta_passphrase *pp = &fse->passph;
-
-	if (pp->passlen) {
-		voluta_sha3_512_of(md, pp->pass, pp->passlen, out_hash);
-	} else {
-		voluta_memzero(out_hash, sizeof(*out_hash));
-	}
-}
-
 static int fse_recheck_pass_hash(const struct voluta_fs_env *fse)
 {
 	int err = 0;
 	struct voluta_hash512 hash;
 
-	if (fse->passph.passlen && fse_encrypt_mode(fse)) {
+	if (fse->passph.passlen && fse_encrypted_mode(fse)) {
 		fse_calc_pass_hash(fse, &hash);
 		err = voluta_sb_check_pass_hash(fse->sb, &hash);
 	}
@@ -895,6 +911,10 @@ static int fse_store_sb(struct voluta_fs_env *fse)
 	int err;
 
 	err = fse_recheck_sb(fse);
+	if (err) {
+		return err;
+	}
+	err = fse_update_sb(fse);
 	if (err) {
 		return err;
 	}

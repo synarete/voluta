@@ -1562,6 +1562,9 @@ static int do_init(struct voluta_fuseq_worker *fqw, ino_t ino,
 	setup_cap_want(coni, FUSE_SPLICE_READ);
 	setup_cap_want(coni, FUSE_SPLICE_WRITE);
 
+	/* TODO: let super do his private stuff on init */
+	fqw->sbi->sb_mntime = voluta_time_now();
+
 	return fuseq_reply_init(fqw, 0);
 }
 
@@ -3507,7 +3510,6 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 			sleep(1);
 			continue;
 		}
-
 
 		/* serve single in-comming request */
 		err = fuseq_exec_one(fqw);

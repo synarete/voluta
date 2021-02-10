@@ -1815,56 +1815,69 @@ int voluta_do_statvfs(const struct voluta_oper *op,
 }
 
 static void fill_query_version(const struct voluta_inode_info *ii,
-			       struct voluta_ioc_query *qry)
+			       struct voluta_ioc_query *query)
 {
-	qry->u.version.major = voluta_version.major;
-	qry->u.version.minor = voluta_version.minor;
-	qry->u.version.sublevel = voluta_version.sublevel;
-	strncpy(qry->u.version.string, voluta_version.string,
-		sizeof(qry->u.version.string) - 1);
+	query->u.version.major = voluta_version.major;
+	query->u.version.minor = voluta_version.minor;
+	query->u.version.sublevel = voluta_version.sublevel;
+	strncpy(query->u.version.string, voluta_version.string,
+		sizeof(query->u.version.string) - 1);
 	unused(ii);
 }
 
 static void fill_query_volume(const struct voluta_inode_info *ii,
-			      struct voluta_ioc_query *qry)
+			      struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 	const struct voluta_vstore *vstore = sbi->sb_vstore;
 
-	qry->u.volume.size = (uint64_t)vstore->vs_pstore.ps_size;
+	query->u.volume.size = (uint64_t)vstore->vs_pstore.ps_size;
 	if (vstore->vs_volpath != NULL) {
-		strncpy(qry->u.volume.path, vstore->vs_volpath,
-			sizeof(qry->u.volume.path) - 1);
+		strncpy(query->u.volume.path, vstore->vs_volpath,
+			sizeof(query->u.volume.path) - 1);
 	}
 }
 
+static void fill_query_fsinfo(const struct voluta_inode_info *ii,
+			      struct voluta_ioc_query *query)
+{
+	const struct voluta_sb_info *sbi = ii_sbi(ii);
+
+	query->u.fsinfo.uptime = voluta_time_now() - sbi->sb_mntime;
+	query->u.fsinfo.msflags = sbi->sb_ms_flags;
+	query->u.fsinfo.ctlflags = sbi->sb_ctl_flags;
+}
+
 static void fill_query_inode(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *qry)
+			     struct voluta_ioc_query *query)
 {
 	const enum voluta_inodef iflags = voluta_ii_flags(ii);
 	const enum voluta_dirf dirflags =
 		ii_isdir(ii) ? voluta_dir_flags(ii) : 0;
 
-	qry->u.inode.iflags = (int32_t)iflags;
-	qry->u.inode.dirflags = (int32_t)dirflags;
+	query->u.inode.iflags = (uint32_t)iflags;
+	query->u.inode.dirflags = (uint32_t)dirflags;
 }
 
 static int fill_query_result(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *qry)
+			     struct voluta_ioc_query *query)
 {
-	const enum voluta_query_type qtype = qry->qtype;
+	const enum voluta_query_type qtype = query->qtype;
 
-	voluta_memzero(&qry->u, sizeof(qry->u));
+	voluta_memzero(&query->u, sizeof(query->u));
 
 	switch (qtype) {
 	case VOLUTA_QUERY_VERSION:
-		fill_query_version(ii, qry);
+		fill_query_version(ii, query);
 		break;
 	case VOLUTA_QUERY_VOLUME:
-		fill_query_volume(ii, qry);
+		fill_query_volume(ii, query);
+		break;
+	case VOLUTA_QUERY_FSINFO:
+		fill_query_fsinfo(ii, query);
 		break;
 	case VOLUTA_QUERY_INODE:
-		fill_query_inode(ii, qry);
+		fill_query_inode(ii, query);
 		break;
 	case VOLUTA_QUERY_NONE:
 	default:
@@ -1875,7 +1888,7 @@ static int fill_query_result(const struct voluta_inode_info *ii,
 
 static int do_query(const struct voluta_oper *op,
 		    const struct voluta_inode_info *ii,
-		    struct voluta_ioc_query *qry)
+		    struct voluta_ioc_query *query)
 {
 	int err;
 
@@ -1883,7 +1896,7 @@ static int do_query(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = fill_query_result(ii, qry);
+	err = fill_query_result(ii, query);
 	if (err) {
 		return err;
 	}

@@ -1124,8 +1124,8 @@ void voluta_set_verbose_mode(const char *mode)
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
 	} else if (!strcmp(modstr, "2")) {
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
-		voluta_globals.log_mask |= VOLUTA_LOG_FILINE;
-	} else {
+		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
+	} else if (!strcmp(modstr, "3")) {
 		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
 		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
 		voluta_globals.log_mask |= VOLUTA_LOG_FILINE;

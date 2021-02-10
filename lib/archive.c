@@ -31,9 +31,15 @@
 #define BSTORE_NSUBDIRS         256
 #define BSTORE_ROOTINDEX        UINT_MAX
 
-static size_t mega_size(size_t sz)
+
+static loff_t off_mega(loff_t off)
 {
-	return sz / VOLUTA_UMEGA;
+	return off / VOLUTA_MEGA;
+}
+
+static loff_t off_end_mega(loff_t off, size_t len)
+{
+	return off_mega(off_end(off, len));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1139,8 +1145,8 @@ static int arc_clone_blob(struct voluta_archiver *arc,
 	if (!arc->try_clone) {
 		return -ENOTSUP;
 	}
-	log_info("clone-blob: %s voff=0x%lx size=%luM",
-		 name, voff, mega_size(bsz));
+	log_info("clone-blob: %s %ldM..%ldM", name,
+		 off_mega(voff), off_end_mega(voff, bsz));
 	err = bstore_clone_v2d(arc->ar_bstore, idx, name, voff, bsz);
 	if (err == -ENOTSUP) {
 		arc->try_clone = 0;
@@ -1156,8 +1162,8 @@ static int arc_store_blob(const struct voluta_archiver *arc,
 	const size_t idx = bli->b_xbin;
 	const char *name = bli->b_name.name;
 
-	log_info("store-blob: %s voff=0x%lx size=%luM",
-		 name, voff, mega_size(bsz));
+	log_info("store-blob: %s %ldM..%ldM", name,
+		 off_mega(voff), off_end_mega(voff, bsz));
 	return bstore_store_x2d(arc->ar_bstore, idx, name, bli->blob, bsz);
 }
 
@@ -1306,8 +1312,8 @@ static int arc_write_blob(const struct voluta_archiver *arc,
 	if (err) {
 		return err;
 	}
-	log_info("write-blob: %s off=0x%lx size=%luM",
-		 name, voff, mega_size(bsz));
+	log_info("write-blob: %s %ldM..%ldM", name,
+		 off_mega(voff), off_end_mega(voff, bsz));
 	err = bstore_write_x2v(arc->ar_bstore, blob, bsz, voff);
 	if (err) {
 		return err;
@@ -1335,8 +1341,8 @@ static int arc_rclone_blob(struct voluta_archiver *arc,
 	if (err) {
 		return err;
 	}
-	log_info("reclone-blob: %s off=0x%lx size=%luM",
-		 name, voff, mega_size(bsz));
+	log_info("reclone-blob: %s %ldM..%ldM", name,
+		 off_mega(voff), off_end_mega(voff, bsz));
 	err = bstore_clone_d2v(arc->ar_bstore, idx, name, voff, bsz);
 	if (err) {
 		return err;

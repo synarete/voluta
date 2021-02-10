@@ -15,6 +15,7 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <sys/mount.h>
 #include "voluta-prog.h"
 
 
@@ -30,10 +31,11 @@ static void show_setup_check_params(void)
 	voluta_stat_dir_or_reg(voluta_globals.cmd.show.pathname, &st);
 }
 
-static void show_ioctl_query(const char *path, struct voluta_ioc_query *query)
+static void show_do_ioctl_query(struct voluta_ioc_query *query)
 {
 	int err;
 	int fd = -1;
+	const char *path = voluta_globals.cmd.show.pathname;
 
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
 	if (err) {
@@ -52,7 +54,7 @@ static void show_version(void)
 		.qtype = VOLUTA_QUERY_VERSION
 	};
 
-	show_ioctl_query(voluta_globals.cmd.show.pathname, &query);
+	show_do_ioctl_query(&query);
 	printf("%s\n", query.u.version.string);
 }
 
@@ -62,17 +64,44 @@ static void show_volume(void)
 		.qtype = VOLUTA_QUERY_VOLUME
 	};
 
-	show_ioctl_query(voluta_globals.cmd.show.pathname, &query);
+	show_do_ioctl_query(&query);
 	printf("%s\n", query.u.volume.path);
+}
+
+static const char *show_fstr(long flag, long mask)
+{
+	return ((flag & mask) == mask) ? "1" : "0";
+}
+
+static void show_fsinfo(void)
+{
+	long ctl_flags;
+	long ms_flags;
+	struct voluta_ioc_query query = {
+		.qtype = VOLUTA_QUERY_FSINFO
+	};
+
+	show_do_ioctl_query(&query);
+	ctl_flags = (long)query.u.fsinfo.ctlflags;
+	ms_flags = (long)query.u.fsinfo.msflags;
+
+	printf("uptime:  %ld-sec\n", query.u.fsinfo.uptime);
+	printf("encrypt: %s\n", show_fstr(ctl_flags, VOLUTA_F_ENCRYPTWR));
+	printf("rdonly:  %s\n", show_fstr(ms_flags, MS_RDONLY));
+	printf("nodev:   %s\n", show_fstr(ms_flags, MS_NODEV));
+	printf("nosuid:  %s\n", show_fstr(ms_flags, MS_NOSUID));
+	printf("noexec:  %s\n", show_fstr(ms_flags, MS_NOEXEC));
+	printf("noexec:  %s\n", show_fstr(ms_flags, MS_NOEXEC));
 }
 
 static void show_execute(void)
 {
 	if (voluta_globals.cmd.show.version) {
 		show_version();
-	}
-	if (voluta_globals.cmd.show.volume) {
+	} else if (voluta_globals.cmd.show.volume) {
 		show_volume();
+	} else if (voluta_globals.cmd.show.fsinfo) {
+		show_fsinfo();
 	}
 }
 
@@ -98,6 +127,7 @@ void voluta_execute_show(void)
 static const char *voluta_show_usage[] = {
 	"show version <pathname>",
 	"show volume <pathname>",
+	"show fsinfo <pathname>",
 	NULL
 };
 
@@ -124,6 +154,8 @@ void voluta_getopt_show(void)
 		voluta_globals.cmd.show.version = true;
 	} else if (!strcmp(subcmd, "volume")) {
 		voluta_globals.cmd.show.volume = true;
+	} else if (!strcmp(subcmd, "fsinfo")) {
+		voluta_globals.cmd.show.fsinfo = true;
 	} else {
 		voluta_die(0, "unknown sub-command: %s", subcmd);
 	}

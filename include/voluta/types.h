@@ -420,6 +420,7 @@ struct voluta_sb_info {
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
+	time_t                          sb_mntime;
 } voluta_aligned64;
 
 /* de-stage dirty-vnodes set */

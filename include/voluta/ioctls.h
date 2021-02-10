@@ -28,7 +28,8 @@ enum voluta_query_type {
 	VOLUTA_QUERY_NONE = 0,
 	VOLUTA_QUERY_VERSION = 1,
 	VOLUTA_QUERY_VOLUME = 2,
-	VOLUTA_QUERY_INODE = 3,
+	VOLUTA_QUERY_FSINFO = 3,
+	VOLUTA_QUERY_INODE = 4,
 };
 
 struct voluta_query_version {
@@ -43,15 +44,23 @@ struct voluta_query_volume {
 	char     path[VOLUTA_VOLUME_PATH_MAX];
 };
 
+struct voluta_query_fsinfo {
+	int64_t uptime;
+	uint64_t msflags;
+	uint64_t ctlflags;
+};
+
 struct voluta_query_inode {
-	int32_t iflags;
-	int32_t dirflags;
+	uint32_t iflags;
+	uint32_t dirflags;
 };
 
 union voluta_query_u {
 	struct voluta_query_version     version;
 	struct voluta_query_volume      volume;
+	struct voluta_query_fsinfo      fsinfo;
 	struct voluta_query_inode       inode;
+	uint8_t pad[2040];
 };
 
 struct voluta_ioc_query {

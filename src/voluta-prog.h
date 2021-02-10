@@ -145,6 +145,7 @@ struct voluta_subcmd_show {
 	char   *pathname;
 	bool    volume;
 	bool    version;
+	bool    fsinfo;
 };
 
 /* arguments for 'fsck' sub-command */

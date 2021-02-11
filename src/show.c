@@ -75,18 +75,16 @@ static const char *show_fstr(long flag, long mask)
 
 static void show_fsinfo(void)
 {
-	long ctl_flags;
 	long ms_flags;
 	struct voluta_ioc_query query = {
 		.qtype = VOLUTA_QUERY_FSINFO
 	};
 
 	show_do_ioctl_query(&query);
-	ctl_flags = (long)query.u.fsinfo.ctlflags;
 	ms_flags = (long)query.u.fsinfo.msflags;
 
 	printf("uptime:  %ld-sec\n", query.u.fsinfo.uptime);
-	printf("encrypt: %s\n", show_fstr(ctl_flags, VOLUTA_F_ENCRYPTWR));
+	printf("encrypt: %d\n", (int)query.u.fsinfo.encrypt);
 	printf("rdonly:  %s\n", show_fstr(ms_flags, MS_RDONLY));
 	printf("nodev:   %s\n", show_fstr(ms_flags, MS_NODEV));
 	printf("nosuid:  %s\n", show_fstr(ms_flags, MS_NOSUID));

@@ -1726,16 +1726,6 @@ static void cache_shrink_some(struct voluta_cache *cache, size_t factor)
 	cache_shrink_or_relru_bkis(cache, nshrink);
 }
 
-static uint64_t cache_memory_pressure(const struct voluta_cache *cache)
-{
-	const size_t npages_used = cache->c_qalloc->st.npages_used;
-	const size_t npages_tota = cache->c_qalloc->st.npages;
-	const uint64_t nbits = (uint32_t)((31 * npages_used) / npages_tota);
-
-	/* returns memory-pressure represented as bit-mask */
-	return ((1UL << nbits) - 1);
-}
-
 static bool cache_has_overpop(const struct voluta_cache *cache)
 {
 	return lrumap_overpop(&cache->c_blm) ||
@@ -1743,28 +1733,34 @@ static bool cache_has_overpop(const struct voluta_cache *cache)
 	       lrumap_overpop(&cache->c_ilm);
 }
 
+static uint64_t cache_memory_pressure(const struct voluta_cache *cache)
+{
+	const uint64_t npages_used = cache->c_qalloc->st.npages_used;
+	const uint64_t npages_tota = cache->c_qalloc->st.npages;
+	const uint64_t nbits = ((61UL * npages_used) / npages_tota);
+
+	/* returns memory-pressure represented as bit-mask */
+	return ((1UL << nbits) - 1);
+}
+
 static size_t cache_calc_niter(const struct voluta_cache *cache, int flags)
 {
-	size_t niter;
+	size_t niter = 0;
 	const uint64_t mem_press = cache_memory_pressure(cache);
 
-	niter = voluta_popcount64(mem_press >> 4);
-	if (cache_has_overpop(cache)) {
-		niter += 1;
-	}
-	if (flags & VOLUTA_F_TIMEOUT) {
-		niter += 1;
-	}
-	if (flags & VOLUTA_F_TIMEOUT) {
-		niter += 1;
-	}
-	if (flags & VOLUTA_F_IDLE) {
-		niter += 1;
-	}
 	if (flags & VOLUTA_F_BRINGUP) {
-		niter += 1;
+		niter += voluta_popcount64(mem_press >> 3);
+	}
+	if (flags & VOLUTA_F_TIMEOUT) {
+		niter += voluta_popcount64(mem_press >> 5);
 	}
 	if (flags & VOLUTA_F_OPSTART) {
+		niter += voluta_popcount64(mem_press >> 11);
+	}
+	if ((flags & VOLUTA_F_IDLE) && (mem_press & ~0x03UL)) {
+		niter += 1;
+	}
+	if (cache_has_overpop(cache)) {
 		niter += 1;
 	}
 	return niter;
@@ -1772,15 +1768,12 @@ static size_t cache_calc_niter(const struct voluta_cache *cache, int flags)
 
 void voluta_cache_relax(struct voluta_cache *cache, int flags)
 {
-	size_t factor;
-	size_t niter = cache_calc_niter(cache, flags);
-	uint64_t mem_press = cache_memory_pressure(cache);
+	const size_t factor = 1;
+	const size_t niter = cache_calc_niter(cache, flags);
 
-	while (niter-- && (mem_press > 0x7)) {
-		factor = 1 + voluta_popcount64(mem_press >> 3);
+	for (size_t i = 0; i < niter; ++i) {
 		cache_tick_once(cache);
 		cache_shrink_some(cache, factor);
-		mem_press = cache_memory_pressure(cache);
 	}
 }
 
@@ -1854,7 +1847,7 @@ static bool cache_mem_press_need_flush(const struct voluta_cache *cache)
 {
 	const uint64_t mem_press = cache_memory_pressure(cache);
 
-	return (mem_press > 0x0F);
+	return voluta_popcount64(mem_press) > 12;
 }
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)

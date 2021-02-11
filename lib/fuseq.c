@@ -3491,7 +3491,7 @@ static int fuseq_do_timeout(struct voluta_fuseq_worker *fqw)
 	const time_t dif = labs(now - fqw->fq->fq_times);
 
 	if (fuseq_is_normal(fqw->fq) && (dif > 2)) {
-		flags = (dif > 20) ? VOLUTA_F_IDLE : 0;
+		flags = (dif > 10) ? VOLUTA_F_IDLE : 0;
 
 		fuseq_lock_fs(fqw);
 		err = voluta_fs_timedout(fqw->fq->fq_sbi, flags);

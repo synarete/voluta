@@ -987,12 +987,6 @@ int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_inode_info *ii = NULL;
 
-	err = op_start(sbi, op);
-	ok_or_goto_out(err);
-
-	err = voluta_authorize(sbi, op);
-	ok_or_goto_out(err);
-
 	err = voluta_stage_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
@@ -1297,6 +1291,6 @@ int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
 	if (err) {
 		return err;
 	}
-	voluta_cache_relax(sbi->sb_cache, VOLUTA_F_TIMEOUT);
+	voluta_cache_relax(sbi->sb_cache, flags | VOLUTA_F_TIMEOUT);
 	return 0;
 }

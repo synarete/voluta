@@ -15,7 +15,7 @@ astyle1tbs() {
   try astyle -Q \
     --style=1tbs \
     --suffix=none \
-    --indent=force-tab=8 \
+    --indent=tab=8 \
     --convert-tabs \
     --align-pointer=name \
     --pad-oper \

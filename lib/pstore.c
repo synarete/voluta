@@ -60,7 +60,7 @@ static int close_fds(int *pfd1, int *pfd2)
 }
 
 static int split_path(const char *path, char *buf, size_t bsz,
-		      char **head, char **tail)
+                      char **head, char **tail)
 {
 	size_t len;
 	char *str;
@@ -188,7 +188,7 @@ int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size)
 }
 
 int voluta_resolve_volume_size(const char *path,
-			       loff_t size_want, loff_t *out_size)
+                               loff_t size_want, loff_t *out_size)
 {
 	int err;
 	loff_t size_cur = 0;
@@ -249,7 +249,7 @@ int voluta_pstore_init(struct voluta_pstore *pstore)
 {
 	pstore->ps_dfd = -1;
 	pstore->ps_vfd = -1;
-	pstore->ps_flags = 0;
+	pstore->ps_ctl_flags = 0;
 	pstore->ps_size = 0;
 	pstore->ps_capacity = 0;
 	return 0;
@@ -259,19 +259,21 @@ void voluta_pstore_fini(struct voluta_pstore *pstore)
 {
 	voluta_pstore_close(pstore);
 	pstore->ps_vfd = -1;
-	pstore->ps_flags = 0;
+	pstore->ps_ctl_flags = 0;
+	pstore->ps_o_flags = 0;
 	pstore->ps_size = -1;
 	pstore->ps_capacity = -1;
 }
 
 static void pstore_setup(struct voluta_pstore *pstore, int dfd, int vfd,
-			 loff_t size, loff_t size_max, int xflags)
+                         loff_t size, loff_t size_max, int xflags, int o_flags)
 {
 	pstore->ps_dfd = dfd;
 	pstore->ps_vfd = vfd;
 	pstore->ps_size = size;
 	pstore->ps_capacity = size_max;
-	pstore->ps_flags |= xflags;
+	pstore->ps_ctl_flags |= xflags;
+	pstore->ps_o_flags = o_flags;
 }
 
 static int pstore_create_mem(struct voluta_pstore *pstore, loff_t size)
@@ -293,17 +295,18 @@ static int pstore_create_mem(struct voluta_pstore *pstore, loff_t size)
 		close_fd(&vfd);
 		return err;
 	}
-	pstore_setup(pstore, dfd, vfd, size, size, VOLUTA_F_MEMFD);
+	pstore_setup(pstore, dfd, vfd, size, size, VOLUTA_F_MEMFD, O_RDWR);
 	return 0;
 }
 
 static int pstore_create_reg(struct voluta_pstore *pstore,
-			     const char *path, loff_t size_max)
+                             const char *path, loff_t size_max)
 {
 	int err;
 	int dfd = -1;
 	int vfd = -1;
-	mode_t mode;
+	int o_flags;
+	mode_t mode = 0;
 	struct voluta_vpath_info vpi;
 
 	err = parse_vpath(&vpi, path);
@@ -315,24 +318,27 @@ static int pstore_create_reg(struct voluta_pstore *pstore,
 		return err;
 	}
 	mode = S_IFREG | S_IRUSR | S_IWUSR;
+	o_flags = O_CREAT | O_RDWR;
 	err = voluta_sys_openat(dfd, vpi.vname, O_CREAT | O_RDWR, mode, &vfd);
 	if (err) {
 		close_fd(&dfd);
 		return err;
 	}
-	pstore_setup(pstore, dfd, vfd, 0, size_max, 0);
+	pstore_setup(pstore, dfd, vfd, 0, size_max, 0, o_flags);
 	return 0;
 }
 
 static int pstore_create_blk(struct voluta_pstore *pstore,
-			     const char *path, loff_t size)
+                             const char *path, loff_t size)
 {
 	int err;
+	int o_flags;
 	int vfd = -1;
-	loff_t sz;
+	loff_t sz = 0;
 	mode_t mode = S_IFBLK | S_IRUSR | S_IWUSR;
 
-	err = voluta_sys_open(path, O_CREAT | O_RDWR, mode, &vfd);
+	o_flags = O_CREAT | O_RDWR;
+	err = voluta_sys_open(path, o_flags, mode, &vfd);
 	if (err) {
 		return err;
 	}
@@ -349,12 +355,12 @@ static int pstore_create_blk(struct voluta_pstore *pstore,
 	if (size == 0) {
 		size = sz;
 	}
-	pstore_setup(pstore, -1, vfd, size, size, VOLUTA_F_BLKDEV);
+	pstore_setup(pstore, -1, vfd, size, size, VOLUTA_F_BLKDEV, o_flags);
 	return 0;
 }
 
 int voluta_pstore_create(struct voluta_pstore *pstore,
-			 const char *path, loff_t size)
+                         const char *path, loff_t size)
 {
 	int err;
 	struct stat st;
@@ -381,7 +387,8 @@ int voluta_pstore_open(struct voluta_pstore *pstore, const char *path, bool rw)
 	int err;
 	int dfd = -1;
 	int vfd = -1;
-	int flags;
+	int x_flags;
+	int o_flags;
 	mode_t mode;
 	loff_t size;
 	struct voluta_vpath_info vpi;
@@ -394,8 +401,8 @@ int voluta_pstore_open(struct voluta_pstore *pstore, const char *path, bool rw)
 	if (err) {
 		return err;
 	}
-	flags = rw ? O_RDWR : O_RDONLY;
-	err = voluta_sys_openat(dfd, vpi.vname, flags, 0, &vfd);
+	o_flags = rw ? O_RDWR : O_RDONLY;
+	err = voluta_sys_openat(dfd, vpi.vname, o_flags, 0, &vfd);
 	if (err) {
 		close_fd(&dfd);
 		return err;
@@ -405,8 +412,8 @@ int voluta_pstore_open(struct voluta_pstore *pstore, const char *path, bool rw)
 		close_fds(&vfd, &dfd);
 		return err;
 	}
-	flags = S_ISBLK(mode) ? VOLUTA_F_BLKDEV : 0;
-	pstore_setup(pstore, dfd, vfd, size, size, flags);
+	x_flags = S_ISBLK(mode) ? VOLUTA_F_BLKDEV : 0;
+	pstore_setup(pstore, dfd, vfd, size, size, x_flags, o_flags);
 	return 0;
 }
 
@@ -418,8 +425,8 @@ int voluta_pstore_expand(struct voluta_pstore *pstore, loff_t cap)
 	if (pstore->ps_capacity >= cap) {
 		return 0;
 	}
-	if (pstore->ps_flags & VOLUTA_F_BLKDEV) {
-		return -ENOTSUP;
+	if (pstore->ps_ctl_flags & VOLUTA_F_BLKDEV) {
+		return -EOPNOTSUPP;
 	}
 	err = voluta_sys_ftruncate(pstore->ps_vfd, cap);
 	if (err) {
@@ -434,6 +441,15 @@ static bool pstore_has_open_vfd(const struct voluta_pstore *pstore)
 {
 	return isopen_fd(pstore->ps_vfd);
 }
+
+static bool pstore_has_open_rdwr_vfd(const struct voluta_pstore *pstore)
+{
+	const int mask = O_RDWR;
+
+	return pstore_has_open_vfd(pstore) &&
+	       ((pstore->ps_o_flags & mask) == mask);
+}
+
 
 static bool pstore_has_open_fds(const struct voluta_pstore *pstore)
 {
@@ -457,7 +473,7 @@ int voluta_pstore_close(struct voluta_pstore *pstore)
 	if (pstore_has_open_vfd(pstore)) {
 		pstore_fsync(pstore);
 		err = pstore_close_fds(pstore);
-		pstore_setup(pstore, -1, -1, 0, 0, 0);
+		pstore_setup(pstore, -1, -1, 0, 0, 0, 0);
 	}
 	return err;
 }
@@ -465,7 +481,7 @@ int voluta_pstore_close(struct voluta_pstore *pstore)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 int voluta_pstore_check_io(const struct voluta_pstore *pstore,
-			   loff_t off, size_t len)
+                           loff_t off, size_t len)
 {
 	loff_t end;
 
@@ -483,7 +499,7 @@ int voluta_pstore_check_io(const struct voluta_pstore *pstore,
 }
 
 int voluta_pstore_read(const struct voluta_pstore *pstore,
-		       loff_t off, size_t bsz, void *buf)
+                       loff_t off, size_t bsz, void *buf)
 {
 	int err;
 	size_t nrd = 0;
@@ -503,7 +519,7 @@ int voluta_pstore_read(const struct voluta_pstore *pstore,
 }
 
 static void pstore_post_write(struct voluta_pstore *pstore,
-			      loff_t off, size_t len)
+                              loff_t off, size_t len)
 {
 	const loff_t end = off_end(off, len);
 
@@ -514,7 +530,7 @@ static void pstore_post_write(struct voluta_pstore *pstore,
 }
 
 int voluta_pstore_write(struct voluta_pstore *pstore,
-			loff_t off, size_t bsz, const void *buf)
+                        loff_t off, size_t bsz, const void *buf)
 {
 	int err;
 
@@ -531,7 +547,7 @@ int voluta_pstore_write(struct voluta_pstore *pstore,
 }
 
 int voluta_pstore_writev(struct voluta_pstore *pstore, loff_t off,
-			 size_t len, const struct iovec *iov, size_t cnt)
+                         size_t len, const struct iovec *iov, size_t cnt)
 {
 	int err;
 	size_t nwr = 0;
@@ -597,7 +613,7 @@ int voluta_pstore_flock(const struct voluta_pstore *pstore)
 {
 	int err = -EPERM;
 
-	if (pstore_has_open_vfd(pstore)) {
+	if (pstore_has_open_rdwr_vfd(pstore)) {
 		err = flock_volume(pstore->ps_vfd);
 	}
 	return err;
@@ -607,7 +623,7 @@ int voluta_pstore_funlock(const struct voluta_pstore *pstore)
 {
 	int err = 0;
 
-	if (pstore_has_open_vfd(pstore)) {
+	if (pstore_has_open_rdwr_vfd(pstore)) {
 		err = funlock_volume(pstore->ps_vfd);
 	}
 	return err;
@@ -616,7 +632,7 @@ int voluta_pstore_funlock(const struct voluta_pstore *pstore)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int pstore_prepare_clone(const struct voluta_pstore *pstore,
-				const struct voluta_str *name, int *out_fd)
+                                const struct voluta_str *name, int *out_fd)
 {
 	int err;
 	loff_t off_out = 0;
@@ -628,7 +644,7 @@ static int pstore_prepare_clone(const struct voluta_pstore *pstore,
 	err = voluta_sys_openat(dfd, name->str, flags, mode, out_fd);
 	if (err) {
 		log_warn("create failed: dfd=%d name=%s flags=0x%x "\
-			 "mode=0%o err=%d", dfd, name->str, flags, mode, err);
+		         "mode=0%o err=%d", dfd, name->str, flags, mode, err);
 		return err;
 	}
 	err = voluta_sys_ftruncate(*out_fd, size);
@@ -658,7 +674,7 @@ static int pstore_clone_to_fd(const struct voluta_pstore *pstore, int fd)
 }
 
 static int pstore_create_clone(const struct voluta_pstore *pstore,
-			       const struct voluta_str *name, int *out_fd)
+                               const struct voluta_str *name, int *out_fd)
 {
 	int err;
 
@@ -674,7 +690,7 @@ static int pstore_create_clone(const struct voluta_pstore *pstore,
 }
 
 static void pstore_unlink_clone(const struct voluta_pstore *pstore,
-				const struct voluta_str *name)
+                                const struct voluta_str *name)
 {
 	int err;
 	const int dfd = pstore->ps_dfd;
@@ -686,13 +702,16 @@ static void pstore_unlink_clone(const struct voluta_pstore *pstore,
 }
 
 static int pstore_check_clone(const struct voluta_pstore *pstore,
-			      const struct voluta_str *name)
+                              const struct voluta_str *name)
 {
 	int err;
 	struct stat st;
 
 	if (!pstore_has_open_fds(pstore)) {
 		return -EBADF;
+	}
+	if (pstore->ps_ctl_flags & VOLUTA_F_BLKDEV) {
+		return -EOPNOTSUPP;
 	}
 	err = voluta_sys_fstatat(pstore->ps_dfd, name->str, &st, 0);
 	if (!err) {
@@ -705,7 +724,7 @@ static int pstore_check_clone(const struct voluta_pstore *pstore,
 }
 
 int voluta_pstore_clone(const struct voluta_pstore *pstore,
-			const struct voluta_str *name)
+                        const struct voluta_str *name)
 {
 	int err;
 	int fd = -1;
@@ -721,11 +740,24 @@ int voluta_pstore_clone(const struct voluta_pstore *pstore,
 	return err;
 }
 
+static int pstore_fallocate(const struct voluta_pstore *pstore, int mode,
+                            loff_t off, size_t len)
+{
+	return voluta_sys_fallocate(pstore->ps_vfd, mode, off, (loff_t)len);
+}
+
 int voluta_pstore_punch_hole(const struct voluta_pstore *pstore,
-			     loff_t off, size_t len)
+                             loff_t off, size_t len)
 {
 	const int mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
 
-	return voluta_sys_fallocate(pstore->ps_vfd, mode,
-				    off, (loff_t)len);
+	return pstore_fallocate(pstore, mode, off, len);
+}
+
+int voluta_pstore_zero_range(const struct voluta_pstore *pstore,
+                             loff_t off, size_t len)
+{
+	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+
+	return pstore_fallocate(pstore, mode, off, len);
 }

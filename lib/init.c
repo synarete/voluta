@@ -49,11 +49,11 @@ static int check_sysconf(void)
 	}
 	val = (long)voluta_sc_l1_dcache_linesize();
 	if ((val != cl_size_min) || (val % cl_size_min)) {
-		return errno_or_errnum(ENOTSUP);
+		return errno_or_errnum(EOPNOTSUPP);
 	}
 	val = (long)voluta_sc_page_size();
 	if ((val < page_size_min) || (val % page_size_min)) {
-		return errno_or_errnum(ENOTSUP);
+		return errno_or_errnum(EOPNOTSUPP);
 	}
 	for (long shift = page_shift_min; shift <= page_shift_max; ++shift) {
 		if (val == (1L << shift)) {
@@ -62,7 +62,7 @@ static int check_sysconf(void)
 		}
 	}
 	if (page_shift == 0) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -74,14 +74,14 @@ static int check_system_page_size(void)
 
 	page_size = voluta_sc_page_size();
 	if (page_size > VOLUTA_BK_SIZE) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	for (size_t i = 0; i < ARRAY_SIZE(page_shift); ++i) {
 		if (page_size == (1UL << page_shift[i])) {
 			return 0;
 		}
 	}
-	return -ENOTSUP;
+	return -EOPNOTSUPP;
 }
 
 static int check_proc_rlimits(void)

@@ -25,7 +25,7 @@ static blkcnt_t datasize_to_nbytes(size_t dsz, blkcnt_t blksize)
 
 static blkcnt_t datasize_to_nfrgs_min(size_t dsz)
 {
-	return datasize_to_nbytes(dsz, VOLUTA_FILE_HEAD_LEAF_SIZE) / 512;
+	return datasize_to_nbytes(dsz, VOLUTA_FILE_HEAD1_LEAF_SIZE) / 512;
 }
 
 static blkcnt_t datasize_to_nfrgs_max(size_t dsz)
@@ -42,7 +42,7 @@ static void ut_getattr_blocks(struct ut_env *ute, ino_t ino, size_t dsz)
 
 	ut_getattr_ok(ute, ino, &st);
 	if (st.st_size < VOLUTA_BK_SIZE) {
-		ut_expect_eq(st.st_blksize, VOLUTA_FILE_HEAD_LEAF_SIZE);
+		ut_expect_eq(st.st_blksize, VOLUTA_FILE_HEAD2_LEAF_SIZE);
 	} else {
 		ut_expect_eq(st.st_blksize, VOLUTA_BK_SIZE);
 	}
@@ -54,7 +54,7 @@ static void ut_getattr_blocks(struct ut_env *ute, ino_t ino, size_t dsz)
 }
 
 static void ut_file_stat_blocks_at_(struct ut_env *ute,
-				    size_t bsz, loff_t off)
+                                    size_t bsz, loff_t off)
 {
 	ino_t ino;
 	ino_t dino;
@@ -100,7 +100,7 @@ static void ut_file_stat_blocks(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_statvfs_(struct ut_env *ute,
-			     loff_t off, size_t bsz)
+                             loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;

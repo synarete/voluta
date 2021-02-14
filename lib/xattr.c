@@ -70,7 +70,7 @@ static size_t xe_aligned_size(size_t size)
 static size_t xe_calc_payload_nents(size_t name_len, size_t value_size)
 {
 	const size_t payload_size =
-		xe_aligned_size(name_len) + xe_aligned_size(value_size);
+	        xe_aligned_size(name_len) + xe_aligned_size(value_size);
 
 	return payload_size / sizeof(struct voluta_xattr_entry);
 }
@@ -81,13 +81,13 @@ static size_t xe_calc_nents(size_t name_len, size_t value_size)
 }
 
 static size_t xe_calc_nents_of(const struct voluta_str *name,
-			       const struct voluta_buf *value)
+                               const struct voluta_buf *value)
 {
 	return xe_calc_nents(name->len, value->len);
 }
 
 static size_t xe_diff(const struct voluta_xattr_entry *beg,
-		      const struct voluta_xattr_entry *end)
+                      const struct voluta_xattr_entry *end)
 {
 	return (size_t)(end - beg);
 }
@@ -102,7 +102,7 @@ static struct voluta_xentry_view *
 xe_view_of(const struct voluta_xattr_entry *xe)
 {
 	const struct voluta_xentry_view *xe_view =
-		container_of2(xe, struct voluta_xentry_view, xe);
+	        container_of2(xe, struct voluta_xentry_view, xe);
 
 	return unconst(xe_view);
 }
@@ -142,7 +142,7 @@ static void *xe_value(const struct voluta_xattr_entry *xe)
 }
 
 static bool xe_has_name(const struct voluta_xattr_entry *xe,
-			const struct voluta_str *name)
+                        const struct voluta_str *name)
 {
 	return (name->len == xe_name_len(xe)) &&
 	       !memcmp(xe_name(xe), name->str, name->len);
@@ -159,8 +159,8 @@ static struct voluta_xattr_entry *xe_next(const struct voluta_xattr_entry *xe)
 }
 
 static void xe_assign(struct voluta_xattr_entry *xe,
-		      const struct voluta_str *name,
-		      const struct voluta_buf *value)
+                      const struct voluta_str *name,
+                      const struct voluta_buf *value)
 {
 	xe_set_name_len(xe, name->len);
 	xe_set_value_size(xe, value->len);
@@ -181,7 +181,7 @@ static void xe_reset_arr(struct voluta_xattr_entry *xe, size_t cnt)
 }
 
 static void xe_squeeze(struct voluta_xattr_entry *xe,
-		       const struct voluta_xattr_entry *last)
+                       const struct voluta_xattr_entry *last)
 {
 	const struct voluta_xattr_entry *next = xe_next(xe);
 
@@ -189,15 +189,15 @@ static void xe_squeeze(struct voluta_xattr_entry *xe,
 }
 
 static void xe_copy_value(const struct voluta_xattr_entry *xe,
-			  struct voluta_buf *buf)
+                          struct voluta_buf *buf)
 {
 	buf_append(buf, xe_value(xe), xe_value_size(xe));
 }
 
 static struct voluta_xattr_entry *
 xe_search(const struct voluta_xattr_entry *itr,
-	  const struct voluta_xattr_entry *end,
-	  const struct voluta_str *name)
+          const struct voluta_xattr_entry *end,
+          const struct voluta_str *name)
 {
 	while (itr < end) {
 		if (xe_has_name(itr, name)) {
@@ -210,9 +210,9 @@ xe_search(const struct voluta_xattr_entry *itr,
 
 static struct voluta_xattr_entry *
 xe_append(struct voluta_xattr_entry *xe,
-	  const struct voluta_xattr_entry *end,
-	  const struct voluta_str *name,
-	  const struct voluta_buf *value)
+          const struct voluta_xattr_entry *end,
+          const struct voluta_str *name,
+          const struct voluta_buf *value)
 {
 	const size_t nfree = xe_diff(xe, end);
 	const size_t nents = xe_calc_nents_of(name, value);
@@ -225,7 +225,7 @@ xe_append(struct voluta_xattr_entry *xe,
 }
 
 static int xe_verify(const struct voluta_xattr_entry *xe,
-		     const struct voluta_xattr_entry *end)
+                     const struct voluta_xattr_entry *end)
 {
 	size_t nents;
 	const struct voluta_xattr_entry *itr = xe;
@@ -313,7 +313,7 @@ xan_search(const struct voluta_xattr_node *xan, const struct voluta_str *str)
 
 static struct voluta_xattr_entry *
 xan_insert(struct voluta_xattr_node *xan,
-	   const struct voluta_str *name, const struct voluta_buf *value)
+           const struct voluta_str *name, const struct voluta_buf *value)
 {
 	struct voluta_xattr_entry *xe;
 
@@ -325,7 +325,7 @@ xan_insert(struct voluta_xattr_node *xan,
 }
 
 static void xan_remove(struct voluta_xattr_node *xan,
-		       struct voluta_xattr_entry *xe)
+                       struct voluta_xattr_entry *xe)
 {
 	const size_t nents = xe_nents(xe);
 
@@ -374,13 +374,13 @@ static void xai_dec_nents(struct voluta_xattr_ispec *xai, size_t n)
 }
 
 static void xai_vaddr(const struct voluta_xattr_ispec *xai, size_t slot,
-		      struct voluta_vaddr *out_vaddr)
+                      struct voluta_vaddr *out_vaddr)
 {
 	voluta_vaddr64_parse(&xai->xa_vaddr[slot], out_vaddr);
 }
 
 static void xai_set_vaddr(struct voluta_xattr_ispec *xai, size_t slot,
-			  const struct voluta_vaddr *vaddr)
+                          const struct voluta_vaddr *vaddr)
 {
 	voluta_vaddr64_set(&xai->xa_vaddr[slot], vaddr);
 }
@@ -431,7 +431,7 @@ xai_last(const struct voluta_xattr_ispec *xai)
 
 static struct voluta_xattr_entry *
 xai_search(const struct voluta_xattr_ispec *xai,
-	   const struct voluta_str *str)
+           const struct voluta_str *str)
 {
 	struct voluta_xattr_entry *xe = NULL;
 	const size_t nmin = xe_calc_nents(str->len, 0);
@@ -444,8 +444,8 @@ xai_search(const struct voluta_xattr_ispec *xai,
 
 static struct voluta_xattr_entry *
 xai_insert(struct voluta_xattr_ispec *xai,
-	   const struct voluta_str *name,
-	   const struct voluta_buf *value)
+           const struct voluta_str *name,
+           const struct voluta_buf *value)
 {
 	struct voluta_xattr_entry *xe;
 
@@ -457,7 +457,7 @@ xai_insert(struct voluta_xattr_ispec *xai,
 }
 
 static void xai_remove(struct voluta_xattr_ispec *xai,
-		       struct voluta_xattr_entry *xe)
+                       struct voluta_xattr_entry *xe)
 {
 	const size_t nents = xe_nents(xe);
 
@@ -493,13 +493,13 @@ static void xa_unset_at(struct voluta_inode_info *ii, size_t sloti)
 }
 
 static void xa_get_at(const struct voluta_inode_info *ii, size_t sloti,
-		      struct voluta_vaddr *out_vaddr)
+                      struct voluta_vaddr *out_vaddr)
 {
 	xai_vaddr(xai_of(ii), sloti, out_vaddr);
 }
 
 static void xa_set_at(const struct voluta_inode_info *ii, size_t sloti,
-		      const struct voluta_vaddr *vaddr)
+                      const struct voluta_vaddr *vaddr)
 {
 	xai_set_vaddr(xai_of(ii), sloti, vaddr);
 }
@@ -538,8 +538,8 @@ static void setup_xanode(struct voluta_vnode_info *xan_vi, ino_t ino)
 }
 
 static int stage_xanode(const struct voluta_xattr_ctx *xa_ctx,
-			const struct voluta_vaddr *vaddr,
-			struct voluta_vnode_info **out_vi)
+                        const struct voluta_vaddr *vaddr,
+                        struct voluta_vnode_info **out_vi)
 {
 	int err;
 	ino_t xattr_ino;
@@ -564,7 +564,7 @@ static bool is_valid_xflags(int flags)
 }
 
 static bool has_prefix(const struct voluta_xattr_prefix *xap,
-		       const struct voluta_str *name)
+                       const struct voluta_str *name)
 {
 	const size_t len = strlen(xap->prefix);
 
@@ -618,7 +618,7 @@ static int check_xattr(const struct voluta_xattr_ctx *xa_ctx, int access_mode)
 		return -EINVAL;
 	}
 	if (!is_valid_xflags(xa_ctx->flags)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	err = voluta_do_access(xa_ctx->op, ii, access_mode);
 	if (err) {
@@ -628,8 +628,8 @@ static int check_xattr(const struct voluta_xattr_ctx *xa_ctx, int access_mode)
 }
 
 static int lookup_xentry_in_xan(const struct voluta_xattr_ctx *xa_ctx,
-				const struct voluta_vaddr *vaddr,
-				struct voluta_xentry_info *xei)
+                                const struct voluta_vaddr *vaddr,
+                                struct voluta_xentry_info *xei)
 {
 	int err;
 	struct voluta_xattr_entry *xe;
@@ -652,7 +652,7 @@ static int lookup_xentry_in_xan(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int lookup_xentry_at_xan(struct voluta_xattr_ctx *xa_ctx,
-				struct voluta_xentry_info *xei)
+                                struct voluta_xentry_info *xei)
 {
 	int err = -ENOENT;
 	struct voluta_vaddr vaddr;
@@ -669,7 +669,7 @@ static int lookup_xentry_at_xan(struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int lookup_xentry_at_xai(struct voluta_xattr_ctx *xa_ctx,
-				struct voluta_xentry_info *xei)
+                                struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 	struct voluta_inode_info *ii = xa_ctx->ii;
@@ -684,7 +684,7 @@ static int lookup_xentry_at_xai(struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int lookup_xentry(struct voluta_xattr_ctx *xa_ctx,
-			 struct voluta_xentry_info *xei)
+                         struct voluta_xentry_info *xei)
 {
 	int err;
 
@@ -726,9 +726,9 @@ static int do_getxattr(struct voluta_xattr_ctx *xa_ctx, size_t *out_size)
 }
 
 int voluta_do_getxattr(const struct voluta_oper *op,
-		       struct voluta_inode_info *ii,
-		       const struct voluta_namestr *name,
-		       void *buf, size_t size, size_t *out_size)
+                       struct voluta_inode_info *ii,
+                       const struct voluta_namestr *name,
+                       void *buf, size_t size, size_t *out_size)
 {
 	int err;
 	struct voluta_xattr_ctx xa_ctx = {
@@ -765,20 +765,20 @@ static void discard_xentry(const struct voluta_xentry_info *xei)
 }
 
 static int new_xanode(const struct voluta_xattr_ctx *xa_ctx,
-		      struct voluta_vnode_info **out_vi)
+                      struct voluta_vnode_info **out_vi)
 {
 	return voluta_create_vnode(xa_ctx->sbi, xa_ctx->ii,
-				   VOLUTA_VTYPE_XANODE, out_vi);
+	                           VOLUTA_VTYPE_XANODE, out_vi);
 }
 
 static int del_xanode_at(const struct voluta_xattr_ctx *xa_ctx,
-			 const struct voluta_vaddr *vaddr)
+                         const struct voluta_vaddr *vaddr)
 {
 	return voluta_remove_vnode_at(xa_ctx->sbi, vaddr);
 }
 
 static int create_xanode(const struct voluta_xattr_ctx *xa_ctx,
-			 size_t sloti, struct voluta_vnode_info **out_vi)
+                         size_t sloti, struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_inode_info *ii = xa_ctx->ii;
@@ -796,7 +796,7 @@ static int create_xanode(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int stage_or_create_xanode(const struct voluta_xattr_ctx *xa_ctx,
-				  size_t sloti, struct voluta_vnode_info **out)
+                                  size_t sloti, struct voluta_vnode_info **out)
 {
 	int err;
 	struct voluta_vaddr vaddr;
@@ -812,8 +812,8 @@ static int stage_or_create_xanode(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int try_insert_at(const struct voluta_xattr_ctx *xa_ctx,
-			 struct voluta_vnode_info *xan_vi,
-			 struct voluta_xentry_info *xei)
+                         struct voluta_vnode_info *xan_vi,
+                         struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 
@@ -828,7 +828,7 @@ static int try_insert_at(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int try_insert_at_xan(const struct voluta_xattr_ctx *xa_ctx,
-			     struct voluta_xentry_info *xei)
+                             struct voluta_xentry_info *xei)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -848,7 +848,7 @@ static int try_insert_at_xan(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int try_insert_at_xai(const struct voluta_xattr_ctx *xa_ctx,
-			     struct voluta_xentry_info *xei)
+                             struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 	struct voluta_inode_info *ii = xa_ctx->ii;
@@ -864,7 +864,7 @@ static int try_insert_at_xai(const struct voluta_xattr_ctx *xa_ctx,
 }
 
 static int setxattr_create(struct voluta_xattr_ctx *xa_ctx,
-			   struct voluta_xentry_info *xei)
+                           struct voluta_xentry_info *xei)
 {
 	int err;
 
@@ -888,7 +888,7 @@ static int setxattr_create(struct voluta_xattr_ctx *xa_ctx,
  * When possible in term of space, do simple replace-overwrite.
  */
 static int setxattr_replace(struct voluta_xattr_ctx *xa_ctx,
-			    struct voluta_xentry_info *xei)
+                            struct voluta_xentry_info *xei)
 {
 	int err;
 	struct voluta_xentry_info xei_cur = {
@@ -948,9 +948,9 @@ static int do_setxattr(struct voluta_xattr_ctx *xa_ctx)
 }
 
 int voluta_do_setxattr(const struct voluta_oper *op,
-		       struct voluta_inode_info *ii,
-		       const struct voluta_namestr *name,
-		       const void *value, size_t size, int flags)
+                       struct voluta_inode_info *ii,
+                       const struct voluta_namestr *name,
+                       const void *value, size_t size, int flags)
 {
 	int err;
 	struct voluta_xattr_ctx xa_ctx = {
@@ -999,8 +999,8 @@ static int do_removexattr(struct voluta_xattr_ctx *xa_ctx)
 }
 
 int voluta_do_removexattr(const struct voluta_oper *op,
-			  struct voluta_inode_info *ii,
-			  const struct voluta_namestr *name)
+                          struct voluta_inode_info *ii,
+                          const struct voluta_namestr *name)
 {
 	int err;
 	struct voluta_xattr_ctx xa_ctx = {
@@ -1025,14 +1025,14 @@ static int emit(struct voluta_xattr_ctx *xa_ctx, const char *name, size_t nlen)
 }
 
 static int emit_xentry(struct voluta_xattr_ctx *xa_ctx,
-		       const struct voluta_xattr_entry *xe)
+                       const struct voluta_xattr_entry *xe)
 {
 	return emit(xa_ctx, xe_name(xe), xe_name_len(xe));
 }
 
 static int emit_range(struct voluta_xattr_ctx *xa_ctx,
-		      const struct voluta_xattr_entry *itr,
-		      const struct voluta_xattr_entry *lst)
+                      const struct voluta_xattr_entry *itr,
+                      const struct voluta_xattr_entry *lst)
 {
 	int err = 0;
 
@@ -1051,7 +1051,7 @@ static int emit_xai(struct voluta_xattr_ctx *xa_ctx)
 }
 
 static int emit_xan(struct voluta_xattr_ctx *xa_ctx,
-		    const struct voluta_vnode_info *xan_vi)
+                    const struct voluta_vnode_info *xan_vi)
 {
 	const struct voluta_xattr_node *xan = xan_vi->vu.xan;
 
@@ -1129,8 +1129,8 @@ static int do_listxattr(struct voluta_xattr_ctx *xa_ctx)
 }
 
 int voluta_do_listxattr(const struct voluta_oper *op,
-			struct voluta_inode_info *ii,
-			struct voluta_listxattr_ctx *lxa_ctx)
+                        struct voluta_inode_info *ii,
+                        struct voluta_listxattr_ctx *lxa_ctx)
 {
 	int err;
 	struct voluta_xattr_ctx xa_ctx = {

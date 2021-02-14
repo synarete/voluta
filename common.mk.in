@@ -10,7 +10,7 @@ LIBS := @LIBS@
 
 SUFFIXES = .in
 
-PATHSUBST = @SED@ \
+PATSUBST = @SED@ \
   -e "s,[@]PACKAGE_NAME[@],$(name),g" \
   -e "s,[@]PACKAGE_VERSION[@],$(version),g" \
   -e "s,[@]RELEASE[@],$(release),g" \
@@ -25,7 +25,7 @@ PATHSUBST = @SED@ \
 
 
 %: %.in
-	@echo "  SED      $@"; $(PATHSUBST) $< > $@ ;
+	@echo "  SED      $@"; $(PATSUBST) $< > $@ ;
 
 -include generated
 .PHONY: generated

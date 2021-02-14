@@ -153,7 +153,7 @@ static void do_clock_gettime(clockid_t clock_id, struct timespec *tp)
 	err = voluta_sys_clock_gettime(clock_id, tp);
 	if (err) {
 		voluta_panic("clock_gettime failure: clock_id=%ld err=%d",
-			     (long)clock_id, err);
+		             (long)clock_id, err);
 	}
 }
 
@@ -168,7 +168,7 @@ void voluta_mclock_now(struct timespec *ts)
 }
 
 static void timespec_dif(const struct timespec *beg,
-			 const struct timespec *end, struct timespec *dif)
+                         const struct timespec *end, struct timespec *dif)
 {
 	dif->tv_sec = end->tv_sec - beg->tv_sec;
 	if (end->tv_nsec >= beg->tv_nsec) {
@@ -240,6 +240,14 @@ void voluta_getentropy(void *buf, size_t len)
 uint32_t voluta_getentropy32(void)
 {
 	uint32_t r;
+
+	do_getentropy(&r, sizeof(r));
+	return r;
+}
+
+uint64_t voluta_getentropy64(void)
+{
+	uint64_t r;
 
 	do_getentropy(&r, sizeof(r));
 	return r;
@@ -387,7 +395,7 @@ static int syslog_level(int log_mask)
 }
 
 static void log_to_syslog(int log_mask, const char *msg,
-			  const char *file, int line)
+                          const char *file, int line)
 {
 	const int level = syslog_level(log_mask);
 

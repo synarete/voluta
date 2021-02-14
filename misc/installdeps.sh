@@ -18,9 +18,10 @@ _install_deb() {
     libunwind-dev \
     libgcrypt-dev \
     python3-docutils \
+    python3-pygments \
+    kernel-headers \
     dpkg-dev \
-    debhelper \
-    kernel-headers
+    debhelper
 }
 
 _install_rpm() {
@@ -37,7 +38,9 @@ _install_rpm() {
     libunwind-devel \
     libgcrypt-devel \
     python3-docutils \
-    kernel-headers
+    python3-pygments \
+    kernel-headers \
+    rpm-build
 }
 
 if [[ -f '/etc/redhat-release' ]]; then

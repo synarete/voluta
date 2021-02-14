@@ -37,10 +37,10 @@ static void umount_setup_check_params(void)
 	err = voluta_sys_stat(voluta_globals.cmd.umount.point, &st);
 	if ((err == -ENOTCONN) && voluta_globals.cmd.umount.force) {
 		voluta_log_debug("transport endpoint not connected: %s",
-				 voluta_globals.cmd.umount.point);
+		                 voluta_globals.cmd.umount.point);
 	} else {
 		voluta_globals.cmd.umount.point_real =
-			voluta_realpath_safe(voluta_globals.cmd.umount.point);
+		        voluta_realpath_safe(voluta_globals.cmd.umount.point);
 
 		mntpath = voluta_globals.cmd.umount.point_real;
 		voluta_die_if_not_mntdir(mntpath, false);
@@ -74,8 +74,8 @@ static void umount_send_recv(void)
 	err = voluta_rpc_umount(path, getuid(), getgid(), mnt_flags);
 	if (err) {
 		voluta_die(err, "umount failed: %s lazy=%d force=%d", path,
-			   (int)voluta_globals.cmd.umount.lazy,
-			   (int)voluta_globals.cmd.umount.force);
+		           (int)voluta_globals.cmd.umount.lazy,
+		           (int)voluta_globals.cmd.umount.force);
 	}
 }
 
@@ -161,6 +161,6 @@ void voluta_getopt_umount(void)
 		}
 	}
 	voluta_globals.cmd.umount.point =
-		voluta_consume_cmdarg("mount-point", true);
+	        voluta_consume_cmdarg("mount-point", true);
 }
 

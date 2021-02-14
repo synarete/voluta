@@ -116,7 +116,7 @@ static struct ut_env *avl_ute(const struct voluta_avl *avl)
 }
 
 static void avl_insert_unique_(struct voluta_avl *avl,
-			       struct voluta_avl_node *an)
+                               struct voluta_avl_node *an)
 {
 	int ret;
 
@@ -230,9 +230,9 @@ static long avl_min_key(const struct voluta_avl *avl)
 }
 
 static void avl_iterate_range(const struct voluta_avl *avl,
-			      struct voluta_avl_node *beg,
-			      const struct voluta_avl_node *end,
-			      size_t expected_cnt, long key_beg, long step)
+                              struct voluta_avl_node *beg,
+                              const struct voluta_avl_node *end,
+                              size_t expected_cnt, long key_beg, long step)
 {
 	size_t cnt;
 	long key = key_beg;
@@ -258,10 +258,10 @@ static void avl_iterate_range(const struct voluta_avl *avl,
 }
 
 static void avl_iterate_all(const struct voluta_avl *avl,
-			    long key_beg, long step)
+                            long key_beg, long step)
 {
 	avl_iterate_range(avl, avl_begin(avl), avl_end(avl),
-			  avl_size(avl), key_beg, step);
+	                  avl_size(avl), key_beg, step);
 }
 
 static void avl_iterate_seq(const struct voluta_avl *avl)
@@ -272,7 +272,7 @@ static void avl_iterate_seq(const struct voluta_avl *avl)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_avl_simple_(struct ut_env *ute,
-			   size_t cnt, long key_base, long step)
+                           size_t cnt, long key_base, long step)
 {
 	long key;
 	struct voluta_avl *avl;
@@ -315,7 +315,7 @@ static void ut_avl_simple(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_avl_mixed_(struct ut_env *ute,
-			  size_t cnt, long key_base, long step)
+                          size_t cnt, long key_base, long step)
 {
 	long key;
 	struct voluta_avl *avl;

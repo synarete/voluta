@@ -95,6 +95,7 @@
 #define ii_mode(ii)                     voluta_ii_mode(ii)
 #define ii_nlink(ii)                    voluta_ii_nlink(ii)
 #define ii_size(ii)                     voluta_ii_size(ii)
+#define ii_span(ii)                     voluta_ii_span(ii)
 #define ii_blocks(ii)                   voluta_ii_blocks(ii)
 #define ii_isrootd(ii)                  voluta_ii_isrootd(ii)
 #define ii_isdir(ii)                    voluta_ii_isdir(ii)

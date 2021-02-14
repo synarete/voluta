@@ -32,7 +32,7 @@ static void ut_file_lseek_simple_(struct ut_env *ute, loff_t off)
 	ut_mkdir_at_root(ute, name, &dino);
 	ut_create_file(ute, dino, name, &ino);
 	ut_trunacate_file(ute, ino, off + step + 1);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_lseek_data(ute, ino, 0, &off_data);
 	ut_expect_eq(off_data, st.st_size);
 	ut_write_read(ute, ino, &d, 1, off);
@@ -61,7 +61,7 @@ static void ut_file_lseek_simple(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_lseek_holes_(struct ut_env *ute,
-				 loff_t base_off, size_t cnt)
+                                 loff_t base_off, size_t cnt)
 {
 	ino_t ino;
 	ino_t dino;
@@ -78,7 +78,7 @@ static void ut_file_lseek_holes_(struct ut_env *ute,
 	for (size_t i = 0; i < cnt; ++i) {
 		off = base_off + (loff_t)(2 * bsz * (i + 1));
 		ut_write_read(ute, ino, buf, bsz, off);
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_lseek_hole(ute, ino, off, &off_hole);
 		ut_expect_eq(off_hole, st.st_size);
 	}
@@ -105,7 +105,7 @@ static void ut_file_lseek_holes(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_lseek_sparse_(struct ut_env *ute,
-				  loff_t off_base, loff_t step, size_t nsteps)
+                                  loff_t off_base, loff_t step, size_t nsteps)
 {
 	ino_t ino;
 	ino_t dino;
@@ -113,7 +113,8 @@ static void ut_file_lseek_sparse_(struct ut_env *ute,
 	loff_t off_data;
 	loff_t off_hole;
 	loff_t off_next;
-	const loff_t head_lsize = VOLUTA_FILE_HEAD_LEAF_SIZE;
+	const loff_t head1_lsize = VOLUTA_FILE_HEAD1_LEAF_SIZE;
+	const loff_t head2_lsize = VOLUTA_FILE_HEAD2_LEAF_SIZE;
 	const loff_t tree_lsize = VOLUTA_FILE_TREE_LEAF_SIZE;
 	const char *name = UT_NAME;
 
@@ -132,8 +133,13 @@ static void ut_file_lseek_sparse_(struct ut_env *ute,
 		ut_expect_eq(off_data, off);
 		ut_lseek_hole(ute, ino, off, &off_hole);
 
-		off_next = (off_data < tree_lsize) ?
-			   (off_data + head_lsize) : (off_data + tree_lsize);
+		if (off_data < head2_lsize) {
+			off_next = off_data + head1_lsize;
+		} else if (off_data < tree_lsize) {
+			off_next = off_data + head2_lsize;
+		} else {
+			off_next = off_data + tree_lsize;
+		}
 		ut_expect_le(off_hole, off_next); /* FIXME  calc exact value */
 
 		off_next = off + step;

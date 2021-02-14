@@ -46,7 +46,7 @@ static void ut_statfs_empty(struct ut_env *ute)
 	struct statvfs stv;
 
 	ut_statfs_ok(ute, UT_ROOT_INO, &stv);
-	ut_expect_eq(stv.f_frsize, UT_KB_SIZE);
+	ut_expect_eq(stv.f_frsize, UT_1K_SIZE);
 	ut_expect_gt(stv.f_blocks, 0);
 	ut_expect_gt(stv.f_blocks, stv.f_bfree);
 	ut_expect_gt(stv.f_files, stv.f_ffree);

@@ -69,7 +69,7 @@ ut_fiemap_of(struct ut_env *ute, ino_t ino, loff_t off, size_t len)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_fiemap_simple_(struct ut_env *ute,
-				   loff_t off, size_t bsz)
+                                   loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -113,13 +113,13 @@ static void ut_file_fiemap_simple(struct ut_env *ute)
 	ut_file_fiemap_simple_(ute, UT_GIGA - UT_BK_SIZE, UT_MEGA);
 	ut_file_fiemap_simple_(ute, UT_TERA - UT_BK_SIZE, 2 * UT_BK_SIZE);
 	ut_file_fiemap_simple_(ute,
-			       UT_FSIZE_MAX - UT_MEGA + 1, UT_MEGA - 1);
+	                       UT_FSIZE_MAX - UT_MEGA + 1, UT_MEGA - 1);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_fiemap_twoext_(struct ut_env *ute,
-				   loff_t off1, loff_t off2)
+                                   loff_t off1, loff_t off2)
 {
 	ino_t ino;
 	ino_t dino;
@@ -159,7 +159,7 @@ static void ut_file_fiemap_twoext(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_fiemap_sparse_(struct ut_env *ute,
-				   loff_t off_base, loff_t step, size_t cnt)
+                                   loff_t off_base, loff_t step, size_t cnt)
 {
 	ino_t ino;
 	ino_t dino;

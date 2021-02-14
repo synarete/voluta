@@ -1,1 +1,1 @@
-SUBDIRS = dstress vfstest unitest
+SUBDIRS = dstress fstests unitest

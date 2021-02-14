@@ -173,14 +173,20 @@
 /* bits-shift of single file-mapping address-space */
 #define VOLUTA_FILE_MAP_SHIFT           (10)
 
-/* file's level1 head-mapping block-sizes (4K) */
-#define VOLUTA_FILE_HEAD_LEAF_SIZE      (4 * VOLUTA_KB_SIZE)
+/* file's level1 head-mapping block-sizes (1K) */
+#define VOLUTA_FILE_HEAD1_LEAF_SIZE     (VOLUTA_KB_SIZE)
+
+/* number of 1K leaves in regular-file's head mapping */
+#define VOLUTA_FILE_HEAD1_NLEAVES       (4)
+
+/* file's level2 head-mapping block-sizes (4K) */
+#define VOLUTA_FILE_HEAD2_LEAF_SIZE     (4 * VOLUTA_KB_SIZE)
+
+/* number of 4K leaves in regular-file's head mapping */
+#define VOLUTA_FILE_HEAD2_NLEAVES       (15)
 
 /* file's tree-mapping block-sizes */
 #define VOLUTA_FILE_TREE_LEAF_SIZE      VOLUTA_BK_SIZE
-
-/* number of 4K leaves in regular-file's head mapping */
-#define VOLUTA_FILE_HEAD_NLEAVES        (16)
 
 /* number of mapping-slots per single file tree node */
 #define VOLUTA_FILE_TREE_NCHILDS        (1LL << VOLUTA_FILE_MAP_SHIFT)
@@ -293,6 +299,7 @@ enum voluta_endianness {
 /* file-system elements types */
 enum voluta_vtype {
 	VOLUTA_VTYPE_NONE       = 0,
+	VOLUTA_VTYPE_DATA1K     = 1,
 	VOLUTA_VTYPE_DATA4K     = 4,
 	VOLUTA_VTYPE_HSMAP      = 5,
 	VOLUTA_VTYPE_AGMAP      = 7,
@@ -563,11 +570,11 @@ struct voluta_header {
 
 struct voluta_ag_rec {
 	uint32_t                ag_flags;
-	uint32_t                ag_seed;
+	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint32_t                ag_nfiles;
-	uint8_t                 ag_reserved[36];
+	uint8_t                 ag_reserved[32];
+	uint64_t                ag_seed;
 } voluta_packed_aligned8;
 
 
@@ -589,11 +596,15 @@ struct voluta_bk_rec {
 	uint8_t                 bk_vtype;
 	uint8_t                 bk_reserved1[3];
 	uint32_t                bk_flags;
-	uint32_t                bk_refcnt;
-	uint32_t                bk_seed;
 	uint64_t                bk_allocated;
 	uint64_t                bk_unwritten;
-	uint8_t                 bk_reserved2[22];
+	uint32_t                bk_refcnt;
+	uint32_t                bk_reserved2;
+	uint32_t                bk_reserved3;
+	uint32_t                bk_reserved4;
+	uint32_t                bk_reserved5;
+	uint32_t                bk_reserved6;
+	uint64_t                bk_seed;
 } voluta_packed_aligned8;
 
 
@@ -661,9 +672,10 @@ struct voluta_xattr_node {
 
 
 struct voluta_reg_ispec {
+	struct voluta_vaddr64   r_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
+	struct voluta_vaddr64   r_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
 	struct voluta_vaddr64   r_tree_root;
-	struct voluta_vaddr64   r_head_leaf[VOLUTA_FILE_HEAD_NLEAVES];
-	uint8_t                 r_reserved[376];
+	uint8_t                 r_reserved[352];
 } voluta_packed_aligned8;
 
 
@@ -699,13 +711,14 @@ struct voluta_inode {
 	uint32_t                i_mode;
 	uint32_t                i_flags;
 	int64_t                 i_size;
+	int64_t                 i_span;
 	uint64_t                i_blocks;
 	uint64_t                i_nlink;
 	uint64_t                i_attributes; /* statx */
 	uint32_t                i_rdev_major;
 	uint32_t                i_rdev_minor;
 	uint64_t                i_revision;
-	uint64_t                i_reserved[4];
+	uint64_t                i_reserved[3];
 	struct voluta_iattr_times   i_t;
 	struct voluta_xattr_ispec   i_x;
 	union voluta_iattr_specific i_s;
@@ -756,6 +769,12 @@ struct voluta_dir_htnode {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+/* 1K data block */
+struct voluta_data_block1 {
+	uint8_t dat[VOLUTA_KB_SIZE];
+} voluta_packed_aligned64;
+
+
 /* 4K data block */
 struct voluta_data_block4 {
 	uint8_t dat[4 * VOLUTA_KB_SIZE];
@@ -795,6 +814,7 @@ union voluta_view_u {
 	struct voluta_xattr_node        xan;
 	struct voluta_lnk_value         lnv;
 	struct voluta_itable_tnode      itn;
+	struct voluta_data_block1       db1;
 	struct voluta_data_block4       db4;
 	struct voluta_data_block        db;
 } voluta_packed_aligned64;
@@ -812,27 +832,33 @@ struct voluta_ar_blob {
 
 
 struct voluta_ar_blobref {
-	uint32_t                br_magic;
-	uint32_t                br_flags;
-	uint32_t                br_length;
-	uint16_t                br_hfunc;
-	uint16_t                br_xbin;
-	int64_t                 br_voff;
-	uint64_t                br_reserved2;
-	struct voluta_hash256   br_hash;
+	uint32_t                        br_magic;
+	uint32_t                        br_flags;
+	uint32_t                        br_length;
+	uint16_t                        br_hfunc;
+	uint16_t                        br_xbin;
+	int64_t                         br_voff;
+	uint64_t                        br_reserved2;
+	struct voluta_hash256           br_hash;
 } voluta_packed_aligned64;
 
 
 struct voluta_ar_blobrefs {
-	struct voluta_ar_blobref ar_bref[256];
+	struct voluta_ar_blobref        ar_bref[1024];
 } voluta_packed_aligned64;
 
 
 struct voluta_ar_spec {
 	struct voluta_zero_block4       ar_zero;
 	struct voluta_meta_block4       ar_meta;
-	struct voluta_rand_block4       ar_rand[2];
-	struct voluta_ar_blobrefs       ar_brefs[1];
+	struct voluta_rand_block4       ar_rand[14];
 } voluta_packed_aligned64;
+
+
+struct voluta_ar_spec_brefs {
+	struct voluta_ar_spec           spec;
+	struct voluta_ar_blobrefs       brefs;
+} voluta_packed_aligned64;
+
 
 #endif /* VOLUTA_DEFS_H_ */

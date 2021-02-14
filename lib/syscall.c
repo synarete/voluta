@@ -162,7 +162,7 @@ static int errno_or_generic_error(void)
 /* POSIX */
 
 int voluta_sys_mount(const char *source, const char *target, const char *fstyp,
-		     unsigned long mntflags, const void *data)
+                     unsigned long mntflags, const void *data)
 {
 	return ok_or_errno(mount(source, target, fstyp, mntflags, data));
 }
@@ -188,7 +188,7 @@ int voluta_sys_fchmod(int fd, mode_t mode)
 }
 
 int voluta_sys_fchmodat(int dirfd, const char *pathname,
-			mode_t mode, int flags)
+                        mode_t mode, int flags)
 {
 	return ok_or_errno(fchmodat(dirfd, pathname, mode, flags));
 }
@@ -204,7 +204,7 @@ int voluta_sys_fchown(int fd, uid_t uid, gid_t gid)
 }
 
 int voluta_sys_fchownat(int dirfd, const char *pathname,
-			uid_t uid, gid_t gid, int flags)
+                        uid_t uid, gid_t gid, int flags)
 {
 	return ok_or_errno(fchownat(dirfd, pathname, uid, gid, flags));
 }
@@ -220,7 +220,7 @@ int voluta_sys_utimes(const char *filename, const struct timeval times[2])
 }
 
 int voluta_sys_utimensat(int dirfd, const char *pathname,
-			 const struct timespec times[2], int flags)
+                         const struct timespec times[2], int flags)
 {
 	return ok_or_errno(utimensat(dirfd, pathname, times, flags));
 }
@@ -256,7 +256,7 @@ int voluta_sys_open(const char *path, int flags, mode_t mode, int *fd)
 }
 
 int voluta_sys_openat(int dirfd, const char *path,
-		      int flags, mode_t mode, int *fd)
+                      int flags, mode_t mode, int *fd)
 {
 	return fd_or_errno(openat(dirfd, path, flags, mode), fd);
 }
@@ -282,10 +282,10 @@ int voluta_sys_link(const char *path1, const char *path2)
 }
 
 int voluta_sys_linkat(int olddirfd, const char *oldpath,
-		      int newdirfd, const char *newpath, int flags)
+                      int newdirfd, const char *newpath, int flags)
 {
 	return ok_or_errno(linkat(olddirfd, oldpath,
-				  newdirfd, newpath, flags));
+	                          newdirfd, newpath, flags));
 }
 
 int voluta_sys_unlink(const char *path)
@@ -304,16 +304,16 @@ int voluta_sys_rename(const char *oldpath, const char *newpath)
 }
 
 int voluta_sys_renameat(int olddirfd, const char *oldpath,
-			int newdirfd, const char *newpath)
+                        int newdirfd, const char *newpath)
 {
 	return ok_or_errno(renameat(olddirfd, oldpath, newdirfd, newpath));
 }
 
 int voluta_sys_renameat2(int olddirfd, const char *oldpath,
-			 int newdirfd, const char *newpath, unsigned int flags)
+                         int newdirfd, const char *newpath, unsigned int flags)
 {
 	return ok_or_errno(renameat2(olddirfd, oldpath, newdirfd,
-				     newpath, flags));
+	                             newpath, flags));
 }
 
 int voluta_sys_llseek(int fd, loff_t off, int whence, loff_t *pos)
@@ -387,7 +387,7 @@ int voluta_sys_readlink(const char *path, char *buf, size_t bsz, size_t *cnt)
 }
 
 int voluta_sys_readlinkat(int dirfd, const char *pathname,
-			  char *buf, size_t bsz, size_t *cnt)
+                          char *buf, size_t bsz, size_t *cnt)
 {
 	return size_or_errno(readlinkat(dirfd, pathname, buf, bsz), cnt);
 }
@@ -454,7 +454,7 @@ int voluta_sys_write(int fd, const void *buf, size_t cnt, size_t *nwr)
 }
 
 int voluta_sys_pwrite(int fd, const void *buf, size_t cnt,
-		      loff_t off, size_t *nwr)
+                      loff_t off, size_t *nwr)
 {
 	return size_or_errno(pwrite(fd, buf, cnt, off), nwr);
 }
@@ -470,38 +470,38 @@ int voluta_sys_writev(int fd, const struct iovec *iov, int iovcnt, size_t *nwr)
 }
 
 int voluta_sys_preadv(int fd, const struct iovec *iov, int iovcnt,
-		      off_t off, size_t *nrd)
+                      off_t off, size_t *nrd)
 {
 	return size_or_errno(preadv(fd, iov, iovcnt, off), nrd);
 }
 
 int voluta_sys_pwritev(int fd, const struct iovec *iov, int iovcnt,
-		       off_t off, size_t *nwr)
+                       off_t off, size_t *nwr)
 {
 	return size_or_errno(pwritev(fd, iov, iovcnt, off), nwr);
 }
 
 int voluta_sys_preadv2(int fd, const struct iovec *iov, int iovcnt,
-		       off_t off, int flags, size_t *nrd)
+                       off_t off, int flags, size_t *nrd)
 {
 	return size_or_errno(preadv2(fd, iov, iovcnt, off, flags), nrd);
 }
 
 int voluta_sys_pwritev2(int fd, const struct iovec *iov, int iovcnt,
-			off_t off, int flags, size_t *nwr)
+                        off_t off, int flags, size_t *nwr)
 {
 	return size_or_errno(pwritev2(fd, iov, iovcnt, off, flags), nwr);
 }
 
 int voluta_sys_splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
-		      size_t len, unsigned int flags, size_t *nsp)
+                      size_t len, unsigned int flags, size_t *nsp)
 {
 	return size_or_errno(splice(fd_in, off_in, fd_out,
-				    off_out, len, flags), nsp);
+	                            off_out, len, flags), nsp);
 }
 
 int voluta_sys_vmsplice(int fd, const struct iovec *iov, size_t nr_segs,
-			unsigned int flags, size_t *nsp)
+                        unsigned int flags, size_t *nsp)
 {
 	return size_or_errno(vmsplice(fd, iov, nr_segs, flags), nsp);
 }
@@ -519,37 +519,37 @@ int voluta_sys_fiemap(int fd, struct fiemap *fm)
 
 /* XATTR */
 int voluta_sys_setxattr(const char *path, const char *name,
-			const void *value, size_t size, int flags)
+                        const void *value, size_t size, int flags)
 {
 	return ok_or_errno(setxattr(path, name, value, size, flags));
 }
 
 int voluta_sys_lsetxattr(const char *path, const char *name,
-			 const void *value, size_t size, int flags)
+                         const void *value, size_t size, int flags)
 {
 	return ok_or_errno(lsetxattr(path, name, value, size, flags));
 }
 
 int voluta_sys_fsetxattr(int fd, const char *name,
-			 const void *value, size_t size, int flags)
+                         const void *value, size_t size, int flags)
 {
 	return ok_or_errno(fsetxattr(fd, name, value, size, flags));
 }
 
 int voluta_sys_getxattr(const char *path, const char *name,
-			void *value, size_t size, size_t *cnt)
+                        void *value, size_t size, size_t *cnt)
 {
 	return size_or_errno(getxattr(path, name, value, size), cnt);
 }
 
 int voluta_sys_lgetxattr(const char *path, const char *name,
-			 void *value, size_t size, size_t *cnt)
+                         void *value, size_t size, size_t *cnt)
 {
 	return size_or_errno(lgetxattr(path, name, value, size), cnt);
 }
 
 int voluta_sys_fgetxattr(int fd, const char *name,
-			 void *value, size_t size, size_t *cnt)
+                         void *value, size_t size, size_t *cnt)
 {
 	return size_or_errno(fgetxattr(fd, name, value, size), cnt);
 }
@@ -572,13 +572,13 @@ int voluta_sys_fremovexattr(int fd, const char *name)
 
 
 int voluta_sys_listxattr(const char *path, char *list, size_t size,
-			 size_t *out_size)
+                         size_t *out_size)
 {
 	return size_or_errno(listxattr(path, list, size), out_size);
 }
 
 int voluta_sys_llistxattr(const char *path, char *list, size_t size,
-			  size_t *out_size)
+                          size_t *out_size)
 {
 	return size_or_errno(llistxattr(path, list, size), out_size);
 }
@@ -590,10 +590,10 @@ int voluta_sys_flistxattr(int fd, char *list, size_t size, size_t *out_size)
 
 /* MMAP */
 int voluta_sys_mmap(void *addr, size_t length, int prot, int flags,
-		    int fd, off_t offset, void **out_addr)
+                    int fd, off_t offset, void **out_addr)
 {
 	return differ_or_errno(mmap(addr, length, prot, flags, fd, offset),
-			       MAP_FAILED, out_addr);
+	                       MAP_FAILED, out_addr);
 }
 
 int voluta_sys_mmap_anon(size_t length, int xflags, void **out_addr)
@@ -602,7 +602,7 @@ int voluta_sys_mmap_anon(size_t length, int xflags, void **out_addr)
 	const int flags = MAP_PRIVATE | MAP_ANONYMOUS;
 
 	return voluta_sys_mmap(NULL, length, prot,
-			       flags | xflags, -1, 0, out_addr);
+	                       flags | xflags, -1, 0, out_addr);
 }
 
 int voluta_sys_munmap(void *addr, size_t length)
@@ -668,18 +668,18 @@ int voluta_sys_setrlimit(int resource, const struct rlimit *rlim)
 
 /* PRCTL */
 int voluta_sys_prctl(int option, unsigned long arg2, unsigned long arg3,
-		     unsigned long arg4, unsigned long arg5)
+                     unsigned long arg4, unsigned long arg5)
 {
 	return val_or_errno(prctl(option, arg2, arg3, arg4, arg5));
 }
 
 /* SYSCALL */
 int voluta_sys_copy_file_range(int fd_in, loff_t *off_in, int fd_out,
-			       loff_t *off_out, size_t len, unsigned int flags,
-			       size_t *out_ncp)
+                               loff_t *off_out, size_t len, unsigned int flags,
+                               size_t *out_ncp)
 {
 	return size_or_errno(copy_file_range(fd_in, off_in, fd_out,
-					     off_out, len, flags), out_ncp);
+	                                     off_out, len, flags), out_ncp);
 }
 
 int voluta_sys_memfd_create(const char *name, unsigned int flags, int *fd)
@@ -708,7 +708,7 @@ struct linux_dirent64_view {
 };
 
 int voluta_sys_getdents(int fd, void *buf, size_t bsz, struct dirent64 *dents,
-			size_t ndents, size_t *out_ndents)
+                        size_t ndents, size_t *out_ndents)
 {
 	long nread;
 	long pos = 0;
@@ -762,7 +762,7 @@ out:
 
 /* SIGNALS */
 int voluta_sys_sigaction(int signum, const struct sigaction *act,
-			 struct sigaction *oldact)
+                         struct sigaction *oldact)
 {
 	return ok_or_errno(sigaction(signum, act, oldact));
 }
@@ -796,11 +796,11 @@ int voluta_sys_fcntl_setpipesz(int fd, size_t pipesize)
 
 /* SELECT */
 int voluta_sys_pselect(int nfds, fd_set *readfds, fd_set *writefds,
-		       fd_set *exceptfds, const struct timespec *timeout,
-		       const sigset_t *sigmask, int *out_nfds)
+                       fd_set *exceptfds, const struct timespec *timeout,
+                       const sigset_t *sigmask, int *out_nfds)
 {
 	return nfds_or_errno(pselect(nfds, readfds, writefds, exceptfds,
-				     timeout, sigmask), out_nfds);
+	                             timeout, sigmask), out_nfds);
 }
 
 /* SOCKET */
@@ -815,21 +815,21 @@ int voluta_sys_bind(int sd, const struct sockaddr *addr, socklen_t addrlen)
 }
 
 int voluta_sys_send(int sd, const void *buf, size_t len,
-		    int flags, size_t *out_sent)
+                    int flags, size_t *out_sent)
 {
 	return size_or_errno(send(sd, buf, len, flags), out_sent);
 }
 
 int voluta_sys_sendto(int sd, const void *buf, size_t len, int flags,
-		      const struct sockaddr *dest_addr, socklen_t addrlen,
-		      size_t *out_sent)
+                      const struct sockaddr *dest_addr, socklen_t addrlen,
+                      size_t *out_sent)
 {
 	return size_or_errno(sendto(sd, buf, len, flags,
-				    dest_addr, addrlen), out_sent);
+	                            dest_addr, addrlen), out_sent);
 }
 
 int voluta_sys_sendmsg(int sd, const struct msghdr *msg,
-		       int flags, size_t *out_sent)
+                       int flags, size_t *out_sent)
 {
 	return size_or_errno(sendmsg(sd, msg, flags), out_sent);
 }
@@ -840,11 +840,11 @@ int voluta_sys_recv(int sd, void *buf, size_t len, int flags, size_t *out_recv)
 }
 
 int voluta_sys_recvfrom(int sd, void *buf, size_t len, int flags,
-			struct sockaddr *src_addr, socklen_t *addrlen,
-			size_t *out_recv)
+                        struct sockaddr *src_addr, socklen_t *addrlen,
+                        size_t *out_recv)
 {
 	return size_or_errno(recvfrom(sd, buf, len, flags,
-				      src_addr, addrlen), out_recv);
+	                              src_addr, addrlen), out_recv);
 }
 
 int voluta_sys_recvmsg(int sd, struct msghdr *msg, int flags, size_t *out_recv)
@@ -858,7 +858,7 @@ int voluta_sys_listen(int sd, int backlog)
 }
 
 int voluta_sys_accept(int sd, struct sockaddr *addr,
-		      socklen_t *addrlen, int *out_sd)
+                      socklen_t *addrlen, int *out_sd)
 {
 	return fd_or_errno(accept(sd, addr, addrlen), out_sd);
 }
@@ -874,13 +874,13 @@ int voluta_sys_shutdown(int sd, int how)
 }
 
 int voluta_sys_setsockopt(int sd, int level, int optname,
-			  const void *optval, socklen_t optlen)
+                          const void *optval, socklen_t optlen)
 {
 	return ok_or_errno(setsockopt(sd, level, optname, optval, optlen));
 }
 
 int voluta_sys_getsockopt(int sd, int level, int optname,
-			  void *optval, socklen_t *optlen)
+                          void *optval, socklen_t *optlen)
 {
 	return ok_or_errno(getsockopt(sd, level, optname, optval, optlen));
 }

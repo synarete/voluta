@@ -37,7 +37,7 @@ static size_t record_size(const struct ut_record *rec, size_t size)
 }
 
 static struct ut_record *record_new(struct ut_env *ute,
-				    size_t size)
+                                    size_t size)
 {
 	size_t rec_size;
 	struct ut_record *rec = NULL;
@@ -106,7 +106,7 @@ static void record_stamp_encode(struct ut_record *rec, size_t index)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_write_record(struct ut_env *ute, ino_t ino,
-			    const struct ut_record *rec, loff_t off)
+                            const struct ut_record *rec, loff_t off)
 {
 	const size_t bsz = record_size(rec, rec->size);
 
@@ -114,7 +114,7 @@ static void ut_write_record(struct ut_env *ute, ino_t ino,
 }
 
 static void ut_read_record(struct ut_env *ute, ino_t ino,
-			   const struct ut_record *rec, loff_t off)
+                           const struct ut_record *rec, loff_t off)
 {
 	const size_t bsz = record_size(rec, rec->size);
 
@@ -122,7 +122,7 @@ static void ut_read_record(struct ut_env *ute, ino_t ino,
 }
 
 static void ut_read_record_verify(struct ut_env *ute, ino_t ino,
-				  struct ut_record *rec, loff_t off)
+                                  struct ut_record *rec, loff_t off)
 {
 	int err;
 
@@ -135,7 +135,7 @@ static void ut_read_record_verify(struct ut_env *ute, ino_t ino,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static loff_t offset_of(const struct ut_record *rec, size_t index,
-			loff_t base_off)
+                        loff_t base_off)
 {
 	const size_t rec_size = record_size(rec, rec->size);
 
@@ -143,7 +143,7 @@ static loff_t offset_of(const struct ut_record *rec, size_t index,
 }
 
 static void ut_file_records_seq_(struct ut_env *ute,
-				 loff_t base, size_t size, size_t cnt)
+                                 loff_t base, size_t size, size_t cnt)
 {
 	ino_t ino;
 	loff_t off;
@@ -185,7 +185,7 @@ static void ut_file_records_seq(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static loff_t resolve_offset(const struct ut_record *rec, long pos,
-			     loff_t base)
+                             loff_t base)
 {
 	const size_t factor = 11;
 	const size_t recsize = record_size(rec, rec->size);
@@ -194,7 +194,7 @@ static loff_t resolve_offset(const struct ut_record *rec, long pos,
 }
 
 static void ut_file_records_rand_(struct ut_env *ute,
-				  loff_t base, size_t size, size_t cnt)
+                                  loff_t base, size_t size, size_t cnt)
 {
 	ino_t ino;
 	loff_t off;

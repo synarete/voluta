@@ -35,21 +35,21 @@ size_t voluta_str_length(const char *s);
  */
 int voluta_str_compare(const char *s1, const char *s2, size_t n);
 int voluta_str_ncompare(const char *s1, size_t n1,
-			const char *s2, size_t n2);
+                        const char *s2, size_t n2);
 
 /*
  * Returns the first occurrence of s2 as a substring of s1, or null if no such
  * substring.
  */
 const char *voluta_str_find(const char *s1, size_t n1,
-			    const char *s2, size_t n2);
+                            const char *s2, size_t n2);
 
 
 /*
  * Returns the last occurrence of s2 as substring of s1.
  */
 const char *voluta_str_rfind(const char *s1, size_t n1,
-			     const char *s2, size_t n2);
+                             const char *s2, size_t n2);
 
 
 const char *voluta_str_find_chr(const char *s, size_t n, char a);
@@ -64,14 +64,14 @@ const char *voluta_str_rfind_chr(const char *s, size_t n, char c);
  * Returns the first occurrence of any of the characters of s2 in s1.
  */
 const char *voluta_str_find_first_of(const char *s1, size_t n1,
-				     const char *s2, size_t n2);
+                                     const char *s2, size_t n2);
 
 /*
  * Returns the first occurrence of any of the char of s2 which is not in s1.
  */
 const char *
 voluta_str_find_first_not_of(const char *s1, size_t n1,
-			     const char *s2, size_t n2);
+                             const char *s2, size_t n2);
 
 /*
  * Returns the first character in s which is not equal to c.
@@ -83,7 +83,7 @@ const char *voluta_str_find_first_not_eq(const char *s, size_t n, char c);
  * n1 characters of s1.
  */
 const char *voluta_str_find_last_of(const char *s1, size_t n1,
-				    const char *s2, size_t n2);
+                                    const char *s2, size_t n2);
 
 /*
  * Returns the last occurrence of any of the characters of s2 which is not in
@@ -91,7 +91,7 @@ const char *voluta_str_find_last_of(const char *s1, size_t n1,
  */
 const char *
 voluta_str_find_last_not_of(const char *s1, size_t n1,
-			    const char *s2, size_t n2);
+                            const char *s2, size_t n2);
 
 /*
  * Returns the last character within the first n characters of s which is not
@@ -118,7 +118,7 @@ size_t voluta_str_common_suffix(const char *s1, const char *s2, size_t n);
  * overlaps any of the characters of the first n2 elements of s2.
  */
 size_t voluta_str_overlaps(const char *s1, size_t n1,
-			   const char *s2, size_t n2);
+                           const char *s2, size_t n2);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -159,7 +159,7 @@ void voluta_str_reverse(char *s, size_t n);
  * to sz).
  */
 size_t voluta_str_insert(char *p, size_t sz, size_t n1,
-			 const char *s, size_t n2);
+                         const char *s, size_t n2);
 
 
 /*
@@ -180,7 +180,7 @@ size_t voluta_str_insert(char *p, size_t sz, size_t n1,
  * to sz).
  */
 size_t voluta_str_insert_chr(char *p, size_t sz,
-			     size_t n1, size_t n2, char c);
+                             size_t n1, size_t n2, char c);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -198,7 +198,7 @@ size_t voluta_str_insert_chr(char *p, size_t sz,
  * equal to sz).
  */
 size_t voluta_str_replace(char *p, size_t sz, size_t len, size_t n1,
-			  const char *s, size_t n2);
+                          const char *s, size_t n2);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -209,7 +209,7 @@ size_t voluta_str_replace(char *p, size_t sz, size_t len, size_t n1,
  * equal to sz).
  */
 size_t voluta_str_replace_chr(char *p, size_t sz, size_t len,
-			      size_t n1, size_t n2, char c);
+                              size_t n1, size_t n2, char c);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -274,14 +274,14 @@ void voluta_substr_init(struct voluta_substr *ss, const char *str);
 void voluta_substr_init_rd(struct voluta_substr *ss, const char *s, size_t n);
 void voluta_substr_init_rwa(struct voluta_substr *ss, char *);
 void voluta_substr_init_rw(struct voluta_substr *ss, char *, size_t nrd,
-			   size_t nwr);
+                           size_t nwr);
 void voluta_substr_inits(struct voluta_substr *ss);
 
 /*
  * Shallow-copy constructor (without deep copy).
  */
 void voluta_substr_clone(const struct voluta_substr *ss,
-			 struct voluta_substr *other);
+                         struct voluta_substr *other);
 
 /*
  * Destructor: zero all
@@ -347,21 +347,21 @@ int voluta_substr_isvalid_index(const struct voluta_substr *ss, size_t i);
  *          room (i.e. n > size()).
  */
 size_t voluta_substr_copyto(const struct voluta_substr *ss, char *buf,
-			    size_t n);
+                            size_t n);
 
 /*
  * Three-way lexicographical comparison
  */
 int voluta_substr_compare(const struct voluta_substr *ss, const char *s);
 int voluta_substr_ncompare(const struct voluta_substr *ss, const char *s,
-			   size_t n);
+                           size_t n);
 
 /*
  * Returns TRUE in case of equal size and equal data
  */
 bool voluta_substr_isequal(const struct voluta_substr *ss, const char *s);
 bool voluta_substr_nisequal(const struct voluta_substr *ss,
-			    const char *s, size_t n);
+                            const char *s, size_t n);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -371,7 +371,7 @@ bool voluta_substr_nisequal(const struct voluta_substr *ss,
  */
 size_t voluta_substr_count(const struct voluta_substr *ss, const char *s);
 size_t voluta_substr_ncount(const struct voluta_substr *ss,
-			    const char *s, size_t n);
+                            const char *s, size_t n);
 size_t voluta_substr_count_chr(const struct voluta_substr *ss, char c);
 
 
@@ -382,9 +382,9 @@ size_t voluta_substr_count_chr(const struct voluta_substr *ss, char c);
  */
 size_t voluta_substr_find(const struct voluta_substr *ss, const char *str);
 size_t voluta_substr_nfind(const struct voluta_substr *ss,
-			   size_t pos, const char *s, size_t n);
+                           size_t pos, const char *s, size_t n);
 size_t voluta_substr_find_chr(const struct voluta_substr *ss, size_t pos,
-			      char c);
+                              char c);
 
 
 /*
@@ -393,9 +393,9 @@ size_t voluta_substr_find_chr(const struct voluta_substr *ss, size_t pos,
  */
 size_t voluta_substr_rfind(const struct voluta_substr *ss, const char *s);
 size_t voluta_substr_nrfind(const struct voluta_substr *ss,
-			    size_t pos, const char *s, size_t n);
+                            size_t pos, const char *s, size_t n);
 size_t voluta_substr_rfind_chr(const struct voluta_substr *ss,
-			       size_t pos, char c);
+                               size_t pos, char c);
 
 
 /*
@@ -403,9 +403,9 @@ size_t voluta_substr_rfind_chr(const struct voluta_substr *ss,
  * equal to any one of the characters of s.
  */
 size_t voluta_substr_find_first_of(const struct voluta_substr *ss,
-				   const char *s);
+                                   const char *s);
 size_t voluta_substr_nfind_first_of(const struct voluta_substr *ss,
-				    size_t pos, const char *s, size_t n);
+                                    size_t pos, const char *s, size_t n);
 
 
 /*
@@ -413,9 +413,9 @@ size_t voluta_substr_nfind_first_of(const struct voluta_substr *ss,
  * that is equal to any of the characters of s.
  */
 size_t voluta_substr_find_last_of(const struct voluta_substr *ss,
-				  const char *s);
+                                  const char *s);
 size_t voluta_substr_nfind_last_of(const struct voluta_substr *ss,
-				   size_t pos, const char *s, size_t n);
+                                   size_t pos, const char *s, size_t n);
 
 
 /*
@@ -423,11 +423,11 @@ size_t voluta_substr_nfind_last_of(const struct voluta_substr *ss,
  * equal to any of the characters of s.
  */
 size_t voluta_substr_find_first_not_of(const struct voluta_substr *ss,
-				       const char *s);
+                                       const char *s);
 size_t voluta_substr_nfind_first_not_of(const struct voluta_substr *ss,
-					size_t pos, const char *s, size_t n);
+                                        size_t pos, const char *s, size_t n);
 size_t voluta_substr_find_first_not(const struct voluta_substr *ss,
-				    size_t pos, char c);
+                                    size_t pos, char c);
 
 
 
@@ -436,11 +436,11 @@ size_t voluta_substr_find_first_not(const struct voluta_substr *ss,
  * that is not equal to any of the characters of s (or c).
  */
 size_t voluta_substr_find_last_not_of(const struct voluta_substr *ss,
-				      const char *s);
+                                      const char *s);
 size_t voluta_substr_nfind_last_not_of(const struct voluta_substr *ss,
-				       size_t pos, const char *s, size_t n);
+                                       size_t pos, const char *s, size_t n);
 size_t voluta_substr_find_last_not(const struct voluta_substr *ss,
-				   size_t pos, char c);
+                                   size_t pos, char c);
 
 
 
@@ -452,14 +452,14 @@ size_t voluta_substr_find_last_not(const struct voluta_substr *ss,
  * the elements which are members of ss.
  */
 void voluta_substr_sub(const struct voluta_substr *ss,
-		       size_t i, size_t n,  struct voluta_substr *out_ss);
+                       size_t i, size_t n,  struct voluta_substr *out_ss);
 
 /*
  * Creates a substring of ss, which refers to the last n chars. The result
  * substring will not refer to more then ss->ss_len elements.
  */
 void voluta_substr_rsub(const struct voluta_substr *ss,
-			size_t n, struct voluta_substr *out_ss);
+                        size_t n, struct voluta_substr *out_ss);
 
 /*
  * Creates a substring with all the characters that are in the range of
@@ -468,8 +468,8 @@ void voluta_substr_rsub(const struct voluta_substr *ss,
  * [s2.begin(), s2.end()) (i.e. have the same address).
  */
 void voluta_substr_intersection(const struct voluta_substr *s1,
-				const struct voluta_substr *s2,
-				struct voluta_substr *out_ss);
+                                const struct voluta_substr *s2,
+                                struct voluta_substr *out_ss);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -486,14 +486,14 @@ void voluta_substr_intersection(const struct voluta_substr *s1,
  *  split("root@foo.bar", ":/")    --> "root@foo.bar", ""
  */
 void voluta_substr_split(const struct voluta_substr *ss, const char *seps,
-			 struct voluta_substr_pair *out_ss_pair);
+                         struct voluta_substr_pair *out_ss_pair);
 
 void voluta_substr_nsplit(const struct voluta_substr *ss,
-			  const char *seps, size_t n,
-			  struct voluta_substr_pair *out_ss_pair);
+                          const char *seps, size_t n,
+                          struct voluta_substr_pair *out_ss_pair);
 
 void voluta_substr_split_chr(const struct voluta_substr *ss, char sep,
-			     struct voluta_substr_pair *out_ss_pair);
+                             struct voluta_substr_pair *out_ss_pair);
 
 
 
@@ -504,14 +504,14 @@ void voluta_substr_split_chr(const struct voluta_substr *ss, char sep,
  * element is an empty substring.
  */
 void voluta_substr_rsplit(const struct voluta_substr *ss, const char *seps,
-			  struct voluta_substr_pair *out_ss_pair);
+                          struct voluta_substr_pair *out_ss_pair);
 
 void voluta_substr_nrsplit(const struct voluta_substr *ss,
-			   const char *seps, size_t n,
-			   struct voluta_substr_pair *out_ss_pair);
+                           const char *seps, size_t n,
+                           struct voluta_substr_pair *out_ss_pair);
 
 void voluta_substr_rsplit_chr(const struct voluta_substr *ss, char sep,
-			      struct voluta_substr_pair *out_ss_pair);
+                              struct voluta_substr_pair *out_ss_pair);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -519,7 +519,7 @@ void voluta_substr_rsplit_chr(const struct voluta_substr *ss, char sep,
  * Creates a substring of ss without the first n leading characters.
  */
 void voluta_substr_trim(const struct voluta_substr *ss, size_t n,
-			struct voluta_substr *out_ss);
+                        struct voluta_substr *out_ss);
 
 
 /*
@@ -527,14 +527,14 @@ void voluta_substr_trim(const struct voluta_substr *ss, size_t n,
  * of set.
  */
 void voluta_substr_trim_any_of(const struct voluta_substr *ss, const char *set,
-			       struct voluta_substr *out_ss);
+                               struct voluta_substr *out_ss);
 
 void voluta_substr_ntrim_any_of(const struct voluta_substr *ss,
-				const char *set, size_t n,
-				struct voluta_substr *out_ss);
+                                const char *set, size_t n,
+                                struct voluta_substr *out_ss);
 
 void voluta_substr_trim_chr(const struct voluta_substr *ss, char c,
-			    struct voluta_substr *out_ss);
+                            struct voluta_substr *out_ss);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -543,25 +543,25 @@ void voluta_substr_trim_chr(const struct voluta_substr *ss, char c,
  * If n >= ss->ss_len the result substring is empty.
  */
 void voluta_substr_chop(const struct voluta_substr *ss, size_t n,
-			struct voluta_substr *);
+                        struct voluta_substr *);
 
 /*
  * Creates a substring of ss without any trailing characters which are members
  * of set.
  */
 void voluta_substr_chop_any_of(const struct voluta_substr *ss,
-			       const char *set, struct voluta_substr *out_ss);
+                               const char *set, struct voluta_substr *out_ss);
 
 void voluta_substr_nchop_any_of(const struct voluta_substr *ss,
-				const char *set, size_t n,
-				struct voluta_substr *out_ss);
+                                const char *set, size_t n,
+                                struct voluta_substr *out_ss);
 
 /*
  * Creates a substring of ss without any trailing characters that equals c.
  */
 
 void voluta_substr_chop_chr(const struct voluta_substr *ss, char c,
-			    struct voluta_substr *out_ss);
+                            struct voluta_substr *out_ss);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -570,25 +570,25 @@ void voluta_substr_chop_chr(const struct voluta_substr *ss, char c,
  * are members of set.
  */
 void voluta_substr_strip_any_of(const struct voluta_substr *ss,
-				const char *set, struct voluta_substr *result);
+                                const char *set, struct voluta_substr *result);
 
 void voluta_substr_nstrip_any_of(const struct voluta_substr *ss,
-				 const char *set, size_t n,
-				 struct voluta_substr *result);
+                                 const char *set, size_t n,
+                                 struct voluta_substr *result);
 
 /*
  * Creates a substring of substr without any leading and trailing
  * characters which are equal to c.
  */
 void voluta_substr_strip_chr(const struct voluta_substr *ss, char c,
-			     struct voluta_substr *result);
+                             struct voluta_substr *result);
 
 
 /*
  * Strip white-spaces
  */
 void voluta_substr_strip_ws(const struct voluta_substr *ss,
-			    struct voluta_substr *out_ss);
+                            struct voluta_substr *out_ss);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -597,14 +597,14 @@ void voluta_substr_strip_ws(const struct voluta_substr *ss,
  * characters of sep(s).
  */
 void voluta_substr_find_token(const struct voluta_substr *ss,
-			      const char *seps, struct voluta_substr *result);
+                              const char *seps, struct voluta_substr *result);
 
 void voluta_substr_nfind_token(const struct voluta_substr *ss,
-			       const char *seps, size_t n,
-			       struct voluta_substr *result);
+                               const char *seps, size_t n,
+                               struct voluta_substr *result);
 
 void voluta_substr_find_token_chr(const struct voluta_substr *ss, char sep,
-				  struct voluta_substr *result);
+                                  struct voluta_substr *result);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -614,18 +614,18 @@ void voluta_substr_find_token_chr(const struct voluta_substr *ss, char sep,
  */
 
 void voluta_substr_find_next_token(const struct voluta_substr *ss,
-				   const struct voluta_substr *tok,
-				   const char *seps,
-				   struct voluta_substr *out_ss);
+                                   const struct voluta_substr *tok,
+                                   const char *seps,
+                                   struct voluta_substr *out_ss);
 
 void voluta_substr_nfind_next_token(const struct voluta_substr *ss,
-				    const struct voluta_substr *tok,
-				    const char *seps, size_t n,
-				    struct voluta_substr *result);
+                                    const struct voluta_substr *tok,
+                                    const char *seps, size_t n,
+                                    struct voluta_substr *result);
 
 void voluta_substr_find_next_token_chr(const struct voluta_substr *ss,
-				       const struct voluta_substr *tok,
-				       char sep, struct voluta_substr *out_ss);
+                                       const struct voluta_substr *tok,
+                                       char sep, struct voluta_substr *out_ss);
 
 /*
  * Parses the substring ss into tokens, delimited by separators seps and
@@ -635,26 +635,26 @@ void voluta_substr_find_next_token_chr(const struct voluta_substr *ss,
  * space. If p_ntok is not NULL it is set to the number of parsed tokens.
  */
 int voluta_substr_tokenize(const struct voluta_substr *ss, const char *seps,
-			   struct voluta_substr tok_list[], size_t list_size,
-			   size_t *out_ntok);
+                           struct voluta_substr tok_list[], size_t list_size,
+                           size_t *out_ntok);
 
 int voluta_substr_ntokenize(const struct voluta_substr *ss,
-			    const char *seps, size_t n,
-			    struct voluta_substr tok_list[],
-			    size_t list_size, size_t *out_ntok);
+                            const char *seps, size_t n,
+                            struct voluta_substr tok_list[],
+                            size_t list_size, size_t *out_ntok);
 
 int voluta_substr_tokenize_chr(const struct voluta_substr *ss, char sep,
-			       struct voluta_substr tok_list[],
-			       size_t list_size, size_t *out_ntok);
+                               struct voluta_substr tok_list[],
+                               size_t list_size, size_t *out_ntok);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Scans ss for the longest common prefix with s.
  */
 size_t voluta_substr_common_prefix(const struct voluta_substr *ss,
-				   const char *str);
+                                   const char *str);
 size_t voluta_substr_ncommon_prefix(const struct voluta_substr *ss,
-				    const char *s, size_t n);
+                                    const char *s, size_t n);
 
 /*
  * Return TRUE if the first character of ss equals c.
@@ -666,9 +666,9 @@ bool voluta_substr_starts_with(const struct voluta_substr *ss, char c);
  * Scans ss backwards for the longest common suffix with s.
  */
 size_t voluta_substr_common_suffix(const struct voluta_substr *ss,
-				   const char *s);
+                                   const char *s);
 size_t voluta_substr_ncommon_suffix(const struct voluta_substr *ss,
-				    const char *s, size_t n);
+                                    const char *s, size_t n);
 
 /*
  * Return TRUE if the last character of ss equals c.
@@ -687,7 +687,7 @@ char *voluta_substr_data(const struct voluta_substr *ss);
  */
 void voluta_substr_assign(struct voluta_substr *ss, const char *s);
 void voluta_substr_nassign(struct voluta_substr *ss, const char *s,
-			   size_t len);
+                           size_t len);
 
 /*
  * Assigns n copies of c.
@@ -700,7 +700,7 @@ void voluta_substr_assign_chr(struct voluta_substr *ss, size_t n, char c);
  */
 void voluta_substr_append(struct voluta_substr *ss, const char *s);
 void voluta_substr_nappend(struct voluta_substr *ss, const char *s,
-			   size_t len);
+                           size_t len);
 
 /*
  * Appends n copies of c.
@@ -717,27 +717,27 @@ void voluta_substr_push_back(struct voluta_substr *ss, char c);
  */
 void voluta_substr_insert(struct voluta_substr *ss, size_t pos, const char *s);
 void voluta_substr_ninsert(struct voluta_substr *ss,
-			   size_t pos, const char *s, size_t len);
+                           size_t pos, const char *s, size_t len);
 
 /*
  * Inserts n copies of c before position pos.
  */
 void voluta_substr_insert_chr(struct voluta_substr *ss,
-			      size_t pos, size_t n, char c);
+                              size_t pos, size_t n, char c);
 
 /*
  * Replaces a part of sub-string with the string s.
  */
 void voluta_substr_replace(struct voluta_substr *ss,
-			   size_t pos, size_t n, const char *s);
+                           size_t pos, size_t n, const char *s);
 void voluta_substr_nreplace(struct voluta_substr *ss,
-			    size_t pos, size_t n, const char *s, size_t len);
+                            size_t pos, size_t n, const char *s, size_t len);
 
 /*
  * Replaces part of sub-string with n2 copies of c.
  */
 void voluta_substr_replace_chr(struct voluta_substr *ss,
-			       size_t pos, size_t n1, size_t n2, char c);
+                               size_t pos, size_t n1, size_t n2, char c);
 
 
 /*
@@ -761,9 +761,9 @@ void voluta_substr_reverse(struct voluta_substr *ss);
  * predicate fn (or !fn), or npos if no such element exist.
  */
 size_t voluta_substr_find_if(const struct voluta_substr *ss,
-			     voluta_chr_testif_fn fn);
+                             voluta_chr_testif_fn fn);
 size_t voluta_substr_find_if_not(const struct voluta_substr *ss,
-				 voluta_chr_testif_fn fn);
+                                 voluta_chr_testif_fn fn);
 
 
 /*
@@ -771,21 +771,21 @@ size_t voluta_substr_find_if_not(const struct voluta_substr *ss,
  * predicate fn (or !fn), or npos if no such element exist.
  */
 size_t voluta_substr_rfind_if(const struct voluta_substr *ss,
-			      voluta_chr_testif_fn fn);
+                              voluta_chr_testif_fn fn);
 size_t voluta_substr_rfind_if_not(const struct voluta_substr *ss,
-				  voluta_chr_testif_fn fn);
+                                  voluta_chr_testif_fn fn);
 
 /*
  * Returns the number of elements in ss that satisfy the unary predicate fn.
  */
 size_t voluta_substr_count_if(const struct voluta_substr *ss,
-			      voluta_chr_testif_fn fn);
+                              voluta_chr_testif_fn fn);
 
 /*
  * Returns TRUE if all characters of ss satisfy unary predicate fn.
  */
 bool voluta_substr_test_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn);
+                           voluta_chr_testif_fn fn);
 
 
 /*
@@ -793,24 +793,24 @@ bool voluta_substr_test_if(const struct voluta_substr *ss,
  * predicate fn.
  */
 void voluta_substr_trim_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn,
-			   struct voluta_substr *out_ss);
+                           voluta_chr_testif_fn fn,
+                           struct voluta_substr *out_ss);
 
 /*
  * Creates a substring of ss without trailing characters that satisfy unary
  * predicate fn.
  */
 void voluta_substr_chop_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn,
-			   struct voluta_substr *out_ss);
+                           voluta_chr_testif_fn fn,
+                           struct voluta_substr *out_ss);
 
 /*
  * Creates a substring of ss without any leading and trailing characters that
  * satisfy unary predicate fn.
  */
 void voluta_substr_strip_if(const struct voluta_substr *ss,
-			    voluta_chr_testif_fn fn,
-			    struct voluta_substr *out_ss);
+                            voluta_chr_testif_fn fn,
+                            struct voluta_substr *out_ss);
 
 
 /*

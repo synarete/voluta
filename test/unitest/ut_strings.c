@@ -324,7 +324,7 @@ static void test_tokenize(struct voluta_substr *ss)
 	struct voluta_substr toks_list[7];
 	const char *seps = " /:;.| " ;
 	const char *line =
-		"    /Ant:::Bee;:Cat:Dog;...Elephant.../Frog:/Giraffe///    ";
+	        "    /Ant:::Bee;:Cat:Dog;...Elephant.../Frog:/Giraffe///    ";
 
 	voluta_substr_init(ss, line);
 	err = voluta_substr_tokenize(ss, seps, toks_list, 7, &n_toks);

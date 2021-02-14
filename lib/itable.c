@@ -32,22 +32,22 @@ struct voluta_ino_set {
 };
 
 static int lookup_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi, ino_t ino,
-		       struct voluta_iaddr *out_iaddr);
+                       struct voluta_vnode_info *vi, ino_t ino,
+                       struct voluta_iaddr *out_iaddr);
 
 static int insert_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi,
-		       const struct voluta_iaddr *iaddr);
+                       struct voluta_vnode_info *vi,
+                       const struct voluta_iaddr *iaddr);
 
 static int update_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi,
-		       const struct voluta_iaddr *iaddr);
+                       struct voluta_vnode_info *vi,
+                       const struct voluta_iaddr *iaddr);
 
 static int remove_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi, ino_t ino);
+                       struct voluta_vnode_info *vi, ino_t ino);
 
 static int scan_subtree(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info *vi);
+                        struct voluta_vnode_info *vi);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -58,14 +58,14 @@ static void iaddr_reset(struct voluta_iaddr *iaddr)
 }
 
 static void iaddr_setup(struct voluta_iaddr *iaddr, ino_t ino,
-			const struct voluta_vaddr *vaddr)
+                        const struct voluta_vaddr *vaddr)
 {
 	vaddr_copyto(vaddr, &iaddr->vaddr);
 	iaddr->ino = ino;
 }
 
 static void iaddr_copyto(const struct voluta_iaddr *iaddr,
-			 struct voluta_iaddr *other)
+                         struct voluta_iaddr *other)
 {
 	vaddr_copyto(&iaddr->vaddr, &other->vaddr);
 	other->ino = iaddr->ino;
@@ -84,13 +84,13 @@ static void ite_set_ino(struct voluta_itable_entry *ite, ino_t ino)
 }
 
 static void ite_vaddr(const struct voluta_itable_entry *ite,
-		      struct voluta_vaddr *out_vaddr)
+                      struct voluta_vaddr *out_vaddr)
 {
 	voluta_vaddr64_parse(&ite->vaddr, out_vaddr);
 }
 
 static void ite_set_vaddr(struct voluta_itable_entry *ite,
-			  const struct voluta_vaddr *vaddr)
+                          const struct voluta_vaddr *vaddr)
 {
 	voluta_vaddr64_set(&ite->vaddr, vaddr);
 }
@@ -106,7 +106,7 @@ static bool ite_has_ino(const struct voluta_itable_entry *ite, ino_t ino)
 }
 
 static void ite_setup(struct voluta_itable_entry *ite, ino_t ino,
-		      const struct voluta_vaddr *vaddr)
+                      const struct voluta_vaddr *vaddr)
 {
 	ite_set_ino(ite, ino);
 	ite_set_vaddr(ite, vaddr);
@@ -121,13 +121,13 @@ static void ite_reset(struct voluta_itable_entry *ite)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void itn_parent(const struct voluta_itable_tnode *itn,
-		       struct voluta_vaddr *out_vaddr)
+                       struct voluta_vaddr *out_vaddr)
 {
 	voluta_vaddr64_parse(&itn->it_parent, out_vaddr);
 }
 
 static void itn_set_parent(struct voluta_itable_tnode *itn,
-			   const struct voluta_vaddr *vaddr)
+                           const struct voluta_vaddr *vaddr)
 {
 	voluta_vaddr64_set(&itn->it_parent, vaddr);
 }
@@ -194,13 +194,13 @@ static void itn_dec_nchilds(struct voluta_itable_tnode *itn)
 }
 
 static void itn_child_at(const struct voluta_itable_tnode *itn,
-			 size_t slot, struct voluta_vaddr *out_vaddr)
+                         size_t slot, struct voluta_vaddr *out_vaddr)
 {
 	voluta_vaddr64_parse(&itn->it_child[slot], out_vaddr);
 }
 
 static void itn_set_child_at(struct voluta_itable_tnode *itn,
-			     size_t slot, const struct voluta_vaddr *vaddr)
+                             size_t slot, const struct voluta_vaddr *vaddr)
 {
 	voluta_vaddr64_set(&itn->it_child[slot], vaddr);
 }
@@ -263,7 +263,7 @@ static bool itn_isempty(const struct voluta_itable_tnode *itn)
 
 static const struct voluta_itable_entry *
 itn_find_next(const struct voluta_itable_tnode *itn,
-	      const struct voluta_itable_entry *from)
+              const struct voluta_itable_entry *from)
 {
 	size_t slot_beg;
 	const struct voluta_itable_entry *ite;
@@ -306,7 +306,7 @@ itn_lookup(const struct voluta_itable_tnode *itn, ino_t ino)
 
 static struct voluta_itable_entry *
 itn_update(struct voluta_itable_tnode *itn, ino_t ino,
-	   const struct voluta_vaddr *vaddr)
+           const struct voluta_vaddr *vaddr)
 {
 	struct voluta_itable_entry *ite;
 
@@ -320,7 +320,7 @@ itn_update(struct voluta_itable_tnode *itn, ino_t ino,
 
 static struct voluta_itable_entry *
 itn_insert(struct voluta_itable_tnode *itn, ino_t ino,
-	   const struct voluta_vaddr *vaddr)
+           const struct voluta_vaddr *vaddr)
 {
 	size_t slot;
 	struct voluta_itable_entry *ite;
@@ -353,7 +353,7 @@ itn_remove(struct voluta_itable_tnode *itn, ino_t ino)
 }
 
 static void itn_set_child(struct voluta_itable_tnode *itn, ino_t ino,
-			  const struct voluta_vaddr *vaddr)
+                          const struct voluta_vaddr *vaddr)
 {
 	const size_t slot = itn_child_slot(itn, ino);
 
@@ -443,7 +443,7 @@ itc_entry_of(const struct voluta_itcache *itc, ino_t ino)
 }
 
 static int itc_lookup(const struct voluta_itcache *itc, ino_t ino,
-		      struct voluta_iaddr *out_iaddr)
+                      struct voluta_iaddr *out_iaddr)
 {
 	struct voluta_vaddr vaddr;
 	const struct voluta_itcentry *itc_ent = itc_entry_of(itc, ino);
@@ -457,7 +457,7 @@ static int itc_lookup(const struct voluta_itcache *itc, ino_t ino,
 }
 
 static void itc_update(struct voluta_itcache *itc,
-		       const struct voluta_iaddr *iaddr)
+                       const struct voluta_iaddr *iaddr)
 {
 	struct voluta_itcentry *itc_ent = itc_entry_of(itc, iaddr->ino);
 
@@ -516,7 +516,7 @@ void voluta_iti_fini(struct voluta_itable_info *iti)
 }
 
 static void iti_set_rootdir(struct voluta_itable_info *iti, ino_t ino,
-			    const struct voluta_vaddr *vaddr)
+                            const struct voluta_vaddr *vaddr)
 {
 	iaddr_setup(&iti->it_rootdir, ino, vaddr);
 }
@@ -553,7 +553,7 @@ static void iti_remove_ino(struct voluta_itable_info *iti, ino_t ino)
 }
 
 static void iti_parse_inos_of(struct voluta_itable_info *iti,
-			      const struct voluta_itable_tnode *itn)
+                              const struct voluta_itable_tnode *itn)
 {
 	ino_t ino;
 	const struct voluta_itable_entry *ite;
@@ -567,7 +567,7 @@ static void iti_parse_inos_of(struct voluta_itable_info *iti,
 }
 
 static int iti_lookup_cached(const struct voluta_itable_info *iti, ino_t ino,
-			     struct voluta_iaddr *out_iaddr)
+                             struct voluta_iaddr *out_iaddr)
 {
 	int err;
 
@@ -583,7 +583,7 @@ static int iti_lookup_cached(const struct voluta_itable_info *iti, ino_t ino,
 }
 
 static void iti_update_cache(struct voluta_itable_info *iti,
-			     const struct voluta_iaddr *iaddr)
+                             const struct voluta_iaddr *iaddr)
 {
 	itc_update(&iti->it_cache, iaddr);
 }
@@ -606,7 +606,7 @@ static void init_itnode(struct voluta_vnode_info *vi, size_t depth)
 }
 
 static void set_itnode_parent(struct voluta_vnode_info *child_vi,
-			      const struct voluta_vnode_info *parent_vi)
+                              const struct voluta_vnode_info *parent_vi)
 {
 	if (parent_vi != NULL) {
 		itn_set_parent(child_vi->vu.itn, vi_vaddr(parent_vi));
@@ -617,17 +617,17 @@ static void set_itnode_parent(struct voluta_vnode_info *child_vi,
 }
 
 static void setup_itnode(struct voluta_vnode_info *vi,
-			 const struct voluta_vnode_info *parent_vi)
+                         const struct voluta_vnode_info *parent_vi)
 {
 	const size_t depth =
-		(parent_vi ? depth_of(parent_vi) + 1 : ITNODE_ROOT_DEPTH);
+	        (parent_vi ? depth_of(parent_vi) + 1 : ITNODE_ROOT_DEPTH);
 
 	init_itnode(vi, depth);
 	set_itnode_parent(vi, parent_vi);
 }
 
 static void bind_child(struct voluta_vnode_info *parent_vi, ino_t ino,
-		       struct voluta_vnode_info *child_vi)
+                       struct voluta_vnode_info *child_vi)
 {
 	itn_set_child(parent_vi->vu.itn, ino, vi_vaddr(child_vi));
 	vi_dirtify(parent_vi);
@@ -640,14 +640,14 @@ static void unbind_child(struct voluta_vnode_info *parent_vi, ino_t ino)
 }
 
 static int create_itnode(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info **out_vi)
+                         struct voluta_vnode_info **out_vi)
 {
 	return voluta_create_vnode(sbi, NULL, VOLUTA_VTYPE_ITNODE, out_vi);
 }
 
 static int new_itnode(struct voluta_sb_info *sbi,
-		      const struct voluta_vnode_info *parent_vi,
-		      struct voluta_vnode_info **out_vi)
+                      const struct voluta_vnode_info *parent_vi,
+                      struct voluta_vnode_info **out_vi)
 {
 	int err;
 
@@ -660,14 +660,14 @@ static int new_itnode(struct voluta_sb_info *sbi,
 }
 
 static int del_itnode(struct voluta_sb_info *sbi,
-		      struct voluta_vnode_info *vi)
+                      struct voluta_vnode_info *vi)
 {
 	return voluta_remove_vnode(sbi, vi);
 }
 
 static int fetch_itnode_at(struct voluta_sb_info *sbi,
-			   const struct voluta_vaddr *vaddr,
-			   struct voluta_vnode_info **out_vi)
+                           const struct voluta_vaddr *vaddr,
+                           struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -684,13 +684,13 @@ static int fetch_itnode_at(struct voluta_sb_info *sbi,
 }
 
 static void resolve_child_at(const struct voluta_vnode_info *parent_vi,
-			     size_t slot, struct voluta_vaddr *out_vaddr)
+                             size_t slot, struct voluta_vaddr *out_vaddr)
 {
 	itn_child_at(parent_vi->vu.itn, slot, out_vaddr);
 }
 
 static void resolve_child(const struct voluta_vnode_info *parent_vi,
-			  ino_t ino, struct voluta_vaddr *out_vaddr)
+                          ino_t ino, struct voluta_vaddr *out_vaddr)
 {
 	const size_t slot = itn_child_slot(parent_vi->vu.itn, ino);
 
@@ -698,8 +698,8 @@ static void resolve_child(const struct voluta_vnode_info *parent_vi,
 }
 
 static int stage_itnode(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info *parent_vi, ino_t ino,
-			struct voluta_vnode_info **out_child_vi)
+                        struct voluta_vnode_info *parent_vi, ino_t ino,
+                        struct voluta_vnode_info **out_child_vi)
 {
 	struct voluta_vaddr vaddr;
 
@@ -708,8 +708,8 @@ static int stage_itnode(struct voluta_sb_info *sbi,
 }
 
 static int fetch_itnode(struct voluta_sb_info *sbi,
-			const struct voluta_vnode_info *vi, ino_t ino,
-			struct voluta_vnode_info **out_child_vi)
+                        const struct voluta_vnode_info *vi, ino_t ino,
+                        struct voluta_vnode_info **out_child_vi)
 {
 	struct voluta_vaddr vaddr;
 
@@ -731,7 +731,7 @@ itreeroot_vaddr(const struct voluta_sb_info *sbi)
 }
 
 static int fetch_itroot(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info **out_vi)
+                        struct voluta_vnode_info **out_vi)
 {
 	int err;
 
@@ -747,14 +747,14 @@ static int fetch_itroot(struct voluta_sb_info *sbi,
 }
 
 static int stage_itroot(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info **out_vi)
+                        struct voluta_vnode_info **out_vi)
 {
 	/* XXX FIXME */
 	return fetch_itroot(sbi, out_vi);
 }
 
 static void iaddr_by_ite(struct voluta_iaddr *iaddr,
-			 const struct voluta_itable_entry *ite)
+                         const struct voluta_itable_entry *ite)
 {
 	struct voluta_vaddr vaddr;
 
@@ -763,7 +763,7 @@ static void iaddr_by_ite(struct voluta_iaddr *iaddr,
 }
 
 static int lookup_at(const struct voluta_vnode_info *vi,
-		     ino_t ino, struct voluta_iaddr *out_iaddr)
+                     ino_t ino, struct voluta_iaddr *out_iaddr)
 {
 	const struct voluta_itable_entry *ite;
 
@@ -776,8 +776,8 @@ static int lookup_at(const struct voluta_vnode_info *vi,
 }
 
 static int do_lookup_iref(struct voluta_sb_info *sbi,
-			  struct voluta_vnode_info *vi, ino_t ino,
-			  struct voluta_iaddr *out_iaddr)
+                          struct voluta_vnode_info *vi, ino_t ino,
+                          struct voluta_iaddr *out_iaddr)
 {
 	int err;
 	struct voluta_vnode_info *child_vi;
@@ -798,8 +798,8 @@ static int do_lookup_iref(struct voluta_sb_info *sbi,
 }
 
 static int lookup_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi, ino_t ino,
-		       struct voluta_iaddr *out_iaddr)
+                       struct voluta_vnode_info *vi, ino_t ino,
+                       struct voluta_iaddr *out_iaddr)
 {
 	int err;
 
@@ -811,7 +811,7 @@ static int lookup_iref(struct voluta_sb_info *sbi,
 }
 
 static int lookup_iaddr_of(struct voluta_sb_info *sbi, ino_t ino,
-			   struct voluta_iaddr *out_iaddr)
+                           struct voluta_iaddr *out_iaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
@@ -828,14 +828,14 @@ static int lookup_iaddr_of(struct voluta_sb_info *sbi, ino_t ino,
 }
 
 static int create_itroot(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info **out_vi)
+                         struct voluta_vnode_info **out_vi)
 {
 	return new_itnode(sbi, NULL, out_vi);
 }
 
 static int create_child(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info *parent_vi, ino_t ino,
-			struct voluta_vnode_info **out_child_vi)
+                        struct voluta_vnode_info *parent_vi, ino_t ino,
+                        struct voluta_vnode_info **out_child_vi)
 {
 	int err;
 	size_t depth;
@@ -856,8 +856,8 @@ static int create_child(struct voluta_sb_info *sbi,
 }
 
 static int require_child(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info *vi, ino_t ino,
-			 struct voluta_vnode_info **out_child_vi)
+                         struct voluta_vnode_info *vi, ino_t ino,
+                         struct voluta_vnode_info **out_child_vi)
 {
 	int err;
 
@@ -873,8 +873,8 @@ static int require_child(struct voluta_sb_info *sbi,
 }
 
 static int try_insert_at(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info *vi,
-			 const struct voluta_iaddr *iaddr)
+                         struct voluta_vnode_info *vi,
+                         const struct voluta_iaddr *iaddr)
 {
 	struct voluta_itable_entry *ite;
 	struct voluta_itable_info *iti = iti_of(sbi);
@@ -889,8 +889,8 @@ static int try_insert_at(struct voluta_sb_info *sbi,
 }
 
 static int do_insert_iref(struct voluta_sb_info *sbi,
-			  struct voluta_vnode_info *vi,
-			  const struct voluta_iaddr *iaddr)
+                          struct voluta_vnode_info *vi,
+                          const struct voluta_iaddr *iaddr)
 {
 	int err;
 	struct voluta_vnode_info *child_vi = NULL;
@@ -911,8 +911,8 @@ static int do_insert_iref(struct voluta_sb_info *sbi,
 }
 
 static int insert_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi,
-		       const struct voluta_iaddr *iaddr)
+                       struct voluta_vnode_info *vi,
+                       const struct voluta_iaddr *iaddr)
 {
 	int err;
 
@@ -924,8 +924,8 @@ static int insert_iref(struct voluta_sb_info *sbi,
 }
 
 static int try_update_at(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info *vi,
-			 const struct voluta_iaddr *iaddr)
+                         struct voluta_vnode_info *vi,
+                         const struct voluta_iaddr *iaddr)
 {
 	struct voluta_itable_entry *ite;
 	struct voluta_itable_info *iti = iti_of(sbi);
@@ -940,8 +940,8 @@ static int try_update_at(struct voluta_sb_info *sbi,
 }
 
 static int do_update_iref(struct voluta_sb_info *sbi,
-			  struct voluta_vnode_info *vi,
-			  const struct voluta_iaddr *iaddr)
+                          struct voluta_vnode_info *vi,
+                          const struct voluta_iaddr *iaddr)
 {
 	int err;
 	struct voluta_vnode_info *child_vi = NULL;
@@ -962,8 +962,8 @@ static int do_update_iref(struct voluta_sb_info *sbi,
 }
 
 static int update_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi,
-		       const struct voluta_iaddr *iaddr)
+                       struct voluta_vnode_info *vi,
+                       const struct voluta_iaddr *iaddr)
 {
 	int err;
 
@@ -975,7 +975,7 @@ static int update_iref(struct voluta_sb_info *sbi,
 }
 
 static int try_remove_at(struct voluta_sb_info *sbi,
-			 struct voluta_vnode_info *vi, ino_t ino)
+                         struct voluta_vnode_info *vi, ino_t ino)
 {
 	struct voluta_itable_entry *ite;
 
@@ -989,8 +989,8 @@ static int try_remove_at(struct voluta_sb_info *sbi,
 }
 
 static int prune_if_empty_leaf(struct voluta_sb_info *sbi,
-			       struct voluta_vnode_info *parent_vi,
-			       struct voluta_vnode_info *child_vi, ino_t ino)
+                               struct voluta_vnode_info *parent_vi,
+                               struct voluta_vnode_info *child_vi, ino_t ino)
 {
 	int err;
 
@@ -1012,7 +1012,7 @@ static int prune_if_empty_leaf(struct voluta_sb_info *sbi,
 }
 
 static int do_remove_iref(struct voluta_sb_info *sbi,
-			  struct voluta_vnode_info *vi, ino_t ino)
+                          struct voluta_vnode_info *vi, ino_t ino)
 {
 	int err;
 	struct voluta_vnode_info *child_vi = NULL;
@@ -1037,7 +1037,7 @@ static int do_remove_iref(struct voluta_sb_info *sbi,
 }
 
 static int remove_iref(struct voluta_sb_info *sbi,
-		       struct voluta_vnode_info *vi, ino_t ino)
+                       struct voluta_vnode_info *vi, ino_t ino)
 {
 	int err;
 
@@ -1065,8 +1065,8 @@ static int remove_itentry(struct voluta_sb_info *sbi, ino_t ino)
 }
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
-		       const struct voluta_vaddr *vaddr,
-		       struct voluta_iaddr *out_iaddr)
+                       const struct voluta_vaddr *vaddr,
+                       struct voluta_iaddr *out_iaddr)
 {
 	int err;
 	ino_t ino;
@@ -1092,7 +1092,7 @@ int voluta_acquire_ino(struct voluta_sb_info *sbi,
 }
 
 int voluta_update_ino(struct voluta_sb_info *sbi,
-		      const struct voluta_iaddr *iaddr)
+                      const struct voluta_iaddr *iaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1111,7 +1111,7 @@ int voluta_update_ino(struct voluta_sb_info *sbi,
 }
 
 int voluta_real_ino(const struct voluta_sb_info *sbi,
-		    ino_t ino, ino_t *out_ino)
+                    ino_t ino, ino_t *out_ino)
 {
 	int err = 0;
 	const ino_t ino_max = VOLUTA_INO_MAX;
@@ -1148,7 +1148,7 @@ int voluta_discard_ino(struct voluta_sb_info *sbi, ino_t xino)
 }
 
 int voluta_resolve_ino(struct voluta_sb_info *sbi, ino_t xino,
-		       struct voluta_iaddr *out_iaddr)
+                       struct voluta_iaddr *out_iaddr)
 {
 	int err;
 	ino_t ino;
@@ -1184,7 +1184,7 @@ static struct voluta_ino_set *ino_set_new(struct voluta_qalloc *qal)
 }
 
 static void ino_set_del(struct voluta_ino_set *ino_set,
-			struct voluta_qalloc *qal)
+                        struct voluta_qalloc *qal)
 {
 	ino_set->cnt = 0;
 	voluta_qalloc_free(qal, ino_set, sizeof(*ino_set));
@@ -1217,7 +1217,7 @@ int voluta_create_itable(struct voluta_sb_info *sbi)
 }
 
 static int reload_itable_root(struct voluta_sb_info *sbi,
-			      const struct voluta_vaddr *vaddr)
+                              const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_vnode_info *root_vi;
@@ -1235,7 +1235,7 @@ static int reload_itable_root(struct voluta_sb_info *sbi,
 }
 
 static void scan_entries_of(struct voluta_sb_info *sbi,
-			    const struct voluta_vnode_info *vi)
+                            const struct voluta_vnode_info *vi)
 {
 	struct voluta_itable_info *iti = iti_of(sbi);
 
@@ -1243,7 +1243,7 @@ static void scan_entries_of(struct voluta_sb_info *sbi,
 }
 
 static int scan_subtree_at(struct voluta_sb_info *sbi,
-			   const struct voluta_vaddr *vaddr)
+                           const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1263,7 +1263,7 @@ static int scan_subtree_at(struct voluta_sb_info *sbi,
 }
 
 static int do_scan_subtree(struct voluta_sb_info *sbi,
-			   const struct voluta_vnode_info *vi)
+                           const struct voluta_vnode_info *vi)
 {
 	int err = 0;
 	struct voluta_vaddr vaddr;
@@ -1282,7 +1282,7 @@ static int do_scan_subtree(struct voluta_sb_info *sbi,
 }
 
 static int scan_subtree(struct voluta_sb_info *sbi,
-			struct voluta_vnode_info *vi)
+                        struct voluta_vnode_info *vi)
 {
 	int err;
 
@@ -1294,7 +1294,7 @@ static int scan_subtree(struct voluta_sb_info *sbi,
 }
 
 static void fill_ino_set(const struct voluta_vnode_info *vi,
-			 struct voluta_ino_set *ino_set)
+                         struct voluta_ino_set *ino_set)
 {
 	const struct voluta_itable_entry *ite;
 	const struct voluta_itable_tnode *itn = vi->vu.itn;
@@ -1311,7 +1311,7 @@ static void fill_ino_set(const struct voluta_vnode_info *vi,
 }
 
 static int parse_itable_top(struct voluta_sb_info *sbi,
-			    struct voluta_ino_set *ino_set)
+                            struct voluta_ino_set *ino_set)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1328,8 +1328,8 @@ static int parse_itable_top(struct voluta_sb_info *sbi,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int scan_stage_root(struct voluta_sb_info *sbi,
-			   const struct voluta_ino_set *ino_set,
-			   struct voluta_inode_info **out_root_ii)
+                           const struct voluta_ino_set *ino_set,
+                           struct voluta_inode_info **out_root_ii)
 {
 	int err;
 	ino_t ino;
@@ -1350,8 +1350,8 @@ static int scan_stage_root(struct voluta_sb_info *sbi,
 }
 
 static int do_scan_root_inode(struct voluta_sb_info *sbi,
-			      struct voluta_ino_set *ino_set,
-			      struct voluta_inode_info **out_root_ii)
+                              struct voluta_ino_set *ino_set,
+                              struct voluta_inode_info **out_root_ii)
 {
 	int err;
 
@@ -1367,7 +1367,7 @@ static int do_scan_root_inode(struct voluta_sb_info *sbi,
 }
 
 static int scan_root_inode(struct voluta_sb_info *sbi,
-			   struct voluta_inode_info **out_root_ii)
+                           struct voluta_inode_info **out_root_ii)
 {
 	int err = -ENOMEM;
 	struct voluta_ino_set *ino_set;
@@ -1381,7 +1381,7 @@ static int scan_root_inode(struct voluta_sb_info *sbi,
 }
 
 static int reload_and_scan_itable(struct voluta_sb_info *sbi,
-				  const struct voluta_vaddr *vaddr)
+                                  const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1402,7 +1402,7 @@ static int reload_and_scan_itable(struct voluta_sb_info *sbi,
 }
 
 int voluta_reload_itable_at(struct voluta_sb_info *sbi,
-			    const struct voluta_vaddr *vaddr)
+                            const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_inode_info *root_ii;
@@ -1426,7 +1426,7 @@ voluta_root_of_itable(const struct voluta_sb_info *sbi)
 }
 
 void voluta_bind_rootdir(struct voluta_sb_info *sbi,
-			 const struct voluta_inode_info *ii)
+                         const struct voluta_inode_info *ii)
 {
 	const ino_t ino = ii_ino(ii);
 	struct voluta_itable_info *iti = iti_of(sbi);

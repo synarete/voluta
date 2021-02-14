@@ -58,7 +58,7 @@ static void kvl_append(struct ut_kvl *kvl, size_t nlen, size_t value_sz)
 }
 
 static void kvl_appendn(struct ut_kvl *kvl,
-			const struct voluta_kv_sizes *arr, size_t arr_len)
+                        const struct voluta_kv_sizes *arr, size_t arr_len)
 {
 	for (size_t i = 0; i < arr_len; ++i) {
 		kvl_append(kvl, arr[i].name_len, arr[i].value_size);
@@ -66,7 +66,7 @@ static void kvl_appendn(struct ut_kvl *kvl,
 }
 
 static void kvl_populate(struct ut_kvl *kvl,
-			 size_t name_len, size_t value_sz)
+                         size_t name_len, size_t value_sz)
 {
 	for (size_t i = kvl->count; i < kvl->limit; ++i) {
 		kvl_append(kvl, name_len, value_sz);
@@ -118,7 +118,7 @@ static void kvl_random_shuffle(struct ut_kvl *kvl)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_xattr_simple_(struct ut_env *ute,
-			     size_t name_len, size_t value_size)
+                             size_t name_len, size_t value_size)
 {
 	ino_t ino;
 	ino_t dino;
@@ -217,7 +217,7 @@ static void ut_xattr_long_names(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fill_short_kv(struct ut_env *ute,
-			  struct ut_keyval *kv, size_t idx)
+                          struct ut_keyval *kv, size_t idx)
 {
 	const char *str;
 
@@ -266,7 +266,7 @@ static void ut_xattr_shorts(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fill_novalue_kv(struct ut_env *ute,
-			    struct ut_keyval *kv, size_t idx)
+                            struct ut_keyval *kv, size_t idx)
 {
 	size_t len;
 	char *str;
@@ -465,7 +465,7 @@ static void ut_xattr_replace_multi(struct ut_env *ute)
 			ut_setxattr_replace(ute, ino, kvl->list[i]);
 			kvl->list[i]->size = j - 2;
 			ut_setxattr_rereplace(ute, ino,
-					      kvl->list[i]);
+			                      kvl->list[i]);
 		}
 	}
 	for (size_t i = 0; i < kvl->count; ++i) {

@@ -84,7 +84,7 @@ static void avl_node_destroy(struct voluta_avl_node *x)
 }
 
 static void avl_node_swap_balance(struct voluta_avl_node *x,
-				  struct voluta_avl_node *y)
+                                  struct voluta_avl_node *y)
 {
 	int balance;
 
@@ -105,7 +105,7 @@ static void avl_node_verify(const struct voluta_avl_node *x)
 	    unlikely(x->balance < -1) ||
 	    unlikely(x->balance > 1)) {
 		voluta_panic("illegal avl-node balance=%d magic=0x%x",
-			     (int)x->balance, (int)x->magic);
+		             (int)x->balance, (int)x->magic);
 	}
 }
 
@@ -165,8 +165,8 @@ bst_predecessor(const struct voluta_avl_node *x)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bst_rotate_left(struct voluta_avl_node *x,
-			    struct voluta_avl_node **root)
+static void
+bst_rotate_left(struct voluta_avl_node *x, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->right;
 
@@ -186,8 +186,8 @@ static void bst_rotate_left(struct voluta_avl_node *x,
 	x->parent = y;
 }
 
-static void bst_rotate_right(struct voluta_avl_node *x,
-			     struct voluta_avl_node **root)
+static void
+bst_rotate_right(struct voluta_avl_node *x, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->left;
 
@@ -207,8 +207,8 @@ static void bst_rotate_right(struct voluta_avl_node *x,
 	x->parent = y;
 }
 
-static void bst_rotate_left_right(struct voluta_avl_node *a,
-				  struct voluta_avl_node **root)
+static void
+bst_rotate_left_right(struct voluta_avl_node *a, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *b = a->left;
 	struct voluta_avl_node *c = b->right;
@@ -241,7 +241,7 @@ static void bst_rotate_left_right(struct voluta_avl_node *a,
 }
 
 static void bst_rotate_right_left(struct voluta_avl_node *a,
-				  struct voluta_avl_node **root)
+                                  struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *b = a->right;
 	struct voluta_avl_node *c = b->left;
@@ -275,7 +275,7 @@ static void bst_rotate_right_left(struct voluta_avl_node *a,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void avl_rotate_left(struct voluta_avl_node *x,
-			    struct voluta_avl_node **root)
+                            struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->right;
 
@@ -294,7 +294,7 @@ static void avl_rotate_left(struct voluta_avl_node *x,
 }
 
 static void avl_rotate_right(struct voluta_avl_node *x,
-			     struct voluta_avl_node **root)
+                             struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->left;
 
@@ -313,7 +313,7 @@ static void avl_rotate_right(struct voluta_avl_node *x,
 }
 
 static void avl_rotate_left_right(struct voluta_avl_node *a,
-				  struct voluta_avl_node **root)
+                                  struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *b = a->left;
 	struct voluta_avl_node *c = b->right;
@@ -330,7 +330,7 @@ static void avl_rotate_left_right(struct voluta_avl_node *a,
 }
 
 static void avl_rotate_right_left(struct voluta_avl_node *a,
-				  struct voluta_avl_node **root)
+                                  struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *b = a->right;
 	struct voluta_avl_node *c = b->left;
@@ -347,19 +347,19 @@ static void avl_rotate_right_left(struct voluta_avl_node *a,
 }
 
 static bool left_child(const struct voluta_avl_node *x_parent,
-		       const struct voluta_avl_node *x)
+                       const struct voluta_avl_node *x)
 {
 	return (x_parent->left == x);
 }
 
 static bool right_child(const struct voluta_avl_node *x_parent,
-			const struct voluta_avl_node *x)
+                        const struct voluta_avl_node *x)
 {
 	return (x_parent->right == x);
 }
 
 static void avl_insert_fixup(struct voluta_avl_node *x,
-			     struct voluta_avl_node **root)
+                             struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *x_parent;
 
@@ -397,8 +397,8 @@ static void avl_insert_fixup(struct voluta_avl_node *x,
 }
 
 static void avl_delete_fixup(struct voluta_avl_node *x,
-			     struct voluta_avl_node *x_parent,
-			     struct voluta_avl_node **root)
+                             struct voluta_avl_node *x_parent,
+                             struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = NULL;
 
@@ -456,7 +456,7 @@ static void avl_delete_fixup(struct voluta_avl_node *x,
 }
 
 static void avl_delete(struct voluta_avl_node *z,
-		       struct voluta_avl_node **root)
+                       struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *x = NULL;
 	struct voluta_avl_node *y = NULL;
@@ -646,32 +646,32 @@ avl_insert_root(struct voluta_avl *avl, struct voluta_avl_node *x)
 }
 
 static const void *avl_keyof(const struct voluta_avl *avl,
-			     const struct voluta_avl_node *x)
+                             const struct voluta_avl_node *x)
 {
 	return avl->getkey(x);
 }
 
 static long avl_keycmp(const struct voluta_avl *avl,
-		       const void *kx, const void *ky)
+                       const void *kx, const void *ky)
 {
 	return avl->keycmp(kx, ky);
 }
 
 static long avl_compare_to(const struct voluta_avl *avl,
-			   const struct voluta_avl_node *x, const void *k)
+                           const struct voluta_avl_node *x, const void *k)
 {
 	return avl_keycmp(avl, avl_keyof(avl, x), k);
 }
 
 static long avl_compare(const struct voluta_avl *avl,
-			const struct voluta_avl_node *x,
-			const struct voluta_avl_node *y)
+                        const struct voluta_avl_node *x,
+                        const struct voluta_avl_node *y)
 {
 	return avl_compare_to(avl, x, avl_keyof(avl, y));
 }
 
 static void avl_pos_setup(struct voluta_avl_pos *pos,
-			  struct voluta_avl_node *p, bool isleft)
+                          struct voluta_avl_node *p, bool isleft)
 {
 	if (p == NULL) {
 		pos->parent = NULL;
@@ -686,8 +686,8 @@ static void avl_pos_setup(struct voluta_avl_pos *pos,
 }
 
 static int avl_search_uniq_ipos(struct voluta_avl *avl,
-				const struct voluta_avl_node *z,
-				struct voluta_avl_pos *out_pos)
+                                const struct voluta_avl_node *z,
+                                struct voluta_avl_pos *out_pos)
 {
 	long cmp;
 	bool left_child = false;
@@ -713,8 +713,8 @@ static int avl_search_uniq_ipos(struct voluta_avl *avl,
 }
 
 static int avl_search_leaf_ipos(struct voluta_avl *avl,
-				const struct voluta_avl_node *z,
-				struct voluta_avl_pos *out_pos)
+                                const struct voluta_avl_node *z,
+                                struct voluta_avl_pos *out_pos)
 {
 	long cmp;
 	bool isleft = false;
@@ -738,8 +738,8 @@ static int avl_search_leaf_ipos(struct voluta_avl *avl,
 }
 
 static int avl_search_insert_pos(struct voluta_avl *avl,
-				 const struct voluta_avl_node *x, bool unique,
-				 struct voluta_avl_pos *out_pos)
+                                 const struct voluta_avl_node *x, bool unique,
+                                 struct voluta_avl_pos *out_pos)
 {
 	int ret;
 
@@ -753,7 +753,7 @@ static int avl_search_insert_pos(struct voluta_avl *avl,
 
 static struct voluta_avl_node *
 avl_insert_leaf_at(struct voluta_avl *avl, struct voluta_avl_node *x,
-		   const struct voluta_avl_pos *pos)
+                   const struct voluta_avl_pos *pos)
 {
 	struct voluta_avl_node *minn;
 	struct voluta_avl_node *maxn;
@@ -794,7 +794,7 @@ avl_insert_leaf(struct voluta_avl *avl, struct voluta_avl_node *x, int unique)
 }
 
 static bool avl_insert(struct voluta_avl *avl,
-		       struct voluta_avl_node *x, bool unique)
+                       struct voluta_avl_node *x, bool unique)
 {
 	bool ret = false;
 	struct voluta_avl_node *y;
@@ -828,14 +828,14 @@ static void avl_reset(struct voluta_avl *avl)
 }
 
 static void avl_remove_last(struct voluta_avl *avl,
-			    struct voluta_avl_node *x)
+                            struct voluta_avl_node *x)
 {
 	avl_reset(avl);
 	avl_node_reset(x);
 }
 
 static void avl_remove_rebalance(struct voluta_avl *avl,
-				 struct voluta_avl_node *x)
+                                 struct voluta_avl_node *x)
 {
 	struct voluta_avl_node **root = avl_root_p(avl);
 	struct voluta_avl_node **pmin = avl_leftmost_p(avl);
@@ -920,8 +920,8 @@ void voluta_avl_clear(struct voluta_avl *avl, voluta_avl_node_fn fn, void *p)
 }
 
 static void avl_remove_range(struct voluta_avl *avl,
-			     struct voluta_avl_node *first,
-			     struct voluta_avl_node *last)
+                             struct voluta_avl_node *first,
+                             struct voluta_avl_node *last)
 {
 	struct voluta_avl_node *nxt;
 	struct voluta_avl_node *itr = first;
@@ -936,15 +936,15 @@ static void avl_remove_range(struct voluta_avl *avl,
 }
 
 static bool avl_is_full_range(const struct voluta_avl *avl,
-			      const struct voluta_avl_node *first,
-			      const struct voluta_avl_node *last)
+                              const struct voluta_avl_node *first,
+                              const struct voluta_avl_node *last)
 {
 	return (first == avl_begin(avl)) && (last == avl_end(avl));
 }
 
 void voluta_avl_remove_range(struct voluta_avl *avl,
-			     struct voluta_avl_node *first,
-			     struct voluta_avl_node *last)
+                             struct voluta_avl_node *first,
+                             struct voluta_avl_node *last)
 {
 	if (avl_is_full_range(avl, first, last)) {
 		avl_reset(avl);
@@ -962,17 +962,17 @@ avl_iterator(const struct voluta_avl *avl, const struct voluta_avl_node *x)
 }
 
 static void avl_range_setup(const struct voluta_avl *avl,
-			    struct voluta_avl_range *r,
-			    const struct voluta_avl_node *x,
-			    const struct voluta_avl_node *y)
+                            struct voluta_avl_range *r,
+                            const struct voluta_avl_node *x,
+                            const struct voluta_avl_node *y)
 {
 	r->first = avl_iterator(avl, x);
 	r->second = avl_iterator(avl, y);
 }
 
 static size_t avl_distance(const struct voluta_avl *avl,
-			   const struct voluta_avl_node *x,
-			   const struct voluta_avl_node *y)
+                           const struct voluta_avl_node *x,
+                           const struct voluta_avl_node *y)
 {
 	size_t n = 0;
 
@@ -986,9 +986,9 @@ static size_t avl_distance(const struct voluta_avl *avl,
 /* Finds the first element whose key is greater than k */
 static const struct voluta_avl_node *
 avl_upper_bound(const struct voluta_avl *avl,
-		const struct voluta_avl_node *x,
-		const struct voluta_avl_node *y,
-		const void *k)
+                const struct voluta_avl_node *x,
+                const struct voluta_avl_node *y,
+                const void *k)
 {
 	long cmp;
 
@@ -1007,8 +1007,8 @@ avl_upper_bound(const struct voluta_avl *avl,
 /* Finds the first element whose key is not less than k */
 static const struct voluta_avl_node *
 avl_lower_bound(const struct voluta_avl *avl,
-		const struct voluta_avl_node *x,
-		const struct voluta_avl_node *y, const void *k)
+                const struct voluta_avl_node *x,
+                const struct voluta_avl_node *y, const void *k)
 {
 	long cmp;
 
@@ -1025,9 +1025,9 @@ avl_lower_bound(const struct voluta_avl *avl,
 }
 
 static void avl_equal_range(const struct voluta_avl *avl,
-			    const struct voluta_avl_node *x,
-			    const struct voluta_avl_node *y,
-			    const void *k, struct voluta_avl_range *out_r)
+                            const struct voluta_avl_node *x,
+                            const struct voluta_avl_node *y,
+                            const void *k, struct voluta_avl_range *out_r)
 {
 	long cmp;
 	const struct voluta_avl_node *xu = NULL;
@@ -1154,7 +1154,7 @@ voluta_avl_upper_bound(const struct voluta_avl *avl, const void *k)
 }
 
 void voluta_avl_equal_range(const struct voluta_avl *avl, const void *k,
-			    struct voluta_avl_range *out_r)
+                            struct voluta_avl_range *out_r)
 {
 	if (avl->size > 0) {
 		avl_equal_range(avl, *avl_root_p(avl), NULL, k, out_r);
@@ -1164,8 +1164,8 @@ void voluta_avl_equal_range(const struct voluta_avl *avl, const void *k,
 }
 
 static void avl_replace_fixup(struct voluta_avl *avl,
-			      struct voluta_avl_node *y,
-			      struct voluta_avl_node *z)
+                              struct voluta_avl_node *y,
+                              struct voluta_avl_node *z)
 {
 	struct voluta_avl_node **root = avl_root_p(avl);
 	struct voluta_avl_node **pmin = avl_leftmost_p(avl);
@@ -1183,7 +1183,7 @@ static void avl_replace_fixup(struct voluta_avl *avl,
 }
 
 static void avl_node_exchange(struct voluta_avl_node *y,
-			      struct voluta_avl_node *z)
+                              struct voluta_avl_node *z)
 {
 	z->parent = y->parent;
 	z->left = y->left;
@@ -1206,8 +1206,8 @@ static void avl_node_exchange(struct voluta_avl_node *y,
 }
 
 static void avl_replace_exists(struct voluta_avl *avl,
-			       struct voluta_avl_node *y,
-			       struct voluta_avl_node *z)
+                               struct voluta_avl_node *y,
+                               struct voluta_avl_node *z)
 {
 	avl_node_verify(y);
 	avl_node_init(z);
@@ -1245,7 +1245,7 @@ void voluta_avl_node_fini(struct voluta_avl_node *x)
 }
 
 void voluta_avl_init(struct voluta_avl *avl, voluta_avl_getkey_fn getkey,
-		     voluta_avl_keycmp_fn keycmp, void *userp)
+                     voluta_avl_keycmp_fn keycmp, void *userp)
 {
 	avl_node_reset(&avl->head);
 	avl->getkey = getkey;

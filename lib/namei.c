@@ -31,11 +31,11 @@
 
 
 static int namestr_to_hash(const struct voluta_inode_info *dir_ii,
-			   const struct voluta_namestr *ns,
-			   uint64_t *out_hash);
+                           const struct voluta_namestr *ns,
+                           uint64_t *out_hash);
 
 static bool dir_hasflag(const struct voluta_inode_info *dir_ii,
-			enum voluta_dirf mask)
+                        enum voluta_dirf mask)
 {
 	const enum voluta_dirf flags = voluta_dir_flags(dir_ii);
 
@@ -68,7 +68,7 @@ static void ii_inc_nlookup(struct voluta_inode_info *ii, int err)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static bool isowner(const struct voluta_oper *op,
-		    const struct voluta_inode_info *ii)
+                    const struct voluta_inode_info *ii)
 {
 	return uid_eq(op->ucred.uid, ii_uid(ii));
 }
@@ -137,8 +137,8 @@ static bool has_sticky_bit(const struct voluta_inode_info *dir_ii)
 }
 
 static int check_sticky(const struct voluta_oper *op,
-			const struct voluta_inode_info *dir_ii,
-			const struct voluta_inode_info *ii)
+                        const struct voluta_inode_info *dir_ii,
+                        const struct voluta_inode_info *ii)
 {
 
 	if (!has_sticky_bit(dir_ii)) {
@@ -157,19 +157,21 @@ static int check_sticky(const struct voluta_oper *op,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int new_inode(const struct voluta_oper *op,
-		     const struct voluta_inode_info *parent_dir_ii,
-		     mode_t mode, dev_t rdev,
-		     struct voluta_inode_info **out_ii)
+                     const struct voluta_inode_info *parent_dir_ii,
+                     mode_t mode, dev_t rdev,
+                     struct voluta_inode_info **out_ii)
 {
-	const ino_t parent = ii_ino(parent_dir_ii);
+	const ino_t parent_ino = ii_ino(parent_dir_ii);
+	const mode_t parent_mode = ii_mode(parent_dir_ii);
 	struct voluta_sb_info *sbi = ii_sbi(parent_dir_ii);
 
-	return voluta_create_inode(sbi, op, mode, parent, rdev, out_ii);
+	return voluta_create_inode(sbi, op, parent_ino, parent_mode,
+	                           mode, rdev, out_ii);
 }
 
 static int new_dir_inode(const struct voluta_oper *op,
-			 const struct voluta_inode_info *parent_dir_ii,
-			 mode_t mode, struct voluta_inode_info **out_ii)
+                         const struct voluta_inode_info *parent_dir_ii,
+                         mode_t mode, struct voluta_inode_info **out_ii)
 {
 	const mode_t ifmt = S_IFMT;
 	const mode_t dir_mode = (mode & ~ifmt) | S_IFDIR;
@@ -178,8 +180,8 @@ static int new_dir_inode(const struct voluta_oper *op,
 }
 
 static int new_reg_inode(const struct voluta_oper *op,
-			 const struct voluta_inode_info *parent_dir_ii,
-			 mode_t mode, struct voluta_inode_info **out_ii)
+                         const struct voluta_inode_info *parent_dir_ii,
+                         mode_t mode, struct voluta_inode_info **out_ii)
 {
 	const mode_t ifmt = S_IFMT;
 	const mode_t reg_mode = (mode & ~ifmt) | S_IFREG;
@@ -188,8 +190,8 @@ static int new_reg_inode(const struct voluta_oper *op,
 }
 
 static int new_lnk_inode(const struct voluta_oper *op,
-			 const struct voluta_inode_info *parent_dir_ii,
-			 struct voluta_inode_info **out_ii)
+                         const struct voluta_inode_info *parent_dir_ii,
+                         struct voluta_inode_info **out_ii)
 {
 	const mode_t lnk_mode = S_IRWXU | S_IRWXG | S_IRWXO | S_IFLNK;
 
@@ -197,9 +199,9 @@ static int new_lnk_inode(const struct voluta_oper *op,
 }
 
 static int new_inode_by_mode(const struct voluta_oper *op,
-			     const struct voluta_inode_info *parent_dir_ii,
-			     mode_t mode, dev_t rdev,
-			     struct voluta_inode_info **out_ii)
+                             const struct voluta_inode_info *parent_dir_ii,
+                             mode_t mode, dev_t rdev,
+                             struct voluta_inode_info **out_ii)
 {
 	int err;
 
@@ -210,7 +212,7 @@ static int new_inode_by_mode(const struct voluta_oper *op,
 	} else if (S_ISFIFO(mode) || S_ISSOCK(mode)) {
 		err = new_inode(op, parent_dir_ii, mode, rdev, out_ii);
 	} else {
-		err = -ENOTSUP;
+		err = -EOPNOTSUPP;
 	}
 	return err;
 }
@@ -223,7 +225,7 @@ static int del_inode(struct voluta_inode_info *ii)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 int voluta_authorize(const struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op)
+                     const struct voluta_oper *op)
 {
 	const struct voluta_ucred *ucred = &op->ucred;
 
@@ -238,7 +240,7 @@ int voluta_authorize(const struct voluta_sb_info *sbi,
 }
 
 static int do_access(const struct voluta_oper *op,
-		     const struct voluta_inode_info *ii, int mode)
+                     const struct voluta_inode_info *ii, int mode)
 {
 	mode_t rwx = 0;
 	const uid_t uid = op->ucred.uid;
@@ -296,7 +298,7 @@ static int do_access(const struct voluta_oper *op,
 }
 
 int voluta_do_access(const struct voluta_oper *op,
-		     const struct voluta_inode_info *ii, int mode)
+                     const struct voluta_inode_info *ii, int mode)
 {
 	int err;
 
@@ -308,25 +310,25 @@ int voluta_do_access(const struct voluta_oper *op,
 }
 
 static int check_waccess(const struct voluta_oper *op,
-			 const struct voluta_inode_info *ii)
+                         const struct voluta_inode_info *ii)
 {
 	return voluta_do_access(op, ii, W_OK);
 }
 
 static int check_xaccess(const struct voluta_oper *op,
-			 const struct voluta_inode_info *ii)
+                         const struct voluta_inode_info *ii)
 {
 	return voluta_do_access(op, ii, X_OK);
 }
 
 static int check_raccess(const struct voluta_oper *op,
-			 const struct voluta_inode_info *ii)
+                         const struct voluta_inode_info *ii)
 {
 	return voluta_do_access(op, ii, R_OK);
 }
 
 static int check_dir_waccess(const struct voluta_oper *op,
-			     const struct voluta_inode_info *ii)
+                             const struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -356,7 +358,7 @@ static int check_name(const struct voluta_namestr *name)
 }
 
 static int check_dir_and_name(const struct voluta_inode_info *ii,
-			      const struct voluta_namestr *name)
+                              const struct voluta_namestr *name)
 {
 	int err;
 
@@ -372,8 +374,8 @@ static int check_dir_and_name(const struct voluta_inode_info *ii,
 }
 
 static int check_lookup(const struct voluta_oper *op,
-			const struct voluta_inode_info *dir_ii,
-			const struct voluta_namestr *name)
+                        const struct voluta_inode_info *dir_ii,
+                        const struct voluta_namestr *name)
 {
 	int err;
 
@@ -389,8 +391,8 @@ static int check_lookup(const struct voluta_oper *op,
 }
 
 static int assign_namehash(const struct voluta_inode_info *dir_ii,
-			   const struct voluta_namestr *nstr,
-			   struct voluta_qstr *qstr)
+                           const struct voluta_namestr *nstr,
+                           struct voluta_qstr *qstr)
 {
 	int err;
 
@@ -408,8 +410,8 @@ static int assign_namehash(const struct voluta_inode_info *dir_ii,
 }
 
 static int lookup_by_name(const struct voluta_oper *op,
-			  const struct voluta_inode_info *dir_ii,
-			  const struct voluta_namestr *nstr, ino_t *out_ino)
+                          const struct voluta_inode_info *dir_ii,
+                          const struct voluta_namestr *nstr, ino_t *out_ino)
 {
 	int err;
 	struct voluta_qstr name;
@@ -428,9 +430,9 @@ static int lookup_by_name(const struct voluta_oper *op,
 }
 
 static int fetch_by_name(const struct voluta_oper *op,
-			 const struct voluta_inode_info *dir_ii,
-			 const struct voluta_namestr *name,
-			 struct voluta_inode_info **out_ii)
+                         const struct voluta_inode_info *dir_ii,
+                         const struct voluta_namestr *name,
+                         struct voluta_inode_info **out_ii)
 {
 	int err;
 	ino_t ino;
@@ -448,9 +450,9 @@ static int fetch_by_name(const struct voluta_oper *op,
 }
 
 static int stage_by_name(const struct voluta_oper *op,
-			 const struct voluta_inode_info *dir_ii,
-			 const struct voluta_namestr *name,
-			 struct voluta_inode_info **out_ii)
+                         const struct voluta_inode_info *dir_ii,
+                         const struct voluta_namestr *name,
+                         struct voluta_inode_info **out_ii)
 {
 	int err;
 	ino_t ino;
@@ -468,9 +470,9 @@ static int stage_by_name(const struct voluta_oper *op,
 }
 
 static int do_lookup(const struct voluta_oper *op,
-		     const struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name,
-		     struct voluta_inode_info **out_ii)
+                     const struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name,
+                     struct voluta_inode_info **out_ii)
 {
 	int err;
 
@@ -486,9 +488,9 @@ static int do_lookup(const struct voluta_oper *op,
 }
 
 int voluta_do_lookup(const struct voluta_oper *op,
-		     const struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name,
-		     struct voluta_inode_info **out_ii)
+                     const struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name,
+                     struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -511,14 +513,14 @@ static int check_create_mode(mode_t mode)
 		return -EINVAL;
 	}
 	if (!S_ISREG(mode) && !S_ISFIFO(mode) && !S_ISSOCK(mode)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
 
 static int check_nodent(const struct voluta_oper *op,
-			const struct voluta_inode_info *dir_ii,
-			const struct voluta_namestr *name)
+                        const struct voluta_inode_info *dir_ii,
+                        const struct voluta_namestr *name)
 {
 	int err;
 	ino_t ino;
@@ -531,7 +533,7 @@ static int check_nodent(const struct voluta_oper *op,
 }
 
 static int check_add_dentry(const struct voluta_inode_info *dir_ii,
-			    const struct voluta_namestr *name)
+                            const struct voluta_namestr *name)
 {
 	int err;
 	size_t ndents;
@@ -553,8 +555,8 @@ static int check_add_dentry(const struct voluta_inode_info *dir_ii,
 }
 
 static int check_dir_can_add(const struct voluta_oper *op,
-			     const struct voluta_inode_info *dir_ii,
-			     const struct voluta_namestr *name)
+                             const struct voluta_inode_info *dir_ii,
+                             const struct voluta_namestr *name)
 {
 	int err;
 
@@ -574,8 +576,8 @@ static int check_dir_can_add(const struct voluta_oper *op,
 }
 
 static int check_create(const struct voluta_oper *op,
-			const struct voluta_inode_info *dir_ii,
-			const struct voluta_namestr *name, mode_t mode)
+                        const struct voluta_inode_info *dir_ii,
+                        const struct voluta_namestr *name, mode_t mode)
 {
 	int err;
 
@@ -591,10 +593,10 @@ static int check_create(const struct voluta_oper *op,
 }
 
 static int do_add_dentry(const struct voluta_oper *op,
-			 struct voluta_inode_info *dir_ii,
-			 const struct voluta_namestr *nstr,
-			 struct voluta_inode_info *ii,
-			 bool del_upon_failure)
+                         struct voluta_inode_info *dir_ii,
+                         const struct voluta_namestr *nstr,
+                         struct voluta_inode_info *ii,
+                         bool del_upon_failure)
 {
 	int err;
 	struct voluta_qstr name;
@@ -611,9 +613,9 @@ static int do_add_dentry(const struct voluta_oper *op,
 }
 
 static int do_create(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name, mode_t mode,
-		     struct voluta_inode_info **out_ii)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name, mode_t mode,
+                     struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -638,9 +640,9 @@ static int do_create(const struct voluta_oper *op,
 }
 
 int voluta_do_create(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name, mode_t mode,
-		     struct voluta_inode_info **out_ii)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name, mode_t mode,
+                     struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -655,9 +657,9 @@ int voluta_do_create(const struct voluta_oper *op,
 }
 
 static int check_mknod(const struct voluta_oper *op,
-		       const struct voluta_inode_info *dir_ii,
-		       const struct voluta_namestr *name,
-		       mode_t mode, dev_t rdev)
+                       const struct voluta_inode_info *dir_ii,
+                       const struct voluta_namestr *name,
+                       mode_t mode, dev_t rdev)
 {
 	int err;
 	const struct voluta_sb_info *sbi = ii_sbi(dir_ii);
@@ -674,14 +676,14 @@ static int check_mknod(const struct voluta_oper *op,
 	}
 	if (!S_ISFIFO(mode) && !S_ISSOCK(mode) &&
 	    !S_ISCHR(mode) && !S_ISBLK(mode)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	if (S_ISCHR(mode) || S_ISBLK(mode)) {
 		if (rdev == 0) {
 			return -EINVAL;
 		}
 		if (sbi->sb_ms_flags & MS_NODEV) {
-			return -ENOTSUP;
+			return -EOPNOTSUPP;
 		}
 	} else {
 		if (rdev != 0) {
@@ -692,9 +694,9 @@ static int check_mknod(const struct voluta_oper *op,
 }
 
 static int create_special_inode(const struct voluta_oper *op,
-				struct voluta_inode_info *dir_ii,
-				mode_t mode, dev_t rdev,
-				struct voluta_inode_info **out_ii)
+                                struct voluta_inode_info *dir_ii,
+                                mode_t mode, dev_t rdev,
+                                struct voluta_inode_info **out_ii)
 {
 	int err;
 
@@ -707,10 +709,10 @@ static int create_special_inode(const struct voluta_oper *op,
 }
 
 static int do_mknod(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name,
-		    mode_t mode, dev_t rdev,
-		    struct voluta_inode_info **out_ii)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name,
+                    mode_t mode, dev_t rdev,
+                    struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -734,10 +736,10 @@ static int do_mknod(const struct voluta_oper *op,
 }
 
 int voluta_do_mknod(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name,
-		    mode_t mode, dev_t dev,
-		    struct voluta_inode_info **out_ii)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name,
+                    mode_t mode, dev_t dev,
+                    struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -772,7 +774,7 @@ static int o_flags_to_rwx_mask(int o_flags)
 }
 
 static int check_open(const struct voluta_oper *op,
-		      const struct voluta_inode_info *ii, int o_flags)
+                      const struct voluta_inode_info *ii, int o_flags)
 {
 	int err;
 	int mask;
@@ -800,7 +802,7 @@ static int check_open(const struct voluta_oper *op,
 }
 
 static int post_open(const struct voluta_oper *op,
-		     struct voluta_inode_info *ii, int o_flags)
+                     struct voluta_inode_info *ii, int o_flags)
 {
 	int err = 0;
 
@@ -811,7 +813,7 @@ static int post_open(const struct voluta_oper *op,
 }
 
 static int do_open(const struct voluta_oper *op,
-		   struct voluta_inode_info *ii, int o_flags)
+                   struct voluta_inode_info *ii, int o_flags)
 {
 	int err;
 
@@ -828,7 +830,7 @@ static int do_open(const struct voluta_oper *op,
 }
 
 int voluta_do_open(const struct voluta_oper *op,
-		   struct voluta_inode_info *ii, int o_flags)
+                   struct voluta_inode_info *ii, int o_flags)
 {
 	int err;
 
@@ -886,7 +888,7 @@ static bool i_isdropable(const struct voluta_inode_info *ii)
 }
 
 static int try_prune_inode(const struct voluta_oper *op,
-			   struct voluta_inode_info *ii, bool update_ctime)
+                           struct voluta_inode_info *ii, bool update_ctime)
 {
 	int err = 0;
 
@@ -899,9 +901,9 @@ static int try_prune_inode(const struct voluta_oper *op,
 }
 
 static int do_remove_dentry(const struct voluta_oper *op,
-			    struct voluta_inode_info *dir_ii,
-			    const struct voluta_namestr *nstr,
-			    struct voluta_inode_info *ii)
+                            struct voluta_inode_info *dir_ii,
+                            const struct voluta_namestr *nstr,
+                            struct voluta_inode_info *ii)
 {
 	int err;
 	struct voluta_qstr name;
@@ -918,9 +920,9 @@ static int do_remove_dentry(const struct voluta_oper *op,
 }
 
 static int check_prepare_unlink(const struct voluta_oper *op,
-				struct voluta_inode_info *dir_ii,
-				const struct voluta_namestr *nstr,
-				struct voluta_inode_info **out_ii)
+                                struct voluta_inode_info *dir_ii,
+                                const struct voluta_namestr *nstr,
+                                struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -946,8 +948,8 @@ static int check_prepare_unlink(const struct voluta_oper *op,
 }
 
 static int do_unlink(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *nstr)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *nstr)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -965,8 +967,8 @@ static int do_unlink(const struct voluta_oper *op,
 }
 
 int voluta_do_unlink(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name)
 {
 	int err;
 
@@ -985,9 +987,9 @@ static int check_nomlink(const struct voluta_inode_info *ii)
 }
 
 static int check_link(const struct voluta_oper *op,
-		      const struct voluta_inode_info *dir_ii,
-		      const struct voluta_namestr *name,
-		      const struct voluta_inode_info *ii)
+                      const struct voluta_inode_info *dir_ii,
+                      const struct voluta_namestr *name,
+                      const struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1011,9 +1013,9 @@ static int check_link(const struct voluta_oper *op,
 }
 
 static int do_link(const struct voluta_oper *op,
-		   struct voluta_inode_info *dir_ii,
-		   const struct voluta_namestr *nstr,
-		   struct voluta_inode_info *ii)
+                   struct voluta_inode_info *dir_ii,
+                   const struct voluta_namestr *nstr,
+                   struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1032,9 +1034,9 @@ static int do_link(const struct voluta_oper *op,
 }
 
 int voluta_do_link(const struct voluta_oper *op,
-		   struct voluta_inode_info *dir_ii,
-		   const struct voluta_namestr *name,
-		   struct voluta_inode_info *ii)
+                   struct voluta_inode_info *dir_ii,
+                   const struct voluta_namestr *name,
+                   struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1049,8 +1051,8 @@ int voluta_do_link(const struct voluta_oper *op,
 }
 
 static int check_mkdir(const struct voluta_oper *op,
-		       struct voluta_inode_info *dir_ii,
-		       const struct voluta_namestr *name)
+                       struct voluta_inode_info *dir_ii,
+                       const struct voluta_namestr *name)
 {
 	int err;
 
@@ -1066,9 +1068,9 @@ static int check_mkdir(const struct voluta_oper *op,
 }
 
 static int do_mkdir(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name, mode_t mode,
-		    struct voluta_inode_info **out_ii)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name, mode_t mode,
+                    struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii;
@@ -1092,9 +1094,9 @@ static int do_mkdir(const struct voluta_oper *op,
 }
 
 int voluta_do_mkdir(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name, mode_t mode,
-		    struct voluta_inode_info **out_ii)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name, mode_t mode,
+                    struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1120,8 +1122,8 @@ static bool dir_isempty(const struct voluta_inode_info *dir_ii)
 }
 
 static int check_rmdir_child(const struct voluta_oper *op,
-			     const struct voluta_inode_info *parent_ii,
-			     const struct voluta_inode_info *dir_ii)
+                             const struct voluta_inode_info *parent_ii,
+                             const struct voluta_inode_info *dir_ii)
 {
 	int err;
 
@@ -1143,9 +1145,9 @@ static int check_rmdir_child(const struct voluta_oper *op,
 }
 
 static int check_prepare_rmdir(const struct voluta_oper *op,
-			       struct voluta_inode_info *dir_ii,
-			       const struct voluta_namestr *name,
-			       struct voluta_inode_info **out_ii)
+                               struct voluta_inode_info *dir_ii,
+                               const struct voluta_namestr *name,
+                               struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1167,8 +1169,8 @@ static int check_prepare_rmdir(const struct voluta_oper *op,
 }
 
 static int do_rmdir(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1185,8 +1187,8 @@ static int do_rmdir(const struct voluta_oper *op,
 }
 
 int voluta_do_rmdir(const struct voluta_oper *op,
-		    struct voluta_inode_info *dir_ii,
-		    const struct voluta_namestr *name)
+                    struct voluta_inode_info *dir_ii,
+                    const struct voluta_namestr *name)
 {
 	int err;
 
@@ -1198,9 +1200,9 @@ int voluta_do_rmdir(const struct voluta_oper *op,
 }
 
 static int create_lnk_inode(const struct voluta_oper *op,
-			    const struct voluta_inode_info *dir_ii,
-			    const struct voluta_str *linkpath,
-			    struct voluta_inode_info **out_ii)
+                            const struct voluta_inode_info *dir_ii,
+                            const struct voluta_str *linkpath,
+                            struct voluta_inode_info **out_ii)
 {
 	int err;
 
@@ -1228,9 +1230,9 @@ static int check_symval(const struct voluta_str *symval)
 }
 
 static int check_symlink(const struct voluta_oper *op,
-			 struct voluta_inode_info *dir_ii,
-			 const struct voluta_namestr *name,
-			 const struct voluta_str *symval)
+                         struct voluta_inode_info *dir_ii,
+                         const struct voluta_namestr *name,
+                         const struct voluta_str *symval)
 {
 	int err;
 
@@ -1246,10 +1248,10 @@ static int check_symlink(const struct voluta_oper *op,
 }
 
 static int do_symlink(const struct voluta_oper *op,
-		      struct voluta_inode_info *dir_ii,
-		      const struct voluta_namestr *name,
-		      const struct voluta_str *symval,
-		      struct voluta_inode_info **out_ii)
+                      struct voluta_inode_info *dir_ii,
+                      const struct voluta_namestr *name,
+                      const struct voluta_str *symval,
+                      struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1273,10 +1275,10 @@ static int do_symlink(const struct voluta_oper *op,
 }
 
 int voluta_do_symlink(const struct voluta_oper *op,
-		      struct voluta_inode_info *dir_ii,
-		      const struct voluta_namestr *name,
-		      const struct voluta_str *symval,
-		      struct voluta_inode_info **out_ii)
+                      struct voluta_inode_info *dir_ii,
+                      const struct voluta_namestr *name,
+                      const struct voluta_str *symval,
+                      struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1293,7 +1295,7 @@ int voluta_do_symlink(const struct voluta_oper *op,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int check_opendir(const struct voluta_oper *op,
-			 struct voluta_inode_info *dir_ii)
+                         struct voluta_inode_info *dir_ii)
 {
 	int err;
 
@@ -1313,7 +1315,7 @@ static int check_opendir(const struct voluta_oper *op,
 }
 
 static int do_opendir(const struct voluta_oper *op,
-		      struct voluta_inode_info *dir_ii)
+                      struct voluta_inode_info *dir_ii)
 {
 	int err;
 
@@ -1326,7 +1328,7 @@ static int do_opendir(const struct voluta_oper *op,
 }
 
 int voluta_do_opendir(const struct voluta_oper *op,
-		      struct voluta_inode_info *dir_ii)
+                      struct voluta_inode_info *dir_ii)
 {
 	int err;
 
@@ -1375,7 +1377,7 @@ static int do_releasedir(struct voluta_inode_info *dir_ii)
 }
 
 int voluta_do_releasedir(const struct voluta_oper *op,
-			 struct voluta_inode_info *dir_ii)
+                         struct voluta_inode_info *dir_ii)
 {
 	int err;
 
@@ -1423,7 +1425,7 @@ static int do_release(struct voluta_inode_info *ii)
 }
 
 int voluta_do_release(const struct voluta_oper *op,
-		      struct voluta_inode_info *ii)
+                      struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1465,7 +1467,7 @@ static int do_fsyncdir(const struct voluta_inode_info *dir_ii)
 }
 
 int voluta_do_fsyncdir(const struct voluta_oper *op,
-		       struct voluta_inode_info *dir_ii, bool dsync)
+                       struct voluta_inode_info *dir_ii, bool dsync)
 {
 	int err;
 
@@ -1500,7 +1502,7 @@ static int do_fsync(const struct voluta_inode_info *ii)
 }
 
 int voluta_do_fsync(const struct voluta_oper *op,
-		    struct voluta_inode_info *ii, bool datasync)
+                    struct voluta_inode_info *ii, bool datasync)
 {
 	int err;
 
@@ -1515,7 +1517,7 @@ int voluta_do_fsync(const struct voluta_oper *op,
 }
 
 int voluta_do_flush(const struct voluta_oper *op,
-		    struct voluta_inode_info *ii)
+                    struct voluta_inode_info *ii)
 {
 	const int flags = (op->ucred.uid == 0) ? VOLUTA_F_NOW : 0;
 
@@ -1536,8 +1538,8 @@ static int check_add_dentry_at(const struct voluta_dentry_ref *dref)
 }
 
 static int do_add_dentry_at(const struct voluta_oper *op,
-			    struct voluta_dentry_ref *dref,
-			    struct voluta_inode_info *ii)
+                            struct voluta_dentry_ref *dref,
+                            struct voluta_inode_info *ii)
 
 {
 	int err;
@@ -1551,7 +1553,7 @@ static int do_add_dentry_at(const struct voluta_oper *op,
 }
 
 static int do_remove_dentry_at(const struct voluta_oper *op,
-			       struct voluta_dentry_ref *dref)
+                               struct voluta_dentry_ref *dref)
 {
 	int err;
 
@@ -1564,8 +1566,8 @@ static int do_remove_dentry_at(const struct voluta_oper *op,
 }
 
 static int do_rename_move(const struct voluta_oper *op,
-			  struct voluta_dentry_ref *cur_dref,
-			  struct voluta_dentry_ref *new_dref)
+                          struct voluta_dentry_ref *cur_dref,
+                          struct voluta_dentry_ref *new_dref)
 {
 	int err;
 	struct voluta_inode_info *ii = cur_dref->ii;
@@ -1586,8 +1588,8 @@ static int do_rename_move(const struct voluta_oper *op,
 }
 
 static int rename_move(const struct voluta_oper *op,
-		       struct voluta_dentry_ref *cur_dref,
-		       struct voluta_dentry_ref *new_dref)
+                       struct voluta_dentry_ref *cur_dref,
+                       struct voluta_dentry_ref *new_dref)
 {
 	int err;
 	struct voluta_inode_info *ii = cur_dref->ii;
@@ -1600,14 +1602,14 @@ static int rename_move(const struct voluta_oper *op,
 }
 
 static int rename_unlink(const struct voluta_oper *op,
-			 struct voluta_dentry_ref *dref)
+                         struct voluta_dentry_ref *dref)
 {
 	return do_remove_dentry_at(op, dref);
 }
 
 static int do_rename_replace(const struct voluta_oper *op,
-			     struct voluta_dentry_ref *cur_dref,
-			     struct voluta_dentry_ref *new_dref)
+                             struct voluta_dentry_ref *cur_dref,
+                             struct voluta_dentry_ref *new_dref)
 {
 	int err;
 	struct voluta_inode_info *ii = cur_dref->ii;
@@ -1628,8 +1630,8 @@ static int do_rename_replace(const struct voluta_oper *op,
 }
 
 static int rename_replace(const struct voluta_oper *op,
-			  struct voluta_dentry_ref *cur_dref,
-			  struct voluta_dentry_ref *new_dref)
+                          struct voluta_dentry_ref *cur_dref,
+                          struct voluta_dentry_ref *new_dref)
 {
 	int err;
 	struct voluta_inode_info *ii = cur_dref->ii;
@@ -1637,13 +1639,12 @@ static int rename_replace(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_rename_replace(op, cur_dref, new_dref);
 	ii_decref(ii);
-
 	return err;
 }
 
 static int do_rename_exchange(const struct voluta_oper *op,
-			      struct voluta_dentry_ref *dref1,
-			      struct voluta_dentry_ref *dref2)
+                              struct voluta_dentry_ref *dref1,
+                              struct voluta_dentry_ref *dref2)
 {
 	int err;
 	struct voluta_inode_info *ii1 = dref1->ii;
@@ -1669,8 +1670,8 @@ static int do_rename_exchange(const struct voluta_oper *op,
 }
 
 static int rename_exchange(const struct voluta_oper *op,
-			   struct voluta_dentry_ref *dref1,
-			   struct voluta_dentry_ref *dref2)
+                           struct voluta_dentry_ref *dref1,
+                           struct voluta_dentry_ref *dref2)
 {
 	int err;
 	struct voluta_inode_info *ii1 = dref1->ii;
@@ -1686,8 +1687,8 @@ static int rename_exchange(const struct voluta_oper *op,
 }
 
 static int rename_specific(const struct voluta_oper *op,
-			   struct voluta_dentry_ref *cur_dref,
-			   struct voluta_dentry_ref *new_dref, int flags)
+                           struct voluta_dentry_ref *cur_dref,
+                           struct voluta_dentry_ref *new_dref, int flags)
 {
 	int err;
 
@@ -1706,7 +1707,7 @@ static int rename_specific(const struct voluta_oper *op,
 }
 
 static int check_rename_exchange(const struct voluta_dentry_ref *cur_dref,
-				 const struct voluta_dentry_ref *new_dref)
+                                 const struct voluta_dentry_ref *new_dref)
 {
 	int err = 0;
 	const struct voluta_inode_info *ii = cur_dref->ii;
@@ -1726,8 +1727,8 @@ static int check_rename_exchange(const struct voluta_dentry_ref *cur_dref,
 }
 
 static int check_rename(const struct voluta_oper *op,
-			const struct voluta_dentry_ref *cur_dref,
-			const struct voluta_dentry_ref *new_dref, int flags)
+                        const struct voluta_dentry_ref *cur_dref,
+                        const struct voluta_dentry_ref *new_dref, int flags)
 {
 	int err = 0;
 	const struct voluta_inode_info *ii = cur_dref->ii;
@@ -1757,7 +1758,7 @@ static int check_rename(const struct voluta_oper *op,
 }
 
 static int check_stage_rename_at(const struct voluta_oper *op,
-				 struct voluta_dentry_ref *dref, bool new_de)
+                                 struct voluta_dentry_ref *dref, bool new_de)
 {
 	int err;
 
@@ -1777,10 +1778,10 @@ static int check_stage_rename_at(const struct voluta_oper *op,
 }
 
 static int do_rename(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name,
-		     struct voluta_inode_info *newdir_ii,
-		     const struct voluta_namestr *newname, int flags)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name,
+                     struct voluta_inode_info *newdir_ii,
+                     const struct voluta_namestr *newname, int flags)
 {
 	int err;
 	struct voluta_dentry_ref cur_dref = {
@@ -1812,10 +1813,10 @@ static int do_rename(const struct voluta_oper *op,
 }
 
 int voluta_do_rename(const struct voluta_oper *op,
-		     struct voluta_inode_info *dir_ii,
-		     const struct voluta_namestr *name,
-		     struct voluta_inode_info *newdir_ii,
-		     const struct voluta_namestr *newname, int flags)
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name,
+                     struct voluta_inode_info *newdir_ii,
+                     const struct voluta_namestr *newname, int flags)
 {
 	int err;
 
@@ -1831,8 +1832,8 @@ int voluta_do_rename(const struct voluta_oper *op,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int do_statvfs(const struct voluta_oper *op,
-		      const struct voluta_inode_info *ii,
-		      struct statvfs *out_stv)
+                      const struct voluta_inode_info *ii,
+                      struct statvfs *out_stv)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
@@ -1842,7 +1843,7 @@ static int do_statvfs(const struct voluta_oper *op,
 }
 
 int voluta_do_statvfs(const struct voluta_oper *op,
-		      struct voluta_inode_info *ii, struct statvfs *out_stv)
+                      struct voluta_inode_info *ii, struct statvfs *out_stv)
 {
 	int err;
 
@@ -1854,18 +1855,18 @@ int voluta_do_statvfs(const struct voluta_oper *op,
 }
 
 static void fill_query_version(const struct voluta_inode_info *ii,
-			       struct voluta_ioc_query *query)
+                               struct voluta_ioc_query *query)
 {
 	query->u.version.major = voluta_version.major;
 	query->u.version.minor = voluta_version.minor;
 	query->u.version.sublevel = voluta_version.sublevel;
 	strncpy(query->u.version.string, voluta_version.string,
-		sizeof(query->u.version.string) - 1);
+	        sizeof(query->u.version.string) - 1);
 	unused(ii);
 }
 
 static void fill_query_volume(const struct voluta_inode_info *ii,
-			      struct voluta_ioc_query *query)
+                              struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 	const struct voluta_vstore *vstore = sbi->sb_vstore;
@@ -1873,12 +1874,12 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
 	query->u.volume.size = (uint64_t)vstore->vs_pstore.ps_size;
 	if (vstore->vs_volpath != NULL) {
 		strncpy(query->u.volume.path, vstore->vs_volpath,
-			sizeof(query->u.volume.path) - 1);
+		        sizeof(query->u.volume.path) - 1);
 	}
 }
 
 static void fill_query_fsinfo(const struct voluta_inode_info *ii,
-			      struct voluta_ioc_query *query)
+                              struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 	const unsigned long mask = VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR;
@@ -1889,18 +1890,18 @@ static void fill_query_fsinfo(const struct voluta_inode_info *ii,
 }
 
 static void fill_query_inode(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *query)
+                             struct voluta_ioc_query *query)
 {
 	const enum voluta_inodef iflags = voluta_ii_flags(ii);
 	const enum voluta_dirf dirflags =
-		ii_isdir(ii) ? voluta_dir_flags(ii) : 0;
+	        ii_isdir(ii) ? voluta_dir_flags(ii) : 0;
 
 	query->u.inode.iflags = (uint32_t)iflags;
 	query->u.inode.dirflags = (uint32_t)dirflags;
 }
 
 static int fill_query_result(const struct voluta_inode_info *ii,
-			     struct voluta_ioc_query *query)
+                             struct voluta_ioc_query *query)
 {
 	const enum voluta_query_type qtype = query->qtype;
 
@@ -1927,8 +1928,8 @@ static int fill_query_result(const struct voluta_inode_info *ii,
 }
 
 static int do_query(const struct voluta_oper *op,
-		    const struct voluta_inode_info *ii,
-		    struct voluta_ioc_query *query)
+                    const struct voluta_inode_info *ii,
+                    struct voluta_ioc_query *query)
 {
 	int err;
 
@@ -1944,8 +1945,8 @@ static int do_query(const struct voluta_oper *op,
 }
 
 int voluta_do_query(const struct voluta_oper *op,
-		    const struct voluta_inode_info *ii,
-		    struct voluta_ioc_query *out_qry)
+                    const struct voluta_inode_info *ii,
+                    struct voluta_ioc_query *out_qry)
 {
 	int err;
 
@@ -1959,7 +1960,7 @@ int voluta_do_query(const struct voluta_oper *op,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int check_fsowner(const struct voluta_sb_info *sbi,
-			 const struct voluta_oper *op)
+                         const struct voluta_oper *op)
 {
 	return uid_eq(op->ucred.uid, sbi->sb_owner.uid) ? 0 : -EPERM;
 }
@@ -1968,7 +1969,7 @@ static int check_cloneable_volume(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_pstore *pstore = &sbi->sb_vstore->vs_pstore;
 
-	return (pstore->ps_flags & VOLUTA_F_MEMFD) ? -ENOTSUP : 0;
+	return (pstore->ps_ctl_flags & VOLUTA_F_MEMFD) ? -EOPNOTSUPP : 0;
 }
 
 static int check_rootdir(const struct voluta_inode_info *ii)
@@ -1983,7 +1984,7 @@ static int check_rootdir(const struct voluta_inode_info *ii)
 }
 
 static int check_clone(const struct voluta_oper *op,
-		       const struct voluta_inode_info *ii)
+                       const struct voluta_inode_info *ii)
 {
 	int err;
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
@@ -2028,7 +2029,7 @@ static int gen_clone_name(char *str, size_t lim, struct voluta_str *name)
 }
 
 static int do_clone(const struct voluta_oper *op,
-		    const struct voluta_inode_info *ii, char *str, size_t lim)
+                    const struct voluta_inode_info *ii, char *str, size_t lim)
 {
 	int err;
 	struct voluta_str name;
@@ -2054,7 +2055,7 @@ static int do_clone(const struct voluta_oper *op,
 }
 
 int voluta_do_clone(const struct voluta_oper *op,
-		    const struct voluta_inode_info *ii, char *str, size_t lim)
+                    const struct voluta_inode_info *ii, char *str, size_t lim)
 {
 	int err;
 
@@ -2075,7 +2076,7 @@ union voluta_utf32_name_buf {
 
 
 static int check_utf8_name(const struct voluta_sb_info *sbi,
-			   const char *name, size_t name_len)
+                           const char *name, size_t name_len)
 {
 	union voluta_utf32_name_buf unb;
 	char *in = unconst(name);
@@ -2124,7 +2125,7 @@ static uint64_t hash256_to_u64(const struct voluta_hash256 *hash)
 }
 
 static uint64_t namehash_by_sha256(const struct voluta_mdigest *md,
-				   const char *name, size_t nlen)
+                                   const char *name, size_t nlen)
 {
 	struct voluta_hash256 sha256;
 
@@ -2139,7 +2140,7 @@ ii_mdigest_of(const struct voluta_inode_info *ii)
 }
 
 static int name_to_hash(const struct voluta_inode_info *dir_ii,
-			const char *name, size_t nlen, uint64_t *out_hash)
+                        const char *name, size_t nlen, uint64_t *out_hash)
 {
 	int err;
 	const struct voluta_mdigest *md = ii_mdigest_of(dir_ii);
@@ -2156,7 +2157,7 @@ static int name_to_hash(const struct voluta_inode_info *dir_ii,
 }
 
 static int namestr_to_hash(const struct voluta_inode_info *dir_ii,
-			   const struct voluta_namestr *ns, uint64_t *out_hash)
+                           const struct voluta_namestr *ns, uint64_t *out_hash)
 {
 	return name_to_hash(dir_ii, ns->str.str, ns->str.len, out_hash);
 }
@@ -2179,14 +2180,14 @@ static int check_valid_name(const char *name, size_t len)
 }
 
 static int check_valid_encoding(const struct voluta_inode_info *dir_ii,
-				const char *name, size_t name_len)
+                                const char *name, size_t name_len)
 {
 	return dir_hasflag(dir_ii, VOLUTA_DIRF_NAME_UTF8) ?
 	       check_utf8_name(ii_sbi(dir_ii), name, name_len) : 0;
 }
 
 int voluta_make_namestr(const struct voluta_inode_info *dir_ii,
-			const char *name, struct voluta_namestr *nstr)
+                        const char *name, struct voluta_namestr *nstr)
 {
 	int err;
 	size_t len;
@@ -2231,7 +2232,7 @@ static void try_forget_cached_ii(struct voluta_inode_info *ii, size_t nlookup)
 }
 
 int voluta_do_forget_inode(struct voluta_sb_info *sbi,
-			   ino_t xino, size_t nlookup)
+                           ino_t xino, size_t nlookup)
 {
 	int err;
 	struct voluta_iaddr iaddr;

@@ -139,7 +139,7 @@ static void voluta_dump_addr2line(void)
 	bt_len = unw_backtrace(bt_arr, bt_cnt);
 	bt_addrs_to_str(bt_addrs, sizeof(bt_addrs) - 1, bt_arr, bt_len);
 	log_err("addr2line -a -C -e %s -f -p -s %s",
-		program_invocation_name, bt_addrs);
+	        program_invocation_name, bt_addrs);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -180,7 +180,7 @@ voluta_fatal_at(const char *msg, const char *fl, int ln)
 
 __attribute__((__noreturn__))
 static void voluta_fatal_op(long a, const char *op, long b,
-			    const char *fl, int ln)
+                            const char *fl, int ln)
 {
 	struct voluta_fatal_msg fm;
 
@@ -322,7 +322,7 @@ static void mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 }
 
 void voluta_expect_eqm_(const void *p, const void *q,
-			size_t n, const char *fl, int ln)
+                        size_t n, const char *fl, int ln)
 {
 	char s1[20];
 	char s2[20];
@@ -340,7 +340,7 @@ void voluta_expect_eqm_(const void *p, const void *q,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void voluta_dump_panic_msg(const char *file, int line,
-				  const char *msg, int errnum)
+                                  const char *msg, int errnum)
 {
 	const char *es = " ";
 	const char *name = voluta_basename(file);

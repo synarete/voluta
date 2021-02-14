@@ -25,7 +25,8 @@ SYNOPSIS
 
 DESCRIPTION
 ===========
-**voluta** is a user-space file-system encapsulated within a regular file.
+**voluta** is an encrypted file-system in user-space, encapsulated within a
+regular file.
 
 The layout of the underlying volume is arranged as packed archive, which may be
 easily converted to objects representation.
@@ -101,10 +102,9 @@ import
 
 show
 ------
-**voluta show** *version* *pathname*
-**voluta show** *volume* *pathname*
+**voluta show** *pathname*
 
-Query and report various internal parameters from a voluta file-system.
+Query and report various internal parameters from a live voluta file-system.
 
 ..
 

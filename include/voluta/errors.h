@@ -32,7 +32,7 @@ void voluta_expect_not_null_(const void *ptr, const char *fl, int ln);
 void voluta_expect_null_(const void *ptr, const char *fl, int ln);
 void voluta_expect_eqs_(const char *s, const char *z, const char *fl, int ln);
 void voluta_expect_eqm_(const void *p, const void *q,
-			size_t n, const char *fl, int ln);
+                        size_t n, const char *fl, int ln);
 
 #define voluta_expect(cond) \
 	voluta_expect_cond_((cond), VOLUTA_STR(cond), VOLUTA_FL)

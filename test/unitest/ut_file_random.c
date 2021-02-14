@@ -30,7 +30,7 @@ struct ut_ioparams {
 
 
 static struct ut_dvec **new_dvecs(struct ut_env *ute,
-				  const struct ut_ioparams *params)
+                                  const struct ut_ioparams *params)
 {
 	loff_t off;
 	struct ut_dvec **list;
@@ -52,7 +52,7 @@ static unsigned long *random_indices(struct ut_env *ute, size_t cnt)
 }
 
 static void ut_file_random_io_(struct ut_env *ute, ino_t ino,
-			       const struct ut_ioparams *params)
+                               const struct ut_ioparams *params)
 {
 	size_t *idx;
 	struct ut_dvec *dvec;
@@ -88,7 +88,7 @@ static void ut_file_random_io_(struct ut_env *ute, ino_t ino,
 }
 
 static void ut_file_random_io2_(struct ut_env *ute, ino_t ino,
-				const struct ut_ioparams *params)
+                                const struct ut_ioparams *params)
 {
 	size_t *idx;
 	struct ut_dvec *dvec;
@@ -126,7 +126,7 @@ static void ut_file_random_io2_(struct ut_env *ute, ino_t ino,
 }
 
 static void ut_file_random_(struct ut_env *ute,
-			    const struct ut_ioparams *params)
+                            const struct ut_ioparams *params)
 {
 	ino_t ino;
 	ino_t dino;
@@ -141,7 +141,7 @@ static void ut_file_random_(struct ut_env *ute,
 }
 
 static void ut_file_random_arr_(struct ut_env *ute,
-				const struct ut_ioparams *arr, size_t nelems)
+                                const struct ut_ioparams *arr, size_t nelems)
 {
 	for (size_t i = 0; i < nelems; ++i) {
 		ut_file_random_(ute, &arr[i]);

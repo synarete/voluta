@@ -42,13 +42,13 @@ static const struct voluta_zcrypt_params voluta_default_zcrypt = {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void hash512_assign(struct voluta_hash512 *hash,
-			   const struct voluta_hash512 *other)
+                           const struct voluta_hash512 *other)
 {
 	memcpy(hash, other, sizeof(*hash));
 }
 
 static bool hash512_isequal(const struct voluta_hash512 *hash,
-			    const struct voluta_hash512 *other)
+                            const struct voluta_hash512 *other)
 {
 	return (memcmp(hash, other, sizeof(*hash)) == 0);
 }
@@ -56,7 +56,7 @@ static bool hash512_isequal(const struct voluta_hash512 *hash,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void kdf_to_cpu(const struct voluta_kdf_desc *kd_le,
-		       struct voluta_kdf_desc *kd)
+                       struct voluta_kdf_desc *kd)
 {
 	kd->kd_iterations = le32_to_cpu(kd_le->kd_iterations);
 	kd->kd_algo = le32_to_cpu(kd_le->kd_algo);
@@ -65,7 +65,7 @@ static void kdf_to_cpu(const struct voluta_kdf_desc *kd_le,
 }
 
 static void cpu_to_kdf(const struct voluta_kdf_desc *kd,
-		       struct voluta_kdf_desc *kd_le)
+                       struct voluta_kdf_desc *kd_le)
 {
 	kd_le->kd_iterations = cpu_to_le32(kd->kd_iterations);
 	kd_le->kd_algo = cpu_to_le32(kd->kd_algo);
@@ -101,7 +101,7 @@ enum voluta_ztype voluta_zb_type(const struct voluta_zero_block4 *zb)
 }
 
 static void zb_set_type(struct voluta_zero_block4 *zb,
-			enum voluta_ztype type)
+                        enum voluta_ztype type)
 {
 	zb->z_type = cpu_to_le32(type);
 }
@@ -114,7 +114,7 @@ static enum voluta_zbf zb_flags(const struct voluta_zero_block4 *zb)
 }
 
 static void zb_set_flags(struct voluta_zero_block4 *zb,
-			 enum voluta_zbf f)
+                         enum voluta_zbf f)
 {
 	zb->z_flags = cpu_to_le32((uint32_t)f);
 }
@@ -130,7 +130,7 @@ static void zb_remove_flag(struct voluta_zero_block4 *zb, enum voluta_zbf f)
 }
 
 static bool zb_test_flag(const struct voluta_zero_block4 *zb,
-			 enum voluta_zbf f)
+                         enum voluta_zbf f)
 {
 	return ((zb_flags(zb) & f) == f);
 }
@@ -155,7 +155,7 @@ enum voluta_zbf voluta_zb_flags(const struct voluta_zero_block4 *zb)
 }
 
 static void zb_set_sw_version(struct voluta_zero_block4 *zb,
-			      const char *sw_version)
+                              const char *sw_version)
 {
 	const size_t len = strlen(sw_version);
 	const size_t len_max = ARRAY_SIZE(zb->z_sw_version) - 1;
@@ -179,14 +179,14 @@ void voluta_zb_set_size(struct voluta_zero_block4 *zb, size_t size)
 }
 
 static void zb_kdf(const struct voluta_zero_block4 *zb,
-		   struct voluta_kdf_pair *kdf)
+                   struct voluta_kdf_pair *kdf)
 {
 	kdf_to_cpu(&zb->z_kdf_pair.kdf_iv, &kdf->kdf_iv);
 	kdf_to_cpu(&zb->z_kdf_pair.kdf_key, &kdf->kdf_key);
 }
 
 static void zb_set_kdf(struct voluta_zero_block4 *zb,
-		       const struct voluta_kdf_pair *kdf)
+                       const struct voluta_kdf_pair *kdf)
 {
 	cpu_to_kdf(&kdf->kdf_iv, &zb->z_kdf_pair.kdf_iv);
 	cpu_to_kdf(&kdf->kdf_key, &zb->z_kdf_pair.kdf_key);
@@ -203,14 +203,14 @@ static uint32_t zb_chiper_mode(const struct voluta_zero_block4 *zb)
 }
 
 static void zb_set_cipher(struct voluta_zero_block4 *zb,
-			  uint32_t cipher_algo, uint32_t cipher_mode)
+                          uint32_t cipher_algo, uint32_t cipher_mode)
 {
 	zb->z_chiper_algo = cpu_to_le32(cipher_algo);
 	zb->z_chiper_mode = cpu_to_le32(cipher_mode);
 }
 
 void voluta_zb_crypt_params(const struct voluta_zero_block4 *zb,
-			    struct voluta_zcrypt_params *zcp)
+                            struct voluta_zcrypt_params *zcp)
 {
 	memset(zcp, 0, sizeof(*zcp));
 	zb_kdf(zb, &zcp->kdf);
@@ -219,7 +219,7 @@ void voluta_zb_crypt_params(const struct voluta_zero_block4 *zb,
 }
 
 void voluta_zb_init(struct voluta_zero_block4 *zb,
-		    enum voluta_ztype ztype, size_t size)
+                    enum voluta_ztype ztype, size_t size)
 {
 	memset(zb, 0, sizeof(*zb));
 	zb_set_marker(zb, VOLUTA_ZB_MARK);
@@ -231,7 +231,7 @@ void voluta_zb_init(struct voluta_zero_block4 *zb,
 	voluta_zb_set_size(zb, size);
 	zb_set_kdf(zb, &voluta_default_zcrypt.kdf);
 	zb_set_cipher(zb, voluta_default_zcrypt.cipher_algo,
-		      voluta_default_zcrypt.cipher_mode);
+	              voluta_default_zcrypt.cipher_mode);
 	zb->z_endianness = VOLUTA_ENDIANNESS_LE;
 }
 
@@ -282,30 +282,30 @@ int voluta_zb_check(const struct voluta_zero_block4 *zb)
 
 static void rb_fill_random(struct voluta_rand_block4 *rb)
 {
-	voluta_fill_random(rb->r_fill, sizeof(rb->r_fill), false);
+	voluta_getentropy(rb->r_fill, sizeof(rb->r_fill));
 }
 
 static void rb_calc_hash(const struct voluta_rand_block4 *rb,
-			 const struct voluta_mdigest *md,
-			 struct voluta_hash512 *out_hash)
+                         const struct voluta_mdigest *md,
+                         struct voluta_hash512 *out_hash)
 {
 	voluta_sha3_512_of(md, rb->r_fill, sizeof(rb->r_fill), out_hash);
 }
 
 static void rb_set_hash(struct voluta_rand_block4 *rb,
-			const struct voluta_hash512 *hash)
+                        const struct voluta_hash512 *hash)
 {
 	hash512_assign(&rb->r_hash, hash);
 }
 
 static bool rb_has_rhash(const struct voluta_rand_block4 *rb,
-			 const struct voluta_hash512 *hash)
+                         const struct voluta_hash512 *hash)
 {
 	return hash512_isequal(&rb->r_hash, hash);
 }
 
 void voluta_rb_setup(struct voluta_rand_block4 *rb,
-		     const struct voluta_mdigest *md)
+                     const struct voluta_mdigest *md)
 {
 	struct voluta_hash512 hash;
 
@@ -315,7 +315,7 @@ void voluta_rb_setup(struct voluta_rand_block4 *rb,
 }
 
 int voluta_rb_check(const struct voluta_rand_block4 *rb,
-		    const struct voluta_mdigest *md)
+                    const struct voluta_mdigest *md)
 {
 	struct voluta_hash512 hash;
 
@@ -356,13 +356,13 @@ void voluta_sb_del(struct voluta_super_block *sb, struct voluta_qalloc *qal)
 }
 
 void voluta_sb_set_pass_hash(struct voluta_super_block *sb,
-			     const struct voluta_hash512 *hash)
+                             const struct voluta_hash512 *hash)
 {
 	hash512_assign(&sb->s_meta.m_pass_hash, hash);
 }
 
 static bool sb_has_pass_hash(const struct voluta_super_block *sb,
-			     const struct voluta_hash512 *hash)
+                             const struct voluta_hash512 *hash)
 {
 	return hash512_isequal(&sb->s_meta.m_pass_hash, hash);
 }
@@ -393,7 +393,7 @@ voluta_sb_kivam_of(const struct voluta_super_block *sb, size_t hs_index)
 }
 
 void voluta_sb_setup_rand(struct voluta_super_block *sb,
-			  const struct voluta_mdigest *md)
+                          const struct voluta_mdigest *md)
 {
 	for (size_t i = 0; i < ARRAY_SIZE(sb->s_rand); ++i) {
 		voluta_rb_setup(&sb->s_rand[i], md);
@@ -417,13 +417,13 @@ int voluta_sb_check_volume(const struct voluta_super_block *sb)
 }
 
 int voluta_sb_check_pass_hash(const struct voluta_super_block *sb,
-			      const struct voluta_hash512 *hash)
+                              const struct voluta_hash512 *hash)
 {
 	return sb_has_pass_hash(sb, hash) ? 0 : -EKEYEXPIRED;
 }
 
 int voluta_sb_check_rand(const struct voluta_super_block *sb,
-			 const struct voluta_mdigest *md)
+                         const struct voluta_mdigest *md)
 {
 	int err;
 
@@ -449,8 +449,8 @@ static size_t sb_enc_length(const struct voluta_super_block *sb)
 }
 
 int voluta_sb_encrypt_tail(struct voluta_super_block *sb,
-			   const struct voluta_cipher *ci,
-			   const struct voluta_kivam *kivam)
+                           const struct voluta_cipher *ci,
+                           const struct voluta_kivam *kivam)
 {
 	int err;
 	void *enc_buf = sb_enc_start(sb);
@@ -464,8 +464,8 @@ int voluta_sb_encrypt_tail(struct voluta_super_block *sb,
 }
 
 int voluta_sb_decrypt_tail(struct voluta_super_block *sb,
-			   const struct voluta_cipher *ci,
-			   const struct voluta_kivam *kivam)
+                           const struct voluta_cipher *ci,
+                           const struct voluta_kivam *kivam)
 {
 	int err;
 	void *enc_buf = sb_enc_start(sb);
@@ -479,8 +479,8 @@ int voluta_sb_decrypt_tail(struct voluta_super_block *sb,
 }
 
 int voluta_sb_encrypt(struct voluta_super_block *sb,
-		      const struct voluta_crypto *crypto,
-		      const struct voluta_passphrase *passph)
+                      const struct voluta_crypto *crypto,
+                      const struct voluta_passphrase *passph)
 {
 	int err;
 	struct voluta_kivam kivam;
@@ -505,8 +505,8 @@ out:
 }
 
 int voluta_sb_decrypt(struct voluta_super_block *sb,
-		      const struct voluta_crypto *crypto,
-		      const struct voluta_passphrase *passph)
+                      const struct voluta_crypto *crypto,
+                      const struct voluta_passphrase *passph)
 {
 	int err;
 	struct voluta_kivam kivam;

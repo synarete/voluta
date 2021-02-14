@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <ctype.h>
 #include <math.h>
 #include <time.h>
@@ -46,9 +47,12 @@
 #include <getopt.h>
 #include "voluta-prog.h"
 
-#define VOLUTA_LOG_DEFAULT \
-	(VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
-	 VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
+#define VOLUTA_LOG_DEFAULT  \
+	(VOLUTA_LOG_INFO  | \
+	 VOLUTA_LOG_WARN  | \
+	 VOLUTA_LOG_ERROR | \
+	 VOLUTA_LOG_CRIT  | \
+	 VOLUTA_LOG_STDOUT)
 
 /* Global process' variables */
 struct voluta_globals voluta_globals;
@@ -80,7 +84,7 @@ void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...)
 	va_end(ap);
 
 	error_at_line(EXIT_FAILURE, abs(errnum), fl,
-		      (unsigned int)ln, "%s", msg);
+	              (unsigned int)ln, "%s", msg);
 	/* never gets here, but makes compiler happy */
 	abort();
 }
@@ -197,14 +201,15 @@ static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
-	struct stat st;
+	loff_t size = 0;
+	struct stat st = { .st_size = 0 };
 	struct voluta_zero_block4 *zb = zb_new();
 
-	voluta_stat_reg(path, &st);
-	if (st.st_size == 0) {
-		voluta_die(0, "empty file: %s", path);
+	voluta_stat_reg_or_blk(path, &st, &size);
+	if (size == 0) {
+		voluta_die(0, "empty volume: %s", path);
 	}
-	if (st.st_size < (int)sizeof(*zb)) {
+	if (size < (int)sizeof(*zb)) {
 		voluta_die(0, "no zero-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
@@ -220,8 +225,8 @@ static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 }
 
 static void voluta_die_if_bad_zb(const char *path,
-				 enum voluta_ztype *out_ztype,
-				 enum voluta_zbf *out_zbf)
+                                 enum voluta_ztype *out_ztype,
+                                 enum voluta_zbf *out_zbf)
 {
 	int err;
 	struct voluta_zero_block4 *zb = NULL;
@@ -265,14 +270,15 @@ static struct voluta_super_block *read_sb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
-	struct stat st;
+	loff_t size = 0;
+	struct stat st = { .st_size = 0 };
 	struct voluta_super_block *sb = sb_new();
 
-	voluta_stat_reg(path, &st);
-	if (st.st_size == 0) {
+	voluta_stat_reg_or_blk(path, &st, &size);
+	if (size == 0) {
 		voluta_die(0, "empty file: %s", path);
 	}
-	if (st.st_size < (int)sizeof(*sb)) {
+	if (size < (int)sizeof(*sb)) {
 		voluta_die(0, "no super-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
@@ -330,7 +336,7 @@ out:
 }
 
 void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-			      bool mustnot_be_enc, bool *out_is_encrypted)
+                              bool mustnot_be_enc, bool *out_is_encrypted)
 {
 	int err;
 	enum voluta_ztype ztype;
@@ -377,7 +383,7 @@ void voluta_die_if_no_mountd(void)
 	err = voluta_rpc_handshake(getuid(), getgid());
 	if (err) {
 		voluta_die(err, "failed to handshake with mountd: "
-			   "sock=@%s", sock);
+		           "sock=@%s", sock);
 	}
 }
 
@@ -429,7 +435,8 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 		if (err == -EINVAL) {
 			voluta_die(0, "illegal vfstype at: %s", path);
 		} else if (err) {
-			voluta_die(err, "can not mount on: %s",  path);
+			voluta_die(err, "can not mount on: %s uid=%d gid=%d",
+			           path, (int)getuid(), (int)getgid());
 		}
 		voluta_die_if_not_empty_dir(path, true);
 	} else {
@@ -777,16 +784,6 @@ void voluta_prctl_non_dumpable(void)
 	}
 }
 
-char *voluta_strdup_safe(const char *s)
-{
-	char *d = strdup(s);
-
-	if (d == NULL) {
-		voluta_die(errno, "strdup failed");
-	}
-	return d;
-}
-
 char *voluta_joinpath_safe(const char *path, const char *base)
 {
 	char *rpath;
@@ -810,6 +807,54 @@ char *voluta_realpath_safe(const char *path)
 		voluta_die(-errno, "realpath failure: '%s'", path);
 	}
 	return real_path;
+}
+
+static void splitpath_safe(const char *path, char **head, char **tail)
+{
+	const size_t len = strlen(path);
+	const char *str = strrchr(path, '/');
+	const char *end = path + len;
+
+	if (str == NULL) {
+		*head = NULL;
+		*tail = voluta_strdup_safe(path);
+	} else {
+		*head = voluta_strndup_safe(path, (size_t)(str - path));
+		*tail = voluta_strndup_safe(str + 1, (size_t)(end - str) - 1);
+	}
+}
+
+static char *getcwd_safe(void)
+{
+	char *cwd = get_current_dir_name();
+
+	if (cwd == NULL) {
+		voluta_die(-errno, "get-current-dir failed");
+	}
+	return cwd;
+}
+
+char *voluta_abspath_safe(const char *path)
+{
+	char *head = NULL;
+	char *tail = NULL;
+	char *real = NULL;
+	char *cwd = NULL;
+	char *abspath = NULL;
+
+	splitpath_safe(path, &head, &tail);
+	if (head == NULL) {
+		cwd = getcwd_safe();
+		abspath = voluta_joinpath_safe(cwd, tail);
+	} else {
+		real = voluta_realpath_safe(head);
+		abspath = voluta_joinpath_safe(real, tail);
+	}
+	voluta_pfree_string(&cwd);
+	voluta_pfree_string(&real);
+	voluta_pfree_string(&tail);
+	voluta_pfree_string(&head);
+	return abspath;
 }
 
 char *voluta_dirpath_safe(const char *path)
@@ -851,8 +896,8 @@ void voluta_statpath_safe(const char *path, struct stat *st)
 		voluta_die(err, "stat failure: %s", path);
 	}
 	mode = st->st_mode;
-	if (!S_ISREG(mode) && !S_ISDIR(mode)) {
-		voluta_die(0, "not dir-or-reg: %s", path);
+	if (!S_ISREG(mode) && !S_ISDIR(mode) && !S_ISBLK(mode)) {
+		voluta_die(0, "unsupported mode: 0%o %s", mode, path);
 	}
 }
 
@@ -864,13 +909,50 @@ void voluta_stat_reg(const char *path, struct stat *st)
 	}
 }
 
-void voluta_stat_dir_or_reg(const char *path, struct stat *st)
+void voluta_stat_reg_or_dir(const char *path, struct stat *st)
 {
 	voluta_statpath_safe(path, st);
 	if (!S_ISDIR(st->st_mode) && !S_ISREG(st->st_mode)) {
 		voluta_die(0, "not dir-or-reg: %s", path);
 	}
 }
+
+void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz)
+{
+	voluta_statpath_safe(path, st);
+	if (!S_ISREG(st->st_mode) && !S_ISBLK(st->st_mode)) {
+		voluta_die(0, "not a regular-file or block-device: %s", path);
+	}
+	if (S_ISREG(st->st_mode)) {
+		*out_sz = st->st_size;
+	} else {
+		*out_sz = voluta_blkgetsize_safe(path);
+	}
+}
+
+
+loff_t voluta_blkgetsize_safe(const char *path)
+{
+	int fd = -1;
+	int err;
+	size_t sz;
+
+	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
+	if (err) {
+		voluta_die(err, "open failure: %s", path);
+	}
+	err = voluta_sys_ioctl_blkgetsize64(fd, &sz);
+	voluta_sys_close(fd);
+	if (err) {
+		voluta_die(err, "ioctl BLKGETSIZE64 failed: %s", path);
+	}
+	if (sz >= (size_t)(LONG_MAX)) {
+		voluta_die(0, "illegal block-device size: %lu", sz);
+	}
+	return (loff_t)sz;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void *voluta_malloc_safe(size_t n)
 {
@@ -888,6 +970,26 @@ void voluta_pfree_string(char **pp)
 		free(*pp);
 		*pp = NULL;
 	}
+}
+
+char *voluta_strdup_safe(const char *s)
+{
+	char *d = strdup(s);
+
+	if (d == NULL) {
+		voluta_die(errno, "strdup failed");
+	}
+	return d;
+}
+
+char *voluta_strndup_safe(const char *s, size_t n)
+{
+	char *d = strndup(s, n);
+
+	if (d == NULL) {
+		voluta_die(errno, "strndup failed: n=%lu", n);
+	}
+	return d;
 }
 
 char *voluta_sprintf_path(const char *fmt, ...)
@@ -999,7 +1101,7 @@ struct voluta_archiver *voluta_arc_inst(void)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void show_help_strings(FILE *fp, const char *name,
-			      const char **help_strings)
+                              const char **help_strings)
 {
 	size_t idx = 0;
 	const char *help_string = NULL;
@@ -1032,7 +1134,7 @@ void voluta_show_help_and_exit(const char **help_strings)
 void voluta_show_version_and_exit(const char *prog)
 {
 	fprintf(stdout, "%s %s\n",
-		(prog != NULL) ? prog : "voluta", voluta_globals.version);
+	        (prog != NULL) ? prog : "voluta", voluta_globals.version);
 	exit(0);
 }
 

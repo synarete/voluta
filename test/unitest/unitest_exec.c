@@ -127,18 +127,18 @@ static void ute_del(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_track_test(struct ut_env *ute,
-			  const struct ut_testdef *td, bool pre_execute)
+                          const struct ut_testdef *td, bool pre_execute)
 {
 	FILE *fp = stdout;
 	struct timespec dur;
 
 	if (pre_execute) {
-		fprintf(fp, "  %-32s", td->name);
+		fprintf(fp, "  %-40s", td->name);
 		voluta_mclock_now(&ute->ts_start);
 	} else {
 		voluta_mclock_dur(&ute->ts_start, &dur);
 		fprintf(fp, "OK (%ld.%03lds)\n",
-			dur.tv_sec, dur.tv_nsec / 1000000L);
+		        dur.tv_sec, dur.tv_nsec / 1000000L);
 	}
 	fflush(fp);
 }
@@ -152,7 +152,7 @@ static void ut_check_valid_statvfs(const struct statvfs *stv)
 }
 
 static void ut_check_statvfs(const struct statvfs *stv1,
-			     const struct statvfs *stv2)
+                             const struct statvfs *stv2)
 {
 	ut_check_valid_statvfs(stv1);
 	ut_check_valid_statvfs(stv2);
@@ -254,7 +254,7 @@ static void ut_removepath(char **path)
 	*path = NULL;
 }
 
-static const char *ut_make_passphrase(struct voluta_passphrase *pp)
+static const char *ut_make_passwd(struct voluta_passphrase *pp)
 {
 	voluta_memzero(pp, sizeof(*pp));
 
@@ -316,8 +316,7 @@ void ut_execute_tests(void)
 	args.ar_args.volume = volpath;
 	args.ar_args.blobsdir = testdir;
 
-	args.fs_args.passwd = args.ar_args.passwd =
-				      ut_make_passphrase(&passph);
+	args.fs_args.passwd = args.ar_args.passwd = ut_make_passwd(&passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = false;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
@@ -368,7 +367,7 @@ ut_malloc_chunk(struct ut_env *ute, size_t nbytes)
 }
 
 static void ut_free(struct ut_env *ute,
-		    struct ut_malloc_chunk *mchunk)
+                    struct ut_malloc_chunk *mchunk)
 {
 	voluta_assert_ge(ute->nbytes_alloc, mchunk->size);
 
@@ -401,7 +400,7 @@ char *ut_strdup(struct ut_env *ute, const char *str)
 }
 
 char *ut_strndup(struct ut_env *ute, const char *str,
-		 size_t len)
+                 size_t len)
 {
 	char *str2;
 
@@ -539,8 +538,7 @@ char *ut_strfmt(struct ut_env *ute, const char *fmt, ...)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-struct ut_dvec *ut_new_dvec(struct ut_env *ute,
-			    loff_t off, size_t len)
+struct ut_dvec *ut_new_dvec(struct ut_env *ute, loff_t off, size_t len)
 {
 	size_t size;
 	struct ut_dvec *dvec;
@@ -582,19 +580,25 @@ static uint64_t next_prandom(struct voluta_prandoms *pr)
 	return pr->dat[pr->nr];
 }
 
-static void prandom_shuffle(long *arr, size_t len)
+void ut_prandom_shuffle(long *arr, size_t len)
 {
 	size_t j;
 	uint64_t rnd;
 	struct voluta_prandoms pr = { .nr = 0 };
 
-	if (len < 2) {
-		return;
+	if (len > 1) {
+		for (size_t i = 0; i < len - 1; i++) {
+			rnd = next_prandom(&pr);
+			j = i + (rnd / (ULONG_MAX / (len - i) + 1));
+			swap_long(arr + i, arr + j);
+		}
 	}
-	for (size_t i = 0; i < len - 1; i++) {
-		rnd = next_prandom(&pr);
-		j = i + (rnd / (ULONG_MAX / (len - i) + 1));
-		swap_long(arr + i, arr + j);
+}
+
+void ut_reverse_inplace(long *arr, size_t len)
+{
+	for (size_t i = 0; i < len / 2; i++) {
+		swap_long(arr + i, arr + (len - i - 1));
 	}
 }
 
@@ -609,7 +613,7 @@ static void create_seq(long *arr, size_t len, long base)
 void ut_prandom_seq(long *arr, size_t len, long base)
 {
 	create_seq(arr, len, base);
-	prandom_shuffle(arr, len);
+	ut_prandom_shuffle(arr, len);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

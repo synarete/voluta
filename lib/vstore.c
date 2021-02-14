@@ -27,6 +27,7 @@ bool voluta_vtype_isubermap(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_AGMAP:
 		ret = true;
 		break;
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 	case VOLUTA_VTYPE_ITNODE:
@@ -48,6 +49,7 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	bool ret;
 
 	switch (vtype) {
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 		ret = true;
@@ -96,6 +98,9 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
 		sz = sizeof(struct voluta_lnk_value);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+		sz = sizeof(struct voluta_data_block1);
 		break;
 	case VOLUTA_VTYPE_DATA4K:
 		sz = sizeof(struct voluta_data_block4);
@@ -217,7 +222,7 @@ size_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
 }
 
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
-			enum voluta_vtype vtype, loff_t off)
+                        enum voluta_vtype vtype, loff_t off)
 {
 	vaddr->vtype = vtype;
 	vaddr->len = (uint32_t)vtype_size(vtype);
@@ -231,7 +236,7 @@ void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
 }
 
 void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
-			 struct voluta_vaddr *other)
+                         struct voluta_vaddr *other)
 {
 	other->off = vaddr->off;
 	other->lba = vaddr->lba;
@@ -280,7 +285,7 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
 }
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
-			size_t ag_index, size_t bn, size_t kbn)
+                        size_t ag_index, size_t bn, size_t kbn)
 {
 	const loff_t lba = lba_by_ag(ag_index, bn);
 	const loff_t off = lba_kbn_to_off(lba, kbn);
@@ -322,7 +327,7 @@ loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va)
 }
 
 void voluta_vaddr64_set(struct voluta_vaddr64 *va,
-			const struct voluta_vaddr *vaddr)
+                        const struct voluta_vaddr *vaddr)
 {
 	const uint64_t off = (uint64_t)vaddr->off;
 	const uint64_t vtype = (uint64_t)vaddr->vtype;
@@ -335,7 +340,7 @@ void voluta_vaddr64_set(struct voluta_vaddr64 *va,
 }
 
 void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
-			  struct voluta_vaddr *vaddr)
+                          struct voluta_vaddr *vaddr)
 {
 	const uint64_t off_vtype = le64_to_cpu(va->off_vtype);
 
@@ -424,7 +429,7 @@ void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
 }
 
 static uint32_t calc_meta_chekcsum(const struct voluta_header *hdr,
-				   const struct voluta_mdigest *md)
+                                   const struct voluta_mdigest *md)
 {
 	uint32_t csum = 0;
 	const void *payload = hdr_payload(hdr);
@@ -437,7 +442,7 @@ static uint32_t calc_meta_chekcsum(const struct voluta_header *hdr,
 }
 
 static uint32_t calc_data_checksum(const void *dat, size_t len,
-				   const struct voluta_mdigest *md)
+                                   const struct voluta_mdigest *md)
 {
 	uint32_t csum = 0;
 
@@ -484,7 +489,7 @@ static int verify_hdr(const struct voluta_view *view, enum voluta_vtype vtype)
 }
 
 static int verify_checksum(const struct voluta_view *view,
-			   const struct voluta_mdigest *md)
+                           const struct voluta_mdigest *md)
 {
 	uint32_t csum;
 	const struct voluta_header *hdr = hdr_of(view);
@@ -505,36 +510,49 @@ int voluta_verify_off(loff_t off)
 
 static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 {
+	int err;
+
 	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
-		return voluta_verify_uspace_map(&view->u.hsm);
+		err = voluta_verify_uspace_map(&view->u.hsm);
+		break;
 	case VOLUTA_VTYPE_AGMAP:
-		return voluta_verify_agroup_map(&view->u.agm);
+		err = voluta_verify_agroup_map(&view->u.agm);
+		break;
 	case VOLUTA_VTYPE_ITNODE:
-		return voluta_verify_itnode(&view->u.itn);
+		err = voluta_verify_itnode(&view->u.itn);
+		break;
 	case VOLUTA_VTYPE_INODE:
-		return voluta_verify_inode(&view->u.inode);
+		err = voluta_verify_inode(&view->u.inode);
+		break;
 	case VOLUTA_VTYPE_XANODE:
-		return voluta_verify_xattr_node(&view->u.xan);
+		err = voluta_verify_xattr_node(&view->u.xan);
+		break;
 	case VOLUTA_VTYPE_HTNODE:
-		return voluta_verify_dir_htree_node(&view->u.htn);
+		err = voluta_verify_dir_htree_node(&view->u.htn);
+		break;
 	case VOLUTA_VTYPE_RTNODE:
-		return voluta_verify_radix_tnode(&view->u.rtn);
+		err = voluta_verify_radix_tnode(&view->u.rtn);
+		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		return voluta_verify_lnk_value(&view->u.lnv);
+		err = voluta_verify_lnk_value(&view->u.lnv);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
-		return 0;
+		err = 0;
+		break;
 	case VOLUTA_VTYPE_NONE:
 	default:
+		err = -EFSCORRUPTED;
 		break;
 	}
-	return -EFSCORRUPTED;
+	return err;
 }
 
 static int verify_view(const struct voluta_view *view,
-		       enum voluta_vtype vtype,
-		       const struct voluta_mdigest *md)
+                       enum voluta_vtype vtype,
+                       const struct voluta_mdigest *md)
 {
 	int err;
 
@@ -566,7 +584,7 @@ int voluta_verify_meta(const struct voluta_vnode_info *vi)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void stamp_hdr(struct voluta_header *hdr,
-		      enum voluta_vtype vtype, size_t size)
+                      enum voluta_vtype vtype, size_t size)
 {
 	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
 	hdr_set_size(hdr, size);
@@ -577,7 +595,7 @@ static void stamp_hdr(struct voluta_header *hdr,
 }
 
 void voluta_stamp_view(struct voluta_view *view,
-		       const struct voluta_vaddr *vaddr)
+                       const struct voluta_vaddr *vaddr)
 {
 	struct voluta_header *hdr = hdr_of(view);
 
@@ -609,14 +627,14 @@ vi_cipher(const struct voluta_vnode_info *vi)
 }
 
 static int encrypt_vnode(const struct voluta_vnode_info *vi,
-			 const struct voluta_cipher *cipher, void *buf)
+                         const struct voluta_cipher *cipher, void *buf)
 {
-	struct voluta_kivam kivam;
+	struct voluta_kivam kivam = { .reserved = 0 };
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
 	voluta_kivam_of(vi, &kivam);
 	return voluta_encrypt_buf(cipher, &kivam,
-				  vi->view, buf, vaddr->len);
+	                          vi->view, buf, vaddr->len);
 }
 
 int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf)
@@ -626,7 +644,7 @@ int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf)
 
 	voluta_kivam_of(vi, &kivam);
 	return voluta_decrypt_buf(vi_cipher(vi), &kivam,
-				  buf, vi->view, vaddr->len);
+	                          buf, vi->view, vaddr->len);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -644,7 +662,7 @@ static void vstore_fini_crypto(struct voluta_vstore *vstore)
 static int vstore_init_encbuf(struct voluta_vstore *vstore)
 {
 	vstore->vs_encbuf = voluta_qalloc_zmalloc(vstore->vs_qalloc,
-			    sizeof(*vstore->vs_encbuf));
+	                    sizeof(*vstore->vs_encbuf));
 
 	return (vstore->vs_encbuf == NULL) ? -ENOMEM : 0;
 }
@@ -653,7 +671,7 @@ static void vstore_fini_encbuf(struct voluta_vstore *vstore)
 {
 	if (vstore->vs_encbuf != NULL) {
 		voluta_qalloc_zfree(vstore->vs_qalloc, vstore->vs_encbuf,
-				    sizeof(*vstore->vs_encbuf));
+		                    sizeof(*vstore->vs_encbuf));
 		vstore->vs_encbuf = NULL;
 	}
 }
@@ -669,7 +687,7 @@ static void vstore_fini_pstore(struct voluta_vstore *vstore)
 }
 
 int voluta_vstore_init(struct voluta_vstore *vstore,
-		       struct voluta_qalloc *qalloc)
+                       struct voluta_qalloc *qalloc)
 {
 	int err;
 
@@ -710,7 +728,7 @@ void voluta_vstore_fini(struct voluta_vstore *vstore)
 }
 
 void voluta_vstore_add_ctlflags(struct voluta_vstore *vstore,
-				enum voluta_flags flags)
+                                enum voluta_flags flags)
 {
 	vstore->vs_ctl_flags |= flags;
 }
@@ -737,7 +755,7 @@ int voluta_vstore_open(struct voluta_vstore *vstore, const char *path, bool rw)
 }
 
 int voluta_vstore_create(struct voluta_vstore *vstore,
-			 const char *path, loff_t size)
+                         const char *path, loff_t size)
 {
 	int err;
 	const loff_t vol_size_min = VOLUTA_VOLUME_SIZE_MIN;
@@ -775,25 +793,25 @@ int voluta_vstore_funlock(const struct voluta_vstore *vstore)
 }
 
 int voluta_vstore_write(struct voluta_vstore *vstore,
-			loff_t off, size_t bsz, const void *buf)
+                        loff_t off, size_t bsz, const void *buf)
 {
 	return voluta_pstore_write(&vstore->vs_pstore, off, bsz, buf);
 }
 
 int voluta_vstore_writev(struct voluta_vstore *vstore, loff_t off,
-			 size_t len, const struct iovec *iov, size_t cnt)
+                         size_t len, const struct iovec *iov, size_t cnt)
 {
 	return voluta_pstore_writev(&vstore->vs_pstore, off, len, iov, cnt);
 }
 
 int voluta_vstore_read(const struct voluta_vstore *vstore,
-		       loff_t off, size_t bsz, void *buf)
+                       loff_t off, size_t bsz, void *buf)
 {
 	return voluta_pstore_read(&vstore->vs_pstore, off, bsz, buf);
 }
 
 int voluta_vstore_clone(const struct voluta_vstore *vstore,
-			const struct voluta_str *name)
+                        const struct voluta_str *name)
 {
 	return voluta_pstore_clone(&vstore->vs_pstore, name);
 }
@@ -804,7 +822,7 @@ int voluta_vstore_sync(struct voluta_vstore *vstore)
 }
 
 int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
-			 loff_t off, size_t len, struct voluta_xiovec *xiov)
+                         loff_t off, size_t len, struct voluta_xiovec *xiov)
 {
 	int err;
 	const struct voluta_pstore *pstore = &vstore->vs_pstore;
@@ -850,7 +868,7 @@ static void sgv_setup(struct voluta_sgvec *sgv)
 }
 
 static bool sgv_isappendable(const struct voluta_sgvec *sgv,
-			     const struct voluta_vnode_info *vi)
+                             const struct voluta_vnode_info *vi)
 {
 	loff_t off;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
@@ -872,7 +890,7 @@ static bool sgv_isappendable(const struct voluta_sgvec *sgv,
 }
 
 static int sgv_append(struct voluta_sgvec *sgv,
-		      const struct voluta_vnode_info *vi)
+                      const struct voluta_vnode_info *vi)
 {
 	const size_t idx = sgv->cnt;
 	const size_t len = vi_length(vi);
@@ -888,7 +906,7 @@ static int sgv_append(struct voluta_sgvec *sgv,
 }
 
 static int sgv_populate(struct voluta_sgvec *sgv,
-			struct voluta_vnode_info **viq)
+                        struct voluta_vnode_info **viq)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -908,15 +926,15 @@ static int sgv_populate(struct voluta_sgvec *sgv,
 }
 
 static int sgv_destage(const struct voluta_sgvec *sgv,
-		       struct voluta_vstore *vstore)
+                       struct voluta_vstore *vstore)
 {
 	return voluta_vstore_writev(vstore, sgv->off,
-				    sgv->len, sgv->iov, sgv->cnt);
+	                            sgv->len, sgv->iov, sgv->cnt);
 }
 
 static int sgv_flush_dset(struct voluta_sgvec *sgv,
-			  const struct voluta_dset *dset,
-			  struct voluta_vstore *vstore)
+                          const struct voluta_dset *dset,
+                          struct voluta_vstore *vstore)
 {
 	int err;
 	struct voluta_vnode_info *viq = dset->ds_viq;
@@ -951,7 +969,7 @@ static void iob_setup(struct voluta_iobuf *iob, struct voluta_encbuf *eb)
 }
 
 static bool iob_isappendable(const struct voluta_iobuf *iob,
-			     const struct voluta_vnode_info *vi)
+                             const struct voluta_vnode_info *vi)
 {
 	loff_t off;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
@@ -970,8 +988,8 @@ static bool iob_isappendable(const struct voluta_iobuf *iob,
 }
 
 static int iob_append(struct voluta_iobuf *iob,
-		      const struct voluta_cipher *ci,
-		      const struct voluta_vnode_info *vi)
+                      const struct voluta_cipher *ci,
+                      const struct voluta_vnode_info *vi)
 {
 	int err;
 	void *ptr;
@@ -992,8 +1010,8 @@ static int iob_append(struct voluta_iobuf *iob,
 }
 
 static int iob_populate(struct voluta_iobuf *iob,
-			struct voluta_vnode_info **viq,
-			const struct voluta_cipher *ci)
+                        struct voluta_vnode_info **viq,
+                        const struct voluta_cipher *ci)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1013,7 +1031,7 @@ static int iob_populate(struct voluta_iobuf *iob,
 }
 
 static int iob_destage(const struct voluta_iobuf *iob,
-		       struct voluta_vstore *vstore)
+                       struct voluta_vstore *vstore)
 {
 	const loff_t lba = off_to_lba(iob->off);
 
@@ -1022,12 +1040,12 @@ static int iob_destage(const struct voluta_iobuf *iob,
 	voluta_assert_gt(lba, VOLUTA_LBA_SB);
 
 	return voluta_vstore_write(vstore, iob->off,
-				   iob->buf.len, iob->buf.buf);
+	                           iob->buf.len, iob->buf.buf);
 }
 
 static int iob_flush_dset(struct voluta_iobuf *iob,
-			  const struct voluta_dset *dset,
-			  struct voluta_vstore *vstore)
+                          const struct voluta_dset *dset,
+                          struct voluta_vstore *vstore)
 {
 	int err;
 	struct voluta_vnode_info *viq = dset->ds_viq;
@@ -1087,7 +1105,7 @@ static void dset_clear_map(struct voluta_dset *dset)
 }
 
 static void dset_add_dirty_vi(struct voluta_dset *dset,
-			      struct voluta_vnode_info *vi)
+                              struct voluta_vnode_info *vi)
 {
 	voluta_avl_insert(&dset->ds_avl, &vi->v_ds_an);
 }
@@ -1124,7 +1142,7 @@ static void dset_purge(const struct voluta_dset *dset)
 }
 
 static void dset_push_front_viq(struct voluta_dset *dset,
-				struct voluta_vnode_info *vi)
+                                struct voluta_vnode_info *vi)
 {
 	vi->v_ds_next = dset->ds_viq;
 	dset->ds_viq = vi;
@@ -1148,7 +1166,7 @@ static void dset_make_fifo(struct voluta_dset *dset)
 }
 
 static void dset_inhabit(struct voluta_dset *dset,
-			 const struct voluta_cache *cache)
+                         const struct voluta_cache *cache)
 {
 	voluta_cache_inhabit_dset(cache, dset);
 }
@@ -1172,7 +1190,7 @@ static void dset_cleanup(struct voluta_dset *dset)
 }
 
 static int dset_flush(const struct voluta_dset *dset,
-		      struct voluta_vstore *vstore)
+                      struct voluta_vstore *vstore)
 {
 	struct voluta_sgvec sgv;
 	struct voluta_iobuf iob;
@@ -1183,8 +1201,8 @@ static int dset_flush(const struct voluta_dset *dset,
 }
 
 static int dset_collect_flush(struct voluta_dset *dset,
-			      const struct voluta_cache *cache,
-			      struct voluta_vstore *vstore)
+                              const struct voluta_cache *cache,
+                              struct voluta_vstore *vstore)
 {
 	int err;
 
@@ -1197,7 +1215,7 @@ static int dset_collect_flush(struct voluta_dset *dset,
 }
 
 int voluta_vstore_flush(struct voluta_vstore *vstore,
-			const struct voluta_cache *cache, long ds_key)
+                        const struct voluta_cache *cache, long ds_key)
 {
 	int err;
 	struct voluta_dset dset;
@@ -1208,13 +1226,33 @@ int voluta_vstore_flush(struct voluta_vstore *vstore,
 	return err;
 }
 
-int voluta_vstore_punch_bk(const struct voluta_vstore *vstore, loff_t lba)
+int voluta_vstore_clear_bk(struct voluta_vstore *vstore, loff_t lba)
 {
+	int err;
+	void *zeros_bk = NULL;
 	const loff_t off = lba_to_off(lba);
 	const size_t len = VOLUTA_BK_SIZE;
+	struct voluta_pstore *pstore = &vstore->vs_pstore;
 
 	voluta_assert_eq(off % (long)len, 0);
 
-	return voluta_pstore_punch_hole(&vstore->vs_pstore, off, len);
+	/* fast-case: just do fallocate zero-range */
+	err = voluta_pstore_zero_range(pstore, off, len);
+	if (!err || (err != -EOPNOTSUPP)) {
+		return err;
+	}
+	/* standard-case: do fallocate punch-hole (releases block) */
+	err = voluta_pstore_punch_hole(pstore, off, len);
+	if (!err || (err != -EOPNOTSUPP)) {
+		return err;
+	}
+	/* slow-case: explicit overwrite with zeros */
+	zeros_bk = voluta_qalloc_zmalloc(vstore->vs_qalloc, len);
+	if (zeros_bk == NULL) {
+		return -ENOMEM;
+	}
+	err = voluta_pstore_write(pstore, off, len, zeros_bk);
+	voluta_qalloc_free(vstore->vs_qalloc, zeros_bk, len);
+	return err;
 }
 

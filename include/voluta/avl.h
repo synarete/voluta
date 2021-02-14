@@ -62,7 +62,7 @@ void voluta_avl_node_init(struct voluta_avl_node *x);
 void voluta_avl_node_fini(struct voluta_avl_node *x);
 
 void voluta_avl_init(struct voluta_avl *avl, voluta_avl_getkey_fn getkey,
-		     voluta_avl_keycmp_fn keycmp, void *userp);
+                     voluta_avl_keycmp_fn keycmp, void *userp);
 
 void voluta_avl_fini(struct voluta_avl *avl);
 
@@ -101,12 +101,12 @@ voluta_avl_upper_bound(const struct voluta_avl *avl, const void *k);
 
 
 void voluta_avl_equal_range(const struct voluta_avl *avl, const void *k,
-			    struct voluta_avl_range *out_r);
+                            struct voluta_avl_range *out_r);
 
 void voluta_avl_insert(struct voluta_avl *avl, struct voluta_avl_node *z);
 
 int voluta_avl_insert_unique(struct voluta_avl *avl,
-			     struct voluta_avl_node *z);
+                             struct voluta_avl_node *z);
 
 struct voluta_avl_node *
 voluta_avl_insert_replace(struct voluta_avl *avl, struct voluta_avl_node *z);
@@ -114,8 +114,8 @@ voluta_avl_insert_replace(struct voluta_avl *avl, struct voluta_avl_node *z);
 void voluta_avl_remove(struct voluta_avl *avl, struct voluta_avl_node *x);
 
 void voluta_avl_remove_range(struct voluta_avl *avl,
-			     struct voluta_avl_node *first,
-			     struct voluta_avl_node *last);
+                             struct voluta_avl_node *first,
+                             struct voluta_avl_node *last);
 
 void voluta_avl_clear(struct voluta_avl *avl, voluta_avl_node_fn fn, void *p);
 

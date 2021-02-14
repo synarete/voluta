@@ -32,9 +32,9 @@ static void encrypt_setup_check_params(void)
 	const char *path;
 
 	voluta_globals.cmd.encrypt.volume_real =
-		voluta_realpath_safe(voluta_globals.cmd.encrypt.volume);
+	        voluta_realpath_safe(voluta_globals.cmd.encrypt.volume);
 	voluta_globals.cmd.encrypt.volume_active =
-		voluta_globals.cmd.encrypt.volume_real;
+	        voluta_globals.cmd.encrypt.volume_real;
 
 	path = voluta_globals.cmd.encrypt.volume_real;
 	voluta_die_if_not_volume(path, true, false, true, NULL);
@@ -157,6 +157,6 @@ void voluta_getopt_encrypt(void)
 		}
 	}
 	voluta_globals.cmd.encrypt.volume =
-		voluta_consume_cmdarg("volume-path", true);
+	        voluta_consume_cmdarg("volume-path", true);
 }
 

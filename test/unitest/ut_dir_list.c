@@ -63,7 +63,7 @@ new_dirlist(struct ut_env *ute, ino_t dino)
 }
 
 static void push_direlem(struct ut_dirlist *dl,
-			 struct ut_direlem *de)
+                         struct ut_direlem *de)
 {
 	de->next = dl->list;
 	dl->list = de;
@@ -120,14 +120,14 @@ static struct ut_dirlist *dir_list_all(struct ut_env *ute, ino_t dino)
 }
 
 static struct ut_dirlist *dir_list_some(struct ut_env *ute, ino_t dino,
-					loff_t off, size_t max_nents)
+                                        loff_t off, size_t max_nents)
 {
 	bool keep_iter = true;
 	loff_t doff = off;
 	const struct ut_dirent_info *dei;
 	struct ut_dirlist *dl = new_dirlist(ute, dino);
 	struct ut_readdir_ctx *rd_ctx =
-		ut_new_readdir_ctx(ute);
+	        ut_new_readdir_ctx(ute);
 
 	ut_opendir_ok(ute, dino);
 	while (keep_iter) {
@@ -176,7 +176,7 @@ static void dir_unlink_all(struct ut_dirlist *dl)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_create_nfiles(struct ut_env *ute, ino_t dino,
-			     const char *dname, size_t count)
+                             const char *dname, size_t count)
 {
 	ino_t ino;
 	const char *name;
@@ -188,7 +188,7 @@ static void ut_create_nfiles(struct ut_env *ute, ino_t dino,
 }
 
 static void ut_create_ninodes(struct ut_env *ute, ino_t dino,
-			      const char *dname, size_t count)
+                              const char *dname, size_t count)
 {
 	ino_t ino;
 	const char *name;
@@ -237,7 +237,7 @@ static void ut_dir_list_simple(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_dir_list_repeated_(struct ut_env *ute,
-				  size_t count, size_t niter)
+                                  size_t count, size_t niter)
 {
 	ino_t dino;
 	const char *prefix = NULL;
@@ -270,7 +270,7 @@ static void ut_dir_list_repeated(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void create_nfiles_sparse(struct ut_env *ute, ino_t dino,
-				 const char *prefix, size_t count)
+                                 const char *prefix, size_t count)
 {
 	ino_t ino;
 	const char *name;

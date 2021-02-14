@@ -23,7 +23,7 @@ struct ut_namesarr {
 };
 
 static const char *make_name(struct ut_env *ute,
-			     long idx, size_t len)
+                             long idx, size_t len)
 {
 	char name[UT_NAME_MAX + 1] = "";
 	const size_t name_max = sizeof(name) - 1;
@@ -477,7 +477,7 @@ static void ut_rmdir_when_open(struct ut_env *ute)
 	ut_getattr_dir(ute, dino, &st);
 	ut_expect_eq(st.st_nlink, 2);
 	ut_create_file(ute, dino, name, &ino);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_nlink, 1);
 	ut_unlink_ok(ute, dino, name);
 	ut_rmdir_ok(ute, parentd, name);

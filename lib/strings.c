@@ -67,7 +67,7 @@ int voluta_str_compare(const char *s1, const char *s2, size_t n)
 }
 
 int voluta_str_ncompare(const char *s1, size_t n1,
-			const char *s2, size_t n2)
+                        const char *s2, size_t n2)
 {
 	int res;
 	size_t n;
@@ -88,7 +88,7 @@ const char *voluta_str_find_chr(const char *s, size_t n, char a)
 }
 
 const char *voluta_str_find(const char *s1, size_t n1,
-			    const char *s2, size_t n2)
+                            const char *s2, size_t n2)
 {
 	const char *q;
 
@@ -105,7 +105,7 @@ const char *voluta_str_find(const char *s1, size_t n1,
 }
 
 const char *voluta_str_rfind(const char *s1, size_t n1,
-			     const char *s2, size_t n2)
+                             const char *s2, size_t n2)
 {
 	if (!n2 || (n1 < n2)) {
 		return NULL;
@@ -129,7 +129,7 @@ const char *voluta_str_rfind_chr(const char *s, size_t n, char c)
 }
 
 const char *voluta_str_find_first_of(const char *s1, size_t n1,
-				     const char *s2, size_t n2)
+                                     const char *s2, size_t n2)
 {
 	const char *q = s1 + n1;
 
@@ -143,7 +143,7 @@ const char *voluta_str_find_first_of(const char *s1, size_t n1,
 
 const char *
 voluta_str_find_first_not_of(const char *s1, size_t n1,
-			     const char *s2, size_t n2)
+                             const char *s2, size_t n2)
 {
 	const char *q = s1 + n1;
 
@@ -169,7 +169,7 @@ const char *voluta_str_find_first_not_eq(const char *s, size_t n, char c)
 
 const char *
 voluta_str_find_last_of(const char *s1, size_t n1,
-			const char *s2, size_t n2)
+                        const char *s2, size_t n2)
 {
 	const char *q = s1 + n1;
 
@@ -183,7 +183,7 @@ voluta_str_find_last_of(const char *s1, size_t n1,
 
 const char *
 voluta_str_find_last_not_of(const char *s1, size_t n1,
-			    const char *s2, size_t n2)
+                            const char *s2, size_t n2)
 {
 	const char *q = s1 + n1;
 
@@ -240,7 +240,7 @@ size_t voluta_str_common_suffix(const char *s1, const char *s2, size_t n)
 }
 
 size_t voluta_str_overlaps(const char *s1, size_t n1,
-			   const char *s2, size_t n2)
+                           const char *s2, size_t n2)
 {
 	size_t d;
 	size_t k;
@@ -313,7 +313,7 @@ void voluta_str_reverse(char *s, size_t n)
  */
 static size_t
 str_insert_no_overlap(char *p, size_t sz, size_t n1,
-		      const char *s, size_t n2)
+                      const char *s, size_t n2)
 {
 	const size_t k = voluta_min(n2, sz);
 	const size_t m = voluta_min(n1, sz - k);
@@ -330,7 +330,7 @@ str_insert_no_overlap(char *p, size_t sz, size_t n1,
  */
 static size_t
 str_insert_with_overlap(char *p, size_t sz, size_t n1,
-			const char *s, size_t n2)
+                        const char *s, size_t n2)
 {
 	size_t n;
 	size_t k;
@@ -351,7 +351,7 @@ str_insert_with_overlap(char *p, size_t sz, size_t n1,
 }
 
 size_t voluta_str_insert(char *p, size_t sz, size_t n1,
-			 const char *s, size_t n2)
+                         const char *s, size_t n2)
 {
 	size_t k;
 	size_t n = 0;
@@ -391,7 +391,7 @@ size_t voluta_str_insert(char *p, size_t sz, size_t n1,
  * to sz).
  */
 size_t voluta_str_insert_chr(char *p, size_t sz, size_t n1,
-			     size_t n2, char c)
+                             size_t n2, char c)
 {
 	size_t m;
 	const size_t k = voluta_min(n2, sz);
@@ -406,7 +406,7 @@ size_t voluta_str_insert_chr(char *p, size_t sz, size_t n1,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_str_replace(char *p, size_t sz, size_t len, size_t n1,
-			  const char *s, size_t n2)
+                          const char *s, size_t n2)
 {
 	size_t k;
 	size_t m;
@@ -419,13 +419,13 @@ size_t voluta_str_replace(char *p, size_t sz, size_t len, size_t n1,
 		if (s < p) {
 			k = n1;
 			m = voluta_str_insert(p + k, sz - k,
-					      len - k, s + k, n2 - k);
+			                      len - k, s + k, n2 - k);
 			voluta_str_copy(p, s, k);
 		} else {
 			k = n1;
 			voluta_str_copy(p, s, n1);
 			m = voluta_str_insert(p + k, sz - k,
-					      len - k, s + k, n2 - k);
+			                      len - k, s + k, n2 - k);
 		}
 	} else {
 		/*
@@ -446,7 +446,7 @@ size_t voluta_str_replace(char *p, size_t sz, size_t len, size_t n1,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_str_replace_chr(char *p, size_t sz, size_t len,
-			      size_t n1, size_t n2, char c)
+                              size_t n1, size_t n2, char c)
 {
 	size_t k;
 	size_t m;
@@ -559,7 +559,7 @@ int voluta_chr_tolower(char c)
 
 #define substr_out_of_range(ss, pos, sz)                \
 	voluta_panic("out-of-range pos=%ld sz=%ld ss=%s",      \
-		     (long)(pos), (long)(sz), ((const char*)(ss)->str))
+	             (long)(pos), (long)(sz), ((const char*)(ss)->str))
 
 
 static size_t substr_max_size(void)
@@ -618,7 +618,7 @@ void voluta_substr_init_rwa(struct voluta_substr *ss, char *s)
 }
 
 void voluta_substr_init_rw(struct voluta_substr *ss,
-			   char *s, size_t nrd, size_t nwr)
+                           char *s, size_t nrd, size_t nwr)
 {
 	ss->str  = s;
 	ss->len  = nrd;
@@ -632,7 +632,7 @@ void voluta_substr_inits(struct voluta_substr *ss)
 }
 
 void voluta_substr_clone(const struct voluta_substr *ss,
-			 struct voluta_substr *other)
+                         struct voluta_substr *other)
 {
 	other->str = ss->str;
 	other->len = ss->len;
@@ -730,7 +730,7 @@ int voluta_substr_isvalid_index(const struct voluta_substr *ss, size_t i)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_copyto(const struct voluta_substr *ss,
-			    char *buf, size_t n)
+                            char *buf, size_t n)
 {
 	const size_t len = voluta_min(n, ss->len);
 
@@ -749,7 +749,7 @@ int voluta_substr_compare(const struct voluta_substr *ss, const char *s)
 }
 
 int voluta_substr_ncompare(const struct voluta_substr *ss,
-			   const char *s, size_t n)
+                           const char *s, size_t n)
 {
 	int res = 0;
 
@@ -765,7 +765,7 @@ bool voluta_substr_isequal(const struct voluta_substr *ss, const char *s)
 }
 
 bool voluta_substr_nisequal(const struct voluta_substr *ss,
-			    const char *s, size_t n)
+                            const char *s, size_t n)
 {
 	const char *str;
 
@@ -787,7 +787,7 @@ size_t voluta_substr_count(const struct voluta_substr *ss, const char *s)
 }
 
 size_t voluta_substr_ncount(const struct voluta_substr *ss,
-			    const char *s, size_t n)
+                            const char *s, size_t n)
 {
 	size_t i;
 	size_t pos = 0;
@@ -827,7 +827,7 @@ size_t voluta_substr_find(const struct voluta_substr *ss, const char *s)
 }
 
 size_t voluta_substr_nfind(const struct voluta_substr *ss,
-			   size_t pos, const char *s, size_t n)
+                           size_t pos, const char *s, size_t n)
 {
 	size_t sz;
 	const char *dat;
@@ -853,7 +853,7 @@ size_t voluta_substr_nfind(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_find_chr(const struct voluta_substr *ss, size_t pos,
-			      char c)
+                              char c)
 {
 	size_t sz;
 	const char *dat;
@@ -879,7 +879,7 @@ size_t voluta_substr_rfind(const struct voluta_substr *ss, const char *s)
 }
 
 size_t voluta_substr_nrfind(const struct voluta_substr *ss,
-			    size_t pos, const char *s, size_t n)
+                            size_t pos, const char *s, size_t n)
 {
 	size_t k;
 	const char *p;
@@ -902,7 +902,7 @@ size_t voluta_substr_nrfind(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_rfind_chr(const struct voluta_substr *ss,
-			       size_t pos, char c)
+                               size_t pos, char c)
 {
 	size_t k;
 	const char *p;
@@ -917,13 +917,13 @@ size_t voluta_substr_rfind_chr(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_find_first_of(const struct voluta_substr *ss,
-				   const char *s)
+                                   const char *s)
 {
 	return voluta_substr_nfind_first_of(ss, 0UL, s, voluta_str_length(s));
 }
 
 size_t voluta_substr_nfind_first_of(const struct voluta_substr *ss,
-				    size_t pos, const char *s, size_t n)
+                                    size_t pos, const char *s, size_t n)
 {
 	const char *p = NULL;
 	const char *q = s;
@@ -935,7 +935,7 @@ size_t voluta_substr_nfind_first_of(const struct voluta_substr *ss,
 			p = voluta_str_find_chr(dat + pos, sz - pos, *q);
 		} else {
 			p = voluta_str_find_first_of(dat + pos,
-						     sz - pos, q, n);
+			                             sz - pos, q, n);
 		}
 	}
 	return substr_offset(ss, p);
@@ -944,14 +944,14 @@ size_t voluta_substr_nfind_first_of(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_find_last_of(const struct voluta_substr *ss,
-				  const char *s)
+                                  const char *s)
 {
 	return voluta_substr_nfind_last_of(ss, substr_size(ss),
-					   s, str_length(s));
+	                                   s, str_length(s));
 }
 
 size_t voluta_substr_nfind_last_of(const struct voluta_substr *ss, size_t pos,
-				   const char *s, size_t n)
+                                   const char *s, size_t n)
 {
 	const char *p = NULL;
 	const char *q = s;
@@ -971,13 +971,13 @@ size_t voluta_substr_nfind_last_of(const struct voluta_substr *ss, size_t pos,
 }
 
 size_t voluta_substr_find_first_not_of(const struct voluta_substr *ss,
-				       const char *s)
+                                       const char *s)
 {
 	return voluta_substr_nfind_first_not_of(ss, 0UL, s, str_length(s));
 }
 
 size_t voluta_substr_nfind_first_not_of(const struct voluta_substr *ss,
-					size_t pos, const char *s, size_t n)
+                                        size_t pos, const char *s, size_t n)
 {
 	const char *p = NULL;
 	const char *q = s;
@@ -989,10 +989,10 @@ size_t voluta_substr_nfind_first_not_of(const struct voluta_substr *ss,
 			p = dat + pos;
 		} else if (n == 1) {
 			p = voluta_str_find_first_not_eq(dat + pos,
-							 sz - pos, *q);
+			                                 sz - pos, *q);
 		} else {
 			p = voluta_str_find_first_not_of(dat + pos,
-							 sz - pos, q, n);
+			                                 sz - pos, q, n);
 		}
 	}
 
@@ -1000,7 +1000,7 @@ size_t voluta_substr_nfind_first_not_of(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_find_first_not(const struct voluta_substr *ss,
-				    size_t pos, char c)
+                                    size_t pos, char c)
 {
 	const char *p = NULL;
 	const char *dat = substr_data(ss);
@@ -1013,14 +1013,14 @@ size_t voluta_substr_find_first_not(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_find_last_not_of(const struct voluta_substr *ss,
-				      const char *s)
+                                      const char *s)
 {
 	return voluta_substr_nfind_last_not_of(ss, substr_size(ss),
-					       s, str_length(s));
+	                                       s, str_length(s));
 }
 
 size_t voluta_substr_nfind_last_not_of(const struct voluta_substr *ss,
-				       size_t pos, const char *s, size_t n)
+                                       size_t pos, const char *s, size_t n)
 {
 	const char *p = NULL;
 	const char *q = s;
@@ -1042,7 +1042,7 @@ size_t voluta_substr_nfind_last_not_of(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_find_last_not(const struct voluta_substr *ss,
-				   size_t pos, char c)
+                                   size_t pos, char c)
 {
 	const size_t sz = substr_size(ss);
 	const size_t k = (pos < sz) ? pos + 1 : sz;
@@ -1055,7 +1055,7 @@ size_t voluta_substr_find_last_not(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_sub(const struct voluta_substr *ss,
-		       size_t i, size_t n, struct voluta_substr *out_ss)
+                       size_t i, size_t n, struct voluta_substr *out_ss)
 {
 	const size_t sz  = substr_size(ss);
 	const size_t j   = voluta_min(i, sz);
@@ -1068,7 +1068,7 @@ void voluta_substr_sub(const struct voluta_substr *ss,
 }
 
 void voluta_substr_rsub(const struct voluta_substr *ss,
-			size_t n, struct voluta_substr *out_ss)
+                        size_t n, struct voluta_substr *out_ss)
 {
 	const size_t sz  = substr_size(ss);
 	const size_t n1  = voluta_min(n, sz);
@@ -1081,8 +1081,8 @@ void voluta_substr_rsub(const struct voluta_substr *ss,
 }
 
 void voluta_substr_intersection(const struct voluta_substr *s1,
-				const struct voluta_substr *s2,
-				struct voluta_substr *out_ss)
+                                const struct voluta_substr *s2,
+                                struct voluta_substr *out_ss)
 {
 	size_t i = 0;
 	size_t n = 0;
@@ -1124,35 +1124,35 @@ void voluta_substr_intersection(const struct voluta_substr *s1,
 
 /* Helper function to create split-of-substrings */
 static void substr_make_split_pair(const struct voluta_substr *ss,
-				   size_t i1, size_t n1,
-				   size_t i2, size_t n2,
-				   struct voluta_substr_pair *out_ss_pair)
+                                   size_t i1, size_t n1,
+                                   size_t i2, size_t n2,
+                                   struct voluta_substr_pair *out_ss_pair)
 {
 	voluta_substr_sub(ss, i1, n1, &out_ss_pair->first);
 	voluta_substr_sub(ss, i2, n2, &out_ss_pair->second);
 }
 
 void voluta_substr_split(const struct voluta_substr *ss, const char *seps,
-			 struct voluta_substr_pair *out_ss_pair)
+                         struct voluta_substr_pair *out_ss_pair)
 {
 
 	voluta_substr_nsplit(ss, seps, str_length(seps), out_ss_pair);
 }
 
 void voluta_substr_nsplit(const struct voluta_substr *ss,
-			  const char *seps, size_t n,
-			  struct voluta_substr_pair *out_ss_pair)
+                          const char *seps, size_t n,
+                          struct voluta_substr_pair *out_ss_pair)
 {
 	const size_t sz = substr_size(ss);
 	const size_t i = voluta_substr_nfind_first_of(ss, 0UL, seps, n);
 	const size_t j = (i >= sz) ? sz :
-			 voluta_substr_nfind_first_not_of(ss, i, seps, n);
+	                 voluta_substr_nfind_first_not_of(ss, i, seps, n);
 
 	substr_make_split_pair(ss, 0UL, i, j, sz, out_ss_pair);
 }
 
 void voluta_substr_split_chr(const struct voluta_substr *ss, char sep,
-			     struct voluta_substr_pair *out_ss_pair)
+                             struct voluta_substr_pair *out_ss_pair)
 {
 	const size_t sz = substr_size(ss);
 	const size_t i = voluta_substr_find_chr(ss, 0UL, sep);
@@ -1164,14 +1164,14 @@ void voluta_substr_split_chr(const struct voluta_substr *ss, char sep,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_rsplit(const struct voluta_substr *ss, const char *seps,
-			  struct voluta_substr_pair *out_ss_pair)
+                          struct voluta_substr_pair *out_ss_pair)
 {
 	voluta_substr_nrsplit(ss, seps, str_length(seps), out_ss_pair);
 }
 
 void voluta_substr_nrsplit(const struct voluta_substr *ss,
-			   const char *seps, size_t n,
-			   struct voluta_substr_pair *out_ss_pair)
+                           const char *seps, size_t n,
+                           struct voluta_substr_pair *out_ss_pair)
 {
 	size_t i;
 	size_t j;
@@ -1194,7 +1194,7 @@ void voluta_substr_nrsplit(const struct voluta_substr *ss,
 }
 
 void voluta_substr_rsplit_chr(const struct voluta_substr *ss, char sep,
-			      struct voluta_substr_pair *out_ss_pair)
+                              struct voluta_substr_pair *out_ss_pair)
 {
 	const size_t sz = substr_size(ss);
 	const size_t i = voluta_substr_rfind_chr(ss, sz, sep);
@@ -1206,20 +1206,20 @@ void voluta_substr_rsplit_chr(const struct voluta_substr *ss, char sep,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_trim(const struct voluta_substr *ss, size_t n,
-			struct voluta_substr *out_ss)
+                        struct voluta_substr *out_ss)
 {
 	voluta_substr_sub(ss, n, substr_size(ss), out_ss);
 }
 
 void voluta_substr_trim_any_of(const struct voluta_substr *ss,
-			       const char *set, struct voluta_substr *out_ss)
+                               const char *set, struct voluta_substr *out_ss)
 {
 	voluta_substr_ntrim_any_of(ss, set, str_length(set), out_ss);
 }
 
 void voluta_substr_ntrim_any_of(const struct voluta_substr *ss,
-				const char *set, size_t n,
-				struct voluta_substr *out_ss)
+                                const char *set, size_t n,
+                                struct voluta_substr *out_ss)
 {
 	const size_t sz = substr_size(ss);
 	const size_t i = voluta_substr_nfind_first_not_of(ss, 0UL, set, n);
@@ -1228,7 +1228,7 @@ void voluta_substr_ntrim_any_of(const struct voluta_substr *ss,
 }
 
 void voluta_substr_trim_chr(const struct voluta_substr *ss, char c,
-			    struct voluta_substr *out_ss)
+                            struct voluta_substr *out_ss)
 {
 	const size_t sz = substr_size(ss);
 	const size_t i = voluta_substr_find_first_not(ss, 0UL, c);
@@ -1239,7 +1239,7 @@ void voluta_substr_trim_chr(const struct voluta_substr *ss, char c,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_chop(const struct voluta_substr *ss,
-			size_t n, struct voluta_substr *out_ss)
+                        size_t n, struct voluta_substr *out_ss)
 {
 	char *dat = substr_mutable_data(ss);
 	const size_t sz = substr_size(ss);
@@ -1250,14 +1250,14 @@ void voluta_substr_chop(const struct voluta_substr *ss,
 }
 
 void voluta_substr_chop_any_of(const struct voluta_substr *ss,
-			       const char *set, struct voluta_substr *out_ss)
+                               const char *set, struct voluta_substr *out_ss)
 {
 	voluta_substr_nchop_any_of(ss, set, str_length(set), out_ss);
 }
 
 void voluta_substr_nchop_any_of(const struct voluta_substr *ss,
-				const char *set, size_t n,
-				struct voluta_substr *out_ss)
+                                const char *set, size_t n,
+                                struct voluta_substr *out_ss)
 {
 	const size_t sz = substr_size(ss);
 	const size_t j = voluta_substr_nfind_last_not_of(ss, sz, set, n);
@@ -1266,7 +1266,7 @@ void voluta_substr_nchop_any_of(const struct voluta_substr *ss,
 }
 
 void voluta_substr_chop_chr(const struct voluta_substr *ss, char c,
-			    struct voluta_substr *out_ss)
+                            struct voluta_substr *out_ss)
 {
 	const size_t sz = substr_size(ss);
 	const size_t j = voluta_substr_find_last_not(ss, sz, c);
@@ -1277,14 +1277,14 @@ void voluta_substr_chop_chr(const struct voluta_substr *ss, char c,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_strip_any_of(const struct voluta_substr *ss,
-				const char *set, struct voluta_substr *result)
+                                const char *set, struct voluta_substr *result)
 {
 	voluta_substr_nstrip_any_of(ss, set, str_length(set), result);
 }
 
 void voluta_substr_nstrip_any_of(const struct voluta_substr *ss,
-				 const char *set, size_t n,
-				 struct voluta_substr *result)
+                                 const char *set, size_t n,
+                                 struct voluta_substr *result)
 {
 	struct voluta_substr sub;
 
@@ -1293,7 +1293,7 @@ void voluta_substr_nstrip_any_of(const struct voluta_substr *ss,
 }
 
 void voluta_substr_strip_chr(const struct voluta_substr *ss, char c,
-			     struct voluta_substr *result)
+                             struct voluta_substr *result)
 {
 	struct voluta_substr sub;
 
@@ -1302,7 +1302,7 @@ void voluta_substr_strip_chr(const struct voluta_substr *ss, char c,
 }
 
 void voluta_substr_strip_ws(const struct voluta_substr *ss,
-			    struct voluta_substr *out_ss)
+                            struct voluta_substr *out_ss)
 {
 	const char *spaces = " \n\t\r\v\f";
 
@@ -1312,14 +1312,14 @@ void voluta_substr_strip_ws(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_find_token(const struct voluta_substr *ss,
-			      const char *seps, struct voluta_substr *result)
+                              const char *seps, struct voluta_substr *result)
 {
 	voluta_substr_nfind_token(ss, seps, str_length(seps), result);
 }
 
 void voluta_substr_nfind_token(const struct voluta_substr *ss,
-			       const char *seps, size_t n,
-			       struct voluta_substr *result)
+                               const char *seps, size_t n,
+                               struct voluta_substr *result)
 {
 	const size_t sz = substr_size(ss);
 	const size_t ki = voluta_substr_nfind_first_not_of(ss, 0UL, seps, n);
@@ -1331,7 +1331,7 @@ void voluta_substr_nfind_token(const struct voluta_substr *ss,
 }
 
 void voluta_substr_find_token_chr(const struct voluta_substr *ss, char sep,
-				  struct voluta_substr *result)
+                                  struct voluta_substr *result)
 {
 	const size_t sz = substr_size(ss);
 	const size_t ki = voluta_substr_find_first_not(ss, 0UL, sep);
@@ -1345,18 +1345,18 @@ void voluta_substr_find_token_chr(const struct voluta_substr *ss, char sep,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_find_next_token(const struct voluta_substr *ss,
-				   const struct voluta_substr *tok,
-				   const char *seps,
-				   struct voluta_substr *out_ss)
+                                   const struct voluta_substr *tok,
+                                   const char *seps,
+                                   struct voluta_substr *out_ss)
 {
 	voluta_substr_nfind_next_token(ss, tok, seps,
-				       str_length(seps), out_ss);
+	                               str_length(seps), out_ss);
 }
 
 void voluta_substr_nfind_next_token(const struct voluta_substr *ss,
-				    const struct voluta_substr *tok,
-				    const char *seps, size_t n,
-				    struct voluta_substr *result)
+                                    const struct voluta_substr *tok,
+                                    const char *seps, size_t n,
+                                    struct voluta_substr *result)
 {
 	struct voluta_substr sub;
 	const size_t sz  = substr_size(ss);
@@ -1368,8 +1368,8 @@ void voluta_substr_nfind_next_token(const struct voluta_substr *ss,
 }
 
 void voluta_substr_find_next_token_chr(const struct voluta_substr *ss,
-				       const struct voluta_substr *tok,
-				       char sep, struct voluta_substr *out_ss)
+                                       const struct voluta_substr *tok,
+                                       char sep, struct voluta_substr *out_ss)
 {
 	struct voluta_substr sub;
 	const size_t sz = substr_size(ss);
@@ -1382,18 +1382,18 @@ void voluta_substr_find_next_token_chr(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 int voluta_substr_tokenize(const struct voluta_substr *ss,
-			   const char *seps,
-			   struct voluta_substr tok_list[],
-			   size_t list_size, size_t *out_ntok)
+                           const char *seps,
+                           struct voluta_substr tok_list[],
+                           size_t list_size, size_t *out_ntok)
 {
 	return voluta_substr_ntokenize(ss, seps, str_length(seps),
-				       tok_list, list_size, out_ntok);
+	                               tok_list, list_size, out_ntok);
 }
 
 int voluta_substr_ntokenize(const struct voluta_substr *ss,
-			    const char *seps, size_t n,
-			    struct voluta_substr tok_list[],
-			    size_t list_size, size_t *out_ntok)
+                            const char *seps, size_t n,
+                            struct voluta_substr tok_list[],
+                            size_t list_size, size_t *out_ntok)
 {
 	size_t ntok = 0;
 	struct voluta_substr tok;
@@ -1414,8 +1414,8 @@ int voluta_substr_ntokenize(const struct voluta_substr *ss,
 }
 
 int voluta_substr_tokenize_chr(const struct voluta_substr *ss, char sep,
-			       struct voluta_substr tok_list[],
-			       size_t list_size, size_t *out_ntok)
+                               struct voluta_substr tok_list[],
+                               size_t list_size, size_t *out_ntok)
 {
 	size_t ntok = 0;
 	struct voluta_substr tok;
@@ -1438,13 +1438,13 @@ int voluta_substr_tokenize_chr(const struct voluta_substr *ss, char sep,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_common_prefix(const struct voluta_substr *ss,
-				   const char *s)
+                                   const char *s)
 {
 	return voluta_substr_ncommon_prefix(ss, s, str_length(s));
 }
 
 size_t voluta_substr_ncommon_prefix(const struct voluta_substr *ss,
-				    const char *s, size_t n)
+                                    const char *s, size_t n)
 {
 	const size_t sz = substr_size(ss);
 	const size_t nn = voluta_min(n, sz);
@@ -1460,13 +1460,13 @@ bool voluta_substr_starts_with(const struct voluta_substr *ss, char c)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_common_suffix(const struct voluta_substr *ss,
-				   const char *s)
+                                   const char *s)
 {
 	return voluta_substr_ncommon_suffix(ss, s, str_length(s));
 }
 
 size_t voluta_substr_ncommon_suffix(const struct voluta_substr *ss,
-				    const char *s, size_t n)
+                                    const char *s, size_t n)
 {
 	size_t k;
 	const size_t sz = substr_size(ss);
@@ -1513,7 +1513,7 @@ static void substr_terminate(struct voluta_substr *ss)
 
 /* Inserts a copy of s before position pos. */
 static void substr_insert(struct voluta_substr *ss,
-			  size_t pos, const char *s, size_t n)
+                          size_t pos, const char *s, size_t n)
 {
 	char *dat = voluta_substr_data(ss);
 
@@ -1538,7 +1538,7 @@ static void substr_insert(struct voluta_substr *ss,
 
 /* Inserts n copies of c before position pos. */
 static void substr_insert_fill(struct voluta_substr *ss,
-			       size_t pos, size_t n, char c)
+                               size_t pos, size_t n, char c)
 {
 	char *dat = voluta_substr_data(ss);
 
@@ -1565,7 +1565,7 @@ static void substr_insert_fill(struct voluta_substr *ss,
 
 /* Replaces a substring of *this with a copy of s. */
 static void substr_replace(struct voluta_substr *ss, size_t pos, size_t n1,
-			   const char *s, size_t n)
+                           const char *s, size_t n)
 {
 	/* Number of elements to replace (assuming pos <= size). */
 	const size_t sz = substr_size(ss);
@@ -1579,13 +1579,13 @@ static void substr_replace(struct voluta_substr *ss, size_t pos, size_t n1,
 	const size_t wr = substr_wrsize(ss);
 
 	ss->len = pos + voluta_str_replace(dat + pos, wr - pos,
-					   sz - pos, k, s, n);
+	                                   sz - pos, k, s, n);
 	substr_terminate(ss);
 }
 
 /* Replaces a substring of *this with n2 copies of c. */
 static void substr_replace_fill(struct voluta_substr *ss,
-				size_t pos, size_t n1, size_t n2, char c)
+                                size_t pos, size_t n1, size_t n2, char c)
 {
 	char *dat = substr_mutable_data(ss);
 
@@ -1600,7 +1600,7 @@ static void substr_replace_fill(struct voluta_substr *ss,
 	const size_t wr = substr_wrsize(ss);
 
 	ss->len = pos +  voluta_str_replace_chr(dat + pos, wr - pos,
-						sz - pos, k, n2, c);
+	                                        sz - pos, k, n2, c);
 	substr_terminate(ss);
 }
 
@@ -1651,7 +1651,7 @@ void voluta_substr_insert(struct voluta_substr *ss, size_t pos, const char *s)
 }
 
 void voluta_substr_ninsert(struct voluta_substr *ss, size_t pos,
-			   const char *s, size_t len)
+                           const char *s, size_t len)
 {
 	const size_t sz = substr_size(ss);
 
@@ -1663,7 +1663,7 @@ void voluta_substr_ninsert(struct voluta_substr *ss, size_t pos,
 }
 
 void voluta_substr_insert_chr(struct voluta_substr *ss, size_t pos, size_t n,
-			      char c)
+                              char c)
 {
 	const size_t sz = substr_size(ss);
 
@@ -1677,13 +1677,13 @@ void voluta_substr_insert_chr(struct voluta_substr *ss, size_t pos, size_t n,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_substr_replace(struct voluta_substr *ss,
-			   size_t pos, size_t n, const char *s)
+                           size_t pos, size_t n, const char *s)
 {
 	voluta_substr_nreplace(ss, pos, n, s, str_length(s));
 }
 
 void voluta_substr_nreplace(struct voluta_substr *ss,
-			    size_t pos, size_t n,  const char *s, size_t len)
+                            size_t pos, size_t n,  const char *s, size_t len)
 {
 	const size_t sz = substr_size(ss);
 
@@ -1697,7 +1697,7 @@ void voluta_substr_nreplace(struct voluta_substr *ss,
 }
 
 void voluta_substr_replace_chr(struct voluta_substr *ss,
-			       size_t pos, size_t n1, size_t n2, char c)
+                               size_t pos, size_t n1, size_t n2, char c)
 {
 	const size_t sz = substr_size(ss);
 
@@ -1729,7 +1729,7 @@ void voluta_substr_reverse(struct voluta_substr *ss)
  * Generic Operations:
  */
 static size_t substr_find_if(const struct voluta_substr *ss,
-			     voluta_chr_testif_fn fn, bool c)
+                             voluta_chr_testif_fn fn, bool c)
 {
 	const char *p = substr_begin(ss);
 	const char *q = substr_end(ss);
@@ -1744,13 +1744,13 @@ static size_t substr_find_if(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_find_if(const struct voluta_substr *ss,
-			     voluta_chr_testif_fn fn)
+                             voluta_chr_testif_fn fn)
 {
 	return substr_find_if(ss, fn, 1);
 }
 
 size_t voluta_substr_find_if_not(const struct voluta_substr *ss,
-				 voluta_chr_testif_fn fn)
+                                 voluta_chr_testif_fn fn)
 {
 	return substr_find_if(ss, fn, 0);
 }
@@ -1758,7 +1758,7 @@ size_t voluta_substr_find_if_not(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static size_t substr_rfind_if(const struct voluta_substr *ss,
-			      voluta_chr_testif_fn fn, bool c)
+                              voluta_chr_testif_fn fn, bool c)
 {
 	const char *p = substr_end(ss);
 	const char *q = substr_begin(ss);
@@ -1772,13 +1772,13 @@ static size_t substr_rfind_if(const struct voluta_substr *ss,
 }
 
 size_t voluta_substr_rfind_if(const struct voluta_substr *ss,
-			      voluta_chr_testif_fn fn)
+                              voluta_chr_testif_fn fn)
 {
 	return substr_rfind_if(ss, fn, true);
 }
 
 size_t voluta_substr_rfind_if_not(const struct voluta_substr *ss,
-				  voluta_chr_testif_fn fn)
+                                  voluta_chr_testif_fn fn)
 {
 	return substr_rfind_if(ss, fn, false);
 }
@@ -1786,7 +1786,7 @@ size_t voluta_substr_rfind_if_not(const struct voluta_substr *ss,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 size_t voluta_substr_count_if(const struct voluta_substr *ss,
-			      voluta_chr_testif_fn fn)
+                              voluta_chr_testif_fn fn)
 {
 	size_t cnt = 0;
 	const char *p = substr_begin(ss);
@@ -1801,7 +1801,7 @@ size_t voluta_substr_count_if(const struct voluta_substr *ss,
 }
 
 bool voluta_substr_test_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn)
+                           voluta_chr_testif_fn fn)
 {
 	const char *p = substr_begin(ss);
 	const char *q = substr_end(ss);
@@ -1815,8 +1815,8 @@ bool voluta_substr_test_if(const struct voluta_substr *ss,
 }
 
 void voluta_substr_trim_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn,
-			   struct voluta_substr *out_ss)
+                           voluta_chr_testif_fn fn,
+                           struct voluta_substr *out_ss)
 {
 	size_t pos;
 	const size_t sz = substr_size(ss);
@@ -1826,8 +1826,8 @@ void voluta_substr_trim_if(const struct voluta_substr *ss,
 }
 
 void voluta_substr_chop_if(const struct voluta_substr *ss,
-			   voluta_chr_testif_fn fn,
-			   struct voluta_substr *out_ss)
+                           voluta_chr_testif_fn fn,
+                           struct voluta_substr *out_ss)
 {
 	size_t pos;
 	const size_t sz = substr_size(ss);
@@ -1837,8 +1837,8 @@ void voluta_substr_chop_if(const struct voluta_substr *ss,
 }
 
 void voluta_substr_strip_if(const struct voluta_substr *ss,
-			    voluta_chr_testif_fn fn,
-			    struct voluta_substr *out_ss)
+                            voluta_chr_testif_fn fn,
+                            struct voluta_substr *out_ss)
 {
 	struct voluta_substr sub;
 

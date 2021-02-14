@@ -58,7 +58,7 @@ static void ut_create_unlink_simple(struct ut_env *ute)
 }
 
 static const char *ut_link_name(struct ut_env *ute,
-				const char *prefix, unsigned long i)
+                                const char *prefix, unsigned long i)
 {
 	return ut_strfmt(ute, "%s%lu", prefix, i);
 }
@@ -158,7 +158,7 @@ static void ut_link_similar_names(struct ut_env *ute)
 	const char *name = UT_NAME;
 	const char *lname;
 	const char *abc = "abcdefghijklmnopqrstuvwxyz" \
-			  "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const size_t abc_len = strlen(abc);
 	const size_t name_max = UT_NAME_MAX;
 
@@ -251,7 +251,7 @@ static void ut_inode_special(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_expect_eq_tsx(const struct statx_timestamp *stx_ts,
-			     const struct timespec *st_ts)
+                             const struct timespec *st_ts)
 {
 	ut_expect_eq(stx_ts->tv_sec, st_ts->tv_sec);
 	ut_expect_eq(stx_ts->tv_nsec, st_ts->tv_nsec);

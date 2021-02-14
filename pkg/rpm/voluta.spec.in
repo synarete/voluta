@@ -1,20 +1,14 @@
-Summary: Voluta
 Name: voluta
+Summary: A File-System Vault
 Version: @VERSION@
 Release: @RELEASE@.@REVISION@%{?dist}
 License: GPLv3
 Group: Development/Tools
-URL: https://voluta.org
+URL: https://synarete.github.io/voluta
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}.%{_arch}
-Requires: libcap
-Requires: libuuid
-Requires: libunwind
-Requires: libgcrypt
-Requires: python3
 
 %{?systemd_requires}
-%define docrootdir %{buildroot}/%{_docdir}/%{name}-%{version}
 
 %description
 Voluta: an encrypted data vault.
@@ -30,15 +24,14 @@ Requires: libunwind-devel
 %description devel
 Development files for voluta
 
-
 %prep
 %setup -q
 
 %build
-%configure --docdir=%{docrootdir}
+%configure
 %{__make}
 
-# TODO: Have fast-check by default, and '--full' for developer
+# TODO: Have fast-check by default
 # %check
 # %{__make} check
 
@@ -51,8 +44,9 @@ Development files for voluta
 %files
 %defattr(-, root, root)
 %{_bindir}/%{name}
-%{_bindir}/%{name}-vfstest
+%{_bindir}/%{name}-fstests
 %{_sbindir}/%{name}-mountd
+%{_sbindir}/*.%{name}
 %exclude %{_bindir}/%{name}-unitest
 %exclude %{_libdir}/lib%{name}*.la
 %config(noreplace) %{_sysconfdir}/%{name}/*.conf
@@ -60,6 +54,7 @@ Development files for voluta
 %{_mandir}/man8/%{name}-*.8*
 %{_datarootdir}/bash-completion/completions/%{name}
 %{_unitdir}/%{name}-mountd.service
+%{_docdir}/%{name}/*
 
 %files devel
 %defattr(-, root, root)
@@ -78,7 +73,7 @@ Development files for voluta
 %systemd_postun_with_restart %{name}-mountd.service
 
 %changelog
-* @RPMDATE@ Voluta <synarete@xxxxxxxx> @VERSION@-@RELEASE@
+* @RPMDATE@ Voluta <synarete@xxxxxxxx> @VERSION@-@RELEASE@.@REVISION@
 - Release @REVISION@
 
 

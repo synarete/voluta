@@ -181,7 +181,7 @@ static void ut_file_iosize_max(struct ut_env *ute)
 	ut_file_data_(ute, UT_TERA, UT_IOSIZE_MAX);
 	ut_file_data_(ute, UT_TERA - 1, UT_IOSIZE_MAX);
 	ut_file_data_(ute, UT_FSIZE_MAX - UT_IOSIZE_MAX - 1,
-		      UT_IOSIZE_MAX);
+	              UT_IOSIZE_MAX);
 	ut_file_data_(ute, UT_FSIZE_MAX - UT_IOSIZE_MAX, UT_IOSIZE_MAX);
 }
 
@@ -223,7 +223,7 @@ static void ut_file_unlinked(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_multi_(struct ut_env *ute, size_t bsz,
-			   loff_t off1, loff_t off2, loff_t off3, loff_t off4)
+                           loff_t off1, loff_t off2, loff_t off3, loff_t off4)
 {
 	ino_t ino;
 	ino_t dino;
@@ -253,9 +253,9 @@ static void ut_file_multi(struct ut_env *ute)
 {
 	ut_file_multi_(ute, UT_BK_SIZE, 0, UT_BK_SIZE, UT_MEGA, UT_GIGA);
 	ut_file_multi_(ute, UT_BK_SIZE,
-		       UT_BK_SIZE, UT_MEGA, UT_GIGA, UT_TERA);
+	               UT_BK_SIZE, UT_MEGA, UT_GIGA, UT_TERA);
 	ut_file_multi_(ute, UT_BK_SIZE,
-		       UT_MEGA, UT_BK_SIZE, UT_TERA, UT_GIGA);
+	               UT_MEGA, UT_BK_SIZE, UT_TERA, UT_GIGA);
 }
 
 static void ut_file_tricky(struct ut_env *ute)
@@ -277,7 +277,7 @@ static void ut_file_tricky(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_overwrite_simple_(struct ut_env *ute,
-				      loff_t off, size_t bsz)
+                                      loff_t off, size_t bsz)
 {
 	ino_t ino;
 	const ino_t root_ino = UT_ROOT_INO;
@@ -315,7 +315,7 @@ static void ut_file_overwrite_simple(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_overwrite_complex_(struct ut_env *ute,
-				       loff_t off1, loff_t off2, size_t bsz)
+                                       loff_t off1, loff_t off2, size_t bsz)
 {
 	ino_t ino;
 	const ino_t root_ino = UT_ROOT_INO;
@@ -349,17 +349,17 @@ static void ut_file_overwrite_complex(struct ut_env *ute)
 	ut_file_overwrite_complex_(ute, 0, 1, UT_BK_SIZE);
 	ut_file_overwrite_complex_(ute, 1, 2, UT_UMEGA);
 	ut_file_overwrite_complex_(ute, UT_MEGA,
-				   UT_MEGA + UT_BK_SIZE, UT_UMEGA);
+	                           UT_MEGA + UT_BK_SIZE, UT_UMEGA);
 	ut_file_overwrite_complex_(ute, UT_MEGA - 7, UT_MEGA - 5,
-				   (11 * UT_BK_SIZE) + 11);
+	                           (11 * UT_BK_SIZE) + 11);
 	ut_file_overwrite_complex_(ute, UT_GIGA,
-				   UT_GIGA + UT_BK_SIZE, UT_UMEGA);
+	                           UT_GIGA + UT_BK_SIZE, UT_UMEGA);
 	ut_file_overwrite_complex_(ute, UT_GIGA - 11111,
-				   UT_GIGA - 111, UT_BK_SIZE + 11111);
+	                           UT_GIGA - 111, UT_BK_SIZE + 11111);
 	ut_file_overwrite_complex_(ute, UT_TERA,
-				   UT_TERA + UT_BK_SIZE, UT_UMEGA);
+	                           UT_TERA + UT_BK_SIZE, UT_UMEGA);
 	ut_file_overwrite_complex_(ute, UT_TERA - 111111,
-				   UT_TERA - 111, UT_UMEGA + 11);
+	                           UT_TERA - 111, UT_UMEGA + 11);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -404,7 +404,7 @@ static void ut_file_sequence(struct ut_env *ute)
 	ut_file_sequence_(ute, UT_TERA - 11, UT_BK_SIZE + 1111);
 	ut_file_sequence_(ute, UT_TERA - 11, UT_UMEGA + 1111);
 	ut_file_sequence_(ute, UT_TERA + 111,
-			  (11 * UT_BK_SIZE) + 11);
+	                  (11 * UT_BK_SIZE) + 11);
 	ut_file_sequence_(ute, UT_FSIZE_MAX / 2 - 1, UT_UMEGA + 1);
 }
 
@@ -421,7 +421,7 @@ static void ut_file_sequence_at_end(struct ut_env *ute)
 
 	ut_file_sequence_(ute, fsize_max - UT_BK_SIZE, UT_BK_SIZE);
 	ut_file_sequence_(ute, fsize_max - (3 * UT_BK_SIZE) - 1,
-			  2 * UT_BK_SIZE);
+	                  2 * UT_BK_SIZE);
 	ut_file_sequence_(ute, fsize_max - (5 * UT_MEGA) - 5, 4 * UT_UMEGA);
 }
 
@@ -457,7 +457,7 @@ static struct ut_urecord *new_urecord(struct ut_env *ute, uint64_t num)
 }
 
 static void ut_file_unaligned_(struct ut_env *ute,
-			       loff_t base, size_t len)
+                               loff_t base, size_t len)
 {
 	loff_t off = -1;
 	ino_t ino = 0;
@@ -612,7 +612,7 @@ static void ut_file_zigzag(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_with_hole_(struct ut_env *ute,
-			       loff_t off1, loff_t off2, size_t len)
+                               loff_t off1, loff_t off2, size_t len)
 {
 	ino_t ino;
 	const char *name = UT_NAME;
@@ -645,17 +645,17 @@ static void ut_file_with_hole(struct ut_env *ute)
 	ut_file_with_hole_(ute, 1, UT_MEGA - 1, UT_BK_SIZE);
 	ut_file_with_hole_(ute, 2, 2 * UT_MEGA - 2, UT_UMEGA);
 	ut_file_with_hole_(ute, UT_MEGA + 1,
-			   UT_MEGA + UT_BK_SIZE + 2, UT_BK_SIZE);
+	                   UT_MEGA + UT_BK_SIZE + 2, UT_BK_SIZE);
 	ut_file_with_hole_(ute, 0, UT_GIGA, UT_UMEGA);
 	ut_file_with_hole_(ute, 1, UT_GIGA - 1, UT_UMEGA);
 	ut_file_with_hole_(ute, 2, 2 * UT_GIGA - 2, 2 * UT_UMEGA);
 	ut_file_with_hole_(ute, UT_GIGA + 1,
-			   UT_GIGA + UT_MEGA + 2, UT_UMEGA);
+	                   UT_GIGA + UT_MEGA + 2, UT_UMEGA);
 	ut_file_with_hole_(ute, 0, UT_TERA, UT_UMEGA);
 	ut_file_with_hole_(ute, 1, UT_TERA - 1, UT_UMEGA);
 	ut_file_with_hole_(ute, 2, 2 * UT_TERA - 2, UT_UMEGA);
 	ut_file_with_hole_(ute, UT_TERA + 1,
-			   UT_TERA + UT_MEGA + 2, UT_UMEGA);
+	                   UT_TERA + UT_MEGA + 2, UT_UMEGA);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

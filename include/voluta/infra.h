@@ -83,4 +83,6 @@ void voluta_getentropy(void *buf, size_t len);
 
 uint32_t voluta_getentropy32(void);
 
+uint64_t voluta_getentropy64(void);
+
 #endif /* VOLUTA_INFRA_H_ */

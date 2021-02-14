@@ -876,8 +876,6 @@ int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size);
 /* crypto */
 int voluta_init_gcrypt(void);
 
-void voluta_fill_random(void *buf, size_t len, bool very_strong);
-
 void voluta_fill_random_ascii(char *str, size_t len);
 
 int voluta_crypto_init(struct voluta_crypto *crypto);
@@ -938,7 +936,8 @@ void voluta_kivam_setup_n(struct voluta_kivam *kivam, size_t n);
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 			 struct voluta_kivam *other);
 
-void voluta_kivam_xor_iv(struct voluta_kivam *kivam, uint32_t seed);
+void voluta_kivam_xor_iv(struct voluta_kivam *kivam,
+			 loff_t off, uint64_t seed);
 
 /* cache */
 int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool);

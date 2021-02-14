@@ -133,14 +133,14 @@ static size_t safe_sum(size_t cur, ssize_t dif)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static uint32_t agr_seed(const struct voluta_ag_rec *agr)
+static uint64_t agr_seed(const struct voluta_ag_rec *agr)
 {
-	return le32_to_cpu(agr->ag_seed);
+	return le64_to_cpu(agr->ag_seed);
 }
 
-static void agr_set_seed(struct voluta_ag_rec *agr, uint32_t s)
+static void agr_set_seed(struct voluta_ag_rec *agr, uint64_t s)
 {
-	agr->ag_seed = cpu_to_le32(s);
+	agr->ag_seed = cpu_to_le64(s);
 }
 
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
@@ -265,7 +265,7 @@ static void agr_init(struct voluta_ag_rec *agr)
 	agr_set_used_data(agr, 0);
 	agr_set_nfiles(agr, 0);
 	agr_set_flags(agr, 0);
-	agr_set_seed(agr, voluta_getentropy32());
+	agr_set_seed(agr, voluta_getentropy64());
 }
 
 static void agr_initn(struct voluta_ag_rec *agr, size_t n)
@@ -633,7 +633,7 @@ hsm_kivam_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 	return &hsm->hs_keys.k[k_slot];
 }
 
-static uint32_t
+static uint64_t
 hsm_seed_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 {
 	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
@@ -700,14 +700,14 @@ static bool bkr_has_vtype_or_none(const struct voluta_bk_rec *bkr,
 	return vtype_isnone(vt) || vtype_isequal(vt, vtype);
 }
 
-static uint32_t bkr_seed(const struct voluta_bk_rec *bkr)
+static uint64_t bkr_seed(const struct voluta_bk_rec *bkr)
 {
-	return le32_to_cpu(bkr->bk_seed);
+	return le64_to_cpu(bkr->bk_seed);
 }
 
-static void bkr_set_seed(struct voluta_bk_rec *bkr, uint32_t s)
+static void bkr_set_seed(struct voluta_bk_rec *bkr, uint64_t s)
 {
-	bkr->bk_seed = cpu_to_le32(s);
+	bkr->bk_seed = cpu_to_le64(s);
 }
 
 static void bkr_set_flags(struct voluta_bk_rec *bkr, uint32_t f)
@@ -850,7 +850,7 @@ static void bkr_clear_unwritten_at(struct voluta_bk_rec *bkr,
 static void bkr_init(struct voluta_bk_rec *bkr)
 {
 	bkr_set_vtype(bkr, VOLUTA_VTYPE_NONE);
-	bkr_set_seed(bkr, voluta_getentropy32());
+	bkr_set_seed(bkr, voluta_getentropy64());
 	bkr_set_refcnt(bkr, 0);
 	bkr_set_flags(bkr, 0);
 	bkr_set_allocated(bkr, 0);
@@ -1172,7 +1172,7 @@ agm_kivam_of(const struct voluta_agroup_map *agm, loff_t lba)
 	return &agm->ag_keys.k[k_slot];
 }
 
-static uint32_t agm_seed_of(const struct voluta_agroup_map *agm, loff_t lba)
+static uint64_t agm_seed_of(const struct voluta_agroup_map *agm, loff_t lba)
 {
 	const struct voluta_bk_rec *bkr = agm_bkr_by_lba(agm, lba);
 
@@ -3809,13 +3809,15 @@ static void kivam_of_hsmap(const struct voluta_vnode_info *vi,
 	hs_index = vaddr_hs_index(vaddr);
 	kivam = voluta_sb_kivam_of(sb, hs_index);
 	voluta_kivam_copyto(kivam, out_kivam);
+
+	voluta_kivam_xor_iv(out_kivam, vaddr->off, 0);
 }
 
 static void kivam_of_agmap(const struct voluta_vnode_info *vi,
 			   struct voluta_kivam *out_kivam)
 {
 	size_t ag_index;
-	uint32_t ag_seed;
+	uint64_t ag_seed;
 	const struct voluta_kivam *kivam;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 	const struct voluta_hspace_map *hsm = vi->v_pvi->vu.hsm;
@@ -3825,14 +3827,14 @@ static void kivam_of_agmap(const struct voluta_vnode_info *vi,
 	voluta_kivam_copyto(kivam, out_kivam);
 
 	ag_seed = hsm_seed_of(hsm, ag_index);
-	voluta_kivam_xor_iv(out_kivam, ag_seed);
+	voluta_kivam_xor_iv(out_kivam, vaddr->off, ag_seed);
 }
 
 static void kivam_of_normal(const struct voluta_vnode_info *vi,
 			    struct voluta_kivam *out_kivam)
 {
 	loff_t lba;
-	uint32_t bk_seed;
+	uint64_t bk_seed;
 	const struct voluta_kivam *kivam;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 	const struct voluta_agroup_map *agm = vi->v_pvi->vu.agm;
@@ -3842,7 +3844,7 @@ static void kivam_of_normal(const struct voluta_vnode_info *vi,
 	voluta_kivam_copyto(kivam, out_kivam);
 
 	bk_seed = agm_seed_of(agm, lba);
-	voluta_kivam_xor_iv(out_kivam, bk_seed);
+	voluta_kivam_xor_iv(out_kivam, vaddr->off, bk_seed);
 }
 
 void voluta_kivam_of(const struct voluta_vnode_info *vi,

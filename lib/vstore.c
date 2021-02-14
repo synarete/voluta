@@ -611,7 +611,7 @@ vi_cipher(const struct voluta_vnode_info *vi)
 static int encrypt_vnode(const struct voluta_vnode_info *vi,
 			 const struct voluta_cipher *cipher, void *buf)
 {
-	struct voluta_kivam kivam;
+	struct voluta_kivam kivam = { .reserved = 0 };
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
 	voluta_kivam_of(vi, &kivam);

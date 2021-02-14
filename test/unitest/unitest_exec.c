@@ -254,7 +254,7 @@ static void ut_removepath(char **path)
 	*path = NULL;
 }
 
-static const char *ut_make_passphrase(struct voluta_passphrase *pp)
+static const char *ut_make_passwd(struct voluta_passphrase *pp)
 {
 	voluta_memzero(pp, sizeof(*pp));
 
@@ -316,13 +316,12 @@ void ut_execute_tests(void)
 	args.ar_args.volume = volpath;
 	args.ar_args.blobsdir = testdir;
 
-	args.fs_args.passwd = args.ar_args.passwd =
-				      ut_make_passphrase(&passph);
-	args.fs_args.encrypted = args.fs_args.encryptwr = false;
+	args.fs_args.passwd = args.ar_args.passwd = ut_make_passwd(&passph);
+	args.fs_args.encrypted = args.fs_args.encryptwr = true;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 
-	args.fs_args.encrypted = args.fs_args.encryptwr = true;
+	args.fs_args.encrypted = args.fs_args.encryptwr = false;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 

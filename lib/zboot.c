@@ -282,7 +282,7 @@ int voluta_zb_check(const struct voluta_zero_block4 *zb)
 
 static void rb_fill_random(struct voluta_rand_block4 *rb)
 {
-	voluta_fill_random(rb->r_fill, sizeof(rb->r_fill), false);
+	voluta_getentropy(rb->r_fill, sizeof(rb->r_fill));
 }
 
 static void rb_calc_hash(const struct voluta_rand_block4 *rb,

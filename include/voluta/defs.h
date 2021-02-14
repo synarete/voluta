@@ -563,11 +563,11 @@ struct voluta_header {
 
 struct voluta_ag_rec {
 	uint32_t                ag_flags;
-	uint32_t                ag_seed;
+	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint32_t                ag_nfiles;
-	uint8_t                 ag_reserved[36];
+	uint8_t                 ag_reserved[32];
+	uint64_t                ag_seed;
 } voluta_packed_aligned8;
 
 
@@ -589,11 +589,15 @@ struct voluta_bk_rec {
 	uint8_t                 bk_vtype;
 	uint8_t                 bk_reserved1[3];
 	uint32_t                bk_flags;
-	uint32_t                bk_refcnt;
-	uint32_t                bk_seed;
 	uint64_t                bk_allocated;
 	uint64_t                bk_unwritten;
-	uint8_t                 bk_reserved2[22];
+	uint32_t                bk_refcnt;
+	uint32_t                bk_reserved2;
+	uint32_t                bk_reserved3;
+	uint32_t                bk_reserved4;
+	uint32_t                bk_reserved5;
+	uint32_t                bk_reserved6;
+	uint64_t                bk_seed;
 } voluta_packed_aligned8;
 
 

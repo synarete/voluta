@@ -236,6 +236,20 @@ static void cipher_fini(struct voluta_cipher *ci)
 	}
 }
 
+static int chiper_verify(const struct voluta_cipher *ci,
+			 const struct voluta_kivam *kivam)
+{
+	const int algo = (int)(kivam->cipher_algo);
+	const int mode = (int)(kivam->cipher_mode);
+
+	voluta_unused(ci);
+	if ((algo != GCRY_CIPHER_AES256) || (mode != GCRY_CIPHER_MODE_GCM)) {
+		log_warn("illegal chipher-algo-mode: %d", algo, mode);
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
 static int cipher_prepare(const struct voluta_cipher *ci,
 			  const struct voluta_kivam *kivam)
 {
@@ -244,12 +258,10 @@ static int cipher_prepare(const struct voluta_cipher *ci,
 	const struct voluta_iv *iv = &kivam->iv;
 	const struct voluta_key *key = &kivam->key;
 
-	/* TODO: use cipher with matching algo/mode to kivam */
-
-	blklen = gcry_cipher_get_algo_blklen(GCRY_CIPHER_AES256);
+	blklen = gcry_cipher_get_algo_blklen((int)(kivam->cipher_algo));
 	if (blklen > sizeof(iv->iv)) {
 		log_warn("bad blklen: %lu", blklen);
-		return -1;
+		return -EINVAL;
 	}
 	err = gcry_cipher_reset(ci->cipher_hd);
 	if (err) {
@@ -313,6 +325,10 @@ int voluta_encrypt_buf(const struct voluta_cipher *ci,
 {
 	int err;
 
+	err = chiper_verify(ci, kivam);
+	if (err) {
+		return err;
+	}
 	err = cipher_prepare(ci, kivam);
 	if (err) {
 		return err;
@@ -330,6 +346,10 @@ int voluta_decrypt_buf(const struct voluta_cipher *ci,
 {
 	int err;
 
+	err = chiper_verify(ci, kivam);
+	if (err) {
+		return err;
+	}
 	err = cipher_prepare(ci, kivam);
 	if (err) {
 		return err;
@@ -466,7 +486,7 @@ out:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_fill_random(void *buf, size_t len, bool very_strong)
+static void do_randomize(void *buf, size_t len, bool very_strong)
 {
 	const enum gcry_random_level random_level =
 		very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
@@ -485,7 +505,7 @@ void voluta_fill_random_ascii(char *str, size_t len)
 	for (size_t i = 0; i < len; ++i) {
 		if (nrands == 0) {
 			nrands = ARRAY_SIZE(rands);
-			voluta_fill_random(rands, sizeof(rands), 0);
+			do_randomize(rands, sizeof(rands), false);
 		}
 		print_ch = (abs(rands[--nrands]) % (last - base)) + base;
 		str[i] = (char)print_ch;
@@ -523,20 +543,27 @@ void voluta_crypto_fini(struct voluta_crypto *crypto)
 
 static void iv_rand(struct voluta_iv *iv)
 {
-	voluta_getentropy(iv, sizeof(*iv));
+	do_randomize(iv, sizeof(*iv), false);
 }
 
-static void iv_xor_with(struct voluta_iv *iv, uint32_t r)
+static uint8_t octet_of(uint64_t r, int oct)
 {
-	iv->iv[0] ^= (uint8_t)(r & 0xFF);
-	iv->iv[1] ^= (uint8_t)((r >> 8) & 0xFF);
-	iv->iv[2] ^= (uint8_t)((r >> 16) & 0xFF);
-	iv->iv[3] ^= (uint8_t)((r >> 24) & 0xFF);
+	return (uint8_t)((r >> (8 * oct)) & 0xFF);
+}
+
+static void iv_xor_with(struct voluta_iv *iv, uint64_t r1, uint64_t r2)
+{
+	STATICASSERT_EQ(ARRAY_SIZE(iv->iv), 16);
+
+	for (int i = 0; i < 8; ++i) {
+		iv->iv[i] ^= octet_of(r1, i);
+		iv->iv[i + 8] ^= octet_of(r2, i);
+	}
 }
 
 static void key_rand(struct voluta_key *key)
 {
-	voluta_getentropy(key, sizeof(*key));
+	do_randomize(key, sizeof(*key), true);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -583,7 +610,7 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 	memcpy(other, kivam, sizeof(*other));
 }
 
-void voluta_kivam_xor_iv(struct voluta_kivam *kivam, uint32_t seed)
+void voluta_kivam_xor_iv(struct voluta_kivam *kivam, loff_t off, uint64_t seed)
 {
-	iv_xor_with(&kivam->iv, seed);
+	iv_xor_with(&kivam->iv, (uint64_t)off, seed);
 }

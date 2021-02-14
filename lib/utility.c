@@ -245,6 +245,14 @@ uint32_t voluta_getentropy32(void)
 	return r;
 }
 
+uint64_t voluta_getentropy64(void)
+{
+	uint64_t r;
+
+	do_getentropy(&r, sizeof(r));
+	return r;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* memory utilities */
 static size_t size_to_page_up(size_t sz)

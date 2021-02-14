@@ -34,6 +34,7 @@ run which aclocal
 run which automake
 run which libtoolize
 run which rst2man
+run which rst2html
 run which basename
 run which rpmbuild
 

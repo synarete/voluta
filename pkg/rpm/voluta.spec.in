@@ -14,7 +14,6 @@ Requires: libgcrypt
 Requires: python3
 
 %{?systemd_requires}
-%define docrootdir %{buildroot}/%{_docdir}/%{name}-%{version}
 
 %description
 Voluta: an encrypted data vault.
@@ -35,7 +34,7 @@ Development files for voluta
 %setup -q
 
 %build
-%configure --docdir=%{docrootdir}
+%configure
 %{__make}
 
 # TODO: Have fast-check by default, and '--full' for developer
@@ -60,6 +59,7 @@ Development files for voluta
 %{_mandir}/man8/%{name}-*.8*
 %{_datarootdir}/bash-completion/completions/%{name}
 %{_unitdir}/%{name}-mountd.service
+%{_docdir}/%{name}/*
 
 %files devel
 %defattr(-, root, root)

@@ -45,7 +45,7 @@ Still a work-in-progress. Do not use in production.
 SEE ALSO
 ========
 
-**voluta**\(1) **mount**\(8)
+**voluta**\(1), **fusermount3**\(1), **mount**\(8)
 
 ..
 

@@ -405,8 +405,7 @@ static void test_rename_move(struct vt_env *vte)
  * Test rename(3p) between two directories with implicit truncate-unlink of
  * target.
  */
-static void test_rename_override_(struct vt_env *vte,
-				  size_t cnt, size_t bsz)
+static void test_rename_override_(struct vt_env *vte, size_t cnt, size_t bsz)
 {
 	int fd = -1;
 	char *src_path1 = NULL;

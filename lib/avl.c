@@ -165,8 +165,8 @@ bst_predecessor(const struct voluta_avl_node *x)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bst_rotate_left(struct voluta_avl_node *x,
-			    struct voluta_avl_node **root)
+static void
+bst_rotate_left(struct voluta_avl_node *x, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->right;
 
@@ -186,8 +186,8 @@ static void bst_rotate_left(struct voluta_avl_node *x,
 	x->parent = y;
 }
 
-static void bst_rotate_right(struct voluta_avl_node *x,
-			     struct voluta_avl_node **root)
+static void
+bst_rotate_right(struct voluta_avl_node *x, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *y = x->left;
 
@@ -207,8 +207,8 @@ static void bst_rotate_right(struct voluta_avl_node *x,
 	x->parent = y;
 }
 
-static void bst_rotate_left_right(struct voluta_avl_node *a,
-				  struct voluta_avl_node **root)
+static void
+bst_rotate_left_right(struct voluta_avl_node *a, struct voluta_avl_node **root)
 {
 	struct voluta_avl_node *b = a->left;
 	struct voluta_avl_node *c = b->right;

@@ -173,14 +173,20 @@
 /* bits-shift of single file-mapping address-space */
 #define VOLUTA_FILE_MAP_SHIFT           (10)
 
-/* file's level1 head-mapping block-sizes (4K) */
-#define VOLUTA_FILE_HEAD_LEAF_SIZE      (4 * VOLUTA_KB_SIZE)
+/* file's level1 head-mapping block-sizes (1K) */
+#define VOLUTA_FILE_HEAD1_LEAF_SIZE     (VOLUTA_KB_SIZE)
+
+/* number of 1K leaves in regular-file's head mapping */
+#define VOLUTA_FILE_HEAD1_NLEAVES       (4)
+
+/* file's level2 head-mapping block-sizes (4K) */
+#define VOLUTA_FILE_HEAD2_LEAF_SIZE     (4 * VOLUTA_KB_SIZE)
+
+/* number of 4K leaves in regular-file's head mapping */
+#define VOLUTA_FILE_HEAD2_NLEAVES       (15)
 
 /* file's tree-mapping block-sizes */
 #define VOLUTA_FILE_TREE_LEAF_SIZE      VOLUTA_BK_SIZE
-
-/* number of 4K leaves in regular-file's head mapping */
-#define VOLUTA_FILE_HEAD_NLEAVES        (16)
 
 /* number of mapping-slots per single file tree node */
 #define VOLUTA_FILE_TREE_NCHILDS        (1LL << VOLUTA_FILE_MAP_SHIFT)
@@ -293,6 +299,7 @@ enum voluta_endianness {
 /* file-system elements types */
 enum voluta_vtype {
 	VOLUTA_VTYPE_NONE       = 0,
+	VOLUTA_VTYPE_DATA1K     = 1,
 	VOLUTA_VTYPE_DATA4K     = 4,
 	VOLUTA_VTYPE_HSMAP      = 5,
 	VOLUTA_VTYPE_AGMAP      = 7,
@@ -665,9 +672,10 @@ struct voluta_xattr_node {
 
 
 struct voluta_reg_ispec {
+	struct voluta_vaddr64   r_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
+	struct voluta_vaddr64   r_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
 	struct voluta_vaddr64   r_tree_root;
-	struct voluta_vaddr64   r_head_leaf[VOLUTA_FILE_HEAD_NLEAVES];
-	uint8_t                 r_reserved[376];
+	uint8_t                 r_reserved[352];
 } voluta_packed_aligned8;
 
 
@@ -760,6 +768,12 @@ struct voluta_dir_htnode {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+/* 1K data block */
+struct voluta_data_block1 {
+	uint8_t dat[VOLUTA_KB_SIZE];
+} voluta_packed_aligned64;
+
+
 /* 4K data block */
 struct voluta_data_block4 {
 	uint8_t dat[4 * VOLUTA_KB_SIZE];
@@ -799,6 +813,7 @@ union voluta_view_u {
 	struct voluta_xattr_node        xan;
 	struct voluta_lnk_value         lnv;
 	struct voluta_itable_tnode      itn;
+	struct voluta_data_block1       db1;
 	struct voluta_data_block4       db4;
 	struct voluta_data_block        db;
 } voluta_packed_aligned64;

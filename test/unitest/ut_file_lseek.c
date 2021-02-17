@@ -113,7 +113,8 @@ static void ut_file_lseek_sparse_(struct ut_env *ute,
 	loff_t off_data;
 	loff_t off_hole;
 	loff_t off_next;
-	const loff_t head_lsize = VOLUTA_FILE_HEAD_LEAF_SIZE;
+	const loff_t head1_lsize = VOLUTA_FILE_HEAD1_LEAF_SIZE;
+	const loff_t head2_lsize = VOLUTA_FILE_HEAD2_LEAF_SIZE;
 	const loff_t tree_lsize = VOLUTA_FILE_TREE_LEAF_SIZE;
 	const char *name = UT_NAME;
 
@@ -132,8 +133,13 @@ static void ut_file_lseek_sparse_(struct ut_env *ute,
 		ut_expect_eq(off_data, off);
 		ut_lseek_hole(ute, ino, off, &off_hole);
 
-		off_next = (off_data < tree_lsize) ?
-			   (off_data + head_lsize) : (off_data + tree_lsize);
+		if (off_data < head2_lsize) {
+			off_next = off_data + head1_lsize;
+		} else if (off_data < tree_lsize) {
+			off_next = off_data + head2_lsize;
+		} else {
+			off_next = off_data + tree_lsize;
+		}
 		ut_expect_le(off_hole, off_next); /* FIXME  calc exact value */
 
 		off_next = off + step;

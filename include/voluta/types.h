@@ -267,6 +267,7 @@ union voluta_vnode_u {
 	struct voluta_dir_htnode        *htn;
 	struct voluta_xattr_node        *xan;
 	struct voluta_lnk_value         *lnv;
+	struct voluta_data_block1       *db1;
 	struct voluta_data_block4       *db4;
 	struct voluta_data_block        *db;
 	void *p;

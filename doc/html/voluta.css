@@ -1,17 +1,23 @@
+/*
+ * voluta.css
+ *
+ * Voluta's stylesheet for rst2html
+ *
+ * :copyright: Copyright 2021, Shachar Sharon
+ * :license: CC0
+ *
+ */
 
-/* used to remove borders from tables and images */
+
 .borderless, table.borderless td, table.borderless th {
   border: 0
 }
 
 table.borderless td, table.borderless th {
-  /* Override padding for "table.docutils td" with "! important".
-     The right padding separates the table cells. */
   padding: 0 0.5em 0 0 ! important
 }
 
 .first {
-  /* Override more specific margin styles with "! important". */
   margin-top: 0 ! important
 }
 
@@ -45,15 +51,11 @@ blockquote.epigraph {
 body {
   font-family: Georgia, serif-serif;
   line-height: 120%;
-  font-size: 110%;
+  font-size: 120%;
   background-color: #fff;
   color: #000;
   margin: 1em;
   padding: 1em;
-  /*
-  border: solid grey;
-  border-width: thin;
-  */
 }
 
 dl.docutils dd {

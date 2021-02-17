@@ -49,7 +49,7 @@
 #endif
 
 #define VOLUTA_IO_NBK_MAX \
-	(VOLUTA_FILE_HEAD_NLEAVES + (VOLUTA_IO_SIZE_MAX / VOLUTA_BK_SIZE))
+	(VOLUTA_FILE_HEAD2_NLEAVES + (VOLUTA_IO_SIZE_MAX / VOLUTA_BK_SIZE))
 
 
 #define VOLUTA_CMD_TAIL_MAX \
@@ -57,7 +57,7 @@
 #define VOLUTA_CMD_FORGET_ONE_MAX \
 	(VOLUTA_CMD_TAIL_MAX / sizeof(struct fuse_forget_one))
 
-
+/* internal special error-codes */
 #define FUSEQ_ENORX     (10001)
 #define FUSEQ_ENOTX     (10101)
 

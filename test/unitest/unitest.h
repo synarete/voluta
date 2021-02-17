@@ -497,7 +497,7 @@ void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
 #define UT_ARRAY_SIZE(x)        VOLUTA_ARRAY_SIZE(x)
 #define UT_NAME_MAX             VOLUTA_NAME_MAX
 #define UT_KB_SIZE              VOLUTA_KB_SIZE
-#define UT_4K_SIZE              VOLUTA_FILE_HEAD_LEAF_SIZE
+#define UT_4K_SIZE              VOLUTA_FILE_HEAD2_LEAF_SIZE
 #define UT_8K_SIZE              (2 * UT_4K_SIZE)
 #define UT_BK_SIZE              VOLUTA_BK_SIZE
 #define UT_FSIZE_MAX            VOLUTA_FILE_SIZE_MAX

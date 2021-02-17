@@ -133,7 +133,7 @@ static void ut_track_test(struct ut_env *ute,
 	struct timespec dur;
 
 	if (pre_execute) {
-		fprintf(fp, "  %-32s", td->name);
+		fprintf(fp, "  %-40s", td->name);
 		voluta_mclock_now(&ute->ts_start);
 	} else {
 		voluta_mclock_dur(&ute->ts_start, &dur);

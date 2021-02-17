@@ -245,8 +245,8 @@ static void ut_file_fallocate_punch_hole(struct ut_env *ute)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void ut_file_fallocate_punch_hole2_(struct ut_env *ute,
-		loff_t off, size_t bsz)
+static void
+ut_file_fallocate_punch_hole2_(struct ut_env *ute, loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -277,6 +277,47 @@ static void ut_file_fallocate_punch_hole2(struct ut_env *ute)
 	ut_file_fallocate_punch_hole2_(ute, UT_MEGA - 11, UT_UMEGA + 111);
 	ut_file_fallocate_punch_hole2_(ute, UT_GIGA - 111, UT_UMEGA + 11);
 	ut_file_fallocate_punch_hole2_(ute, UT_TERA - 1111, UT_UMEGA + 1);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void
+ut_file_fallocate_punch_hole_sparse_(struct ut_env *ute,
+				     loff_t off_base, loff_t step, size_t cnt)
+{
+	ino_t ino;
+	ino_t dino;
+	loff_t off;
+	loff_t off_end;
+	const char *name = UT_NAME;
+	const loff_t bk_size = UT_BK_SIZE;
+
+	ut_mkdir_at_root(ute, name, &dino);
+	ut_create_file(ute, dino, name, &ino);
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_base + ((loff_t)i * step);
+		ut_write_read1(ute, ino, off);
+		off = off + (3 * bk_size);
+		ut_write_read1(ute, ino, off);
+		off = off_base + ((loff_t)(i + 1) * step);
+		ut_trunacate_file(ute, ino, off);
+		off_end = off;
+	}
+	ut_fallocate_punch_hole(ute, ino, off_base, off_end - off_base);
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_base + ((loff_t)i * step);
+		ut_read_zero(ute, ino, off);
+	}
+	ut_remove_file(ute, dino, name, ino);
+	ut_rmdir_at_root(ute, name);
+}
+
+static void ut_file_fallocate_punch_hole_sparse(struct ut_env *ute)
+{
+	ut_file_fallocate_punch_hole_sparse_(ute, 0, UT_MEGA, 111);
+	ut_file_fallocate_punch_hole_sparse_(ute, UT_GIGA, 11 * UT_GIGA, 111);
+	ut_file_fallocate_punch_hole_sparse_(ute, UT_TERA, 111 * UT_GIGA, 11);
+	/* TODO: non aligned ranges */
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -427,6 +468,7 @@ static const struct ut_testdef ut_local_tests[] = {
 	UT_DEFTEST(ut_file_fallocate_drop_caches),
 	UT_DEFTEST(ut_file_fallocate_punch_hole),
 	UT_DEFTEST(ut_file_fallocate_punch_hole2),
+	UT_DEFTEST(ut_file_fallocate_punch_hole_sparse),
 	UT_DEFTEST(ut_file_fallocate_stat),
 	UT_DEFTEST(ut_file_fallocate_sparse),
 };

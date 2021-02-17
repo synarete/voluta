@@ -127,7 +127,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_key, VOLUTA_KEY_SIZE);
 	REQUIRE_SIZEOF(struct voluta_kivam, 64);
 	REQUIRE_SIZEOF_4K(struct voluta_data_block4);
-	REQUIRE_SIZEOF(struct voluta_data_block4, VOLUTA_FILE_HEAD_LEAF_SIZE);
+	REQUIRE_SIZEOF(struct voluta_data_block4, VOLUTA_FILE_HEAD2_LEAF_SIZE);
 	REQUIRE_SIZEOF_KB(struct voluta_inode);
 	REQUIRE_SIZEOF_KB(struct voluta_lnk_value);
 	REQUIRE_SIZEOF_4K(struct voluta_meta_block4);
@@ -253,7 +253,12 @@ static void guarantee_defs_consistency(void)
 	REQUIRE_EQ(VOLUTA_HS_SIZE, 64 * VOLUTA_GIGA);
 	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MAX, 8 * VOLUTA_TERA);
 	REQUIRE_EQ(VOLUTA_AR_BLOB_SIZE, 16 * VOLUTA_MEGA);
-	REQUIRE_BK_SIZE(VOLUTA_FILE_HEAD_LEAF_SIZE * VOLUTA_FILE_HEAD_NLEAVES);
+
+	REQUIRE_EQ(VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES,
+		   VOLUTA_FILE_HEAD2_LEAF_SIZE);
+	REQUIRE_EQ((VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES) +
+		   (VOLUTA_FILE_HEAD2_LEAF_SIZE * VOLUTA_FILE_HEAD2_NLEAVES),
+		   VOLUTA_FILE_TREE_LEAF_SIZE);
 }
 
 static void guarantee_external_constants(void)

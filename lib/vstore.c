@@ -27,6 +27,7 @@ bool voluta_vtype_isubermap(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_AGMAP:
 		ret = true;
 		break;
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 	case VOLUTA_VTYPE_ITNODE:
@@ -48,6 +49,7 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	bool ret;
 
 	switch (vtype) {
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 		ret = true;
@@ -96,6 +98,9 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
 		sz = sizeof(struct voluta_lnk_value);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+		sz = sizeof(struct voluta_data_block1);
 		break;
 	case VOLUTA_VTYPE_DATA4K:
 		sz = sizeof(struct voluta_data_block4);
@@ -505,31 +510,44 @@ int voluta_verify_off(loff_t off)
 
 static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 {
+	int err;
+
 	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
-		return voluta_verify_uspace_map(&view->u.hsm);
+		err = voluta_verify_uspace_map(&view->u.hsm);
+		break;
 	case VOLUTA_VTYPE_AGMAP:
-		return voluta_verify_agroup_map(&view->u.agm);
+		err = voluta_verify_agroup_map(&view->u.agm);
+		break;
 	case VOLUTA_VTYPE_ITNODE:
-		return voluta_verify_itnode(&view->u.itn);
+		err = voluta_verify_itnode(&view->u.itn);
+		break;
 	case VOLUTA_VTYPE_INODE:
-		return voluta_verify_inode(&view->u.inode);
+		err = voluta_verify_inode(&view->u.inode);
+		break;
 	case VOLUTA_VTYPE_XANODE:
-		return voluta_verify_xattr_node(&view->u.xan);
+		err = voluta_verify_xattr_node(&view->u.xan);
+		break;
 	case VOLUTA_VTYPE_HTNODE:
-		return voluta_verify_dir_htree_node(&view->u.htn);
+		err = voluta_verify_dir_htree_node(&view->u.htn);
+		break;
 	case VOLUTA_VTYPE_RTNODE:
-		return voluta_verify_radix_tnode(&view->u.rtn);
+		err = voluta_verify_radix_tnode(&view->u.rtn);
+		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		return voluta_verify_lnk_value(&view->u.lnv);
+		err = voluta_verify_lnk_value(&view->u.lnv);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
-		return 0;
+		err = 0;
+		break;
 	case VOLUTA_VTYPE_NONE:
 	default:
+		err = -EFSCORRUPTED;
 		break;
 	}
-	return -EFSCORRUPTED;
+	return err;
 }
 
 static int verify_view(const struct voluta_view *view,

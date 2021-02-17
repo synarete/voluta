@@ -1637,7 +1637,6 @@ static int rename_replace(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_rename_replace(op, cur_dref, new_dref);
 	ii_decref(ii);
-
 	return err;
 }
 

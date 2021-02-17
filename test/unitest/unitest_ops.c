@@ -1043,7 +1043,6 @@ void ut_read_verify_str(struct ut_env *ute, ino_t ino,
 	ut_read_verify(ute, ino, str, strlen(str), off);
 }
 
-
 void ut_read_ok(struct ut_env *ute, ino_t ino,
 		void *buf, size_t bsz, loff_t off)
 {

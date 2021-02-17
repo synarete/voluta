@@ -5,13 +5,13 @@
 #
 # Usage examples:
 #
-#  $ ./makedevel.mk D=1 O=2 CC=clang
+#  $ ./devel.mk D=1 O=2 CC=clang
 #
-#  $ ./makedevel.mk V=1 clean
+#  $ ./devel.mk V=1 clean
 #
 # If you want to build in separate 'build' directory, try:
 #
-#  $ make -C <build-dir> VPATH=$(pwd) -f $(pwd)/makedevel.mk <make-rule>
+#  $ make -C <build-dir> VPATH=$(pwd) -f $(pwd)/devel.mk <make-rule>
 #
 
 # User options:

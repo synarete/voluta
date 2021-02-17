@@ -847,7 +847,7 @@ static blksize_t stat_blksize_of(const struct voluta_inode_info *ii)
 	blksize_t bsz = VOLUTA_BK_SIZE;
 
 	if (ii_isreg(ii) && (ii_size(ii) < bsz)) {
-		bsz = VOLUTA_FILE_HEAD_LEAF_SIZE;
+		bsz = VOLUTA_FILE_HEAD2_LEAF_SIZE;
 	}
 	return bsz;
 }

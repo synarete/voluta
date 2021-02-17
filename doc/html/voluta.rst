@@ -44,6 +44,11 @@ backing storage implies performance degradation compared to in-kernel
 file-systems.
 
 
+Encryption mode
+~~~~~~~~~~~~~~~
+TODO
+
+
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 Voluta is implemented for the GNU/Linux environment. It requires ``FUSE-7.31``
@@ -257,6 +262,12 @@ provides a mechanism to export and import:
 
   $ voluta export /path/to/volume/fsname.voluta /pash/to/repo/dir
   $ voluta import /pash/to/repo/dir/fsname.voluta /path/to/volume/dir
+
+
+---------
+ Design
+---------
+TODO
 
 
 ---------

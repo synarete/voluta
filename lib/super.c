@@ -2004,6 +2004,9 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 	case VOLUTA_VTYPE_SYMVAL:
 		vi->vu.lnv = &view->u.lnv;
 		break;
+	case VOLUTA_VTYPE_DATA1K:
+		vi->vu.db1 = &view->u.db1;
+		break;
 	case VOLUTA_VTYPE_DATA4K:
 		vi->vu.db4 = &view->u.db4;
 		break;
@@ -2932,6 +2935,7 @@ static int verify_vtype(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 		return 0;
@@ -3865,6 +3869,7 @@ void voluta_kivam_of(const struct voluta_vnode_info *vi,
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
 		kivam_of_normal(vi, out_kivam);

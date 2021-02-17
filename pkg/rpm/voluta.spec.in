@@ -1,17 +1,12 @@
-Summary: Voluta
 Name: voluta
+Summary: A File-System Vault
 Version: @VERSION@
 Release: @RELEASE@.@REVISION@%{?dist}
 License: GPLv3
 Group: Development/Tools
-URL: https://voluta.org
+URL: https://synarete.github.io/voluta
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}.%{_arch}
-Requires: libcap
-Requires: libuuid
-Requires: libunwind
-Requires: libgcrypt
-Requires: python3
 
 %{?systemd_requires}
 
@@ -29,7 +24,6 @@ Requires: libunwind-devel
 %description devel
 Development files for voluta
 
-
 %prep
 %setup -q
 
@@ -37,7 +31,7 @@ Development files for voluta
 %configure
 %{__make}
 
-# TODO: Have fast-check by default, and '--full' for developer
+# TODO: Have fast-check by default
 # %check
 # %{__make} check
 
@@ -78,7 +72,7 @@ Development files for voluta
 %systemd_postun_with_restart %{name}-mountd.service
 
 %changelog
-* @RPMDATE@ Voluta <synarete@xxxxxxxx> @VERSION@-@RELEASE@
+* @RPMDATE@ Voluta <synarete@xxxxxxxx> @VERSION@-@RELEASE@.@REVISION@
 - Release @REVISION@
 
 

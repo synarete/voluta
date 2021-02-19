@@ -61,11 +61,18 @@ AC_DEFUN([AX_VOLUTA_NEED_FUNCS],
   AX_VOLUTA_CHECK_FUNCS([get_nprocs_conf])
 ])
 
-
 AC_DEFUN([AX_VOLUTA_NEED_BUILTIN],
 [
   AX_GCC_BUILTIN(__builtin_expect)
   AX_GCC_BUILTIN(__builtin_clz)
   AX_GCC_BUILTIN(__builtin_popcount)
 ])
+
+AC_DEFUN([AX_VOLUTA_NEED_FUNC_ATTRIBUTE],
+[
+  AX_GCC_FUNC_ATTRIBUTE(noreturn)
+])
+
+
+
 

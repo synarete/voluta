@@ -44,7 +44,7 @@ Development files for voluta
 %files
 %defattr(-, root, root)
 %{_bindir}/%{name}
-%{_bindir}/%{name}-vfstest
+%{_bindir}/%{name}-fstests
 %{_sbindir}/%{name}-mountd
 %exclude %{_bindir}/%{name}-unitest
 %exclude %{_libdir}/lib%{name}*.la

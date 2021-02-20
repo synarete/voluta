@@ -787,6 +787,16 @@ char *voluta_strdup_safe(const char *s)
 	return d;
 }
 
+char *voluta_strndup_safe(const char *s, size_t n)
+{
+	char *d = strndup(s, n);
+
+	if (d == NULL) {
+		voluta_die(errno, "strndup failed: n=%lu", n);
+	}
+	return d;
+}
+
 char *voluta_joinpath_safe(const char *path, const char *base)
 {
 	char *rpath;
@@ -810,6 +820,54 @@ char *voluta_realpath_safe(const char *path)
 		voluta_die(-errno, "realpath failure: '%s'", path);
 	}
 	return real_path;
+}
+
+static void splitpath_safe(const char *path, char **head, char **tail)
+{
+	const size_t len = strlen(path);
+	const char *str = strrchr(path, '/');
+	const char *end = path + len;
+
+	if (str == NULL) {
+		*head = NULL;
+		*tail = voluta_strdup_safe(path);
+	} else {
+		*head = voluta_strndup_safe(path, (size_t)(str - path));
+		*tail = voluta_strndup_safe(str + 1, (size_t)(end - str) - 1);
+	}
+}
+
+static char *getcwd_safe(void)
+{
+	char *cwd = get_current_dir_name();
+
+	if (cwd == NULL) {
+		voluta_die(-errno, "get-current-dir failed");
+	}
+	return cwd;
+}
+
+char *voluta_abspath_safe(const char *path)
+{
+	char *head = NULL;
+	char *tail = NULL;
+	char *real = NULL;
+	char *cwd = NULL;
+	char *abspath = NULL;
+
+	splitpath_safe(path, &head, &tail);
+	if (head == NULL) {
+		cwd = getcwd_safe();
+		abspath = voluta_joinpath_safe(cwd, tail);
+	} else {
+		real = voluta_realpath_safe(head);
+		abspath = voluta_joinpath_safe(real, tail);
+	}
+	voluta_pfree_string(&cwd);
+	voluta_pfree_string(&real);
+	voluta_pfree_string(&tail);
+	voluta_pfree_string(&head);
+	return abspath;
 }
 
 char *voluta_dirpath_safe(const char *path)

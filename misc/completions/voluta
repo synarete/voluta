@@ -76,55 +76,16 @@ _voluta_import() {
   fi
 }
 
-_voluta_show_version() {
-  local cur prev words cword
-  _init_completion || return
-
-  if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
-  fi
-}
-
-_voluta_show_volume() {
-  local cur prev words cword
-  _init_completion || return
-
-  if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
-  fi
-}
-
-_voluta_show_fsinfo() {
-  local cur prev words cword
-  _init_completion || return
-
-  if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
-  fi
-}
-
 _voluta_show() {
   local cur prev words cword
   _init_completion || return
 
-  case "${words[2]}" in
-    "version")
-      _voluta_show_version
-      ;;
-    "volume")
-      _voluta_show_volume
-      ;;
-    "fsinfo")
-      _voluta_show_fsinfo
-      ;;
-  esac
+  local cur prev words cword
+  _init_completion || return
 
   if [[ "$cur" == -* ]]; then
-    COMPREPLY+=( $(compgen -W '-v --version -h --help' -- "$cur") )
-  else
-    COMPREPLY+=( $(compgen -W 'version volume fsinfo' -- "$cur") )
+    COMPREPLY+=( $( compgen -W '-h' -- "$cur" ) )
   fi
-
 }
 
 _voluta_subcmd() {

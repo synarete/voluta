@@ -52,6 +52,7 @@ struct voluta_subcmd_mkfs {
 	char   *passphrase;
 	char   *passphrase_file;
 	char   *volume;
+	char   *volume_abs;
 	char   *name;
 	char   *size;
 	long    volume_size;
@@ -325,6 +326,8 @@ void voluta_prctl_non_dumpable(void);
 
 char *voluta_strdup_safe(const char *s);
 
+char *voluta_strndup_safe(const char *s, size_t n);
+
 void voluta_pfree_string(char **pp);
 
 char *voluta_sprintf_path(const char *fmt, ...);
@@ -336,6 +339,8 @@ void voluta_stat_reg(const char *path, struct stat *st);
 void voluta_stat_dir_or_reg(const char *path, struct stat *st);
 
 char *voluta_realpath_safe(const char *path);
+
+char *voluta_abspath_safe(const char *path);
 
 char *voluta_dirpath_safe(const char *path);
 

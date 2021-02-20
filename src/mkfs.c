@@ -22,19 +22,24 @@ static void mkfs_finalize(void)
 {
 	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
+	voluta_pfree_string(&voluta_globals.cmd.mkfs.volume_abs);
 }
 
 static void mkfs_setup_check_params(void)
 {
 	int err;
 	int exists;
-	size_t len;
-	loff_t size;
-	loff_t *psz;
-	struct stat st;
-	const char *passfile;
-	const char *path = voluta_globals.cmd.mkfs.volume;
+	size_t len = 0;
+	loff_t size = 0;
+	loff_t *psz = NULL;
+	struct stat st = { .st_size = 0 };
+	const char *path = NULL;
+	const char *passfile = NULL;
 
+	voluta_globals.cmd.mkfs.volume_abs =
+		voluta_abspath_safe(voluta_globals.cmd.mkfs.volume);
+
+	path = voluta_globals.cmd.mkfs.volume_abs;
 	len = strlen(path);
 	if (len >= VOLUTA_VOLUME_PATH_MAX) {
 		voluta_die(-ENAMETOOLONG, "illegal volume path");
@@ -71,7 +76,7 @@ static void mkfs_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
 		.fsname = voluta_globals.cmd.mkfs.name,
-		.volume = voluta_globals.cmd.mkfs.volume,
+		.volume = voluta_globals.cmd.mkfs.volume_abs,
 		.passwd = voluta_globals.cmd.mkfs.passphrase,
 		.encrypted = voluta_globals.cmd.mkfs.encrypted,
 		.encryptwr = voluta_globals.cmd.mkfs.encrypted,

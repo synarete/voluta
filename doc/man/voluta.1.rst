@@ -102,10 +102,9 @@ import
 
 show
 ------
-**voluta show** *version* *pathname*
-**voluta show** *volume* *pathname*
+**voluta show** *pathname*
 
-Query and report various internal parameters from a voluta file-system.
+Query and report various internal parameters from a live voluta file-system.
 
 ..
 

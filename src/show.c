@@ -55,7 +55,7 @@ static void show_version(void)
 	};
 
 	show_do_ioctl_query(&query);
-	printf("%s\n", query.u.version.string);
+	printf("version:        %s\n", query.u.version.string);
 }
 
 static void show_volume(void)
@@ -65,10 +65,10 @@ static void show_volume(void)
 	};
 
 	show_do_ioctl_query(&query);
-	printf("%s\n", query.u.volume.path);
+	printf("volume:         %s\n", query.u.volume.path);
 }
 
-static const char *show_fstr(long flag, long mask)
+static const char *show_ms_flag(long flag, long mask)
 {
 	return ((flag & mask) == mask) ? "1" : "0";
 }
@@ -83,24 +83,20 @@ static void show_fsinfo(void)
 	show_do_ioctl_query(&query);
 	ms_flags = (long)query.u.fsinfo.msflags;
 
-	printf("uptime:  %ld-sec\n", query.u.fsinfo.uptime);
-	printf("encrypt: %d\n", (int)query.u.fsinfo.encrypt);
-	printf("rdonly:  %s\n", show_fstr(ms_flags, MS_RDONLY));
-	printf("nodev:   %s\n", show_fstr(ms_flags, MS_NODEV));
-	printf("nosuid:  %s\n", show_fstr(ms_flags, MS_NOSUID));
-	printf("noexec:  %s\n", show_fstr(ms_flags, MS_NOEXEC));
-	printf("noexec:  %s\n", show_fstr(ms_flags, MS_NOEXEC));
+	printf("uptime-seconds: %ld\n", query.u.fsinfo.uptime);
+	printf("encrypt:        %d\n", (int)query.u.fsinfo.encrypt);
+	printf("mount-rdonly:   %s\n", show_ms_flag(ms_flags, MS_RDONLY));
+	printf("mount-nodev:    %s\n", show_ms_flag(ms_flags, MS_NODEV));
+	printf("mount-nosuid:   %s\n", show_ms_flag(ms_flags, MS_NOSUID));
+	printf("mount-noexec:   %s\n", show_ms_flag(ms_flags, MS_NOEXEC));
+	printf("mount-noexec:   %s\n", show_ms_flag(ms_flags, MS_NOEXEC));
 }
 
 static void show_execute(void)
 {
-	if (voluta_globals.cmd.show.version) {
-		show_version();
-	} else if (voluta_globals.cmd.show.volume) {
-		show_volume();
-	} else if (voluta_globals.cmd.show.fsinfo) {
-		show_fsinfo();
-	}
+	show_version();
+	show_volume();
+	show_fsinfo();
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -123,9 +119,7 @@ void voluta_execute_show(void)
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
 static const char *voluta_show_usage[] = {
-	"show version <pathname>",
-	"show volume <pathname>",
-	"show fsinfo <pathname>",
+	"show <pathname>",
 	NULL
 };
 
@@ -133,7 +127,6 @@ static const char *voluta_show_usage[] = {
 void voluta_getopt_show(void)
 {
 	int opt_chr = 1;
-	const char *subcmd;
 	const struct option opts[] = {
 		{ "help", no_argument, NULL, 'h' },
 		{ NULL, no_argument, NULL, 0 },
@@ -146,16 +139,6 @@ void voluta_getopt_show(void)
 		} else if (opt_chr > 0) {
 			voluta_die_unsupported_opt();
 		}
-	}
-	subcmd = voluta_consume_cmdarg("<sub-command>", false);
-	if (!strcmp(subcmd, "version")) {
-		voluta_globals.cmd.show.version = true;
-	} else if (!strcmp(subcmd, "volume")) {
-		voluta_globals.cmd.show.volume = true;
-	} else if (!strcmp(subcmd, "fsinfo")) {
-		voluta_globals.cmd.show.fsinfo = true;
-	} else {
-		voluta_die(0, "unknown sub-command: %s", subcmd);
 	}
 	voluta_globals.cmd.show.pathname =
 		voluta_consume_cmdarg("pathname", true);

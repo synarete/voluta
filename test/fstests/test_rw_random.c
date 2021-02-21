@@ -28,7 +28,7 @@
  * offsets.
  */
 static void test_random_(struct vt_env *vte, loff_t from,
-			 size_t len, size_t cnt, size_t niter)
+                         size_t len, size_t cnt, size_t niter)
 {
 	int fd = -1;
 	loff_t pos = 0;
@@ -60,7 +60,7 @@ static void test_random_(struct vt_env *vte, loff_t from,
 
 
 static void test_random_io(struct vt_env *vte, loff_t from,
-			   size_t len, size_t cnt)
+                           size_t len, size_t cnt)
 {
 	test_random_(vte, from, len, cnt, 1);
 	test_random_(vte, from, len, cnt, 2);
@@ -113,7 +113,7 @@ static void test_random_aligned_blk63(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void test_random_aligned_mega(struct vt_env *vte,
-				     size_t cnt)
+                                     size_t cnt)
 {
 	loff_t from;
 	const size_t bsz = VT_UMEGA;
@@ -162,7 +162,7 @@ static void test_random_aligned_mega3(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void test_random_unaligned_blk(struct vt_env *vte,
-				      size_t cnt)
+                                      size_t cnt)
 {
 	loff_t from;
 	const size_t bsz = VT_BK_SIZE;
@@ -204,7 +204,7 @@ static void test_random_unaligned_blk2(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void test_random_unaligned_mega(struct vt_env *vte,
-				       size_t cnt)
+                                       size_t cnt)
 {
 	loff_t from;
 	const size_t bsz = VT_UMEGA;
@@ -247,7 +247,7 @@ static void test_random_unaligned_mega2(struct vt_env *vte)
 
 static void
 test_random_unaligned_(struct vt_env *vte, size_t len,
-		       size_t cnt)
+                       size_t cnt)
 {
 	loff_t from;
 

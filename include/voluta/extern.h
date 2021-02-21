@@ -46,7 +46,7 @@ struct voluta_fs_stats {
 int voluta_lib_init(void); /* TODO: have fini_lib */
 
 int voluta_resolve_volume_size(const char *path,
-			       loff_t size_want, loff_t *out_size);
+                               loff_t size_want, loff_t *out_size);
 
 int voluta_require_volume_path(const char *path, bool rw);
 
@@ -65,7 +65,7 @@ int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass);
 
 /* file-system */
 int voluta_fse_new(const struct voluta_fs_args *args,
-		   struct voluta_fs_env **out_fse);
+                   struct voluta_fs_env **out_fse);
 
 void voluta_fse_del(struct voluta_fs_env *fse);
 
@@ -86,11 +86,11 @@ void voluta_fse_halt(struct voluta_fs_env *fse, int signum);
 int voluta_fse_sync_drop(struct voluta_fs_env *fse);
 
 void voluta_fse_stats(const struct voluta_fs_env *fse,
-		      struct voluta_fs_stats *st);
+                      struct voluta_fs_stats *st);
 
 /* archiver */
 int voluta_archiver_new(const struct voluta_ar_args *args,
-			struct voluta_archiver **out_arc);
+                        struct voluta_archiver **out_arc);
 
 void voluta_archiver_del(struct voluta_archiver *arc);
 
@@ -106,7 +106,7 @@ int voluta_mse_new(struct voluta_ms_env **out_mse);
 void voluta_mse_del(struct voluta_ms_env *mse);
 
 int voluta_mse_serve(struct voluta_ms_env *mse,
-		     const struct voluta_mntrules *mrules);
+                     const struct voluta_mntrules *mrules);
 
 void voluta_mse_halt(struct voluta_ms_env *mse, int signum);
 
@@ -114,10 +114,10 @@ void voluta_mse_halt(struct voluta_ms_env *mse, int signum);
 int voluta_rpc_handshake(uid_t uid, gid_t gid);
 
 int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
-		     size_t max_read, unsigned long ms_flags, int *out_fd);
+                     size_t max_read, unsigned long ms_flags, int *out_fd);
 
 int voluta_rpc_umount(const char *mountpoint,
-		      uid_t uid, gid_t gid, int mnt_flags);
+                      uid_t uid, gid_t gid, int mnt_flags);
 
 long voluta_fuse_super_magic(void);
 

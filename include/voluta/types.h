@@ -96,7 +96,7 @@ enum voluta_iattr_flags {
 	VOLUTA_IATTR_NOW         = VOLUTA_BIT(13),
 	VOLUTA_IATTR_MCTIME      = VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME,
 	VOLUTA_IATTR_TIMES       = VOLUTA_IATTR_BTIME | VOLUTA_IATTR_ATIME |
-				   VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME
+	                           VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME
 };
 
 /* threading */
@@ -426,7 +426,7 @@ struct voluta_sb_info {
 
 /* de-stage dirty-vnodes set */
 typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
-				   struct voluta_vnode_info *vi);
+                                   struct voluta_vnode_info *vi);
 
 struct voluta_dset {
 	struct voluta_cache            *ds_cache;
@@ -538,7 +538,7 @@ struct voluta_fs_env {
 
 /* call-back types for file-system operations */
 typedef int (*voluta_filldir_fn)(struct voluta_readdir_ctx *rd_ctx,
-				 const struct voluta_readdir_info *rdi);
+                                 const struct voluta_readdir_info *rdi);
 
 struct voluta_readdir_info {
 	struct stat attr;
@@ -556,14 +556,14 @@ struct voluta_readdir_ctx {
 
 
 typedef int (*voluta_fillxattr_fn)(struct voluta_listxattr_ctx *lxa_ctx,
-				   const char *name, size_t name_len);
+                                   const char *name, size_t name_len);
 
 struct voluta_listxattr_ctx {
 	voluta_fillxattr_fn actor;
 };
 
 typedef int (*voluta_rwiter_fn)(struct voluta_rwiter_ctx *rwi_ctx,
-				const struct voluta_xiovec *xiov);
+                                const struct voluta_xiovec *xiov);
 
 struct voluta_rwiter_ctx {
 	voluta_rwiter_fn actor;

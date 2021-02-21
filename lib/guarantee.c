@@ -181,11 +181,11 @@ static void guarantee_persistent_types_members(void)
 	REQUIRE_NBITS(struct voluta_bk_rec, bk_unwritten, VOLUTA_NKB_IN_BK);
 	REQUIRE_MEMBER_SIZE(struct voluta_itable_tnode, it_child, 1024);
 	REQUIRE_NELEMS(struct voluta_radix_tnode,
-		       r_child, VOLUTA_FILE_TREE_NCHILDS);
+	               r_child, VOLUTA_FILE_TREE_NCHILDS);
 	REQUIRE_NELEMS(struct voluta_dir_htnode,
-		       de, VOLUTA_DIR_HTNODE_NENTS);
+	               de, VOLUTA_DIR_HTNODE_NENTS);
 	REQUIRE_NELEMS(struct voluta_dir_htnode,
-		       dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
+	               dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
 	REQUIRE_NBITS(struct voluta_bk_info, bk_mask, VOLUTA_NKB_IN_BK);
 	REQUIRE_NELEMS(struct voluta_keys_block8, k, VOLUTA_NHS_MAX);
 }
@@ -255,10 +255,10 @@ static void guarantee_defs_consistency(void)
 	REQUIRE_EQ(VOLUTA_AR_BLOB_SIZE, 16 * VOLUTA_MEGA);
 
 	REQUIRE_EQ(VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES,
-		   VOLUTA_FILE_HEAD2_LEAF_SIZE);
+	           VOLUTA_FILE_HEAD2_LEAF_SIZE);
 	REQUIRE_EQ((VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES) +
-		   (VOLUTA_FILE_HEAD2_LEAF_SIZE * VOLUTA_FILE_HEAD2_NLEAVES),
-		   VOLUTA_FILE_TREE_LEAF_SIZE);
+	           (VOLUTA_FILE_HEAD2_LEAF_SIZE * VOLUTA_FILE_HEAD2_NLEAVES),
+	           VOLUTA_FILE_TREE_LEAF_SIZE);
 }
 
 static void guarantee_external_constants(void)

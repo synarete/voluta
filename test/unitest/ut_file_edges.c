@@ -35,7 +35,7 @@ static loff_t dvec_last_off(const struct ut_dvec *dvec)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_rw_plus_minus_1_(struct ut_env *ute,
-				ino_t ino, loff_t off, size_t len)
+                                ino_t ino, loff_t off, size_t len)
 {
 	uint8_t byte;
 	struct ut_dvec *dv1;

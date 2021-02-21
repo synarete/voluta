@@ -61,7 +61,7 @@ static void ut_file_lseek_simple(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_lseek_holes_(struct ut_env *ute,
-				 loff_t base_off, size_t cnt)
+                                 loff_t base_off, size_t cnt)
 {
 	ino_t ino;
 	ino_t dino;
@@ -105,7 +105,7 @@ static void ut_file_lseek_holes(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_lseek_sparse_(struct ut_env *ute,
-				  loff_t off_base, loff_t step, size_t nsteps)
+                                  loff_t off_base, loff_t step, size_t nsteps)
 {
 	ino_t ino;
 	ino_t dino;

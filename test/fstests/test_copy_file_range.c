@@ -36,7 +36,7 @@ struct vt_copy_range_info {
  * between two files.
  */
 static void test_copy_file_range_(struct vt_env *vte,
-				  const struct vt_copy_range_info *cri)
+                                  const struct vt_copy_range_info *cri)
 
 {
 	int src_fd = -1;
@@ -60,21 +60,21 @@ static void test_copy_file_range_(struct vt_env *vte,
 	if (cri->src_datasz > 0) {
 		src_data = vt_new_buf_rands(vte, cri->src_datasz);
 		vt_pwrite(src_fd, src_data,
-			  cri->src_datasz, cri->src_doff, &nb);
+		          cri->src_datasz, cri->src_doff, &nb);
 		vt_expect_eq(cri->src_datasz, nb);
 	}
 
 	if (cri->dst_datasz > 0) {
 		dst_data = vt_new_buf_rands(vte, cri->dst_datasz);
 		vt_pwrite(dst_fd, dst_data,
-			  cri->dst_datasz, cri->dst_doff, &nb);
+		          cri->dst_datasz, cri->dst_doff, &nb);
 		vt_expect_eq(cri->dst_datasz, nb);
 	}
 
 	src_off = cri->src_doff;
 	dst_off = cri->dst_doff;
 	vt_copy_file_range(src_fd, &src_off, dst_fd,
-			   &dst_off, cri->copysz, &ncp);
+	                   &dst_off, cri->copysz, &ncp);
 	vt_expect_eq(cri->copysz, ncp);
 
 	src_data = vt_new_buf_rands(vte, cri->copysz);

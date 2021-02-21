@@ -90,7 +90,7 @@ static void ut_setup_globals(int argc, char *argv[])
 static void ut_setup_tracing(void)
 {
 	ut_globals.log_mask =
-		VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
+	        VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
 	voluta_set_logmaskp(&ut_globals.log_mask);
 }
 
@@ -123,7 +123,7 @@ static void ut_parse_args(void)
 	while (opt_chr > 0) {
 		opt_index = 0;
 		opt_chr = getopt_long(ut_globals.argc, ut_globals.argv,
-				      "vh", long_opts, &opt_index);
+		                      "vh", long_opts, &opt_index);
 		if (opt_chr == 'v') {
 			ut_show_version_and_exit();
 		} else if (opt_chr == 'h') {

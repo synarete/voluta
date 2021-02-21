@@ -32,9 +32,9 @@ static void decrypt_setup_check_params(void)
 	const char *path;
 
 	voluta_globals.cmd.decrypt.volume_real =
-		voluta_realpath_safe(voluta_globals.cmd.decrypt.volume);
+	        voluta_realpath_safe(voluta_globals.cmd.decrypt.volume);
 	voluta_globals.cmd.decrypt.volume_active =
-		voluta_globals.cmd.decrypt.volume_real;
+	        voluta_globals.cmd.decrypt.volume_real;
 
 	path = voluta_globals.cmd.decrypt.volume_real;
 	voluta_die_if_not_volume(path, true, true, false, NULL);
@@ -156,6 +156,6 @@ void voluta_getopt_decrypt(void)
 		}
 	}
 	voluta_globals.cmd.decrypt.volume =
-		voluta_consume_cmdarg("volume-path", true);
+	        voluta_consume_cmdarg("volume-path", true);
 }
 

@@ -29,8 +29,8 @@
  * filesyatem's namespace. Data truncated to zero explicitly before close.
  */
 static void test_unlinked_simple_(struct vt_env *vte,
-				  size_t bsz,
-				  size_t cnt)
+                                  size_t bsz,
+                                  size_t cnt)
 {
 	int fd;
 	loff_t pos = -1;
@@ -80,7 +80,7 @@ static void test_unlinked_simple2(struct vt_env *vte)
  * filesyatem's namespace and data is truncated implicitly upon close.
  */
 static void test_unlinked_complex_(struct vt_env *vte,
-				   loff_t base, size_t bsz, size_t cnt)
+                                   loff_t base, size_t bsz, size_t cnt)
 {
 	int fd = -1;
 	loff_t pos = 0;

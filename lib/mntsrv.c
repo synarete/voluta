@@ -323,14 +323,14 @@ static int open_fuse_dev(const char *devname, int *out_fd)
 }
 
 static int format_mount_data(const struct voluta_mntparams *mntp, int fd,
-			     char *dat, size_t dat_size)
+                             char *dat, size_t dat_size)
 {
 	int n;
 
 	n = snprintf(dat, dat_size, "default_permissions,max_read=%d,"\
-		     "allow_other,fd=%d,rootmode=0%o,user_id=%d,group_id=%d",
-		     (int)mntp->max_read, fd, mntp->root_mode,
-		     mntp->user_id, mntp->group_id);
+	             "allow_other,fd=%d,rootmode=0%o,user_id=%d,group_id=%d",
+	             (int)mntp->max_read, fd, mntp->root_mode,
+	             mntp->user_id, mntp->group_id);
 	return (n < (int)dat_size) ? 0 : -EINVAL;
 }
 
@@ -418,7 +418,7 @@ static int mntmsg_set_path(struct voluta_mntmsg *mmsg, const char *path)
 }
 
 static void mntmsg_to_params(const struct voluta_mntmsg *mmsg,
-			     struct voluta_mntparams *mntp)
+                             struct voluta_mntparams *mntp)
 {
 	mntp->path = mntmsg_path(mmsg);
 	mntp->flags = mmsg->mn_flags;
@@ -429,7 +429,7 @@ static void mntmsg_to_params(const struct voluta_mntmsg *mmsg,
 }
 
 static int mntmsg_set_from_params(struct voluta_mntmsg *mmsg,
-				  const struct voluta_mntparams *mntp)
+                                  const struct voluta_mntparams *mntp)
 {
 	mmsg->mn_flags = mntp->flags;
 	mmsg->mn_user_id = (uint32_t)mntp->user_id;
@@ -441,26 +441,26 @@ static int mntmsg_set_from_params(struct voluta_mntmsg *mmsg,
 }
 
 static int mntmsg_setup(struct voluta_mntmsg *mmsg, int cmd,
-			const struct voluta_mntparams *mntp)
+                        const struct voluta_mntparams *mntp)
 {
 	mntmsg_init(mmsg, cmd);
 	return mntmsg_set_from_params(mmsg, mntp);
 }
 
 static int mntmsg_mount(struct voluta_mntmsg *mmsg,
-			const struct voluta_mntparams *mntp)
+                        const struct voluta_mntparams *mntp)
 {
 	return mntmsg_setup(mmsg, VOLUTA_MNTCMD_MOUNT, mntp);
 }
 
 static int mntmsg_umount(struct voluta_mntmsg *mmsg,
-			 const struct voluta_mntparams *mntp)
+                         const struct voluta_mntparams *mntp)
 {
 	return mntmsg_setup(mmsg, VOLUTA_MNTCMD_UMOUNT, mntp);
 }
 
 static int mntmsg_handshake(struct voluta_mntmsg *mmsg,
-			    const struct voluta_mntparams *mntp)
+                            const struct voluta_mntparams *mntp)
 {
 	return mntmsg_setup(mmsg, VOLUTA_MNTCMD_HANDSHAKE, mntp);
 }
@@ -494,7 +494,7 @@ static int mntmsg_check(const struct voluta_mntmsg *mmsg)
 }
 
 static int do_sendmsg(const struct voluta_socket *sock,
-		      const struct msghdr *msg)
+                      const struct msghdr *msg)
 {
 	int err;
 	size_t nbytes = 0;
@@ -520,7 +520,7 @@ static void do_pack_fd(struct msghdr *msg, int fd)
 }
 
 static int mntmsg_send(const struct voluta_mntmsg *mmsg,
-		       const struct voluta_socket *sock, int fd)
+                       const struct voluta_socket *sock, int fd)
 {
 	struct voluta_cmsg_buf cb = {
 		.pad = 0
@@ -574,7 +574,7 @@ static int do_unpack_fd(struct msghdr *msg, int *out_fd)
 }
 
 static int mntmsg_recv(const struct voluta_mntmsg *mmsg,
-		       const struct voluta_socket *sock, int *out_fd)
+                       const struct voluta_socket *sock, int *out_fd)
 {
 	int err;
 	struct voluta_cmsg_buf cb = {
@@ -607,7 +607,7 @@ static int mntmsg_recv(const struct voluta_mntmsg *mmsg,
 }
 
 static int mntmsg_recv2(const struct voluta_mntmsg *mmsg,
-			const struct voluta_socket *sock)
+                        const struct voluta_socket *sock)
 {
 	int err;
 	int dummy_fd = -1;
@@ -657,7 +657,7 @@ static void mntsvc_fini(struct voluta_mntsvc *msvc)
 }
 
 static int mntsvc_accept_from(struct voluta_mntsvc *msvc,
-			      const struct voluta_socket *sock)
+                              const struct voluta_socket *sock)
 {
 	int err;
 	struct ucred cred;
@@ -676,14 +676,14 @@ static int mntsvc_accept_from(struct voluta_mntsvc *msvc,
 	msvc->ms_gid = cred.gid;
 
 	log_info("new-connection: pid=%d uid=%d gid=%d",
-		 msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
+	         msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
 	return 0;
 }
 
 static void mntsvc_term_peer(struct voluta_mntsvc *msvc)
 {
 	log_info("end-connection: pid=%d uid=%d gid=%d",
-		 msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
+	         msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
 
 	voluta_socket_shutdown_rdwr(&msvc->ms_asock);
 	voluta_socket_fini(&msvc->ms_asock);
@@ -692,7 +692,7 @@ static void mntsvc_term_peer(struct voluta_mntsvc *msvc)
 }
 
 static int mntsvc_recv_request(struct voluta_mntsvc *msvc,
-			       struct voluta_mntmsg *mmsg)
+                               struct voluta_mntmsg *mmsg)
 {
 	int err;
 
@@ -709,7 +709,7 @@ static int mntsvc_recv_request(struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_check_mntrule(const struct voluta_mntsvc *msvc,
-				const struct voluta_mntparams *mntp)
+                                const struct voluta_mntparams *mntp)
 {
 	int err;
 	bool has_rule = false;
@@ -739,12 +739,12 @@ static int mntsvc_check_mntrule(const struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
-			      const struct voluta_mntparams *mntp)
+                              const struct voluta_mntparams *mntp)
 {
 	int err;
 	size_t page_size;
 	const unsigned long sup_mnt_mask =
-		(MS_LAZYTIME | MS_NOEXEC | MS_NOSUID | MS_NODEV | MS_RDONLY);
+	        (MS_LAZYTIME | MS_NOEXEC | MS_NOSUID | MS_NODEV | MS_RDONLY);
 
 	if (mntp->flags & ~sup_mnt_mask) {
 		return -ENOTSUP;
@@ -781,21 +781,21 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_do_mount(struct voluta_mntsvc *msvc,
-			   const struct voluta_mntparams *mntp)
+                           const struct voluta_mntparams *mntp)
 {
 	int err;
 
 	err = do_fuse_mount(mntp, &msvc->ms_fuse_fd);
 	log_info("mount: '%s' flags=0x%lx uid=%d gid=%d rootmode=0%o "
-		 "max_read=%u fuse_fd=%d err=%d", mntp->path, mntp->flags,
-		 mntp->user_id, mntp->group_id, mntp->root_mode,
-		 mntp->max_read, msvc->ms_fuse_fd, err);
+	         "max_read=%u fuse_fd=%d err=%d", mntp->path, mntp->flags,
+	         mntp->user_id, mntp->group_id, mntp->root_mode,
+	         mntp->max_read, msvc->ms_fuse_fd, err);
 
 	return err;
 }
 
 static int mntsvc_exec_mount(struct voluta_mntsvc *msvc,
-			     const struct voluta_mntparams *mntp)
+                             const struct voluta_mntparams *mntp)
 {
 	int err;
 
@@ -811,7 +811,7 @@ static int mntsvc_exec_mount(struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_check_umount(const struct voluta_mntsvc *msvc,
-			       const struct voluta_mntparams *mntp)
+                               const struct voluta_mntparams *mntp)
 {
 	int err;
 	const uint64_t mnt_allow = MNT_DETACH | MNT_FORCE;
@@ -836,20 +836,20 @@ static int mntsvc_check_umount(const struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_do_umount(struct voluta_mntsvc *msvc,
-			    const struct voluta_mntparams *mntp)
+                            const struct voluta_mntparams *mntp)
 {
 	int err;
 
 	err = do_fuse_umount(mntp);
 	log_info("umount: '%s' flags=0x%lx err=%d",
-		 mntp->path, mntp->flags, err);
+	         mntp->path, mntp->flags, err);
 
 	unused(msvc);
 	return err;
 }
 
 static int mntsvc_exec_umount(struct voluta_mntsvc *msvc,
-			      const struct voluta_mntparams *mntp)
+                              const struct voluta_mntparams *mntp)
 {
 	int err;
 
@@ -865,7 +865,7 @@ static int mntsvc_exec_umount(struct voluta_mntsvc *msvc,
 }
 
 static int mntsvc_exec_handshake(struct voluta_mntsvc *msvc,
-				 const struct voluta_mntparams *mntp)
+                                 const struct voluta_mntparams *mntp)
 {
 	/* TODO: check params */
 	unused(msvc);
@@ -875,7 +875,7 @@ static int mntsvc_exec_handshake(struct voluta_mntsvc *msvc,
 }
 
 static void mntsvc_exec_request(struct voluta_mntsvc *msvc,
-				struct voluta_mntmsg *mmsg)
+                                struct voluta_mntmsg *mmsg)
 {
 	int err = 0;
 	struct voluta_mntparams mntp;
@@ -903,7 +903,7 @@ static void mntsvc_exec_request(struct voluta_mntsvc *msvc,
 }
 
 static void mntsvc_fill_response(const struct voluta_mntsvc *msvc,
-				 struct voluta_mntmsg *mmsg)
+                                 struct voluta_mntmsg *mmsg)
 {
 	const int status = mntmsg_status(mmsg);
 	const enum voluta_mntcmd cmd = mntmsg_cmd(mmsg);
@@ -914,14 +914,14 @@ static void mntsvc_fill_response(const struct voluta_mntsvc *msvc,
 }
 
 static void mntsvc_send_response(struct voluta_mntsvc *msvc,
-				 const struct voluta_mntmsg *mmsg)
+                                 const struct voluta_mntmsg *mmsg)
 {
 	int err;
 
 	err = mntmsg_send(mmsg, &msvc->ms_asock, msvc->ms_fuse_fd);
 	if (err) {
 		log_err("failed to send response: cmd=%d err=%d",
-			(int)mmsg->mn_cmd, err);
+		        (int)mmsg->mn_cmd, err);
 	}
 }
 
@@ -964,7 +964,7 @@ static void mntsrv_fini(struct voluta_mntsrv *msrv)
 }
 
 static int mntsrv_setrules(struct voluta_mntsrv *msrv,
-			   const struct voluta_mntrules *mrules)
+                           const struct voluta_mntrules *mrules)
 {
 	msrv->ms_rules = mrules;
 	/* TODO: check rules validity */
@@ -1129,7 +1129,7 @@ void voluta_mse_del(struct voluta_ms_env *mse)
 }
 
 static int voluta_mse_open(struct voluta_ms_env *mse,
-			   const struct voluta_mntrules *mrules)
+                           const struct voluta_mntrules *mrules)
 {
 	int err;
 	struct voluta_mntsrv *msrv = mse->srv;
@@ -1201,7 +1201,7 @@ static void voluta_mse_close(struct voluta_ms_env *mse)
 }
 
 int voluta_mse_serve(struct voluta_ms_env *mse,
-		     const struct voluta_mntrules *mrules)
+                     const struct voluta_mntrules *mrules)
 {
 	int err = 0;
 
@@ -1259,8 +1259,8 @@ static int mntclnt_disconnect(struct voluta_mntclnt *mclnt)
 }
 
 static int mntclnt_handshake(const struct voluta_mntclnt *mclnt,
-			     const struct voluta_mntparams *mntp,
-			     int *out_status)
+                             const struct voluta_mntparams *mntp,
+                             int *out_status)
 {
 	int err;
 	struct voluta_mntmsg mmsg;
@@ -1289,8 +1289,8 @@ static int mntclnt_handshake(const struct voluta_mntclnt *mclnt,
 }
 
 static int mntclnt_mount(const struct voluta_mntclnt *mclnt,
-			 const struct voluta_mntparams *mntp,
-			 int *out_status, int *out_fd)
+                         const struct voluta_mntparams *mntp,
+                         int *out_status, int *out_fd)
 {
 	int err;
 	struct voluta_mntmsg mmsg;
@@ -1320,7 +1320,7 @@ static int mntclnt_mount(const struct voluta_mntclnt *mclnt,
 }
 
 static int mntclnt_umount(const struct voluta_mntclnt *mclnt,
-			  const struct voluta_mntparams *mntp, int *out_status)
+                          const struct voluta_mntparams *mntp, int *out_status)
 {
 	int err;
 	struct voluta_mntmsg mmsg;
@@ -1349,7 +1349,7 @@ static int mntclnt_umount(const struct voluta_mntclnt *mclnt,
 }
 
 static int do_rpc_mount(struct voluta_mntclnt *mclnt,
-			const struct voluta_mntparams *mntp, int *out_fd)
+                        const struct voluta_mntparams *mntp, int *out_fd)
 {
 	int err;
 	int status = -1;
@@ -1370,7 +1370,7 @@ static int do_rpc_mount(struct voluta_mntclnt *mclnt,
 }
 
 int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
-		     size_t max_read, unsigned long ms_flags, int *out_fd)
+                     size_t max_read, unsigned long ms_flags, int *out_fd)
 {
 	int err;
 	struct voluta_mntclnt mclnt;
@@ -1395,7 +1395,7 @@ int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
 }
 
 static int do_rpc_umount(struct voluta_mntclnt *mclnt,
-			 const struct voluta_mntparams *mntp)
+                         const struct voluta_mntparams *mntp)
 {
 	int err;
 	int status = -1;
@@ -1416,7 +1416,7 @@ static int do_rpc_umount(struct voluta_mntclnt *mclnt,
 }
 
 int voluta_rpc_umount(const char *mountpoint,
-		      uid_t uid, gid_t gid, int mnt_flags)
+                      uid_t uid, gid_t gid, int mnt_flags)
 {
 	int err;
 	struct voluta_mntclnt mclnt;
@@ -1435,7 +1435,7 @@ int voluta_rpc_umount(const char *mountpoint,
 }
 
 static int do_rpc_handshake(struct voluta_mntclnt *mclnt,
-			    const struct voluta_mntparams *mntp)
+                            const struct voluta_mntparams *mntp)
 {
 	int err;
 	int status = -1;

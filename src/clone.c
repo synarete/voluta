@@ -116,7 +116,7 @@ static void clone_execute(void)
 	*last = '\0';
 
 	voluta_globals.cmd.clone.volume_tmp =
-		path = voluta_joinpath_safe(path, clone.name);
+	        path = voluta_joinpath_safe(path, clone.name);
 	err = voluta_sys_stat(path, &st);
 	if (err) {
 		voluta_die(err, "can not stat clone: %s", path);
@@ -124,7 +124,7 @@ static void clone_execute(void)
 	err = voluta_sys_rename(path, voluta_globals.cmd.clone.volume_real);
 	if (err) {
 		voluta_die(err, "rename failed: %s -> %s",
-			   path, voluta_globals.cmd.clone.volume_real);
+		           path, voluta_globals.cmd.clone.volume_real);
 	}
 }
 
@@ -190,8 +190,8 @@ void voluta_getopt_clone(void)
 		}
 	}
 	voluta_globals.cmd.clone.point =
-		voluta_consume_cmdarg("mount-point", false);
+	        voluta_consume_cmdarg("mount-point", false);
 	voluta_globals.cmd.clone.volume =
-		voluta_consume_cmdarg("volume-path", true);
+	        voluta_consume_cmdarg("volume-path", true);
 }
 

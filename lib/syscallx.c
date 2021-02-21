@@ -208,7 +208,7 @@ int voluta_sys_pselect_rfd(int fd, const struct timespec *ts)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int sys_readfile(int dfd, const char *filename,
-			void *buf, size_t bsz, int flags, size_t *nrd)
+                        void *buf, size_t bsz, int flags, size_t *nrd)
 {
 	int err;
 	int fd = -1;
@@ -231,7 +231,7 @@ static int sys_readfile(int dfd, const char *filename,
 }
 
 static int sys_readproc(const char *procdir, const char *filename,
-			void *buf, size_t bsz, int flags, size_t *nrd)
+                        void *buf, size_t bsz, int flags, size_t *nrd)
 {
 	int err;
 	int dfd = -1;
@@ -253,7 +253,7 @@ static int sys_readproc(const char *procdir, const char *filename,
 }
 
 static int sys_readproc_long(const char *procdir,
-			     const char *filename, long *out_value)
+                             const char *filename, long *out_value)
 {
 	int err;
 	size_t nrd = 0;

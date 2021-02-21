@@ -25,7 +25,7 @@
 
 #define die_illegal_value(fl_, ss_, tag_) \
 	die_illegal_conf(fl_, "illegal %s: '%.*s'", \
-			 tag_, (ss_)->len, (ss_)->str)
+	                 tag_, (ss_)->len, (ss_)->str)
 
 
 struct voluta_fileline {
@@ -44,25 +44,25 @@ static bool ss_isempty(const struct voluta_substr *ss)
 }
 
 static void ss_split_by(const struct voluta_substr *ss, char sep,
-			struct voluta_substr_pair *out_ss_pair)
+                        struct voluta_substr_pair *out_ss_pair)
 {
 	voluta_substr_split_chr(ss, sep, out_ss_pair);
 }
 
 static void ss_split_by_nl(const struct voluta_substr *ss,
-			   struct voluta_substr_pair *out_ss_pair)
+                           struct voluta_substr_pair *out_ss_pair)
 {
 	ss_split_by(ss, '\n', out_ss_pair);
 }
 
 static void ss_split_by_ws(const struct voluta_substr *ss,
-			   struct voluta_substr_pair *out_ss_pair)
+                           struct voluta_substr_pair *out_ss_pair)
 {
 	voluta_substr_split(ss, " \t", out_ss_pair);
 }
 
 static void ss_strip_ws(const struct voluta_substr *ss,
-			struct voluta_substr *out_ss)
+                        struct voluta_substr *out_ss)
 {
 	voluta_substr_strip_ws(ss, out_ss);
 }
@@ -84,7 +84,7 @@ static void *zalloc(size_t nbytes)
 }
 
 static bool parse_bool(const struct voluta_fileline *fl,
-		       const struct voluta_substr *ss)
+                       const struct voluta_substr *ss)
 {
 	if (ss_equals(ss, "1") || ss_equals(ss, "true")) {
 		return true;
@@ -97,7 +97,7 @@ static bool parse_bool(const struct voluta_fileline *fl,
 }
 
 static long parse_long(const struct voluta_fileline *fl,
-		       const struct voluta_substr *ss)
+                       const struct voluta_substr *ss)
 {
 	long val = 0;
 	char *endptr = NULL;
@@ -120,7 +120,7 @@ static long parse_long(const struct voluta_fileline *fl,
 }
 
 static int parse_int(const struct voluta_fileline *fl,
-		     const struct voluta_substr *ss)
+                     const struct voluta_substr *ss)
 
 {
 	long num;
@@ -133,7 +133,7 @@ static int parse_int(const struct voluta_fileline *fl,
 }
 
 static uid_t parse_uid(const struct voluta_fileline *fl,
-		       const struct voluta_substr *ss)
+                       const struct voluta_substr *ss)
 {
 	int val;
 
@@ -156,7 +156,7 @@ static char *dup_substr(const struct voluta_substr *ss)
 }
 
 static char *realpath_of(const struct voluta_substr *path,
-			 const struct voluta_fileline *cloc)
+                         const struct voluta_fileline *cloc)
 {
 	char *rpath;
 	char *cpath;
@@ -171,8 +171,8 @@ static char *realpath_of(const struct voluta_substr *path,
 }
 
 static void parse_mntconf_rule_args(const struct voluta_fileline *fl,
-				    const struct voluta_substr *args,
-				    struct voluta_mntrule *mntr)
+                                    const struct voluta_substr *args,
+                                    struct voluta_mntrule *mntr)
 {
 	struct voluta_substr_pair key_val;
 	struct voluta_substr_pair ss_pair;
@@ -189,7 +189,7 @@ static void parse_mntconf_rule_args(const struct voluta_fileline *fl,
 		ss_split_by(carg, '=', &key_val);
 		if (ss_isempty(key) || ss_isempty(val)) {
 			die_illegal_conf(fl, "illgal key-value: '%.*s'",
-					 carg->len, carg->str);
+			                 carg->len, carg->str);
 		}
 		if (ss_equals(key, "recursive")) {
 			mntr->recursive = parse_bool(fl, val);
@@ -197,23 +197,23 @@ static void parse_mntconf_rule_args(const struct voluta_fileline *fl,
 			mntr->uid = parse_uid(fl, val);
 		} else {
 			die_illegal_conf(fl, "unknown key: '%.*s'",
-					 key->len, key->str);
+			                 key->len, key->str);
 		}
 		ss_split_by_ws(tail, &ss_pair);
 	}
 }
 
 static void parse_mntconf_rule(const struct voluta_fileline *fl,
-			       const struct voluta_substr *path,
-			       const struct voluta_substr *args,
-			       struct voluta_mntrules *mrules)
+                               const struct voluta_substr *path,
+                               const struct voluta_substr *args,
+                               struct voluta_mntrules *mrules)
 {
 	struct voluta_mntrule *mntr;
 	const size_t max_rules = VOLUTA_ARRAY_SIZE(mrules->rules);
 
 	if (mrules->nrules >= max_rules) {
 		die_illegal_conf(fl, "too many mount-rules "\
-				 "(max-rules=%lu)", max_rules);
+		                 "(max-rules=%lu)", max_rules);
 	}
 	mntr = &mrules->rules[mrules->nrules++];
 	mntr->path = realpath_of(path, fl);
@@ -221,8 +221,8 @@ static void parse_mntconf_rule(const struct voluta_fileline *fl,
 }
 
 static void parse_mntconf_line(const struct voluta_fileline *fl,
-			       const struct voluta_substr *line,
-			       struct voluta_mntrules *mrules)
+                               const struct voluta_substr *line,
+                               struct voluta_mntrules *mrules)
 {
 	struct voluta_substr sline;
 	struct voluta_substr_pair ss_pair;
@@ -236,7 +236,7 @@ static void parse_mntconf_line(const struct voluta_fileline *fl,
 }
 
 static void parse_mntconf(const struct voluta_substr *ss_conf,
-			  const char *path, struct voluta_mntrules *mrules)
+                          const char *path, struct voluta_mntrules *mrules)
 {
 	struct voluta_substr_pair ss_pair;
 	struct voluta_substr *line = &ss_pair.first;

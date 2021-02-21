@@ -239,7 +239,7 @@ static void fse_fini_fuseq(struct voluta_fs_env *fse)
 }
 
 static void fse_update_qalloc(struct voluta_fs_env *fse,
-			      const struct voluta_fs_args *args)
+                              const struct voluta_fs_args *args)
 {
 	if (args->pedantic) {
 		fse->qalloc->mode = true;
@@ -247,7 +247,7 @@ static void fse_update_qalloc(struct voluta_fs_env *fse,
 }
 
 static void fse_update_owner(struct voluta_fs_env *fse,
-			     const struct voluta_fs_args *args)
+                             const struct voluta_fs_args *args)
 {
 	const struct voluta_ucred ucred = {
 		.uid = args->uid,
@@ -260,7 +260,7 @@ static void fse_update_owner(struct voluta_fs_env *fse,
 }
 
 static void fse_update_mount_flags(struct voluta_fs_env *fse,
-				   const struct voluta_fs_args *args)
+                                   const struct voluta_fs_args *args)
 {
 	unsigned long ms_flag_with = 0;
 	unsigned long ms_flag_dont = 0;
@@ -311,7 +311,7 @@ static int fse_check_args(const struct voluta_fs_args *args)
 }
 
 static int fse_copy_args(struct voluta_fs_env *fse,
-			 const struct voluta_fs_args *args)
+                         const struct voluta_fs_args *args)
 {
 	int err;
 	struct voluta_passphrase *passph = &fse->passph;
@@ -357,7 +357,7 @@ static int fse_update_by_args(struct voluta_fs_env *fse)
 }
 
 static int fse_init(struct voluta_fs_env *fse,
-		    const struct voluta_fs_args *args)
+                    const struct voluta_fs_args *args)
 {
 	int err;
 
@@ -421,7 +421,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 }
 
 int voluta_fse_new(const struct voluta_fs_args *args,
-		   struct voluta_fs_env **out_fse)
+                   struct voluta_fs_env **out_fse)
 {
 	int err;
 	void *mem = NULL;
@@ -671,7 +671,7 @@ int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 }
 
 void voluta_fse_stats(const struct voluta_fs_env *fse,
-		      struct voluta_fs_stats *st)
+                      struct voluta_fs_stats *st)
 {
 	const struct voluta_cache *cache = fse->cache;
 
@@ -763,7 +763,7 @@ static bool fse_encrypt_mode(const struct voluta_fs_env *fse)
 }
 
 static void fse_calc_pass_hash(const struct voluta_fs_env *fse,
-			       struct voluta_hash512 *out_hash)
+                               struct voluta_hash512 *out_hash)
 {
 	const struct voluta_mdigest *md = fse_mdigest(fse);
 	const struct voluta_passphrase *pp = &fse->passph;
@@ -802,7 +802,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
-			fse->args.volume, err);
+		        fse->args.volume, err);
 		return err;
 	}
 	return 0;
@@ -970,7 +970,7 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 }
 
 static int fse_format_rootdir(const struct voluta_fs_env *fse,
-			      const struct voluta_oper *op)
+                              const struct voluta_oper *op)
 {
 	int err;
 	const mode_t mode = S_IFDIR | 0755;
@@ -987,7 +987,7 @@ static int fse_format_rootdir(const struct voluta_fs_env *fse,
 }
 
 static int fse_format_fs_meta(const struct voluta_fs_env *fse,
-			      const struct voluta_oper *op)
+                              const struct voluta_oper *op)
 {
 	int err;
 
@@ -1016,7 +1016,7 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 }
 
 static int fse_setup_sb(struct voluta_fs_env *fse,
-			const struct voluta_oper *op)
+                        const struct voluta_oper *op)
 {
 	size_t vol_size;
 	size_t ag_count;
@@ -1052,7 +1052,7 @@ static int fse_prepare_volume(struct voluta_fs_env *fse)
 }
 
 static int fse_make_oper_self(struct voluta_fs_env *fse,
-			      struct voluta_oper *op)
+                              struct voluta_oper *op)
 {
 	voluta_memzero(op, sizeof(*op));
 

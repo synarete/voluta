@@ -54,7 +54,7 @@ static void ut_getattr_blocks(struct ut_env *ute, ino_t ino, size_t dsz)
 }
 
 static void ut_file_stat_blocks_at_(struct ut_env *ute,
-				    size_t bsz, loff_t off)
+                                    size_t bsz, loff_t off)
 {
 	ino_t ino;
 	ino_t dino;
@@ -100,7 +100,7 @@ static void ut_file_stat_blocks(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_statvfs_(struct ut_env *ute,
-			     loff_t off, size_t bsz)
+                             loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;

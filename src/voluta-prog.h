@@ -296,7 +296,7 @@ void voluta_die_if_exists(const char *path);
 void voluta_die_if_bad_sb(const char *path, const char *pass);
 
 void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-			      bool mustnot_be_enc, bool *out_is_encrypted);
+                              bool mustnot_be_enc, bool *out_is_encrypted);
 
 void voluta_die_if_not_archive(const char *path);
 

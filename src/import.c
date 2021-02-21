@@ -31,23 +31,23 @@ static void import_finalize(void)
 static void import_setup_check_archive(void)
 {
 	voluta_globals.cmd.import.archive_real =
-		voluta_realpath_safe(voluta_globals.cmd.import.archive);
+	        voluta_realpath_safe(voluta_globals.cmd.import.archive);
 	voluta_die_if_not_reg(voluta_globals.cmd.import.archive_real, false);
 
 	voluta_globals.cmd.import.archive_dir =
-		voluta_dirpath_safe(voluta_globals.cmd.import.archive_real);
+	        voluta_dirpath_safe(voluta_globals.cmd.import.archive_real);
 	voluta_globals.cmd.import.archive_name =
-		voluta_basename_safe(voluta_globals.cmd.import.archive_real);
+	        voluta_basename_safe(voluta_globals.cmd.import.archive_real);
 }
 
 static void import_setup_check_volume(void)
 {
 	voluta_globals.cmd.import.volume_real =
-		voluta_realpath_safe(voluta_globals.cmd.import.volume);
+	        voluta_realpath_safe(voluta_globals.cmd.import.volume);
 	voluta_die_if_not_dir(voluta_globals.cmd.import.volume_real, false);
 	voluta_globals.cmd.import.volume_path =
-		voluta_joinpath_safe(voluta_globals.cmd.import.volume_real,
-				     voluta_globals.cmd.import.archive_name);
+	        voluta_joinpath_safe(voluta_globals.cmd.import.volume_real,
+	                             voluta_globals.cmd.import.archive_name);
 	voluta_die_if_exists(voluta_globals.cmd.import.volume_path);
 }
 
@@ -141,8 +141,8 @@ void voluta_getopt_import(void)
 		}
 	}
 	voluta_globals.cmd.import.archive =
-		voluta_consume_cmdarg("archive-file", false);
+	        voluta_consume_cmdarg("archive-file", false);
 	voluta_globals.cmd.import.volume =
-		voluta_consume_cmdarg("volume-dir", true);
+	        voluta_consume_cmdarg("volume-dir", true);
 }
 

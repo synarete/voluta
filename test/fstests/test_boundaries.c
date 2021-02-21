@@ -61,7 +61,7 @@ static void test_boundaries_(struct vt_env *vte, loff_t boff)
 }
 
 static void test_boundaries_arr_(struct vt_env *vte,
-				 const loff_t *arr, size_t cnt)
+                                 const loff_t *arr, size_t cnt)
 {
 	for (size_t i = 0; i < cnt; ++i) {
 		test_boundaries_(vte, arr[i]);

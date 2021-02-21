@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
 static void mountd_init_process(void)
 {
 	voluta_globals.log_mask |=
-		VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
-		VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
+	        VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
+	        VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
 	voluta_init_process();
 }
 
@@ -139,7 +139,7 @@ static void mountd_trace_start(void)
 static void mountd_load_mntrules(void)
 {
 	g_mountd_mntrules =
-		voluta_parse_mntrules(voluta_globals.mountd_confpath);
+	        voluta_parse_mntrules(voluta_globals.mountd_confpath);
 }
 
 static void mountd_drop_mntrules(void)

@@ -67,7 +67,7 @@ static void ut_rename_toggle_between_dirs(struct ut_env *ute)
 		src_dino = (i & 1) ? dino1 : dino2;
 		dst_dino = (i & 1) ? dino2 : dino1;
 		ut_rename_move(ute, src_dino,
-			       name, dst_dino, newname);
+		               name, dst_dino, newname);
 		ut_getattr_ok(ute, ino, &st);
 		ut_expect_eq(st.st_nlink, 1);
 
@@ -217,7 +217,7 @@ static void ut_rename_move_multi(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_rename_onto_link_(struct ut_env *ute,
-				 size_t niter, size_t cnt)
+                                 size_t niter, size_t cnt)
 {
 	ino_t ino;
 	ino_t dino;
@@ -239,7 +239,7 @@ static void ut_rename_onto_link_(struct ut_env *ute,
 		for (size_t j = 0; j < cnt; ++j) {
 			name = ut_make_name(ute, tname, j);
 			ut_rename_replace(ute, dino,
-					  tname, dino, name);
+			                  tname, dino, name);
 			ut_rename_move(ute, dino, name, dino, tname);
 		}
 		ut_unlink_ok(ute, dino, tname);
@@ -260,7 +260,7 @@ static void ut_rename_onto_link(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_rename_exchange_aux_(struct ut_env *ute,
-				    ino_t dino1, ino_t dino2, size_t cnt)
+                                    ino_t dino1, ino_t dino2, size_t cnt)
 {
 	ino_t ino1;
 	ino_t ino2;
@@ -327,7 +327,7 @@ static void ut_rename_exchange_same(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_rename_override_(struct ut_env *ute, size_t cnt,
-				loff_t off_base, size_t bsz)
+                                loff_t off_base, size_t bsz)
 {
 	ino_t ino1;
 	ino_t ino2;

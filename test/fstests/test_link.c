@@ -261,7 +261,7 @@ static void test_link_similar_names(struct vt_env *vte)
 	const char *path0 = vt_new_path_unique(vte);
 	const char *rpath = vt_new_path_under(vte, path0);
 	const char *abc =
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const size_t abc_len = strlen(abc);
 	const size_t name_max = VOLUTA_NAME_MAX;
 

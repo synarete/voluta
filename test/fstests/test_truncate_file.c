@@ -67,7 +67,7 @@ static void test_truncate_basic(struct vt_env *vte)
  * Expects truncate(3p) to create zeros at the truncated tail-range.
  */
 static void test_truncate_tail_(struct vt_env *vte, loff_t base_off,
-				size_t data_sz, size_t tail_sz)
+                                size_t data_sz, size_t tail_sz)
 {
 	int fd = -1;
 	loff_t off[2] = { 0, 0 };
@@ -99,9 +99,9 @@ static void test_truncate_tail(struct vt_env *vte)
 	test_truncate_tail_(vte, 1, VT_UMEGA + 111, (7 * VT_BK_SIZE) - 7);
 	test_truncate_tail_(vte, VT_MEGA - 1, VT_UMEGA + 2, VT_UMEGA / 2);
 	test_truncate_tail_(vte, VT_GIGA - 11,
-			    VT_UMEGA + 111, VT_UMEGA / 3);
+	                    VT_UMEGA + 111, VT_UMEGA / 3);
 	test_truncate_tail_(vte, VT_FILESIZE_MAX / 3,
-			    VT_UMEGA + 3, VT_UMEGA / 3);
+	                    VT_UMEGA + 3, VT_UMEGA / 3);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -109,7 +109,7 @@ static void test_truncate_tail(struct vt_env *vte)
  * Expects truncate(3p) to create zeros at extended area without written data
  */
 static void test_truncate_extend_(struct vt_env *vte,
-				  loff_t base_off, size_t data_sz)
+                                  loff_t base_off, size_t data_sz)
 {
 	int fd = -1;
 	loff_t off;
@@ -196,4 +196,4 @@ static const struct vt_tdef vt_local_tests[] = {
 };
 
 const struct vt_tests vt_test_truncate_io =
-	VT_DEFTESTS(vt_local_tests);
+        VT_DEFTESTS(vt_local_tests);

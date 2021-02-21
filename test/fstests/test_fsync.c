@@ -27,7 +27,7 @@
  * Expects fsync(3p) to return 0 after regular file write/read operation.
  */
 static void test_fsync_reg(struct vt_env *vte, loff_t base_off,
-			   size_t bsz, loff_t step, size_t cnt)
+                           size_t bsz, loff_t step, size_t cnt)
 {
 	int fd = -1;
 	loff_t off = -1;
@@ -54,7 +54,7 @@ static void test_fsync_reg_aligned(struct vt_env *vte)
 {
 	test_fsync_reg(vte, 0, VT_UKILO, VT_UMEGA, 64);
 	test_fsync_reg(vte, VT_UMEGA, VT_BK_SIZE, VT_UGIGA,
-		       64);
+	               64);
 }
 
 static void test_fsync_reg_unaligned(struct vt_env *vte)

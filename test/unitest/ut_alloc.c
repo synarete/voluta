@@ -61,7 +61,7 @@ static struct ut_mrecord *
 link_to_mrecord(const struct voluta_list_head *link)
 {
 	const struct ut_mrecord *mr =
-		ut_container_of2(link, struct ut_mrecord, link);
+	        ut_container_of2(link, struct ut_mrecord, link);
 
 	mrecord_check(mr);
 	return voluta_unconst(mr);
@@ -333,7 +333,7 @@ static void ut_qalloc_small_sizes(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct iovec *random_iovecs(struct ut_env *ute,
-				   size_t cnt, size_t len_min, size_t len_max)
+                                   size_t cnt, size_t len_min, size_t len_max)
 {
 	struct iovec *iov = NULL;
 	const size_t msz = sizeof(*iov) * cnt;

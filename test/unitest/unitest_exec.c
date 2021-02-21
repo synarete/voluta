@@ -127,7 +127,7 @@ static void ute_del(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_track_test(struct ut_env *ute,
-			  const struct ut_testdef *td, bool pre_execute)
+                          const struct ut_testdef *td, bool pre_execute)
 {
 	FILE *fp = stdout;
 	struct timespec dur;
@@ -138,7 +138,7 @@ static void ut_track_test(struct ut_env *ute,
 	} else {
 		voluta_mclock_dur(&ute->ts_start, &dur);
 		fprintf(fp, "OK (%ld.%03lds)\n",
-			dur.tv_sec, dur.tv_nsec / 1000000L);
+		        dur.tv_sec, dur.tv_nsec / 1000000L);
 	}
 	fflush(fp);
 }
@@ -152,7 +152,7 @@ static void ut_check_valid_statvfs(const struct statvfs *stv)
 }
 
 static void ut_check_statvfs(const struct statvfs *stv1,
-			     const struct statvfs *stv2)
+                             const struct statvfs *stv2)
 {
 	ut_check_valid_statvfs(stv1);
 	ut_check_valid_statvfs(stv2);
@@ -367,7 +367,7 @@ ut_malloc_chunk(struct ut_env *ute, size_t nbytes)
 }
 
 static void ut_free(struct ut_env *ute,
-		    struct ut_malloc_chunk *mchunk)
+                    struct ut_malloc_chunk *mchunk)
 {
 	voluta_assert_ge(ute->nbytes_alloc, mchunk->size);
 
@@ -400,7 +400,7 @@ char *ut_strdup(struct ut_env *ute, const char *str)
 }
 
 char *ut_strndup(struct ut_env *ute, const char *str,
-		 size_t len)
+                 size_t len)
 {
 	char *str2;
 
@@ -539,7 +539,7 @@ char *ut_strfmt(struct ut_env *ute, const char *fmt, ...)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct ut_dvec *ut_new_dvec(struct ut_env *ute,
-			    loff_t off, size_t len)
+                            loff_t off, size_t len)
 {
 	size_t size;
 	struct ut_dvec *dvec;

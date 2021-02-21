@@ -83,7 +83,7 @@ static void *voluta_thread_start(void *arg)
 }
 
 int voluta_thread_create(struct voluta_thread *th,
-			 voluta_execute_fn exec, const char *name)
+                         voluta_execute_fn exec, const char *name)
 {
 	int err;
 	size_t nlen = 0;
@@ -176,7 +176,7 @@ bool voluta_mutex_trylock(struct voluta_mutex *mutex)
 }
 
 bool voluta_mutex_timedlock(struct voluta_mutex *mutex,
-			    const struct timespec *abstime)
+                            const struct timespec *abstime)
 {
 	int err;
 	bool status = false;

@@ -72,12 +72,12 @@ void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 
 void voluta_qalloc_stat(const struct voluta_qalloc *qal,
-			struct voluta_qastat *qast);
+                        struct voluta_qastat *qast);
 
 int voluta_qalloc_xiovec(const struct voluta_qalloc *qal, void *ptr,
-			 size_t len, struct voluta_xiovec *xiov);
+                         size_t len, struct voluta_xiovec *xiov);
 
 int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
-			 const void *ptr, size_t nbytes);
+                         const void *ptr, size_t nbytes);
 
 #endif /* VOLUTA_QALLOC_H_ */

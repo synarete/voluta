@@ -46,7 +46,7 @@ static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 }
 
 static int op_finish(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op, int err)
+                     const struct voluta_oper *op, int err)
 {
 	const time_t now = time(NULL);
 	const time_t beg = op->xtime.tv_sec;
@@ -54,7 +54,7 @@ static int op_finish(struct voluta_sb_info *sbi,
 
 	if ((beg < now) && (dif > 30)) {
 		log_warn("slow-oper: id=%ld code=%d duration=%ld status=%d",
-			 sbi->sb_ops.op_count, op->opcode, dif, err);
+		         sbi->sb_ops.op_count, op->opcode, dif, err);
 	}
 	/* TODO: maybe extra flush-relax? */
 	return err;
@@ -63,7 +63,7 @@ static int op_finish(struct voluta_sb_info *sbi,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void stat_to_itimes(const struct stat *times,
-			   struct voluta_itimes *itimes)
+                           struct voluta_itimes *itimes)
 {
 	ts_copy(&itimes->atime, &times->st_atim);
 	ts_copy(&itimes->mtime, &times->st_mtim);
@@ -90,8 +90,8 @@ static int symval_to_str(const char *symval, struct voluta_str *str)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 int voluta_fs_forget(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op,
-		     ino_t ino, size_t nlookup)
+                     const struct voluta_oper *op,
+                     ino_t ino, size_t nlookup)
 {
 	int err;
 
@@ -108,8 +108,8 @@ out:
 }
 
 int voluta_fs_statfs(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op,
-		     ino_t ino, struct statvfs *stvfs)
+                     const struct voluta_oper *op,
+                     ino_t ino, struct statvfs *stvfs)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -130,8 +130,8 @@ out:
 }
 
 int voluta_fs_lookup(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op, ino_t parent,
-		     const char *name, struct stat *out_stat)
+                     const struct voluta_oper *op, ino_t parent,
+                     const char *name, struct stat *out_stat)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -160,8 +160,8 @@ out:
 }
 
 int voluta_fs_getattr(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op,
-		      ino_t ino, struct stat *out_stat)
+                      const struct voluta_oper *op,
+                      ino_t ino, struct stat *out_stat)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -182,7 +182,7 @@ out:
 }
 
 int voluta_fs_access(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op, ino_t ino, int mode)
+                     const struct voluta_oper *op, ino_t ino, int mode)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -203,8 +203,8 @@ out:
 }
 
 int voluta_fs_mkdir(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t parent,
-		    const char *name, mode_t mode, struct stat *out_stat)
+                    const struct voluta_oper *op, ino_t parent,
+                    const char *name, mode_t mode, struct stat *out_stat)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -233,8 +233,8 @@ out:
 }
 
 int voluta_fs_rmdir(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op,
-		    ino_t parent, const char *name)
+                    const struct voluta_oper *op,
+                    ino_t parent, const char *name)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -259,9 +259,9 @@ out:
 }
 
 int voluta_fs_symlink(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op, ino_t parent,
-		      const char *name, const char *symval,
-		      struct stat *out_stat)
+                      const struct voluta_oper *op, ino_t parent,
+                      const char *name, const char *symval,
+                      struct stat *out_stat)
 {
 	int err;
 	struct voluta_str value;
@@ -294,8 +294,8 @@ out:
 }
 
 int voluta_fs_readlink(struct voluta_sb_info *sbi,
-		       const struct voluta_oper *op,
-		       ino_t ino, char *ptr, size_t lim, size_t *out_len)
+                       const struct voluta_oper *op,
+                       ino_t ino, char *ptr, size_t lim, size_t *out_len)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -316,8 +316,8 @@ out:
 }
 
 int voluta_fs_unlink(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op,
-		     ino_t parent, const char *name)
+                     const struct voluta_oper *op,
+                     ino_t parent, const char *name)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -342,8 +342,8 @@ out:
 }
 
 int voluta_fs_link(struct voluta_sb_info *sbi,
-		   const struct voluta_oper *op, ino_t ino, ino_t parent,
-		   const char *name, struct stat *out_stat)
+                   const struct voluta_oper *op, ino_t ino, ino_t parent,
+                   const char *name, struct stat *out_stat)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -375,7 +375,7 @@ out:
 }
 
 int voluta_fs_opendir(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op, ino_t ino)
+                      const struct voluta_oper *op, ino_t ino)
 {
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
@@ -396,7 +396,7 @@ out:
 }
 
 int voluta_fs_releasedir(struct voluta_sb_info *sbi,
-			 const struct voluta_oper *op, ino_t ino, int o_flags)
+                         const struct voluta_oper *op, ino_t ino, int o_flags)
 {
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
@@ -419,8 +419,8 @@ out:
 }
 
 int voluta_fs_readdir(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op, ino_t ino,
-		      struct voluta_readdir_ctx *rd_ctx)
+                      const struct voluta_oper *op, ino_t ino,
+                      struct voluta_readdir_ctx *rd_ctx)
 {
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
@@ -441,8 +441,8 @@ out:
 }
 
 int voluta_fs_readdirplus(struct voluta_sb_info *sbi,
-			  const struct voluta_oper *op, ino_t ino,
-			  struct voluta_readdir_ctx *rd_ctx)
+                          const struct voluta_oper *op, ino_t ino,
+                          struct voluta_readdir_ctx *rd_ctx)
 {
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
@@ -463,7 +463,7 @@ out:
 }
 
 int voluta_fs_fsyncdir(struct voluta_sb_info *sbi,
-		       const struct voluta_oper *op, ino_t ino, bool datasync)
+                       const struct voluta_oper *op, ino_t ino, bool datasync)
 {
 	int err;
 	struct voluta_inode_info *dir_ii = NULL;
@@ -484,8 +484,8 @@ out:
 }
 
 int voluta_fs_chmod(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino, mode_t mode,
-		    const struct stat *st, struct stat *out_stat)
+                    const struct voluta_oper *op, ino_t ino, mode_t mode,
+                    const struct stat *st, struct stat *out_stat)
 {
 	int err;
 	struct voluta_itimes itimes;
@@ -511,8 +511,8 @@ out:
 }
 
 int voluta_fs_chown(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino, uid_t uid,
-		    gid_t gid, const struct stat *st, struct stat *out_stat)
+                    const struct voluta_oper *op, ino_t ino, uid_t uid,
+                    gid_t gid, const struct stat *st, struct stat *out_stat)
 {
 	int err;
 	struct voluta_itimes itimes;
@@ -538,8 +538,8 @@ out:
 }
 
 int voluta_fs_utimens(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op, ino_t ino,
-		      const struct stat *times, struct stat *out_stat)
+                      const struct voluta_oper *op, ino_t ino,
+                      const struct stat *times, struct stat *out_stat)
 {
 	int err;
 	struct voluta_itimes itimes;
@@ -565,8 +565,8 @@ out:
 }
 
 int voluta_fs_truncate(struct voluta_sb_info *sbi,
-		       const struct voluta_oper *op, ino_t ino, loff_t len,
-		       struct stat *out_stat)
+                       const struct voluta_oper *op, ino_t ino, loff_t len,
+                       struct stat *out_stat)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -590,9 +590,9 @@ out:
 }
 
 int voluta_fs_create(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op, ino_t parent,
-		     const char *name, int o_flags, mode_t mode,
-		     struct stat *out_stat)
+                     const struct voluta_oper *op, ino_t parent,
+                     const char *name, int o_flags, mode_t mode,
+                     struct stat *out_stat)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -623,7 +623,7 @@ out:
 }
 
 int voluta_fs_open(struct voluta_sb_info *sbi,
-		   const struct voluta_oper *op, ino_t ino, int o_flags)
+                   const struct voluta_oper *op, ino_t ino, int o_flags)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -644,8 +644,8 @@ out:
 }
 
 int voluta_fs_mknod(struct voluta_sb_info *sbi, const struct voluta_oper *op,
-		    ino_t parent, const char *name, mode_t mode, dev_t rdev,
-		    struct stat *out_stat)
+                    ino_t parent, const char *name, mode_t mode, dev_t rdev,
+                    struct stat *out_stat)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -674,8 +674,8 @@ out:
 }
 
 int voluta_fs_release(struct voluta_sb_info *sbi,
-		      const struct voluta_oper *op,
-		      ino_t ino, int o_flags, bool flush)
+                      const struct voluta_oper *op,
+                      ino_t ino, int o_flags, bool flush)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -700,7 +700,7 @@ out:
 }
 
 int voluta_fs_flush(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino)
+                    const struct voluta_oper *op, ino_t ino)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -721,8 +721,8 @@ out:
 }
 
 int voluta_fs_fsync(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op,
-		    ino_t ino, bool datasync)
+                    const struct voluta_oper *op,
+                    ino_t ino, bool datasync)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -743,9 +743,9 @@ out:
 }
 
 int voluta_fs_rename(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op, ino_t parent,
-		     const char *name, ino_t newparent,
-		     const char *newname, int flags)
+                     const struct voluta_oper *op, ino_t parent,
+                     const char *name, ino_t newparent,
+                     const char *newname, int flags)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -778,8 +778,8 @@ out:
 }
 
 int voluta_fs_read(struct voluta_sb_info *sbi,
-		   const struct voluta_oper *op, ino_t ino, void *buf,
-		   size_t len, loff_t off, size_t *out_len)
+                   const struct voluta_oper *op, ino_t ino, void *buf,
+                   size_t len, loff_t off, size_t *out_len)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -800,8 +800,8 @@ out:
 }
 
 int voluta_fs_read_iter(struct voluta_sb_info *sbi,
-			const struct voluta_oper *op, ino_t ino,
-			struct voluta_rwiter_ctx *rwi_ctx)
+                        const struct voluta_oper *op, ino_t ino,
+                        struct voluta_rwiter_ctx *rwi_ctx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -822,8 +822,8 @@ out:
 }
 
 int voluta_fs_write(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino,
-		    const void *buf, size_t len, off_t off, size_t *out_len)
+                    const struct voluta_oper *op, ino_t ino,
+                    const void *buf, size_t len, off_t off, size_t *out_len)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -844,8 +844,8 @@ out:
 }
 
 int voluta_fs_write_iter(struct voluta_sb_info *sbi,
-			 const struct voluta_oper *op, ino_t ino,
-			 struct voluta_rwiter_ctx *rwi_ctx)
+                         const struct voluta_oper *op, ino_t ino,
+                         struct voluta_rwiter_ctx *rwi_ctx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -866,8 +866,8 @@ out:
 }
 
 int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
-			const struct voluta_oper *op, ino_t ino,
-			const struct voluta_xiovec *xiov, size_t cnt)
+                        const struct voluta_oper *op, ino_t ino,
+                        const struct voluta_xiovec *xiov, size_t cnt)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -882,8 +882,8 @@ out:
 }
 
 int voluta_fs_fallocate(struct voluta_sb_info *sbi,
-			const struct voluta_oper *op, ino_t ino,
-			int mode, loff_t offset, loff_t length)
+                        const struct voluta_oper *op, ino_t ino,
+                        int mode, loff_t offset, loff_t length)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -904,8 +904,8 @@ out:
 }
 
 int voluta_fs_lseek(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino,
-		    loff_t off, int whence, loff_t *out_off)
+                    const struct voluta_oper *op, ino_t ino,
+                    loff_t off, int whence, loff_t *out_off)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -926,9 +926,9 @@ out:
 }
 
 int voluta_fs_copy_file_range(struct voluta_sb_info *sbi,
-			      const struct voluta_oper *op, ino_t ino_in,
-			      loff_t off_in, ino_t ino_out, loff_t off_out,
-			      size_t len, int flags, size_t *out_ncp)
+                              const struct voluta_oper *op, ino_t ino_in,
+                              loff_t off_in, ino_t ino_out, loff_t off_out,
+                              size_t len, int flags, size_t *out_ncp)
 {
 	int err;
 	struct voluta_inode_info *ii_in = NULL;
@@ -947,16 +947,16 @@ int voluta_fs_copy_file_range(struct voluta_sb_info *sbi,
 	ok_or_goto_out(err);
 
 	err = voluta_do_copy_file_range(op, ii_in, ii_out, off_in,
-					off_out, len, flags, out_ncp);
+	                                off_out, len, flags, out_ncp);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);
 }
 
 int voluta_fs_setxattr(struct voluta_sb_info *sbi,
-		       const struct voluta_oper *op, ino_t ino,
-		       const char *name, const void *value,
-		       size_t size, int flags)
+                       const struct voluta_oper *op, ino_t ino,
+                       const char *name, const void *value,
+                       size_t size, int flags)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -981,9 +981,9 @@ out:
 }
 
 int voluta_fs_getxattr(struct voluta_sb_info *sbi,
-		       const struct voluta_oper *op, ino_t ino,
-		       const char *name, void *buf, size_t size,
-		       size_t *out_size)
+                       const struct voluta_oper *op, ino_t ino,
+                       const char *name, void *buf, size_t size,
+                       size_t *out_size)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -1008,8 +1008,8 @@ out:
 }
 
 int voluta_fs_listxattr(struct voluta_sb_info *sbi,
-			const struct voluta_oper *op, ino_t ino,
-			struct voluta_listxattr_ctx *lxa_ctx)
+                        const struct voluta_oper *op, ino_t ino,
+                        struct voluta_listxattr_ctx *lxa_ctx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1030,8 +1030,8 @@ out:
 }
 
 int voluta_fs_removexattr(struct voluta_sb_info *sbi,
-			  const struct voluta_oper *op,
-			  ino_t ino, const char *name)
+                          const struct voluta_oper *op,
+                          ino_t ino, const char *name)
 {
 	int err;
 	struct voluta_namestr nstr;
@@ -1056,8 +1056,8 @@ out:
 }
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino,
-		    struct statx *out_stx)
+                    const struct voluta_oper *op, ino_t ino,
+                    struct statx *out_stx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1078,8 +1078,8 @@ out:
 }
 
 int voluta_fs_fiemap(struct voluta_sb_info *sbi,
-		     const struct voluta_oper *op,
-		     ino_t ino, struct fiemap *fm)
+                     const struct voluta_oper *op,
+                     ino_t ino, struct fiemap *fm)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1100,8 +1100,8 @@ out:
 }
 
 int voluta_fs_query(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op, ino_t ino,
-		    struct voluta_ioc_query *out_qry)
+                    const struct voluta_oper *op, ino_t ino,
+                    struct voluta_ioc_query *out_qry)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1122,8 +1122,8 @@ out:
 }
 
 int voluta_fs_clone(struct voluta_sb_info *sbi,
-		    const struct voluta_oper *op,
-		    ino_t ino, char *str, size_t lim)
+                    const struct voluta_oper *op,
+                    ino_t ino, char *str, size_t lim)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;

@@ -73,7 +73,7 @@ static blkcnt_t calc_nfrgs_of(loff_t off, loff_t len, blksize_t blksz)
 }
 
 static void vt_calc_stat_blkcnt(loff_t off, size_t nbytes,
-				blksize_t *out_min, blksize_t *out_max)
+                                blksize_t *out_min, blksize_t *out_max)
 {
 	*out_min = calc_nfrgs_of(off, (loff_t)nbytes, 512);
 	*out_max = calc_nfrgs_of(off, (loff_t)nbytes, 65536);
@@ -85,7 +85,7 @@ static void vt_calc_stat_blkcnt(loff_t off, size_t nbytes,
  * Performs sequential write, followed by over-write on same region.
  */
 static void test_stat_write_(struct vt_env *vte,
-			     const struct vt_ioargs *ioargs)
+                             const struct vt_ioargs *ioargs)
 {
 	int fd = -1;
 	void *buf = NULL;
@@ -143,7 +143,7 @@ static void test_stat_write_unaligned(struct vt_env *vte)
  * data region.
  */
 static void test_stat_punch_(struct vt_env *vte,
-			     const struct vt_ioargs *ioargs)
+                             const struct vt_ioargs *ioargs)
 {
 	int fd = -1;
 	size_t nwr = 0;
@@ -195,7 +195,7 @@ static void test_stat_punch_unaligned(struct vt_env *vte)
  * change time-stamps, regardless of other files operation.
  */
 static void test_write_stat_(struct vt_env *vte,
-			     size_t nfiles)
+                             size_t nfiles)
 {
 	int fd = -1;
 	int dfd = -1;

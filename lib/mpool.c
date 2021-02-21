@@ -140,7 +140,7 @@ static struct voluta_mpool_chnk *mpool_new_mpc(struct voluta_mpool *mpool)
 }
 
 static void mpool_del_mpc(struct voluta_mpool *mpool,
-			  struct voluta_mpool_chnk *mpc)
+                          struct voluta_mpool_chnk *mpc)
 {
 	mpc_fini(mpc);
 	voluta_qalloc_free(mpool->mp_qal, mpc, sizeof(*mpc));
@@ -200,19 +200,19 @@ static struct voluta_bk_info *mpool_pop_bki(struct voluta_mpool *mpool)
 }
 
 static void mpool_push_bki(struct voluta_mpool *mpool,
-			   struct voluta_bk_info *bki)
+                           struct voluta_bk_info *bki)
 {
 	listq_push_back(&mpool->mp_bq, bki_to_lh(bki));
 }
 
 static void mpool_remove_bki(struct voluta_mpool *mpool,
-			     struct voluta_bk_info *bki)
+                             struct voluta_bk_info *bki)
 {
 	listq_remove(&mpool->mp_bq, bki_to_lh(bki));
 }
 
 static void mpool_add_bfree_page(struct voluta_mpool *mpool,
-				 struct voluta_mpool_chnk *mpc)
+                                 struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_bki *m;
 
@@ -224,7 +224,7 @@ static void mpool_add_bfree_page(struct voluta_mpool *mpool,
 }
 
 static void mpool_remove_bfree_page(struct voluta_mpool *mpool,
-				    struct voluta_mpool_chnk *mpc)
+                                    struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_bki *m;
 
@@ -248,7 +248,7 @@ static int mpool_more_bfree(struct voluta_mpool *mpool)
 }
 
 static void mpool_less_bfree(struct voluta_mpool *mpool,
-			     struct voluta_mpool_chnk *mpc)
+                             struct voluta_mpool_chnk *mpc)
 {
 	mpool_remove_bfree_page(mpool, mpc);
 	mpool_del_mpc(mpool, mpc);
@@ -269,7 +269,7 @@ static struct voluta_bk_info *mpool_alloc_bki(struct voluta_mpool *mpool)
 }
 
 static void mpool_free_bki(struct voluta_mpool *mpool,
-			   struct voluta_bk_info *bki)
+                           struct voluta_bk_info *bki)
 {
 	struct voluta_mpool_chnk *mpc = bki_to_mpc(bki);
 
@@ -335,19 +335,19 @@ static struct voluta_vnode_info *mpool_pop_vi(struct voluta_mpool *mpool)
 }
 
 static void mpool_push_vi(struct voluta_mpool *mpool,
-			  struct voluta_vnode_info *vi)
+                          struct voluta_vnode_info *vi)
 {
 	listq_push_back(&mpool->mp_vq, vi_to_lh(vi));
 }
 
 static void mpool_remove_vi(struct voluta_mpool *mpool,
-			    struct voluta_vnode_info *vi)
+                            struct voluta_vnode_info *vi)
 {
 	listq_remove(&mpool->mp_vq, vi_to_lh(vi));
 }
 
 static void mpool_add_vfree_page(struct voluta_mpool *mpool,
-				 struct voluta_mpool_chnk *mpc)
+                                 struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_vi *m;
 
@@ -359,7 +359,7 @@ static void mpool_add_vfree_page(struct voluta_mpool *mpool,
 }
 
 static void mpool_remove_vfree_page(struct voluta_mpool *mpool,
-				    struct voluta_mpool_chnk *mpc)
+                                    struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_vi *m;
 
@@ -383,7 +383,7 @@ static int mpool_more_vfree(struct voluta_mpool *mpool)
 }
 
 static void mpool_less_vfree(struct voluta_mpool *mpool,
-			     struct voluta_mpool_chnk *mpc)
+                             struct voluta_mpool_chnk *mpc)
 {
 	mpool_remove_vfree_page(mpool, mpc);
 	mpool_del_mpc(mpool, mpc);
@@ -403,7 +403,7 @@ static struct voluta_vnode_info *mpool_alloc_vi(struct voluta_mpool *mpool)
 }
 
 static void mpool_free_vi(struct voluta_mpool *mpool,
-			  struct voluta_vnode_info *vi)
+                          struct voluta_vnode_info *vi)
 {
 	struct voluta_mpool_chnk *mpc = vi_to_mpc(vi);
 
@@ -469,19 +469,19 @@ static struct voluta_inode_info *mpool_pop_ii(struct voluta_mpool *mpool)
 }
 
 static void mpool_push_ii(struct voluta_mpool *mpool,
-			  struct voluta_inode_info *ii)
+                          struct voluta_inode_info *ii)
 {
 	listq_push_back(&mpool->mp_iq, ii_to_lh(ii));
 }
 
 static void mpool_remove_ii(struct voluta_mpool *mpool,
-			    struct voluta_inode_info *ii)
+                            struct voluta_inode_info *ii)
 {
 	listq_remove(&mpool->mp_iq, ii_to_lh(ii));
 }
 
 static void mpool_add_ifree_page(struct voluta_mpool *mpool,
-				 struct voluta_mpool_chnk *mpc)
+                                 struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_ii *m;
 
@@ -493,7 +493,7 @@ static void mpool_add_ifree_page(struct voluta_mpool *mpool,
 }
 
 static void mpool_remove_ifree_page(struct voluta_mpool *mpool,
-				    struct voluta_mpool_chnk *mpc)
+                                    struct voluta_mpool_chnk *mpc)
 {
 	struct voluta_mobj_ii *m;
 
@@ -517,7 +517,7 @@ static int mpool_more_ifree(struct voluta_mpool *mpool)
 }
 
 static void mpool_less_ifree(struct voluta_mpool *mpool,
-			     struct voluta_mpool_chnk *mpc)
+                             struct voluta_mpool_chnk *mpc)
 {
 	mpool_remove_ifree_page(mpool, mpc);
 	mpool_del_mpc(mpool, mpc);
@@ -537,7 +537,7 @@ static struct voluta_inode_info *mpool_alloc_ii(struct voluta_mpool *mpool)
 }
 
 static void mpool_free_ii(struct voluta_mpool *mpool,
-			  struct voluta_inode_info *ii)
+                          struct voluta_inode_info *ii)
 {
 	struct voluta_mpool_chnk *mpc = ii_to_mpc(ii);
 

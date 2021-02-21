@@ -27,7 +27,7 @@
  * Tests data-consistency of sequential writes followed by sequential reads.
  */
 static void test_sequencial_(struct vt_env *vte, loff_t from,
-			     size_t bsz, size_t cnt, int rewrite)
+                             size_t bsz, size_t cnt, int rewrite)
 {
 	int fd = -1;
 	loff_t pos;
@@ -59,7 +59,7 @@ static void test_sequencial_(struct vt_env *vte, loff_t from,
 }
 
 static void test_sequencial_io(struct vt_env *vte,
-			       loff_t from, size_t bsz, size_t cnt)
+                               loff_t from, size_t bsz, size_t cnt)
 {
 	test_sequencial_(vte, from, bsz, cnt, 0);
 	test_sequencial_(vte, from, bsz, cnt, 1);
@@ -297,7 +297,7 @@ static void test_sequencial_unaligned_large(struct vt_env *vte)
  * of variable length strings
  */
 static void test_sequencial_nstrings(struct vt_env *vte,
-				     loff_t start_off, size_t cnt)
+                                     loff_t start_off, size_t cnt)
 {
 	int fd = -1;
 	int ni = 0;
@@ -333,7 +333,7 @@ static void test_sequencial_nstrings(struct vt_env *vte,
 }
 
 static void test_sequencial_nstrings_(struct vt_env *vte,
-				      size_t n)
+                                      size_t n)
 {
 	test_sequencial_nstrings(vte, 0, n);
 	test_sequencial_nstrings(vte, VT_BK_SIZE - 1, n);

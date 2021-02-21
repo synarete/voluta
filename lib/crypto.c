@@ -117,8 +117,8 @@ void voluta_mdigest_fini(struct voluta_mdigest *md)
 }
 
 static void mdigest_calc(const struct voluta_mdigest *md, int algo,
-			 const void *buf, size_t bsz, size_t hash_len,
-			 void *out_hash_buf)
+                         const void *buf, size_t bsz, size_t hash_len,
+                         void *out_hash_buf)
 {
 	const void *hval;
 
@@ -136,13 +136,13 @@ static void require_algo_dlen(int algo, size_t hlen)
 
 	if (dlen != hlen) {
 		voluta_panic("algo-dlen mismatch: "
-			     "algo=%d dlen=%lu hlen=%lu", algo, dlen, hlen);
+		             "algo=%d dlen=%lu hlen=%lu", algo, dlen, hlen);
 	}
 }
 
 void voluta_blake2s128_of(const struct voluta_mdigest *md,
-			  const void *buf, size_t bsz,
-			  struct voluta_hash128 *out_hash)
+                          const void *buf, size_t bsz,
+                          struct voluta_hash128 *out_hash)
 {
 	const int algo = GCRY_MD_BLAKE2S_128;
 	const size_t hlen = sizeof(out_hash->hash);
@@ -152,8 +152,8 @@ void voluta_blake2s128_of(const struct voluta_mdigest *md,
 }
 
 void voluta_sha256_of(const struct voluta_mdigest *md,
-		      const void *buf, size_t bsz,
-		      struct voluta_hash256 *out_hash)
+                      const void *buf, size_t bsz,
+                      struct voluta_hash256 *out_hash)
 {
 	const int algo = GCRY_MD_SHA256;
 	const size_t hlen = sizeof(out_hash->hash);
@@ -163,8 +163,8 @@ void voluta_sha256_of(const struct voluta_mdigest *md,
 }
 
 void voluta_sha3_256_of(const struct voluta_mdigest *md,
-			const void *buf, size_t bsz,
-			struct voluta_hash256 *out_hash)
+                        const void *buf, size_t bsz,
+                        struct voluta_hash256 *out_hash)
 {
 	const int algo = GCRY_MD_SHA3_256;
 	const size_t hlen = sizeof(out_hash->hash);
@@ -174,8 +174,8 @@ void voluta_sha3_256_of(const struct voluta_mdigest *md,
 }
 
 void voluta_sha3_512_of(const struct voluta_mdigest *md,
-			const void *buf, size_t bsz,
-			struct voluta_hash512 *out_hash)
+                        const void *buf, size_t bsz,
+                        struct voluta_hash512 *out_hash)
 {
 	const int algo = GCRY_MD_SHA3_512;
 	const size_t hlen = sizeof(out_hash->hash);
@@ -195,7 +195,7 @@ static uint32_t digest_to_uint32(const uint8_t *digest)
 }
 
 void voluta_crc32_of(const struct voluta_mdigest *md,
-		     const void *buf, size_t bsz, uint32_t *out_crc32)
+                     const void *buf, size_t bsz, uint32_t *out_crc32)
 {
 	const void *ptr;
 	const int algo = GCRY_MD_CRC32;
@@ -237,7 +237,7 @@ static void cipher_fini(struct voluta_cipher *ci)
 }
 
 static int chiper_verify(const struct voluta_cipher *ci,
-			 const struct voluta_kivam *kivam)
+                         const struct voluta_kivam *kivam)
 {
 	const int algo = (int)(kivam->cipher_algo);
 	const int mode = (int)(kivam->cipher_mode);
@@ -251,7 +251,7 @@ static int chiper_verify(const struct voluta_cipher *ci,
 }
 
 static int cipher_prepare(const struct voluta_cipher *ci,
-			  const struct voluta_kivam *kivam)
+                          const struct voluta_kivam *kivam)
 {
 	size_t blklen;
 	gcry_error_t err;
@@ -282,12 +282,12 @@ static int cipher_prepare(const struct voluta_cipher *ci,
 }
 
 static int cipher_encrypt(const struct voluta_cipher *ci,
-			  const void *in_dat, void *out_dat, size_t dat_len)
+                          const void *in_dat, void *out_dat, size_t dat_len)
 {
 	gcry_error_t err;
 
 	err = gcry_cipher_encrypt(ci->cipher_hd, out_dat,
-				  dat_len, in_dat, dat_len);
+	                          dat_len, in_dat, dat_len);
 	if (err) {
 		log_gcrypt_err("gcry_cipher_encrypt", err);
 		return gcrypt_err(err);
@@ -301,12 +301,12 @@ static int cipher_encrypt(const struct voluta_cipher *ci,
 }
 
 static int cipher_decrypt(const struct voluta_cipher *ci,
-			  const void *in_dat, void *out_dat, size_t dat_len)
+                          const void *in_dat, void *out_dat, size_t dat_len)
 {
 	gcry_error_t err;
 
 	err = gcry_cipher_decrypt(ci->cipher_hd, out_dat,
-				  dat_len, in_dat, dat_len);
+	                          dat_len, in_dat, dat_len);
 	if (err) {
 		log_gcrypt_err("gcry_cipher_decrypt", err);
 		return gcrypt_err(err);
@@ -320,8 +320,8 @@ static int cipher_decrypt(const struct voluta_cipher *ci,
 }
 
 int voluta_encrypt_buf(const struct voluta_cipher *ci,
-		       const struct voluta_kivam *kivam,
-		       const void *in_dat, void *out_dat, size_t dat_len)
+                       const struct voluta_kivam *kivam,
+                       const void *in_dat, void *out_dat, size_t dat_len)
 {
 	int err;
 
@@ -341,8 +341,8 @@ int voluta_encrypt_buf(const struct voluta_cipher *ci,
 }
 
 int voluta_decrypt_buf(const struct voluta_cipher *ci,
-		       const struct voluta_kivam *kivam,
-		       const void *in_dat, void *out_dat, size_t dat_len)
+                       const struct voluta_kivam *kivam,
+                       const void *in_dat, void *out_dat, size_t dat_len)
 {
 	int err;
 
@@ -364,7 +364,7 @@ int voluta_decrypt_buf(const struct voluta_cipher *ci,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void passphrase_setup(struct voluta_passphrase *pp,
-			     const void *pass, size_t passlen)
+                             const void *pass, size_t passlen)
 {
 	voluta_memzero(pp, sizeof(*pp));
 	if (passlen > 0) {
@@ -403,9 +403,9 @@ static int passphrase_check(const struct voluta_passphrase *pp)
 }
 
 static int derive_iv(const struct voluta_kdf_desc *kdf,
-		     const struct voluta_passphrase *pp,
-		     const struct voluta_mdigest *md,
-		     struct voluta_iv *out_iv)
+                     const struct voluta_passphrase *pp,
+                     const struct voluta_mdigest *md,
+                     struct voluta_iv *out_iv)
 {
 	int ret = 0;
 	gpg_error_t gcry_err;
@@ -417,11 +417,11 @@ static int derive_iv(const struct voluta_kdf_desc *kdf,
 	voluta_sha3_256_of(md, pp->pass, pp->passlen, &salt);
 
 	gcry_err = gcry_kdf_derive(pp->pass, pp->passlen,
-				   (int)kdf->kd_algo, /* GCRY_KDF_PBKDF2 */
-				   (int)kdf->kd_subalgo, /* GCRY_MD_SHA256 */
-				   salt.hash, sizeof(salt.hash),
-				   kdf->kd_iterations, /* 4096 */
-				   sizeof(out_iv->iv), out_iv->iv);
+	                           (int)kdf->kd_algo, /* GCRY_KDF_PBKDF2 */
+	                           (int)kdf->kd_subalgo, /* GCRY_MD_SHA256 */
+	                           salt.hash, sizeof(salt.hash),
+	                           kdf->kd_iterations, /* 4096 */
+	                           sizeof(out_iv->iv), out_iv->iv);
 	if (gcry_err) {
 		log_gcrypt_err("gcry_kdf_derive", gcry_err);
 		ret = gcrypt_err(gcry_err);
@@ -430,9 +430,9 @@ static int derive_iv(const struct voluta_kdf_desc *kdf,
 }
 
 static int derive_key(const struct voluta_kdf_desc *kdf,
-		      const struct voluta_passphrase *pp,
-		      const struct voluta_mdigest *md,
-		      struct voluta_key *out_key)
+                      const struct voluta_passphrase *pp,
+                      const struct voluta_mdigest *md,
+                      struct voluta_key *out_key)
 {
 	int ret = 0;
 	gpg_error_t gcry_err;
@@ -444,11 +444,11 @@ static int derive_key(const struct voluta_kdf_desc *kdf,
 	voluta_sha3_512_of(md, pp->pass, pp->passlen, &salt);
 
 	gcry_err = gcry_kdf_derive(pp->pass, pp->passlen,
-				   (int)kdf->kd_algo, /* GCRY_KDF_SCRYPT */
-				   (int)kdf->kd_subalgo, /* 8 */
-				   salt.hash, sizeof(salt.hash),
-				   kdf->kd_iterations, /* 1024 */
-				   sizeof(out_key->key), out_key->key);
+	                           (int)kdf->kd_algo, /* GCRY_KDF_SCRYPT */
+	                           (int)kdf->kd_subalgo, /* 8 */
+	                           salt.hash, sizeof(salt.hash),
+	                           kdf->kd_iterations, /* 1024 */
+	                           sizeof(out_key->key), out_key->key);
 	if (gcry_err) {
 		log_gcrypt_err("gcry_kdf_derive", gcry_err);
 		ret = gcrypt_err(gcry_err);
@@ -457,9 +457,9 @@ static int derive_key(const struct voluta_kdf_desc *kdf,
 }
 
 int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
-			const struct voluta_passphrase *pp,
-			const struct voluta_mdigest *md,
-			struct voluta_kivam *kivam)
+                        const struct voluta_passphrase *pp,
+                        const struct voluta_mdigest *md,
+                        struct voluta_kivam *kivam)
 {
 	int err;
 
@@ -489,7 +489,7 @@ out:
 static void do_randomize(void *buf, size_t len, bool very_strong)
 {
 	const enum gcry_random_level random_level =
-		very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
+	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
 
 	gcry_randomize(buf, len, random_level);
 }
@@ -605,7 +605,7 @@ void voluta_kivam_setup_n(struct voluta_kivam *kivam, size_t n)
 }
 
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
-			 struct voluta_kivam *other)
+                         struct voluta_kivam *other)
 {
 	memcpy(other, kivam, sizeof(*other));
 }

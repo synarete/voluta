@@ -29,7 +29,7 @@
  * Expects read-write data-consistency, sequential writes of single block.
  */
 static void test_basic_simple_(struct vt_env *vte,
-			       size_t bsz, size_t cnt)
+                               size_t bsz, size_t cnt)
 {
 	int fd;
 	loff_t pos = -1;
@@ -206,7 +206,7 @@ static void test_basic_space(struct vt_env *vte)
  * Expects read-write data-consistency, reverse writes.
  */
 static void test_basic_reserve_at(struct vt_env *vte,
-				  loff_t off, size_t ssz)
+                                  loff_t off, size_t ssz)
 {
 	int fd;
 	loff_t pos = -1;
@@ -300,7 +300,7 @@ static void test_basic_overlap(struct vt_env *vte)
  * Expects read-write data-consistency when I/O in complex patterns
  */
 static void test_basic_(struct vt_env *vte,
-			loff_t pos, loff_t lim, loff_t step)
+                        loff_t pos, loff_t lim, loff_t step)
 {
 	int fd;
 	loff_t off;
@@ -352,7 +352,7 @@ static void test_basic_unaligned(struct vt_env *vte)
  * Expects successful write-read of single full large-chunk to regular file
  */
 static void test_basic_chunk_(struct vt_env *vte,
-			      loff_t off, size_t bsz)
+                              loff_t off, size_t bsz)
 {
 	int fd = -1;
 	void *buf1 = vt_new_buf_rands(vte, bsz);
@@ -400,7 +400,7 @@ static void test_basic_chunk_8m(struct vt_env *vte)
  * Expects successful write-read of ascending files-offsets
  */
 static void test_basic_backword_byte_(struct vt_env *vte,
-				      loff_t base_off, size_t len)
+                                      loff_t base_off, size_t len)
 {
 	int fd = -1;
 	loff_t pos = 0;

@@ -19,7 +19,7 @@
 
 
 static void ut_file_trunc_data_(struct ut_env *ute,
-				loff_t off, size_t bsz)
+                                loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -84,7 +84,7 @@ static void ut_file_trunc_unaligned(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_trunc_mixed_(struct ut_env *ute,
-				 loff_t off, size_t len)
+                                 loff_t off, size_t len)
 {
 	ino_t ino;
 	const loff_t eoff = off + (loff_t)len;
@@ -127,7 +127,7 @@ static void ut_file_trunc_mixed(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_trunc_hole_(struct ut_env *ute,
-				loff_t off1, loff_t off2, size_t len)
+                                loff_t off1, loff_t off2, size_t len)
 {
 	ino_t ino;
 	ino_t dino;
@@ -170,17 +170,17 @@ static void ut_file_trunc_hole(struct ut_env *ute)
 	ut_file_trunc_hole_(ute, 2, 2 * UT_MEGA - 2, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 3, 3 * UT_MEGA + 3, UT_UMEGA);
 	ut_file_trunc_hole_(ute, UT_MEGA + 1,
-			    UT_MEGA + UT_BK_SIZE + 2, UT_BK_SIZE);
+	                    UT_MEGA + UT_BK_SIZE + 2, UT_BK_SIZE);
 	ut_file_trunc_hole_(ute, 0, UT_GIGA, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 1, UT_GIGA - 1, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 2, 2 * UT_GIGA - 2, 2 * UT_UMEGA);
 	ut_file_trunc_hole_(ute, UT_GIGA + 1,
-			    UT_GIGA + UT_MEGA + 2, UT_UMEGA);
+	                    UT_GIGA + UT_MEGA + 2, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 0, UT_TERA, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 1, UT_TERA - 1, UT_UMEGA);
 	ut_file_trunc_hole_(ute, 2, 2 * UT_TERA - 2, UT_UMEGA);
 	ut_file_trunc_hole_(ute, UT_TERA + 1,
-			    UT_TERA + UT_MEGA + 2, UT_UMEGA);
+	                    UT_TERA + UT_MEGA + 2, UT_UMEGA);
 }
 
 
@@ -197,7 +197,7 @@ ut_read_zero_byte(struct ut_env *ute, ino_t ino, loff_t off)
 }
 
 static void ut_file_trunc_single_byte_(struct ut_env *ute,
-				       const loff_t *off_arr, size_t cnt)
+                                       const loff_t *off_arr, size_t cnt)
 {
 	ino_t ino;
 	ino_t dino;
@@ -247,7 +247,7 @@ static void ut_file_trunc_single_byte(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_trunc_tail_(struct ut_env *ute,
-				loff_t off, size_t bsz)
+                                loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -284,7 +284,7 @@ static void ut_file_trunc_tail(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_trunc_void_(struct ut_env *ute,
-				loff_t off, size_t bsz)
+                                loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -325,7 +325,7 @@ static void ut_file_trunc_void(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_file_trunc_zero_size_(struct ut_env *ute,
-				     loff_t off, size_t bsz)
+                                     loff_t off, size_t bsz)
 {
 	ino_t ino;
 	ino_t dino;
@@ -366,7 +366,7 @@ static void ut_file_trunc_zero_size(struct ut_env *ute)
 	ut_file_trunc_zero_size_(ute, UT_TERA + 1111111, UT_UMEGA - 1);
 	ut_file_trunc_zero_size_(ute, UT_FSIZE_MAX - UT_MEGA, UT_UMEGA);
 	ut_file_trunc_zero_size_(ute, UT_FSIZE_MAX - UT_MEGA - 1,
-				 UT_UMEGA + 1);
+	                         UT_UMEGA + 1);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

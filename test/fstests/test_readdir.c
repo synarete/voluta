@@ -79,7 +79,7 @@ new_getdents_ctx(struct vt_env *vte)
 }
 
 static void verify_getdents_ctx(struct vt_env *vte,
-				struct vt_getdents_ctx *getdents_ctx)
+                                struct vt_getdents_ctx *getdents_ctx)
 {
 	loff_t off_curr;
 	loff_t off_prev = -1;
@@ -104,14 +104,14 @@ static void vt_getdents2(int fd, struct vt_getdents_ctx *getdents_ctx)
 	const size_t ndents_max = VT_ARRAY_SIZE(getdents_ctx->dents);
 
 	vt_getdents(fd, getdents_ctx->buf, sizeof(getdents_ctx->buf),
-		    getdents_ctx->dents, ndents_max, &ndents);
+	            getdents_ctx->dents, ndents_max, &ndents);
 	vt_expect_le(ndents, ndents_max);
 	getdents_ctx->ndents = ndents;
 }
 
 static void vt_getdents_from(struct vt_env *vte,
-			     int fd, loff_t off,
-			     struct vt_getdents_ctx *getdents_ctx)
+                             int fd, loff_t off,
+                             struct vt_getdents_ctx *getdents_ctx)
 {
 	loff_t pos = -1;
 
@@ -250,8 +250,8 @@ static void test_readdir_unlink_big(struct vt_env *vte)
  * dentry at a time.
  */
 static const char *make_iname(struct vt_env *vte,
-			      const char *path,
-			      const char *name_prefix, size_t idx)
+                              const char *path,
+                              const char *name_prefix, size_t idx)
 {
 	return vt_new_pathf(vte, path, "%s-%08lx", name_prefix, idx);
 }

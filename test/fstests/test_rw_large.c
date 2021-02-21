@@ -29,7 +29,7 @@
  * Expects read-write data-consistency upon n-gigbytes write in chunks of 1M
  */
 static void test_ngiga_rdwr_(struct vt_env *vte,
-			     loff_t off_base, size_t nskip)
+                             loff_t off_base, size_t nskip)
 {
 	int fd;
 	loff_t off;

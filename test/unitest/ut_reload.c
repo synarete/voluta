@@ -167,7 +167,7 @@ static void ut_reload_io(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_reload_unlinked_(struct ut_env *ute,
-				size_t nfiles, size_t step)
+                                size_t nfiles, size_t step)
 {
 	ino_t fino;
 	ino_t dino;

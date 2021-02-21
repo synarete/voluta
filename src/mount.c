@@ -52,8 +52,8 @@ static void mount_execute_fs(void)
 	err = voluta_fse_serve(fse);
 	if (err) {
 		voluta_die(err, "fs failure: %s %s",
-			   voluta_globals.cmd.mount.volume,
-			   voluta_globals.cmd.mount.point_real);
+		           voluta_globals.cmd.mount.volume,
+		           voluta_globals.cmd.mount.point_real);
 	}
 }
 
@@ -71,7 +71,7 @@ static void mount_finalize(void)
 static void mount_setup_check_mntpoint(void)
 {
 	voluta_globals.cmd.mount.point_real =
-		voluta_realpath_safe(voluta_globals.cmd.mount.point);
+	        voluta_realpath_safe(voluta_globals.cmd.mount.point);
 
 	voluta_die_if_not_mntdir(voluta_globals.cmd.mount.point_real, true);
 	voluta_die_if_no_mountd();
@@ -84,15 +84,15 @@ static void mount_setup_check_volume(void)
 	const bool rw = !voluta_globals.cmd.mount.rdonly;
 
 	voluta_globals.cmd.mount.volume_real =
-		voluta_realpath_safe(voluta_globals.cmd.mount.volume);
+	        voluta_realpath_safe(voluta_globals.cmd.mount.volume);
 	voluta_globals.cmd.mount.volume_active =
-		voluta_globals.cmd.mount.volume_real;
+	        voluta_globals.cmd.mount.volume_real;
 
 	path = voluta_globals.cmd.mount.volume_real;
 	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
 	if (is_enc) {
 		voluta_globals.cmd.mount.passphrase =
-			voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
+		        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
 		voluta_globals.cmd.mount.encrypted = true;
 	}
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.mount.passphrase);
@@ -231,12 +231,12 @@ static void mount_trace_start(void)
 	voluta_log_info("mount-point: %s", voluta_globals.cmd.mount.point_real);
 	voluta_log_info("volume: %s", voluta_globals.cmd.mount.volume);
 	voluta_log_info("modes: encrypted=%d rdonly=%d noexec=%d "
-			"nodev=%d nosuid=%d",
-			(int)voluta_globals.cmd.mount.encrypted,
-			(int)voluta_globals.cmd.mount.rdonly,
-			(int)voluta_globals.cmd.mount.noexec,
-			(int)voluta_globals.cmd.mount.nodev,
-			(int)voluta_globals.cmd.mount.nosuid);
+	                "nodev=%d nosuid=%d",
+	                (int)voluta_globals.cmd.mount.encrypted,
+	                (int)voluta_globals.cmd.mount.rdonly,
+	                (int)voluta_globals.cmd.mount.noexec,
+	                (int)voluta_globals.cmd.mount.nodev,
+	                (int)voluta_globals.cmd.mount.nosuid);
 }
 
 static void mount_trace_finish(void)
@@ -352,8 +352,8 @@ void voluta_getopt_mount(void)
 		}
 	}
 	voluta_globals.cmd.mount.volume =
-		voluta_consume_cmdarg("volume-path", false);
+	        voluta_consume_cmdarg("volume-path", false);
 	voluta_globals.cmd.mount.point =
-		voluta_consume_cmdarg("mount-point", true);
+	        voluta_consume_cmdarg("mount-point", true);
 }
 

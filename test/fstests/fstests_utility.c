@@ -34,7 +34,7 @@
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fill_random(const struct vt_env *vte, void *buf,
-			size_t len)
+                        size_t len)
 {
 	voluta_getentropy(buf, len);
 	voluta_unused(vte);
@@ -62,7 +62,7 @@ static size_t malloc_total_size(size_t nbytes)
 }
 
 static struct vt_mchunk *malloc_chunk(struct vt_env *vte,
-				      size_t nbytes)
+                                      size_t nbytes)
 {
 	size_t total_size;
 	struct vt_mchunk *mchunk;
@@ -83,7 +83,7 @@ static struct vt_mchunk *malloc_chunk(struct vt_env *vte,
 }
 
 static void free_chunk(struct vt_env *vte,
-		       struct vt_mchunk *mchunk)
+                       struct vt_mchunk *mchunk)
 {
 	voluta_assert(vte->nbytes_alloc >= mchunk->size);
 
@@ -179,7 +179,7 @@ void vte_fini(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void vt_suspend(const struct vt_env *vte, int sec,
-		int part)
+                int part)
 {
 	int err;
 	struct timespec rem = { 0, 0 };
@@ -199,7 +199,7 @@ void vt_suspends(const struct vt_env *vte, int sec)
 }
 
 static char *joinpath(struct vt_env *vte, const char *s1,
-		      const char *s2)
+                      const char *s2)
 {
 	char *path;
 	const size_t len1 = strlen(s1);
@@ -215,7 +215,7 @@ static char *joinpath(struct vt_env *vte, const char *s1,
 }
 
 char *vt_new_path_nested(struct vt_env *vte,
-			 const char *base, const char *name)
+                         const char *base, const char *name)
 {
 	return joinpath(vte, base, name);
 }

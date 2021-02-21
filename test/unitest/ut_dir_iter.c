@@ -61,7 +61,7 @@ ut_find_any_not_dot(const struct ut_dirent_info *dei, size_t n)
 }
 
 static void ut_expect_name_exists(const struct ut_dirent_info *dei,
-				  size_t n, const char *name)
+                                  size_t n, const char *name)
 {
 	bool name_exists = false;
 
@@ -94,7 +94,7 @@ static void ut_dir_open_release(struct ut_env *ute)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void ut_verify_iter_simple(struct ut_env *ute, const char *pre,
-				  const struct ut_readdir_ctx *rd_ctx)
+                                  const struct ut_readdir_ctx *rd_ctx)
 {
 	const char *name;
 	const struct ut_dirent_info *dei = rd_ctx->dei;

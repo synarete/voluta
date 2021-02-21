@@ -41,7 +41,7 @@ static struct fiemap *new_fiemap(struct vt_env *vte, size_t cnt)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void test_fiemap_simple_(struct vt_env *vte,
-				loff_t off, size_t bsz)
+                                loff_t off, size_t bsz)
 {
 	int fd;
 	void *buf = vt_new_buf_rands(vte, bsz);

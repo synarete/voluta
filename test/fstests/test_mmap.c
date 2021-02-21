@@ -311,7 +311,7 @@ static void test_mmap_twice(struct vt_env *vte)
  * Tests write-data followed by read-only mmap
  */
 static void test_mmap_after_write_(struct vt_env *vte,
-				   loff_t off, size_t bsz)
+                                   loff_t off, size_t bsz)
 {
 	int fd = -1;
 	void *mem = NULL;
@@ -332,7 +332,7 @@ static void test_mmap_after_write_(struct vt_env *vte,
 }
 
 static void test_mmap_before_write_(struct vt_env *vte,
-				    loff_t off, size_t bsz)
+                                    loff_t off, size_t bsz)
 {
 	int fd1 = -1;
 	int fd2 = -1;
@@ -377,7 +377,7 @@ static void test_mmap_before_write(struct vt_env *vte)
  * Tests write-data with mmap on both data and holes
  */
 static void test_mmap_on_holes_(struct vt_env *vte,
-				loff_t base_off, size_t bsz, size_t nsteps)
+                                loff_t base_off, size_t bsz, size_t nsteps)
 {
 	int fd = -1;
 	void *mem = NULL;

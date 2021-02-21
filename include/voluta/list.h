@@ -44,10 +44,10 @@ void voluta_list_head_finin(struct voluta_list_head *lnk_arr, size_t cnt);
 bool voluta_list_isempty(const struct voluta_list_head *lst);
 
 void voluta_list_head_insert_after(struct voluta_list_head *prev_lnk,
-				   struct voluta_list_head *lnk);
+                                   struct voluta_list_head *lnk);
 
 void voluta_list_head_insert_before(struct voluta_list_head *lnk,
-				    struct voluta_list_head *next_lnk);
+                                    struct voluta_list_head *next_lnk);
 
 void voluta_list_head_remove(struct voluta_list_head *lnk);
 
@@ -56,10 +56,10 @@ void voluta_list_init(struct voluta_list_head *lst);
 void voluta_list_fini(struct voluta_list_head *lst);
 
 void voluta_list_push_front(struct voluta_list_head *lst,
-			    struct voluta_list_head *lnk);
+                            struct voluta_list_head *lnk);
 
 void voluta_list_push_back(struct voluta_list_head *lst,
-			   struct voluta_list_head *lnk);
+                           struct voluta_list_head *lnk);
 
 struct voluta_list_head *
 voluta_list_front(const struct voluta_list_head *lst);
@@ -82,13 +82,13 @@ void voluta_listq_finin(struct voluta_listq *lsq, size_t cnt);
 bool voluta_listq_isempty(const struct voluta_listq *lsq);
 
 void voluta_listq_remove(struct voluta_listq *lsq,
-			 struct voluta_list_head *lnk);
+                         struct voluta_list_head *lnk);
 
 void voluta_listq_push_front(struct voluta_listq *lsq,
-			     struct voluta_list_head *lnk);
+                             struct voluta_list_head *lnk);
 
 void voluta_listq_push_back(struct voluta_listq *lsq,
-			    struct voluta_list_head *lnk);
+                            struct voluta_list_head *lnk);
 
 struct voluta_list_head *voluta_listq_pop_front(struct voluta_listq *lsq);
 
@@ -98,11 +98,11 @@ struct voluta_list_head *voluta_listq_back(const struct voluta_listq *lsq);
 
 struct voluta_list_head *
 voluta_listq_next(const struct voluta_listq *lsq,
-		  const struct voluta_list_head *lnk);
+                  const struct voluta_list_head *lnk);
 
 struct voluta_list_head *
 voluta_listq_prev(const struct voluta_listq *lsq,
-		  const struct voluta_list_head *lnk);
+                  const struct voluta_list_head *lnk);
 
 #endif /* VOLUTA_LIST_H_ */
 

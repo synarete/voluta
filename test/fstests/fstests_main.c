@@ -125,8 +125,8 @@ static void vt_setup_globals(int argc, char *argv[])
 	vt_g_globals.argv = argv;
 	vt_g_globals.repeat_count = 1;
 	vt_g_globals.log_mask =
-		VOLUTA_LOG_INFO | VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR |
-		VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
+	        VOLUTA_LOG_INFO | VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR |
+	        VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
 	voluta_set_logmaskp(&vt_g_globals.log_mask);
 }
 
@@ -228,15 +228,15 @@ static void vt_register_sigactions(void)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const char *vt_usage =
-	"[options] <dirpath>\n\n" \
-	"options: \n" \
-	" -t, --test=<name>         Run tests which contains name\n" \
-	" -n, --repeat=<count>      Execute tests count times\n" \
-	" -e, --extra               Use extra tests\n" \
-	" -r, --random              Run tests in random order\n" \
-	" -C, --nostatvfs           Do not check statvfs between tests\n" \
-	" -l, --list                List tests names\n"
-	" -v, --version             Show version info\n";
+        "[options] <dirpath>\n\n" \
+        "options: \n" \
+        " -t, --test=<name>         Run tests which contains name\n" \
+        " -n, --repeat=<count>      Execute tests count times\n" \
+        " -e, --extra               Use extra tests\n" \
+        " -r, --random              Run tests in random order\n" \
+        " -C, --nostatvfs           Do not check statvfs between tests\n" \
+        " -l, --list                List tests names\n"
+        " -v, --version             Show version info\n";
 
 static void show_help_and_exit(void)
 {
@@ -282,7 +282,7 @@ static void vt_parse_args(void)
 	while (opt_chr > 0) {
 		opt_index = 0;
 		opt_chr = getopt_long(vt_g_globals.argc, vt_g_globals.argv,
-				      "t:n:erClvh", long_opts, &opt_index);
+		                      "t:n:erClvh", long_opts, &opt_index);
 		if (opt_chr == 't') {
 			vt_g_globals.test_name = optarg;
 		} else if (opt_chr == 'n') {

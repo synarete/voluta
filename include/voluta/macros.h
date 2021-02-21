@@ -42,7 +42,7 @@
 
 #define VOLUTA_CONTAINER_OF2(ptr_, type_, member_) \
 	(const type_ *)((const void *) \
-			((const char *)ptr_ - offsetof(type_, member_)))
+	                ((const char *)ptr_ - offsetof(type_, member_)))
 
 #define voluta_container_of(ptr_, type_, member_) \
 	VOLUTA_CONTAINER_OF(ptr_, type_, member_)

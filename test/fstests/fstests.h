@@ -189,7 +189,7 @@ char *vt_new_path_under(struct vt_env *vte, const char *base);
 char *vt_new_path_name(struct vt_env *vte, const char *name);
 
 char *vt_new_path_nested(struct vt_env *vte,
-			 const char *base, const char *name);
+                         const char *base, const char *name);
 
 char *vt_new_pathf(struct vt_env *vte, const char *p, const char *fmt, ...);
 
@@ -224,7 +224,7 @@ void vt_utime(const char *filename, const struct utimbuf *times);
 void vt_utimes(const char *filename, const struct timeval tm[2]);
 
 void vt_utimensat(int dirfd, const char *pathname,
-		  const struct timespec tm[2], int flags);
+                  const struct timespec tm[2], int flags);
 
 void vt_futimens(int fd, const struct timespec times[2]);
 
@@ -269,10 +269,10 @@ void vt_open(const char *path, int flags, mode_t mode, int *fd);
 void vt_open_err(const char *path, int flags, mode_t mode, int err);
 
 void vt_openat(int dirfd, const char *path,
-	       int flags, mode_t mode, int *fd);
+               int flags, mode_t mode, int *fd);
 
 void vt_openat_err(int dirfd, const char *path,
-		   int flags, mode_t mode, int err);
+                   int flags, mode_t mode, int err);
 
 void vt_creat(const char *path, mode_t mode, int *fd);
 
@@ -289,7 +289,7 @@ void vt_write(int fd, const void *buf, size_t cnt, size_t *nwr);
 void vt_pwrite(int fd, const void *buf, size_t cnt, loff_t off, size_t *nwr);
 
 void vt_pwrite_err(int fd, const void *buf,
-		   size_t cnt, loff_t off, int err);
+                   size_t cnt, loff_t off, int err);
 
 void vt_read(int fd, void *buf, size_t cnt, size_t *nrd);
 
@@ -318,27 +318,27 @@ void vt_readlink(const char *path, char *buf, size_t bsz, size_t *cnt);
 void vt_readlink_err(const char *path, char *buf, size_t bsz, int err);
 
 void vt_readlinkat(int dirfd, const char *pathname,
-		   char *buf, size_t bsz, size_t *cnt);
+                   char *buf, size_t bsz, size_t *cnt);
 
 void vt_rename(const char *oldpath, const char *newpath);
 
 void vt_rename_err(const char *oldpath, const char *newpath, int err);
 
 void vt_renameat(int olddirfd, const char *oldpath,
-		 int newdirfd, const char *newpath);
+                 int newdirfd, const char *newpath);
 
 void vt_renameat2(int olddirfd, const char *oldpath,
-		  int newdirfd, const char *newpath, unsigned int flags);
+                  int newdirfd, const char *newpath, unsigned int flags);
 
 void vt_link(const char *path1, const char *path2);
 
 void vt_link_err(const char *path1, const char *path2, int err);
 
 void vt_linkat(int olddirfd, const char *oldpath,
-	       int newdirfd, const char *newpath, int flags);
+               int newdirfd, const char *newpath, int flags);
 
 void vt_linkat_err(int olddirfd, const char *oldpath,
-		   int newdirfd, const char *newpath, int flags, int err);
+                   int newdirfd, const char *newpath, int flags, int err);
 
 void vt_chmod(const char *path, mode_t mode);
 
@@ -355,7 +355,7 @@ void vt_access_err(const char *path, int mode, int err);
 void vt_close(int fd);
 
 void vt_mmap(void *addr, size_t length, int prot, int flags,
-	     int fd, off_t offset, void **out);
+             int fd, off_t offset, void **out);
 
 void vt_munmap(void *addr, size_t length);
 
@@ -364,24 +364,24 @@ void vt_msync(void *addr, size_t len, int flags);
 void vt_madvise(void *addr, size_t len, int advice);
 
 void vt_setxattr(const char *path, const char *name,
-		 const void *value, size_t size, int flags);
+                 const void *value, size_t size, int flags);
 
 void vt_lsetxattr(const char *path, const char *name,
-		  const void *value, size_t size, int flags);
+                  const void *value, size_t size, int flags);
 
 void vt_fsetxattr(int fd, const char *name,
-		  const void *value, size_t size, int flags);
+                  const void *value, size_t size, int flags);
 
 void vt_getxattr(const char *path, const char *name,
-		 void *value, size_t size, size_t *cnt);
+                 void *value, size_t size, size_t *cnt);
 
 void vt_getxattr_err(const char *path, const char *name, int err);
 
 void vt_lgetxattr(const char *path, const char *name,
-		  void *value, size_t size, size_t *cnt);
+                  void *value, size_t size, size_t *cnt);
 
 void vt_fgetxattr(int fd, const char *name,
-		  void *value, size_t size, size_t *cnt);
+                  void *value, size_t size, size_t *cnt);
 
 void vt_removexattr(const char *path, const char *name);
 
@@ -402,10 +402,10 @@ void vt_flistxattr_err(int fd, char *list, size_t size, int err);
 void vt_getdent(int fd, struct dirent64 *dent);
 
 void vt_getdents(int fd, void *buf, size_t bsz,
-		 struct dirent64 *des, size_t ndes, size_t *out_ndes);
+                 struct dirent64 *des, size_t ndes, size_t *out_ndes);
 
 void vt_copy_file_range(int fd_in, loff_t *off_in, int fd_out,
-			loff_t *off_out, size_t len, size_t *out_ncp);
+                        loff_t *off_out, size_t len, size_t *out_ncp);
 
 void vt_ioctl_ficlone(int dest_fd, int src_fd);
 

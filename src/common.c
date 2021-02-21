@@ -80,7 +80,7 @@ void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...)
 	va_end(ap);
 
 	error_at_line(EXIT_FAILURE, abs(errnum), fl,
-		      (unsigned int)ln, "%s", msg);
+	              (unsigned int)ln, "%s", msg);
 	/* never gets here, but makes compiler happy */
 	abort();
 }
@@ -220,8 +220,8 @@ static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 }
 
 static void voluta_die_if_bad_zb(const char *path,
-				 enum voluta_ztype *out_ztype,
-				 enum voluta_zbf *out_zbf)
+                                 enum voluta_ztype *out_ztype,
+                                 enum voluta_zbf *out_zbf)
 {
 	int err;
 	struct voluta_zero_block4 *zb = NULL;
@@ -330,7 +330,7 @@ out:
 }
 
 void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-			      bool mustnot_be_enc, bool *out_is_encrypted)
+                              bool mustnot_be_enc, bool *out_is_encrypted)
 {
 	int err;
 	enum voluta_ztype ztype;
@@ -377,7 +377,7 @@ void voluta_die_if_no_mountd(void)
 	err = voluta_rpc_handshake(getuid(), getgid());
 	if (err) {
 		voluta_die(err, "failed to handshake with mountd: "
-			   "sock=@%s", sock);
+		           "sock=@%s", sock);
 	}
 }
 
@@ -1057,7 +1057,7 @@ struct voluta_archiver *voluta_arc_inst(void)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void show_help_strings(FILE *fp, const char *name,
-			      const char **help_strings)
+                              const char **help_strings)
 {
 	size_t idx = 0;
 	const char *help_string = NULL;
@@ -1090,7 +1090,7 @@ void voluta_show_help_and_exit(const char **help_strings)
 void voluta_show_version_and_exit(const char *prog)
 {
 	fprintf(stdout, "%s %s\n",
-		(prog != NULL) ? prog : "voluta", voluta_globals.version);
+	        (prog != NULL) ? prog : "voluta", voluta_globals.version);
 	exit(0);
 }
 

@@ -23,7 +23,7 @@ struct ut_namesarr {
 };
 
 static const char *make_name(struct ut_env *ute,
-			     long idx, size_t len)
+                             long idx, size_t len)
 {
 	char name[UT_NAME_MAX + 1] = "";
 	const size_t name_max = sizeof(name) - 1;

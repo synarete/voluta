@@ -63,7 +63,7 @@ void voluta_ucred_self(struct ucred *uc);
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_msghdr_setaddr(struct msghdr *mh,
-			   const struct voluta_sockaddr *sa);
+                           const struct voluta_sockaddr *sa);
 
 struct cmsghdr *voluta_cmsg_firsthdr(struct msghdr *mh);
 
@@ -110,19 +110,19 @@ void voluta_socket_close(struct voluta_socket *sock);
 void voluta_socket_fini(struct voluta_socket *sock);
 
 int voluta_socket_rselect(const struct voluta_socket *sock,
-			  const struct timespec *ts);
+                          const struct timespec *ts);
 
 int voluta_socket_bind(struct voluta_socket *sock,
-		       const struct voluta_sockaddr *sa);
+                       const struct voluta_sockaddr *sa);
 
 int voluta_socket_listen(const struct voluta_socket *sock, int backlog);
 
 int voluta_socket_accept(const struct voluta_socket *sock,
-			 struct voluta_socket *acsock,
-			 struct voluta_sockaddr *peer);
+                         struct voluta_socket *acsock,
+                         struct voluta_sockaddr *peer);
 
 int voluta_socket_connect(const struct voluta_socket *sock,
-			  const struct voluta_sockaddr *sa);
+                          const struct voluta_sockaddr *sa);
 
 int voluta_socket_shutdown(const struct voluta_socket *sock, int how);
 
@@ -137,31 +137,31 @@ int voluta_socket_setreuseaddr(const struct voluta_socket *sock);
 int voluta_socket_setnonblock(const struct voluta_socket *sock);
 
 int voluta_socket_getpeercred(const struct voluta_socket *sock,
-			      struct ucred *cred);
+                              struct ucred *cred);
 
 int voluta_socket_getsockerror(const struct voluta_socket *sock, int *out_err);
 
 
 int voluta_socket_send(const struct voluta_socket *sock,
-		       const void *buf, size_t len, size_t *out_sent);
+                       const void *buf, size_t len, size_t *out_sent);
 
 int voluta_socket_sendto(const struct voluta_socket *sock, const void *buf,
-			 size_t bsz, const struct voluta_sockaddr *dst_sa,
-			 size_t *out_sent);
+                         size_t bsz, const struct voluta_sockaddr *dst_sa,
+                         size_t *out_sent);
 
 int voluta_socket_sendmsg(const struct voluta_socket *sock,
-			  const struct msghdr *msgh, int flags,
-			  size_t *out_sent);
+                          const struct msghdr *msgh, int flags,
+                          size_t *out_sent);
 
 int voluta_socket_recv(const struct voluta_socket *sock,
-		       void *buf, size_t len, size_t *out_recv);
+                       void *buf, size_t len, size_t *out_recv);
 
 int voluta_socket_recvfrom(const struct voluta_socket *sock, void *buf,
-			   size_t bsz, struct voluta_sockaddr *sa,
-			   size_t *out_recv);
+                           size_t bsz, struct voluta_sockaddr *sa,
+                           size_t *out_recv);
 
 int voluta_socket_recvmsg(const struct voluta_socket *sock,
-			  struct msghdr *msgh, int flags, size_t *out_recv);
+                          struct msghdr *msgh, int flags, size_t *out_recv);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

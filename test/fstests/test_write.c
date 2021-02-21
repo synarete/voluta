@@ -175,7 +175,7 @@ static void test_write_mctimes(struct vt_env *vte)
  * Expects successful pwrite(3p) to clear SUID bit, pread(3p) to not change
  */
 static void test_write_read_suid_(struct vt_env *vte,
-				  loff_t off, size_t bsz)
+                                  loff_t off, size_t bsz)
 {
 	int fd;
 	void *buf;
@@ -223,7 +223,7 @@ static void test_write_read_suid(struct vt_env *vte)
  * Expects successful pwrite(3p) to clear SGID bit, pread(3p) to not change
  */
 static void test_write_read_sgid_(struct vt_env *vte,
-				  loff_t off, size_t bsz)
+                                  loff_t off, size_t bsz)
 {
 	int fd;
 	mode_t mode = 0710;

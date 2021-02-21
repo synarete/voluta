@@ -36,7 +36,7 @@ static struct ut_dvecs *new_dvecs(struct ut_env *ute)
 }
 
 static void assign(struct ut_env *ute, struct ut_dvecs *dvecs,
-		   const struct ut_ranges *rngs)
+                   const struct ut_ranges *rngs)
 {
 	loff_t off;
 	size_t len;
@@ -102,7 +102,7 @@ rzigzag(struct ut_env *ute, const struct ut_ranges *ranges)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 static void ut_write_read_n(struct ut_env *ute,
-			    const struct ut_dvecs *dvecs, ino_t ino)
+                            const struct ut_dvecs *dvecs, ino_t ino)
 {
 	void *buf;
 	loff_t off;
@@ -128,7 +128,7 @@ static void ut_write_read_n(struct ut_env *ute,
 
 
 static void ut_rdwr_file1(struct ut_env *ute,
-			  const struct ut_dvecs *drefs)
+                          const struct ut_dvecs *drefs)
 {
 	ino_t ino;
 	ino_t dino;
@@ -143,8 +143,8 @@ static void ut_rdwr_file1(struct ut_env *ute,
 }
 
 static void ut_rdwr_file2(struct ut_env *ute,
-			  const struct ut_dvecs *drefs1,
-			  const struct ut_dvecs *drefs2)
+                          const struct ut_dvecs *drefs1,
+                          const struct ut_dvecs *drefs2)
 {
 	ino_t ino;
 	ino_t dino;
@@ -221,7 +221,7 @@ static const struct ut_ranges s_ranges_defs[] = {
 
 
 static void ut_file_ranges_(struct ut_env *ute,
-			    const struct ut_ranges *ranges)
+                            const struct ut_ranges *ranges)
 {
 	ut_rdwr_file1(ute, simple(ute, ranges));
 	ut_rdwr_file1(ute, reverse(ute, ranges));
@@ -240,8 +240,8 @@ static void ut_file_ranges(struct ut_env *ute)
 }
 
 static void ut_file_xranges_(struct ut_env *ute,
-			     const struct ut_ranges *r1,
-			     const struct ut_ranges *r2)
+                             const struct ut_ranges *r1,
+                             const struct ut_ranges *r2)
 {
 	ut_rdwr_file2(ute, simple(ute, r1), simple(ute, r2));
 	ut_rdwr_file2(ute, reverse(ute, r1), reverse(ute, r2));

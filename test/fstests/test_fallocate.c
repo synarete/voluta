@@ -140,7 +140,7 @@ static void test_fallocate_zeros(struct vt_env *vte)
  * Expects fallocate(2) and ftruncate(2) to be synchronized.
  */
 static void test_fallocate_truncate_(struct vt_env *vte,
-				     loff_t off, ssize_t len)
+                                     loff_t off, ssize_t len)
 {
 	int fd = -1;
 	uint8_t byte = 1;
@@ -195,8 +195,8 @@ static void test_fallocate_truncate(struct vt_env *ut_env)
  * Expects fallocate(2) with FALLOC_FL_PUNCH_HOLE to return zeros on hole
  */
 static void test_fallocate_punch_hole_(struct vt_env *vte,
-				       loff_t data_off, size_t data_len,
-				       loff_t hole_off, size_t hole_len)
+                                       loff_t data_off, size_t data_len,
+                                       loff_t hole_off, size_t hole_len)
 {
 	int fd = -1;
 	loff_t pos;
@@ -228,7 +228,7 @@ static void test_fallocate_punch_hole(struct vt_env *vte)
 	test_fallocate_punch_hole_(vte, 0, VT_BK_SIZE, 0, 32);
 	test_fallocate_punch_hole_(vte, 0, VT_BK_SIZE, 1, 17);
 	test_fallocate_punch_hole_(vte, VT_BK_SIZE, VT_BK_SIZE,
-				   VT_BK_SIZE + 1, VT_BK_SIZE - 2);
+	                           VT_BK_SIZE + 1, VT_BK_SIZE - 2);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -498,7 +498,7 @@ struct vt_zero_range_info {
 };
 
 static void test_zero_range_data_(struct vt_env *vte,
-				  const struct vt_zero_range_info *zri)
+                                  const struct vt_zero_range_info *zri)
 {
 	int fd = -1;
 	size_t nwr = 0;
@@ -562,7 +562,7 @@ static void test_fallocate_zero_range_data(struct vt_env *vte)
  * wrtie-on-fallocated to change none.
  */
 static void test_fallocate_sparse_(struct vt_env *vte,
-				   loff_t base_off, loff_t step_size)
+                                   loff_t base_off, loff_t step_size)
 {
 	int fd = -1;
 	size_t nwr = 0;

@@ -32,7 +32,7 @@
  * -ENOTEMPTY upon rmdir(3p).
  */
 static void test_rmdir_notempty(struct vt_env *vte,
-				char const **pathi, size_t count)
+                                char const **pathi, size_t count)
 {
 	for (size_t i = 0; i < count; ++i) {
 		vt_rmdir_err(pathi[i], -ENOTEMPTY);
@@ -251,14 +251,14 @@ static void test_mkdir_nested(struct vt_env *vte)
  * Create recursively directory tree structure
  */
 static const char *makename(struct vt_env *vte,
-			    const char *prefix, size_t depth, size_t id)
+                            const char *prefix, size_t depth, size_t id)
 {
 	return vt_strfmt(vte, "%s%03x-%03x",
-			 prefix, (int)depth, (int)id);
+	                 prefix, (int)depth, (int)id);
 }
 
 static void test_walktree_recursive(struct vt_env *vte,
-				    const char *base)
+                                    const char *base)
 {
 	int fd = -1;
 	loff_t pos = -1;
@@ -288,9 +288,9 @@ static void test_walktree_recursive(struct vt_env *vte,
 
 
 static void test_mktree_recursive(struct vt_env *vte,
-				  const char *parent,
-				  size_t id, size_t nchilds,
-				  size_t depth, size_t depth_max)
+                                  const char *parent,
+                                  size_t id, size_t nchilds,
+                                  size_t depth, size_t depth_max)
 {
 	int fd = -1;
 	const char *path = NULL;
@@ -302,7 +302,7 @@ static void test_mktree_recursive(struct vt_env *vte,
 		vt_mkdir(path, 0700);
 		for (size_t i = 0; i < nchilds; ++i) {
 			test_mktree_recursive(vte, path, i + 1, nchilds,
-					      depth + 1, depth_max);
+			                      depth + 1, depth_max);
 		}
 	} else {
 		name = makename(vte, "f", depth, id);
@@ -313,9 +313,9 @@ static void test_mktree_recursive(struct vt_env *vte,
 }
 
 static void test_rmtree_recursive(struct vt_env *vte,
-				  const char *parent,
-				  size_t id, size_t nchilds,
-				  size_t depth, size_t depth_max)
+                                  const char *parent,
+                                  size_t id, size_t nchilds,
+                                  size_t depth, size_t depth_max)
 {
 	const char *path = NULL;
 	const char *name = NULL;
@@ -325,7 +325,7 @@ static void test_rmtree_recursive(struct vt_env *vte,
 		path = vt_new_path_nested(vte, parent, name);
 		for (size_t i = 0; i < nchilds; ++i) {
 			test_rmtree_recursive(vte, path, i + 1, nchilds,
-					      depth + 1, depth_max);
+			                      depth + 1, depth_max);
 		}
 		vt_rmdir(path);
 	} else {
@@ -336,19 +336,19 @@ static void test_rmtree_recursive(struct vt_env *vte,
 }
 
 static void test_mkdir_tree_(struct vt_env *vte,
-			     size_t nchilds, size_t depth_max)
+                             size_t nchilds, size_t depth_max)
 {
 	const char *path = vt_new_path_unique(vte);
 
 	vt_mkdir(path, 0700);
 	for (size_t i = 0; i < nchilds; ++i) {
 		test_mktree_recursive(vte, path, i + 1,
-				      nchilds, 1, depth_max);
+		                      nchilds, 1, depth_max);
 	}
 	test_walktree_recursive(vte, path);
 	for (size_t j = 0; j < nchilds; ++j) {
 		test_rmtree_recursive(vte, path, j + 1,
-				      nchilds, 1, depth_max);
+		                      nchilds, 1, depth_max);
 	}
 	vt_rmdir(path);
 }

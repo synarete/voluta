@@ -82,13 +82,13 @@ static int mask_of(const struct vt_env *vte)
 }
 
 static void statvfs_of(const struct vt_env *vte,
-		       struct statvfs *stvfs)
+                       struct statvfs *stvfs)
 {
 	vt_statvfs(vte->params.workdir, stvfs);
 }
 
 static void list_test(struct vt_env *vte,
-		      const struct vt_tdef *tdef)
+                      const struct vt_tdef *tdef)
 {
 	FILE *fp = stdout;
 
@@ -98,7 +98,7 @@ static void list_test(struct vt_env *vte,
 }
 
 static void start_test(struct vt_env *vte,
-		       const struct vt_tdef *tdef)
+                       const struct vt_tdef *tdef)
 {
 	FILE *fp = stdout;
 
@@ -125,7 +125,7 @@ static void finish_test(struct vt_env *vte)
 }
 
 static void verify_consistent_statvfs(const struct statvfs *stv_beg,
-				      const struct statvfs *stv_end)
+                                      const struct statvfs *stv_end)
 {
 	fsblkcnt_t bfree_dif;
 
@@ -161,7 +161,7 @@ static void verify_fsstat(const struct vt_env *vte)
 }
 
 static void exec_test(struct vt_env *vte,
-		      const struct vt_tdef *tdef)
+                      const struct vt_tdef *tdef)
 {
 	start_test(vte, tdef);
 	tdef->hook(vte);
@@ -197,7 +197,7 @@ static void vt_runtests(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void copy_testdef(struct vt_tdef *dst,
-			 const struct vt_tdef *src)
+                         const struct vt_tdef *src)
 {
 	memcpy(dst, src, sizeof(*dst));
 }

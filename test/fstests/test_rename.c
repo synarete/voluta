@@ -670,7 +670,7 @@ static void test_renameat_exchange(struct vt_env *vte)
  * Test renameat2(2) back and forth within same dir
  */
 static char *make_lname(struct vt_env *vte,
-			const char *prefix, size_t idx)
+                        const char *prefix, size_t idx)
 {
 	char name[VOLUTA_NAME_MAX + 1] = "";
 

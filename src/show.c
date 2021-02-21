@@ -141,6 +141,6 @@ void voluta_getopt_show(void)
 		}
 	}
 	voluta_globals.cmd.show.pathname =
-		voluta_consume_cmdarg("pathname", true);
+	        voluta_consume_cmdarg("pathname", true);
 }
 

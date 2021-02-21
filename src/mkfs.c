@@ -37,7 +37,7 @@ static void mkfs_setup_check_params(void)
 	const char *passfile = NULL;
 
 	voluta_globals.cmd.mkfs.volume_abs =
-		voluta_abspath_safe(voluta_globals.cmd.mkfs.volume);
+	        voluta_abspath_safe(voluta_globals.cmd.mkfs.volume);
 
 	path = voluta_globals.cmd.mkfs.volume_abs;
 	len = strlen(path);
@@ -156,7 +156,7 @@ void voluta_getopt_mkfs(void)
 		if (opt_chr == 's') {
 			voluta_globals.cmd.mkfs.size = optarg;
 			voluta_globals.cmd.mkfs.volume_size =
-				voluta_parse_size(optarg);
+			        voluta_parse_size(optarg);
 		} else if (opt_chr == 'n') {
 			voluta_globals.cmd.mkfs.name = optarg;
 		} else if (opt_chr == 'e') {
@@ -172,6 +172,6 @@ void voluta_getopt_mkfs(void)
 		}
 	}
 	voluta_globals.cmd.mkfs.volume =
-		voluta_consume_cmdarg("volume-path", true);
+	        voluta_consume_cmdarg("volume-path", true);
 }
 

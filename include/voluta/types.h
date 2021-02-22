@@ -74,7 +74,8 @@ enum voluta_flags {
 	VOLUTA_F_BRINGUP        = VOLUTA_BIT(6),
 	VOLUTA_F_OPSTART        = VOLUTA_BIT(7),
 	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(8),
-	VOLUTA_F_IDLE           = VOLUTA_BIT(9),
+	VOLUTA_F_SLUGGISH       = VOLUTA_BIT(9),
+	VOLUTA_F_IDLE           = VOLUTA_BIT(10),
 };
 
 

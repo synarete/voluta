@@ -1147,10 +1147,10 @@ int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
 {
 	int err;
 
-	err = voluta_flush_dirty(sbi, flags | VOLUTA_F_TIMEOUT);
+	err = voluta_flush_dirty(sbi, flags);
 	if (err) {
 		return err;
 	}
-	voluta_cache_relax(sbi->sb_cache, flags | VOLUTA_F_TIMEOUT);
+	voluta_cache_relax(sbi->sb_cache, flags);
 	return 0;
 }

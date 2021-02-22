@@ -3483,16 +3483,30 @@ static int fuseq_exec_one(struct voluta_fuseq_worker *fqw)
 	return 0;
 }
 
-static int fuseq_do_timeout(struct voluta_fuseq_worker *fqw)
+static int fuseq_timeout_flags(const struct voluta_fuseq_worker *fqw)
 {
 	int flags;
-	int err = 0;
 	const time_t now = voluta_time_now();
 	const time_t dif = labs(now - fqw->fq->fq_times);
 
-	if (fuseq_is_normal(fqw->fq) && (dif > 2)) {
-		flags = (dif > 10) ? VOLUTA_F_IDLE : 0;
+	if (dif < 3) {
+		flags = 0;
+	} else if (dif < 20) {
+		flags = VOLUTA_F_TIMEOUT;
+	} else if (dif < 60) {
+		flags = VOLUTA_F_TIMEOUT | VOLUTA_F_SLUGGISH;
+	} else {
+		flags = VOLUTA_F_TIMEOUT | VOLUTA_F_SLUGGISH | VOLUTA_F_IDLE;
+	}
+	return flags;
+}
 
+static int fuseq_do_timeout(const struct voluta_fuseq_worker *fqw)
+{
+	int err = 0;
+	const int flags = fuseq_timeout_flags(fqw);
+
+	if (fuseq_is_normal(fqw->fq) && flags) {
 		fuseq_lock_fs(fqw);
 		err = voluta_fs_timedout(fqw->fq->fq_sbi, flags);
 		fuseq_unlock_fs(fqw);

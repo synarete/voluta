@@ -937,7 +937,7 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
 void voluta_kivam_xor_iv(struct voluta_kivam *kivam,
-                         loff_t off, uint64_t seed);
+                         const struct voluta_vaddr *vaddr, uint64_t seed);
 
 /* cache */
 int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool);

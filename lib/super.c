@@ -3814,7 +3814,7 @@ static void kivam_of_hsmap(const struct voluta_vnode_info *vi,
 	kivam = voluta_sb_kivam_of(sb, hs_index);
 	voluta_kivam_copyto(kivam, out_kivam);
 
-	voluta_kivam_xor_iv(out_kivam, vaddr->off, 0);
+	voluta_kivam_xor_iv(out_kivam, vaddr, 0);
 }
 
 static void kivam_of_agmap(const struct voluta_vnode_info *vi,
@@ -3831,7 +3831,7 @@ static void kivam_of_agmap(const struct voluta_vnode_info *vi,
 	voluta_kivam_copyto(kivam, out_kivam);
 
 	ag_seed = hsm_seed_of(hsm, ag_index);
-	voluta_kivam_xor_iv(out_kivam, vaddr->off, ag_seed);
+	voluta_kivam_xor_iv(out_kivam, vaddr, ag_seed);
 }
 
 static void kivam_of_normal(const struct voluta_vnode_info *vi,
@@ -3848,7 +3848,7 @@ static void kivam_of_normal(const struct voluta_vnode_info *vi,
 	voluta_kivam_copyto(kivam, out_kivam);
 
 	bk_seed = agm_seed_of(agm, lba);
-	voluta_kivam_xor_iv(out_kivam, vaddr->off, bk_seed);
+	voluta_kivam_xor_iv(out_kivam, vaddr, bk_seed);
 }
 
 void voluta_kivam_of(const struct voluta_vnode_info *vi,

@@ -1219,19 +1219,25 @@ static bool cache_evict_or_relru_bki(struct voluta_cache *cache,
 	return evicted;
 }
 
-static void cache_shrink_or_relru_bkis(struct voluta_cache *cache, size_t cnt)
+static size_t cache_shrink_or_relru_bks(struct voluta_cache *cache, size_t cnt)
 {
-	bool ok = true;
+	bool ok;
+	size_t evicted = 0;
 	struct voluta_bk_info *bki;
 	const size_t n = min(cnt, cache->c_blm.lru.sz);
 
-	for (size_t i = 0; (i < n) && ok; ++i) {
+	for (size_t i = 0; i < n; ++i) {
 		bki = cache_get_lru_bki(cache);
 		if (bki == NULL) {
 			break;
 		}
 		ok = cache_evict_or_relru_bki(cache, bki);
+		if (!ok) {
+			break;
+		}
+		evicted++;
 	}
+	return evicted;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1481,19 +1487,25 @@ static void cache_drop_evictable_vis(struct voluta_cache *cache)
 	lrumap_foreach_backward(&cache->c_vlm, try_evict_vi, cache);
 }
 
-static void cache_shrink_or_relru_vis(struct voluta_cache *cache, size_t cnt)
+static size_t cache_shrink_or_relru_vis(struct voluta_cache *cache, size_t cnt)
 {
-	bool ok = true;
+	bool ok;
+	size_t evicted = 0;
 	struct voluta_vnode_info *vi;
 	const size_t n = min(cnt, cache->c_vlm.lru.sz);
 
-	for (size_t i = 0; (i < n) && ok; ++i) {
+	for (size_t i = 0; i < n; ++i) {
 		vi = cache_get_lru_vi(cache);
 		if (vi == NULL) {
 			break;
 		}
 		ok = cache_evict_or_relru_vi(cache, vi);
+		if (!ok) {
+			break;
+		}
+		evicted++;
 	}
+	return evicted;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1693,37 +1705,46 @@ static void cache_drop_evictable_iis(struct voluta_cache *cache)
 	lrumap_foreach_backward(&cache->c_ilm, try_evict_ii, cache);
 }
 
-static void cache_shrink_or_relru_iis(struct voluta_cache *cache, size_t cnt)
+static size_t cache_shrink_or_relru_iis(struct voluta_cache *cache, size_t cnt)
 {
-	bool ok = true;
+	bool ok;
+	size_t evicted = 0;
 	struct voluta_inode_info *ii;
 	const size_t n = min(cnt, cache->c_ilm.lru.sz);
 
-	for (size_t i = 0; (i < n) && ok; ++i) {
+	for (size_t i = 0; i < n; ++i) {
 		ii = cache_get_lru_ii(cache);
 		if (ii == NULL) {
 			break;
 		}
 		ok = cache_evict_or_relru_ii(cache, ii);
+		if (!ok) {
+			break;
+		}
+		evicted++;
 	}
+	return evicted;
 }
 
 static void cache_shrink_some(struct voluta_cache *cache, size_t factor)
 {
 	size_t count;
-	size_t nshrink;
+	size_t shrink;
+	size_t actual = 0;
 
 	count = lrumap_overpop(&cache->c_vlm) + 1;
-	nshrink = min(count * factor, VOLUTA_NKB_IN_BK);
-	cache_shrink_or_relru_vis(cache, nshrink);
+	shrink = min(count * factor, VOLUTA_NKB_IN_BK);
+	actual = cache_shrink_or_relru_vis(cache, shrink);
 
 	count = lrumap_overpop(&cache->c_ilm) + 1;
-	nshrink = min(count * factor, VOLUTA_NKB_IN_BK);
-	cache_shrink_or_relru_iis(cache, nshrink);
+	shrink = min(count * factor, VOLUTA_NKB_IN_BK);
+	actual = cache_shrink_or_relru_iis(cache, shrink);
 
 	count = lrumap_overpop(&cache->c_blm) + 1;
-	nshrink = min(count * factor, VOLUTA_MEGA / VOLUTA_BK_SIZE);
-	cache_shrink_or_relru_bkis(cache, nshrink);
+	shrink = min(count * factor, VOLUTA_MEGA / VOLUTA_BK_SIZE);
+	actual = cache_shrink_or_relru_bks(cache, shrink);
+
+	voluta_unused(actual);
 }
 
 static bool cache_has_overpop(const struct voluta_cache *cache)
@@ -1757,11 +1778,14 @@ static size_t cache_calc_niter(const struct voluta_cache *cache, int flags)
 	if (flags & VOLUTA_F_OPSTART) {
 		niter += voluta_popcount64(mem_press >> 11);
 	}
-	if ((flags & VOLUTA_F_IDLE) && (mem_press & ~0x03UL)) {
+	if ((flags & VOLUTA_F_SLUGGISH) && (mem_press & ~3UL)) {
 		niter += 1;
 	}
+	if ((flags & VOLUTA_F_IDLE) && (mem_press & ~1UL)) {
+		niter += 2;
+	}
 	if (cache_has_overpop(cache)) {
-		niter += 1;
+		niter += 2;
 	}
 	return niter;
 }
@@ -1824,7 +1848,7 @@ static size_t flush_threshold_of(int flags)
 
 	if (flags & VOLUTA_F_NOW) {
 		threshold = 0;
-	} else if (flags & VOLUTA_F_IDLE) {
+	} else if (flags & (VOLUTA_F_SLUGGISH | VOLUTA_F_IDLE)) {
 		threshold = mega / 2;
 	} else if (flags & VOLUTA_F_SYNC) {
 		threshold = mega;

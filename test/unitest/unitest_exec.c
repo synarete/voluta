@@ -538,8 +538,7 @@ char *ut_strfmt(struct ut_env *ute, const char *fmt, ...)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-struct ut_dvec *ut_new_dvec(struct ut_env *ute,
-                            loff_t off, size_t len)
+struct ut_dvec *ut_new_dvec(struct ut_env *ute, loff_t off, size_t len)
 {
 	size_t size;
 	struct ut_dvec *dvec;
@@ -581,19 +580,25 @@ static uint64_t next_prandom(struct voluta_prandoms *pr)
 	return pr->dat[pr->nr];
 }
 
-static void prandom_shuffle(long *arr, size_t len)
+void ut_prandom_shuffle(long *arr, size_t len)
 {
 	size_t j;
 	uint64_t rnd;
 	struct voluta_prandoms pr = { .nr = 0 };
 
-	if (len < 2) {
-		return;
+	if (len > 1) {
+		for (size_t i = 0; i < len - 1; i++) {
+			rnd = next_prandom(&pr);
+			j = i + (rnd / (ULONG_MAX / (len - i) + 1));
+			swap_long(arr + i, arr + j);
+		}
 	}
-	for (size_t i = 0; i < len - 1; i++) {
-		rnd = next_prandom(&pr);
-		j = i + (rnd / (ULONG_MAX / (len - i) + 1));
-		swap_long(arr + i, arr + j);
+}
+
+void ut_reverse_inplace(long *arr, size_t len)
+{
+	for (size_t i = 0; i < len / 2; i++) {
+		swap_long(arr + i, arr + (len - i - 1));
 	}
 }
 
@@ -608,7 +613,7 @@ static void create_seq(long *arr, size_t len, long base)
 void ut_prandom_seq(long *arr, size_t len, long base)
 {
 	create_seq(arr, len, base);
-	prandom_shuffle(arr, len);
+	ut_prandom_shuffle(arr, len);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

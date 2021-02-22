@@ -1726,7 +1726,7 @@ static size_t cache_shrink_or_relru_iis(struct voluta_cache *cache, size_t cnt)
 	return evicted;
 }
 
-static void cache_shrink_some(struct voluta_cache *cache, size_t factor)
+static bool cache_shrink_some(struct voluta_cache *cache, size_t factor)
 {
 	size_t count;
 	size_t shrink;
@@ -1734,17 +1734,17 @@ static void cache_shrink_some(struct voluta_cache *cache, size_t factor)
 
 	count = lrumap_overpop(&cache->c_vlm) + 1;
 	shrink = min(count * factor, VOLUTA_NKB_IN_BK);
-	actual = cache_shrink_or_relru_vis(cache, shrink);
+	actual += cache_shrink_or_relru_vis(cache, shrink);
 
 	count = lrumap_overpop(&cache->c_ilm) + 1;
 	shrink = min(count * factor, VOLUTA_NKB_IN_BK);
-	actual = cache_shrink_or_relru_iis(cache, shrink);
+	actual += cache_shrink_or_relru_iis(cache, shrink);
 
 	count = lrumap_overpop(&cache->c_blm) + 1;
 	shrink = min(count * factor, VOLUTA_MEGA / VOLUTA_BK_SIZE);
-	actual = cache_shrink_or_relru_bks(cache, shrink);
+	actual += cache_shrink_or_relru_bks(cache, shrink);
 
-	voluta_unused(actual);
+	return (actual > 0);
 }
 
 static bool cache_has_overpop(const struct voluta_cache *cache)
@@ -1792,12 +1792,13 @@ static size_t cache_calc_niter(const struct voluta_cache *cache, int flags)
 
 void voluta_cache_relax(struct voluta_cache *cache, int flags)
 {
+	bool evicted = true;
 	const size_t factor = 1;
 	const size_t niter = cache_calc_niter(cache, flags);
 
-	for (size_t i = 0; i < niter; ++i) {
+	for (size_t i = 0; (i < niter) && evicted; ++i) {
 		cache_tick_once(cache);
-		cache_shrink_some(cache, factor);
+		evicted = cache_shrink_some(cache, factor);
 	}
 }
 

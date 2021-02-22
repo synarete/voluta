@@ -442,6 +442,10 @@ void ut_reload_ok(struct ut_env *ute, ino_t ino);
 void ut_recrypt_flip_ok(struct ut_env *ute, ino_t ino);
 
 /* utilities */
+void ut_prandom_shuffle(long *arr, size_t len);
+
+void ut_reverse_inplace(long *arr, size_t len);
+
 void ut_prandom_seq(long *arr, size_t len, long base);
 
 bool ut_dot_or_dotdot(const char *s);
@@ -500,6 +504,7 @@ void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
 #define UT_4K_SIZE              VOLUTA_FILE_HEAD2_LEAF_SIZE
 #define UT_8K_SIZE              (2 * UT_4K_SIZE)
 #define UT_BK_SIZE              VOLUTA_BK_SIZE
+#define UT_FTREE_NCHILDS        VOLUTA_FILE_TREE_NCHILDS
 #define UT_FSIZE_MAX            VOLUTA_FILE_SIZE_MAX
 #define UT_IOSIZE_MAX           VOLUTA_IO_SIZE_MAX
 #define UT_FILEMAP_NCHILD       VOLUTA_FILE_TREE_NCHILDS

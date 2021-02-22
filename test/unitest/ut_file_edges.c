@@ -121,10 +121,82 @@ static void ut_file_edges_special(struct ut_env *ute)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+/* Test I/O on file-mapping boundaries, where each operation falls on two
+ * distinguished file mappings */
+static void ut_file_edges_fmapping_(struct ut_env *ute,
+                                    const loff_t *off_arr, size_t cnt)
+{
+	ino_t ino;
+	ino_t dino;
+	loff_t off = -1;
+	const char *name = UT_NAME;
+	const size_t bsz = 512;
+	uint8_t *buf = ut_randbuf(ute, bsz);
+
+	ut_mkdir_at_root(ute, name, &dino);
+	ut_create_file(ute, dino, name, &ino);
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_arr[i];
+		buf[0] ^= (uint8_t)i;
+		ut_write_read(ute, ino, buf, bsz, off - 1);
+		buf[0] ^= (uint8_t)i;
+	}
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_arr[i];
+		buf[0] ^= (uint8_t)i;
+		ut_read_verify(ute, ino, buf, bsz, off - 1);
+		buf[0] ^= (uint8_t)i;
+	}
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_arr[i];
+		ut_fallocate_punch_hole(ute, ino, off, UT_KB_SIZE / 2);
+	}
+	for (size_t i = 0; i < cnt; ++i) {
+		off = off_arr[i];
+		buf[0] ^= (uint8_t)i;
+		ut_read_verify(ute, ino, buf, 1, off - 1);
+		buf[0] ^= (uint8_t)i;
+	}
+	ut_remove_file(ute, dino, name, ino);
+	ut_rmdir_at_root(ute, name);
+}
+
+static void ut_file_edges_fmapping(struct ut_env *ute)
+{
+	long off_arr[] = {
+		UT_KB_SIZE,
+		2 * UT_KB_SIZE,
+		UT_4K_SIZE,
+		UT_8K_SIZE,
+		2 * UT_8K_SIZE,
+		4 * UT_8K_SIZE,
+		UT_BK_SIZE,
+		2 * UT_BK_SIZE,
+		UT_BK_SIZE * UT_FTREE_NCHILDS,
+		UT_BK_SIZE *(UT_FTREE_NCHILDS + 1),
+		UT_BK_SIZE * 2 * UT_FTREE_NCHILDS,
+		UT_BK_SIZE *((2 * UT_FTREE_NCHILDS) + 1),
+		UT_BK_SIZE *UT_FTREE_NCHILDS * UT_FTREE_NCHILDS,
+		UT_FSIZE_MAX / 2,
+		UT_FSIZE_MAX - UT_BK_SIZE
+	};
+	const size_t off_arr_len = UT_ARRAY_SIZE(off_arr);
+
+	for (size_t i = 0; i < 8; ++i) {
+		ut_file_edges_fmapping_(ute, off_arr, off_arr_len);
+		ut_reverse_inplace(off_arr, off_arr_len);
+		ut_file_edges_fmapping_(ute, off_arr, off_arr_len);
+		ut_prandom_shuffle(off_arr, off_arr_len);
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static const struct ut_testdef ut_local_tests[] = {
 	UT_DEFTEST(ut_file_edges_aligned),
 	UT_DEFTEST(ut_file_edges_unaligned),
 	UT_DEFTEST(ut_file_edges_special),
+	UT_DEFTEST(ut_file_edges_fmapping),
 };
 
 const struct ut_tests ut_test_file_edges = UT_MKTESTS(ut_local_tests);

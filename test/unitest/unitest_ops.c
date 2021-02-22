@@ -1307,8 +1307,7 @@ void ut_lseek_hole(struct ut_env *ute,
 void ut_write_dvec(struct ut_env *ute, ino_t ino,
                    const struct ut_dvec *dvec)
 {
-	ut_write_read(ute, ino, dvec->dat,
-	              dvec->len, dvec->off);
+	ut_write_read(ute, ino, dvec->dat, dvec->len, dvec->off);
 }
 
 void ut_read_dvec(struct ut_env *ute, ino_t ino,

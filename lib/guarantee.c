@@ -145,7 +145,6 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF_BK(union voluta_block_u);
 	REQUIRE_SIZEOF_BK(struct voluta_block);
 	REQUIRE_SIZEOF_BK(struct voluta_block);
-	REQUIRE_SIZEOF_16K(struct voluta_ar_blobrefs);
 	REQUIRE_SIZEOF(struct voluta_header, VOLUTA_HEADER_SIZE);
 	REQUIRE_SIZEOF(struct voluta_uuid, VOLUTA_UUID_SIZE);
 	REQUIRE_SIZEOF(struct voluta_name, VOLUTA_NAME_MAX + 1);
@@ -167,11 +166,13 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_itable_tnode, VOLUTA_ITNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_dir_htnode, VOLUTA_DIR_HTNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_ioc_query, 2048);
-	REQUIRE_SIZEOF(struct voluta_ar_blobref, VOLUTA_AR_BLOBREF_SIZE);
 
+	REQUIRE_SIZEOF(struct voluta_ar_blobref, VOLUTA_AR_BLOBREF_SIZE);
 	REQUIRE_SIZEOF_4K(struct voluta_zero_block4);
 	REQUIRE_SIZEOF_4K(struct voluta_rand_block4);
-	REQUIRE_SIZEOF(struct voluta_ar_spec, 32 * VOLUTA_KILO);
+	REQUIRE_SIZEOF_BK(struct voluta_ar_spec);
+	REQUIRE_SIZEOF_BK(struct voluta_ar_blobrefs);
+	REQUIRE_SIZEOF(struct voluta_ar_spec_brefs, 2 * VOLUTA_BK_SIZE);
 }
 
 static void guarantee_persistent_types_members(void)

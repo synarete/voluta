@@ -711,29 +711,26 @@ static size_t spec_nents_max(size_t nents)
 static size_t spec_size_of(size_t nents)
 {
 	size_t size;
-	size_t nbr_tail;
+	size_t nbrefs;
 	const struct voluta_ar_spec *spec = NULL;
-	const size_t spec_size = sizeof(*spec);
-	const size_t bref_size = sizeof(spec->ar_brefs[0].ar_bref[0]);
-	const size_t nbr_head = ARRAY_SIZE(spec->ar_brefs[0].ar_bref);
+	const struct voluta_ar_blobrefs *brefs = NULL;
+	const size_t nents_in_bref = ARRAY_SIZE(brefs->ar_bref);
 
-	size = spec_size;
-	if (nents > nbr_head) {
-		nbr_tail = nents - nbr_head;
-		size += nbr_tail * bref_size;
-	}
-	return div_round_up(size, spec_size) * spec_size;
+	nbrefs = div_round_up(nents, nents_in_bref);
+	size = sizeof(*spec) + (nbrefs * sizeof(*brefs));
+	voluta_assert_eq(size % VOLUTA_BK_SIZE, 0);
+
+	return size;
 }
 
 static size_t spec_nents_of(size_t size)
 {
-	size_t nents;
+	size_t nents = 0;
 	const struct voluta_ar_spec *spec = NULL;
+	const struct voluta_ar_blobrefs *brefs = NULL;
 	const size_t spec_size = sizeof(*spec);
-	const size_t bref_size = sizeof(spec->ar_brefs[0].ar_bref[0]);
-	const size_t nbr_head = ARRAY_SIZE(spec->ar_brefs[0].ar_bref);
+	const size_t bref_size = sizeof(brefs->ar_bref[0]);
 
-	nents = nbr_head;
 	if (size > spec_size) {
 		nents += (size - spec_size) / bref_size;
 	}
@@ -768,15 +765,21 @@ spec_xclone(struct voluta_qalloc *qal,
 	return xspec;
 }
 
+static struct voluta_ar_spec_brefs *
+spec_to_brefs(const struct voluta_ar_spec *spec_const)
+{
+	struct voluta_ar_spec *spec = unconst(spec_const);
+
+	return container_of(spec, struct voluta_ar_spec_brefs, spec);
+}
+
 static struct voluta_ar_blobref *
 spec_bref_at(const struct voluta_ar_spec *spec, size_t ent_index)
 {
 	const struct voluta_ar_blobref *bref = NULL;
-	const size_t nbrefs = ARRAY_SIZE(spec->ar_brefs[0].ar_bref);
-	const size_t blk_index = ent_index / nbrefs;
-	const size_t sub_index = ent_index % nbrefs;
+	struct voluta_ar_spec_brefs *brefs = spec_to_brefs(spec);
 
-	bref = &spec->ar_brefs[blk_index].ar_bref[sub_index];
+	bref = &brefs->brefs.ar_bref[ent_index];
 	return unconst(bref);
 }
 
@@ -1099,14 +1102,13 @@ static int arc_append_bref(struct voluta_archiver *arc,
 {
 	int err;
 	struct voluta_ar_blobref bref;
-	struct voluta_ar_spec *spec = arc->ar_spec;
 
 	err = arc_require_room(arc);
 	if (err) {
 		return err;
 	}
 	bli_to_bref(bli, &bref);
-	spec_append_bref(spec, arc->ar_spec_nents++, &bref);
+	spec_append_bref(arc->ar_spec, arc->ar_spec_nents++, &bref);
 	return 0;
 }
 

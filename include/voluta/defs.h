@@ -831,27 +831,33 @@ struct voluta_ar_blob {
 
 
 struct voluta_ar_blobref {
-	uint32_t                br_magic;
-	uint32_t                br_flags;
-	uint32_t                br_length;
-	uint16_t                br_hfunc;
-	uint16_t                br_xbin;
-	int64_t                 br_voff;
-	uint64_t                br_reserved2;
-	struct voluta_hash256   br_hash;
+	uint32_t                        br_magic;
+	uint32_t                        br_flags;
+	uint32_t                        br_length;
+	uint16_t                        br_hfunc;
+	uint16_t                        br_xbin;
+	int64_t                         br_voff;
+	uint64_t                        br_reserved2;
+	struct voluta_hash256           br_hash;
 } voluta_packed_aligned64;
 
 
 struct voluta_ar_blobrefs {
-	struct voluta_ar_blobref ar_bref[256];
+	struct voluta_ar_blobref        ar_bref[1024];
 } voluta_packed_aligned64;
 
 
 struct voluta_ar_spec {
 	struct voluta_zero_block4       ar_zero;
 	struct voluta_meta_block4       ar_meta;
-	struct voluta_rand_block4       ar_rand[2];
-	struct voluta_ar_blobrefs       ar_brefs[1];
+	struct voluta_rand_block4       ar_rand[14];
 } voluta_packed_aligned64;
+
+
+struct voluta_ar_spec_brefs {
+	struct voluta_ar_spec           spec;
+	struct voluta_ar_blobrefs       brefs;
+} voluta_packed_aligned64;
+
 
 #endif /* VOLUTA_DEFS_H_ */

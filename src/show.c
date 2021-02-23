@@ -68,28 +68,49 @@ static void show_volume(void)
 	printf("volume:         %s\n", query.u.volume.path);
 }
 
-static const char *show_ms_flag(long flag, long mask)
+struct voluta_msflag_name {
+	long ms_flag;
+	const char *name;
+};
+
+static void show_mount_flags(long flags, char *buf, size_t bsz)
 {
-	return ((flag & mask) == mask) ? "1" : "0";
+	size_t len;
+	const char *end = buf + bsz;
+	const struct voluta_msflag_name *ms_name = NULL;
+	const struct voluta_msflag_name ms_names[] = {
+		{ MS_RDONLY, "rdonly" },
+		{ MS_NODEV, "nodev" },
+		{ MS_NOSUID, "nosuid" },
+		{ MS_NOEXEC, "noexec" },
+	};
+
+	for (size_t i = 0; i < VOLUTA_ARRAY_SIZE(ms_names); ++i) {
+		ms_name = &ms_names[i];
+		len = strlen(ms_name->name);
+		if (((buf + len + 1) < end) && (flags & ms_name->ms_flag)) {
+			strncpy(buf, ms_names[i].name, len);
+			buf[len] = ' ';
+			buf += len + 1;
+		}
+	}
 }
 
 static void show_fsinfo(void)
 {
 	long ms_flags;
+	char ms_flags_str[64] = "";
 	struct voluta_ioc_query query = {
 		.qtype = VOLUTA_QUERY_FSINFO
 	};
 
 	show_do_ioctl_query(&query);
 	ms_flags = (long)query.u.fsinfo.msflags;
+	show_mount_flags(ms_flags, ms_flags_str, sizeof(ms_flags_str) - 1);
 
 	printf("uptime-seconds: %ld\n", query.u.fsinfo.uptime);
 	printf("encrypt:        %d\n", (int)query.u.fsinfo.encrypt);
-	printf("mount-rdonly:   %s\n", show_ms_flag(ms_flags, MS_RDONLY));
-	printf("mount-nodev:    %s\n", show_ms_flag(ms_flags, MS_NODEV));
-	printf("mount-nosuid:   %s\n", show_ms_flag(ms_flags, MS_NOSUID));
-	printf("mount-noexec:   %s\n", show_ms_flag(ms_flags, MS_NOEXEC));
-	printf("mount-noexec:   %s\n", show_ms_flag(ms_flags, MS_NOEXEC));
+	printf("mount-flags:    %s\n", ms_flags_str);
 }
 
 static void show_execute(void)

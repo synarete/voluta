@@ -300,7 +300,7 @@ static const char *voluta_mount_usage[] = {
 	"mount [options] <volume-path> <mount-point>",
 	"",
 	"options:",
-	"  -r  --rdonly                 Mount filesystem read-only",
+	"  -r, --rdonly                 Mount filesystem read-only",
 	"  -x, --noexec                 Do not allow programs execution",
 	"  -S, --nosuid                 Do not honor special bits",
 	"      --nodev                  Do not allow access to device files",

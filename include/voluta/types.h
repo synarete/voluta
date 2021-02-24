@@ -362,7 +362,8 @@ struct voluta_encbuf {
 struct voluta_pstore {
 	int     ps_dfd;
 	int     ps_vfd;
-	int     ps_flags;
+	int     ps_ctl_flags;
+	int     ps_o_flags;
 	loff_t  ps_size;
 	loff_t  ps_capacity;
 };

@@ -554,7 +554,7 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 		return err;
 	}
 	err = voluta_vstore_flock(fse->vstore);
-	if (err) {
+	if (err && (err != -EPERM)) {
 		return err;
 	}
 	return 0;

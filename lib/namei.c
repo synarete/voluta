@@ -1967,7 +1967,7 @@ static int check_cloneable_volume(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_pstore *pstore = &sbi->sb_vstore->vs_pstore;
 
-	return (pstore->ps_flags & VOLUTA_F_MEMFD) ? -ENOTSUP : 0;
+	return (pstore->ps_ctl_flags & VOLUTA_F_MEMFD) ? -ENOTSUP : 0;
 }
 
 static int check_rootdir(const struct voluta_inode_info *ii)

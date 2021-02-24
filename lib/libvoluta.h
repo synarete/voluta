@@ -484,6 +484,9 @@ int voluta_probe_unwritten(struct voluta_sb_info *sbi,
 int voluta_clear_unwritten(struct voluta_sb_info *sbi,
                            const struct voluta_vaddr *vaddr);
 
+int voluta_mark_unwritten(struct voluta_sb_info *sbi,
+                          const struct voluta_vaddr *vaddr);
+
 int voluta_verify_uspace_map(const struct voluta_hspace_map *hsm);
 
 int voluta_verify_agroup_map(const struct voluta_agroup_map *agm);

@@ -389,6 +389,9 @@ void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
 void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
                              loff_t offset, loff_t len);
 
+void ut_fallocate_zero_range(struct ut_env *ute, ino_t ino,
+                             loff_t offset, loff_t len);
+
 void ut_setxattr_create(struct ut_env *ute, ino_t ino,
                         const struct ut_keyval *kv);
 
@@ -500,8 +503,8 @@ void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
 #define UT_UTERA                VOLUTA_UTERA
 #define UT_ARRAY_SIZE(x)        VOLUTA_ARRAY_SIZE(x)
 #define UT_NAME_MAX             VOLUTA_NAME_MAX
-#define UT_KB_SIZE              VOLUTA_KB_SIZE
-#define UT_4K_SIZE              VOLUTA_FILE_HEAD2_LEAF_SIZE
+#define UT_1K_SIZE              VOLUTA_KILO
+#define UT_4K_SIZE              (4 * VOLUTA_KILO)
 #define UT_8K_SIZE              (2 * UT_4K_SIZE)
 #define UT_BK_SIZE              VOLUTA_BK_SIZE
 #define UT_FTREE_NCHILDS        VOLUTA_FILE_TREE_NCHILDS

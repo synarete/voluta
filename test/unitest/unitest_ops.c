@@ -1106,20 +1106,38 @@ void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
                              loff_t offset, loff_t len)
 {
 	int err;
-	loff_t isize;
-	struct stat st;
+	struct stat st[2];
 	const int mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
 
-	err = ut_getattr(ute, ino, &st);
+	err = ut_getattr(ute, ino, &st[0]);
 	ut_expect_ok(err);
-	isize = st.st_size;
 
 	err = ut_fallocate(ute, ino, mode, offset, len);
 	ut_expect_ok(err);
 
-	err = ut_getattr(ute, ino, &st);
+	err = ut_getattr(ute, ino, &st[1]);
 	ut_expect_ok(err);
-	ut_expect_eq(st.st_size, isize);
+	ut_expect_eq(st[1].st_size, st[0].st_size);
+	ut_expect_le(st[1].st_blocks, st[0].st_blocks);
+}
+
+void ut_fallocate_zero_range(struct ut_env *ute, ino_t ino,
+                             loff_t offset, loff_t len)
+{
+	int err;
+	struct stat st[2];
+	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+
+	err = ut_getattr(ute, ino, &st[0]);
+	ut_expect_ok(err);
+
+	err = ut_fallocate(ute, ino, mode, offset, len);
+	ut_expect_ok(err);
+
+	err = ut_getattr(ute, ino, &st[1]);
+	ut_expect_ok(err);
+	ut_expect_eq(st[1].st_size, st[0].st_size);
+	ut_expect_eq(st[1].st_blocks, st[0].st_blocks);
 }
 
 static void ut_setgetxattr(struct ut_env *ute, ino_t ino,

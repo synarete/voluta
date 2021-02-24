@@ -68,6 +68,7 @@ struct voluta_file_ctx {
 };
 
 static bool fl_keep_size(const struct voluta_file_ctx *f_ctx);
+static bool fl_zero_range(const struct voluta_file_ctx *f_ctx);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -1129,7 +1130,7 @@ static void zero_data_leaf_sub(const struct voluta_file_ctx *f_ctx,
 	dirtify_data_leaf(f_ctx, vi);
 }
 
-static int zero_tree_leaf_range(const struct voluta_file_ctx *f_ctx,
+static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
                                 const struct voluta_vaddr *vaddr,
                                 loff_t off_in_bk, size_t len)
 {
@@ -1156,12 +1157,12 @@ static int zero_tree_leaf_range(const struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
-static int zero_tree_leaf_at(const struct voluta_file_ctx *f_ctx,
+static int zero_data_leaf_at(const struct voluta_file_ctx *f_ctx,
                              const struct voluta_vaddr *vaddr)
 {
 	const ssize_t len = data_size_of(vaddr->vtype);
 
-	return zero_tree_leaf_range(f_ctx, vaddr, 0, (size_t)len);
+	return zero_data_leaf_range(f_ctx, vaddr, 0, (size_t)len);
 }
 
 static int stage_data_leaf(const struct voluta_file_ctx *f_ctx,
@@ -2156,7 +2157,7 @@ static int prepare_unwritten_leaf(struct voluta_file_ctx *f_ctx,
 	if (!unwritten) {
 		return 0;
 	}
-	err = zero_tree_leaf_at(f_ctx, vaddr);
+	err = zero_data_leaf_at(f_ctx, vaddr);
 	if (err) {
 		return err;
 	}
@@ -2694,7 +2695,7 @@ static int do_discard_partial(const struct voluta_file_ctx *f_ctx,
 	const loff_t oid = off_in_data(off, vaddr->vtype);
 	const size_t len = len_of_data(off, f_ctx->end, vaddr->vtype);
 
-	return zero_tree_leaf_range(f_ctx, vaddr, oid, len);
+	return zero_data_leaf_range(f_ctx, vaddr, oid, len);
 }
 
 static int discard_partial(const struct voluta_file_ctx *f_ctx,
@@ -2749,6 +2750,12 @@ static int discard_entire(struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
+static int discard_mark_unwritten(struct voluta_file_ctx *f_ctx,
+                                  const struct voluta_filenode_ref *fnr)
+{
+	return voluta_mark_unwritten(f_ctx->sbi, &fnr->vaddr);
+}
+
 static int discard_data_at(struct voluta_file_ctx *f_ctx,
                            const struct voluta_filenode_ref *fnr)
 {
@@ -2762,6 +2769,8 @@ static int discard_data_at(struct voluta_file_ctx *f_ctx,
 	partial = off_is_partial(fnr->file_pos, f_ctx->end, fnr->vaddr.vtype);
 	if (partial) {
 		err = discard_partial(f_ctx, fnr);
+	} else if (fl_zero_range(f_ctx)) {
+		err = discard_mark_unwritten(f_ctx, fnr);
 	} else {
 		err = discard_entire(f_ctx, fnr);
 	}
@@ -3070,18 +3079,24 @@ static bool fl_reserve_range(const struct voluta_file_ctx *f_ctx)
 	return (f_ctx->fl_mode & ~fl_mask) == 0;
 }
 
+static bool fl_has_mode(const struct voluta_file_ctx *f_ctx, int fl_mask)
+{
+	return (f_ctx->fl_mode & fl_mask) == fl_mask;
+}
+
 static bool fl_keep_size(const struct voluta_file_ctx *f_ctx)
 {
-	const int fl_mask = FALLOC_FL_KEEP_SIZE;
-
-	return (f_ctx->fl_mode & fl_mask) == fl_mask;
+	return fl_has_mode(f_ctx, FALLOC_FL_KEEP_SIZE);
 }
 
 static bool fl_punch_hole(const struct voluta_file_ctx *f_ctx)
 {
-	const int fl_mask = FALLOC_FL_PUNCH_HOLE;
+	return fl_has_mode(f_ctx, FALLOC_FL_PUNCH_HOLE);
+}
 
-	return (f_ctx->fl_mode & fl_mask) == fl_mask;
+static bool fl_zero_range(const struct voluta_file_ctx *f_ctx)
+{
+	return fl_has_mode(f_ctx, FALLOC_FL_ZERO_RANGE);
 }
 
 /*
@@ -3093,15 +3108,17 @@ static bool fl_punch_hole(const struct voluta_file_ctx *f_ctx)
 static int check_fl_mode(const struct voluta_file_ctx *f_ctx)
 {
 	const int fl_mode = f_ctx->fl_mode;
+	const int fl_keep_size = FALLOC_FL_KEEP_SIZE;
 	const int fl_supported =
-	        FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE;
+	        FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
 
-	if ((fl_mode & FALLOC_FL_PUNCH_HOLE) &&
-	    !(fl_mode & FALLOC_FL_KEEP_SIZE)) {
-		return -EINVAL;
-	}
-	if (fl_mode & ~fl_supported) {
+	if (fl_mode & ~(fl_supported | fl_keep_size)) {
 		return -ENOTSUP;
+	}
+	if (fl_mode && !(fl_mode & fl_keep_size)) {
+		/* currently, requires FALLOC_FL_KEEP_SIZE */
+		/* TODO: support fallocate modes without KEEP_SIZE */
+		return -EINVAL;
 	}
 	return 0;
 }
@@ -3243,6 +3260,11 @@ static int fallocate_punch_hole(struct voluta_file_ctx *f_ctx)
 	return discard_data(f_ctx);
 }
 
+static int fallocate_zero_range(struct voluta_file_ctx *f_ctx)
+{
+	return discard_data(f_ctx);
+}
+
 static int do_fallocate_op(struct voluta_file_ctx *f_ctx)
 {
 	int err;
@@ -3251,6 +3273,8 @@ static int do_fallocate_op(struct voluta_file_ctx *f_ctx)
 		err = fallocate_reserve(f_ctx);
 	} else if (fl_punch_hole(f_ctx)) {
 		err = fallocate_punch_hole(f_ctx);
+	} else if (fl_zero_range(f_ctx)) {
+		err = fallocate_zero_range(f_ctx);
 	} else {
 		err = -ENOTSUP;
 	}

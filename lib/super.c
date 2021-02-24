@@ -1481,6 +1481,14 @@ static void clear_unwritten_at(const struct voluta_vnode_info *agm_vi,
 	agm_clear_unwritten_at(agm_vi->vu.agm, vaddr);
 }
 
+static void mark_unwritten_at(const struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr)
+{
+	voluta_assert_eq(agm_vi->vaddr.vtype, VOLUTA_VTYPE_AGMAP);
+
+	agm_set_unwritten_at(agm_vi->vu.agm, vaddr);
+}
+
 static int find_cached_bki(struct voluta_sb_info *sbi, loff_t lba,
                            struct voluta_bk_info **out_bki)
 {
@@ -3795,6 +3803,23 @@ int voluta_clear_unwritten(struct voluta_sb_info *sbi,
 	}
 	if (has_unwritten_at(agm_vi, vaddr)) {
 		clear_unwritten_at(agm_vi, vaddr);
+		vi_dirtify(agm_vi);
+	}
+	return 0;
+}
+
+int voluta_mark_unwritten(struct voluta_sb_info *sbi,
+                          const struct voluta_vaddr *vaddr)
+{
+	int err;
+	struct voluta_vnode_info *agm_vi = NULL;
+
+	err = stage_agmap_of(sbi, vaddr, &agm_vi);
+	if (err) {
+		return err;
+	}
+	if (!has_unwritten_at(agm_vi, vaddr)) {
+		mark_unwritten_at(agm_vi, vaddr);
 		vi_dirtify(agm_vi);
 	}
 	return 0;

@@ -149,7 +149,7 @@ static void ut_file_edges_fmapping_(struct ut_env *ute,
 	}
 	for (size_t i = 0; i < cnt; ++i) {
 		off = off_arr[i];
-		ut_fallocate_punch_hole(ute, ino, off, UT_KB_SIZE / 2);
+		ut_fallocate_punch_hole(ute, ino, off, UT_1K_SIZE / 2);
 	}
 	for (size_t i = 0; i < cnt; ++i) {
 		off = off_arr[i];
@@ -164,8 +164,8 @@ static void ut_file_edges_fmapping_(struct ut_env *ute,
 static void ut_file_edges_fmapping(struct ut_env *ute)
 {
 	long off_arr[] = {
-		UT_KB_SIZE,
-		2 * UT_KB_SIZE,
+		UT_1K_SIZE,
+		2 * UT_1K_SIZE,
 		UT_4K_SIZE,
 		UT_8K_SIZE,
 		2 * UT_8K_SIZE,

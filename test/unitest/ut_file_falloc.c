@@ -441,14 +441,12 @@ static void ut_file_fallocate_stat(struct ut_env *ute)
 {
 	ut_file_fallocate_stat_(ute, 0, UT_BK_SIZE, UT_BK_SIZE);
 	ut_file_fallocate_stat_(ute, 0, UT_BK_SIZE - 1, UT_BK_SIZE);
-	ut_file_fallocate_stat_(ute, UT_BK_SIZE,
-	                        UT_BK_SIZE - 3, UT_BK_SIZE);
+	ut_file_fallocate_stat_(ute, UT_BK_SIZE, UT_BK_SIZE - 3, UT_BK_SIZE);
 	ut_file_fallocate_stat_(ute, 0, UT_MEGA, UT_MEGA);
 	ut_file_fallocate_stat_(ute, UT_BK_SIZE, UT_BK_SIZE, UT_MEGA);
 	ut_file_fallocate_stat_(ute, UT_MEGA, UT_MEGA - 1, UT_UMEGA);
 	ut_file_fallocate_stat_(ute, UT_GIGA, UT_MEGA - 11, 11 * UT_UMEGA);
-	ut_file_fallocate_stat_(ute, UT_TERA,
-	                        UT_MEGA - 111, 111 * UT_UMEGA);
+	ut_file_fallocate_stat_(ute, UT_TERA, UT_MEGA - 111, 111 * UT_UMEGA);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -505,6 +503,71 @@ static void ut_file_fallocate_sparse(struct ut_env *ute)
 	ut_file_fallocate_sparse_(ute, UT_FSIZE_MAX / 2, UT_GIGA);
 }
 
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void ut_file_fallocate_beyond_(struct ut_env *ute,
+                                      loff_t off, size_t bsz)
+{
+	ino_t ino;
+	ino_t dino;
+	blkcnt_t blocks;
+	struct stat st;
+	const ssize_t ssz = (ssize_t)bsz;
+	const char *name = UT_NAME;
+	uint8_t *buf = ut_randbuf(ute, bsz);
+
+	ut_mkdir_at_root(ute, name, &dino);
+	ut_create_file(ute, dino, name, &ino);
+	ut_fallocate_reserve(ute, ino, off, ssz);
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_size, off + ssz);
+	ut_read_zeros(ute, ino, off, bsz);
+	ut_write_read(ute, ino, buf, bsz, off);
+	ut_remove_file(ute, dino, name, ino);
+
+	ut_create_file(ute, dino, name, &ino);
+	ut_fallocate_keep_size(ute, ino, off, ssz);
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_size, 0);
+	ut_trunacate_file(ute, ino, off + 1);
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_size, off + 1);
+	ut_read_zeros(ute, ino, off, 1);
+	ut_write_read(ute, ino, buf, bsz, off);
+	ut_trunacate_file(ute, ino, off);
+	ut_remove_file(ute, dino, name, ino);
+
+	ut_create_file(ute, dino, name, &ino);
+	ut_trunacate_file(ute, ino, off);
+	ut_fallocate_keep_size(ute, ino, off + ssz, ssz);
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_size, off);
+	ut_expect_gt(st.st_blocks, 0);
+	blocks = st.st_blocks;
+	ut_write_read(ute, ino, buf, bsz, off + (ssz / 2));
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_size, off + (ssz / 2) + ssz);
+	ut_expect_gt(st.st_blocks, blocks);
+	ut_trunacate_zero(ute, ino);
+	ut_remove_file(ute, dino, name, ino);
+
+	ut_rmdir_at_root(ute, name);
+}
+
+static void ut_file_fallocate_beyond(struct ut_env *ute)
+{
+	ut_file_fallocate_beyond_(ute, 0, UT_1K_SIZE);
+	ut_file_fallocate_beyond_(ute, 0, UT_4K_SIZE);
+	ut_file_fallocate_beyond_(ute, 0, UT_BK_SIZE);
+	ut_file_fallocate_beyond_(ute, UT_MEGA, UT_BK_SIZE);
+	ut_file_fallocate_beyond_(ute, UT_GIGA, 2 * UT_BK_SIZE);
+	ut_file_fallocate_beyond_(ute, UT_TERA, UT_MEGA);
+	ut_file_fallocate_beyond_(ute, UT_MEGA - 11, (11 * UT_BK_SIZE) + 111);
+	ut_file_fallocate_beyond_(ute, UT_GIGA - 111, UT_MEGA + 1111);
+	ut_file_fallocate_beyond_(ute, UT_TERA - 1111, UT_MEGA + 11111);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct ut_testdef ut_local_tests[] = {
@@ -521,6 +584,7 @@ static const struct ut_testdef ut_local_tests[] = {
 	UT_DEFTEST(ut_file_fallocate_zero_range),
 	UT_DEFTEST(ut_file_fallocate_stat),
 	UT_DEFTEST(ut_file_fallocate_sparse),
+	UT_DEFTEST(ut_file_fallocate_beyond),
 };
 
 const struct ut_tests ut_test_file_fallocate = UT_MKTESTS(ut_local_tests);

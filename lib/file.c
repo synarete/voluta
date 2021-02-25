@@ -1053,30 +1053,34 @@ static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
 	struct voluta_iattr iattr;
 	struct voluta_inode_info *ii = f_ctx->ii;
 	const loff_t isz = ii_size(ii);
+	const loff_t isp = ii_span(ii);
 	const loff_t off = f_ctx->off;
 	const size_t len = io_length(f_ctx);
 
 	iattr_setup(&iattr, ii_ino(ii));
 	if (f_ctx->op_mask & OP_READ) {
 		iattr.ia_flags |= VOLUTA_IATTR_ATIME | VOLUTA_IATTR_LAZY;
-	} else if (f_ctx->op_mask & OP_FALLOC) {
-		iattr.ia_flags |= VOLUTA_IATTR_MCTIME;
-		if (!fl_keep_size(f_ctx)) {
-			iattr.ia_flags |= VOLUTA_IATTR_SIZE;
-			iattr.ia_size = off_max(off, isz);
-		}
 	} else if (f_ctx->op_mask & OP_WRITE) {
-		iattr.ia_flags |= VOLUTA_IATTR_SIZE;
+		iattr.ia_flags |= VOLUTA_IATTR_SIZE | VOLUTA_IATTR_SPAN;
 		iattr.ia_size = off_max(off, isz);
+		iattr.ia_span = off_max(off, isp);
 		if (len > 0) {
 			iattr.ia_flags |= VOLUTA_IATTR_MCTIME;
 			if (killprv) {
 				iattr.ia_flags |= VOLUTA_IATTR_KILL_PRIV;
 			}
 		}
+	} else if (f_ctx->op_mask & OP_FALLOC) {
+		iattr.ia_flags |= VOLUTA_IATTR_MCTIME | VOLUTA_IATTR_SPAN;
+		iattr.ia_span = off_max(off, isp);
+		if (!fl_keep_size(f_ctx)) {
+			iattr.ia_flags |= VOLUTA_IATTR_SIZE;
+			iattr.ia_size = off_max(off, isz);
+		}
 	} else if (f_ctx->op_mask & OP_TRUNC) {
-		iattr.ia_flags |= VOLUTA_IATTR_SIZE;
+		iattr.ia_flags |= VOLUTA_IATTR_SIZE | VOLUTA_IATTR_SPAN;
 		iattr.ia_size = f_ctx->beg;
+		iattr.ia_span = f_ctx->beg;
 		if (isz != f_ctx->beg) {
 			iattr.ia_flags |= VOLUTA_IATTR_MCTIME;
 			if (killprv) {
@@ -2655,7 +2659,7 @@ static int drop_head_leaves(struct voluta_file_ctx *f_ctx)
 	return 0;
 }
 
-static int drop_meta_and_data(struct voluta_file_ctx *f_ctx)
+static int drop_data_and_meta(struct voluta_file_ctx *f_ctx)
 {
 	int err;
 
@@ -2678,8 +2682,10 @@ int voluta_drop_reg(struct voluta_inode_info *ii)
 		.ii = ii
 	};
 
+	voluta_assert_ge(ii_span(ii), ii_size(ii));
+
 	ii_incref(ii);
-	err = drop_meta_and_data(&f_ctx);
+	err = drop_data_and_meta(&f_ctx);
 	ii_decref(ii);
 
 	return err;
@@ -2845,7 +2851,7 @@ static int discard_data(struct voluta_file_ctx *f_ctx)
 
 static int discard_unused_meta(struct voluta_file_ctx *f_ctx)
 {
-	return (f_ctx->beg == 0) ? drop_meta_and_data(f_ctx) : 0;
+	return (f_ctx->beg == 0) ? drop_data_and_meta(f_ctx) : 0;
 }
 
 static loff_t head_leaves_end(const struct voluta_file_ctx *f_ctx)
@@ -2929,8 +2935,8 @@ int voluta_do_truncate(const struct voluta_oper *op,
                        struct voluta_inode_info *ii, loff_t off)
 {
 	int err;
-	const loff_t isz = ii_size(ii);
-	const size_t len = (off < isz) ? off_ulen(off, isz) : 0;
+	const loff_t isp = ii_span(ii);
+	const size_t len = (off < isp) ? off_ulen(off, isp) : 0;
 	struct voluta_file_ctx f_ctx = {
 		.op = op,
 		.sbi = ii_sbi(ii),
@@ -2941,6 +2947,8 @@ int voluta_do_truncate(const struct voluta_oper *op,
 		.end = off_end(off, len),
 		.op_mask = OP_TRUNC,
 	};
+
+	voluta_assert_ge(ii_span(ii), ii_size(ii));
 
 	ii_incref(ii);
 	err = do_truncate(&f_ctx);
@@ -3109,7 +3117,6 @@ static int check_fl_mode(const struct voluta_file_ctx *f_ctx)
 {
 	int mask;
 	const int mode = f_ctx->fl_mode;
-	const loff_t isz = ii_size(f_ctx->ii);
 
 	/* punch hole and zero range are mutually exclusive */
 	mask = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
@@ -3120,11 +3127,6 @@ static int check_fl_mode(const struct voluta_file_ctx *f_ctx)
 	mask = FALLOC_FL_KEEP_SIZE |
 	       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
 	if (mode & ~mask) {
-		return -EOPNOTSUPP;
-	}
-	/* does not support punch-hole and zero-range beyond end-of-file */
-	mask = FALLOC_FL_KEEP_SIZE;
-	if (mode && (mode & mask) && (f_ctx->end > isz)) {
 		return -EOPNOTSUPP;
 	}
 	return 0;

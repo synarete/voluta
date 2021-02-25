@@ -1063,8 +1063,7 @@ void ut_read_zero(struct ut_env *ute, ino_t ino, loff_t off)
 	}
 }
 
-void ut_read_zeros(struct ut_env *ute,
-                   ino_t ino, loff_t off, size_t len)
+void ut_read_zeros(struct ut_env *ute, ino_t ino, loff_t off, size_t len)
 {
 	const void *zeros = ut_zerobuf(ute, len);
 
@@ -1088,6 +1087,15 @@ void ut_trunacate_file(struct ut_env *ute, ino_t ino, loff_t off)
 	ut_expect_eq(buf[0], 0);
 }
 
+void ut_trunacate_zero(struct ut_env *ute, ino_t ino)
+{
+	struct stat st;
+
+	ut_trunacate_file(ute, ino, 0);
+	ut_getattr_file(ute, ino, &st);
+	ut_expect_eq(st.st_blocks, 0);
+}
+
 void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
                           loff_t offset, loff_t len)
 {
@@ -1100,6 +1108,28 @@ void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
 	err = ut_getattr(ute, ino, &st);
 	ut_expect_ok(err);
 	ut_expect_ge(st.st_size, offset + len);
+}
+
+void ut_fallocate_keep_size(struct ut_env *ute, ino_t ino,
+                            loff_t offset, loff_t len)
+{
+	int err;
+	struct stat st[2];
+	const int mode = FALLOC_FL_KEEP_SIZE;
+
+	err = ut_getattr(ute, ino, &st[0]);
+	ut_expect_ok(err);
+
+	err = ut_fallocate(ute, ino, mode, offset, len);
+	ut_expect_ok(err);
+
+	err = ut_getattr(ute, ino, &st[1]);
+	ut_expect_ok(err);
+
+	ut_expect_eq(st[1].st_size, st[0].st_size);
+	if ((offset >= st[1].st_size) && (len > 0)) {
+		ut_expect_gt(st[1].st_blocks, st[0].st_blocks);
+	}
 }
 
 void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,

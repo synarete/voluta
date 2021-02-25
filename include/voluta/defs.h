@@ -711,13 +711,14 @@ struct voluta_inode {
 	uint32_t                i_mode;
 	uint32_t                i_flags;
 	int64_t                 i_size;
+	int64_t                 i_span;
 	uint64_t                i_blocks;
 	uint64_t                i_nlink;
 	uint64_t                i_attributes; /* statx */
 	uint32_t                i_rdev_major;
 	uint32_t                i_rdev_minor;
 	uint64_t                i_revision;
-	uint64_t                i_reserved[4];
+	uint64_t                i_reserved[3];
 	struct voluta_iattr_times   i_t;
 	struct voluta_xattr_ispec   i_x;
 	union voluta_iattr_specific i_s;

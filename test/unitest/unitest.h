@@ -375,16 +375,20 @@ void ut_read_verify_str(struct ut_env *ute,
 
 void ut_read_zero(struct ut_env *ute, ino_t ino, loff_t off);
 
-void ut_read_zeros(struct ut_env *ute,
-                   ino_t ino, loff_t off, size_t len);
+void ut_read_zeros(struct ut_env *ute, ino_t ino, loff_t off, size_t len);
 
 void ut_read_ok(struct ut_env *ute, ino_t ino,
                 void *buf, size_t bsz, loff_t off);
 
 void ut_trunacate_file(struct ut_env *ute, ino_t ino, loff_t off);
 
+void ut_trunacate_zero(struct ut_env *ute, ino_t ino);
+
 void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
                           loff_t offset, loff_t len);
+
+void ut_fallocate_keep_size(struct ut_env *ute, ino_t ino,
+                            loff_t offset, loff_t len);
 
 void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
                              loff_t offset, loff_t len);

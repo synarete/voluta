@@ -218,9 +218,10 @@ static void guarantee_persistent_types_alignment(void)
 	REQUIRE_AOFFSET(struct voluta_inode, i_mode, 40);
 	REQUIRE_AOFFSET(struct voluta_inode, i_flags, 44);
 	REQUIRE_AOFFSET(struct voluta_inode, i_size, 48);
-	REQUIRE_AOFFSET(struct voluta_inode, i_blocks, 56);
-	REQUIRE_AOFFSET(struct voluta_inode, i_nlink, 64);
-	REQUIRE_AOFFSET(struct voluta_inode, i_attributes, 72);
+	REQUIRE_AOFFSET(struct voluta_inode, i_span, 56);
+	REQUIRE_AOFFSET(struct voluta_inode, i_blocks, 64);
+	REQUIRE_AOFFSET(struct voluta_inode, i_nlink, 72);
+	REQUIRE_AOFFSET(struct voluta_inode, i_attributes, 80);
 	REQUIRE_AOFFSET64(struct voluta_inode, i_t, 128);
 	REQUIRE_AOFFSET64(struct voluta_inode, i_x, 192);
 	REQUIRE_AOFFSET64(struct voluta_inode, i_s, 512);

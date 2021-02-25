@@ -639,6 +639,8 @@ nlink_t voluta_ii_nlink(const struct voluta_inode_info *ii);
 
 loff_t voluta_ii_size(const struct voluta_inode_info *ii);
 
+loff_t voluta_ii_span(const struct voluta_inode_info *ii);
+
 blkcnt_t voluta_ii_blocks(const struct voluta_inode_info *ii);
 
 bool voluta_ii_isdir(const struct voluta_inode_info *ii);

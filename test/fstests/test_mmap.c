@@ -94,14 +94,20 @@ static void test_mmap_simple(struct vt_env *vte)
 static void test_mmap_fallocate_(struct vt_env *vte, loff_t off, size_t msz)
 {
 	int fd = -1;
+	int mode = 0;
 	void *addr = NULL;
+	void *data = vt_new_buf_rands(vte, msz);
+	void *zero = vt_new_buf_zeros(vte, msz);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_fallocate(fd, 0, off, (loff_t)msz);
+	vt_fallocate(fd, mode, off, (loff_t)msz);
 	vt_mmap(NULL, msz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off, &addr);
-	strncpy((char *)addr, path, msz);
-	vt_expect_eq(strncmp((char *)addr, path, msz), 0);
+	memcpy(addr, data, msz);
+	vt_expect_eqm(addr, data, msz);
+	mode = FALLOC_FL_ZERO_RANGE;
+	vt_fallocate(fd, mode, off, (loff_t)msz);
+	vt_expect_eqm(addr, zero, msz);
 	vt_munmap(addr, msz);
 	vt_close(fd);
 	vt_unlink(path);

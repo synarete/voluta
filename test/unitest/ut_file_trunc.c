@@ -222,7 +222,7 @@ static void ut_file_trunc_single_byte_(struct ut_env *ute,
 		ut_trunacate_file(ute, ino, off);
 		ut_read_zero_byte(ute, ino, off - 1);
 	}
-	ut_trunacate_file(ute, ino, 0);
+	ut_trunacate_zero(ute, ino);
 	ut_remove_file(ute, dino, name, ino);
 	ut_rmdir_at_root(ute, dname);
 }

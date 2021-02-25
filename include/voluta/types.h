@@ -85,16 +85,17 @@ enum voluta_iattr_flags {
 	VOLUTA_IATTR_KILL_PRIV   = VOLUTA_BIT(1),
 	VOLUTA_IATTR_LAZY        = VOLUTA_BIT(2),
 	VOLUTA_IATTR_SIZE        = VOLUTA_BIT(3),
-	VOLUTA_IATTR_NLINK       = VOLUTA_BIT(4),
-	VOLUTA_IATTR_BLOCKS      = VOLUTA_BIT(5),
-	VOLUTA_IATTR_MODE        = VOLUTA_BIT(6),
-	VOLUTA_IATTR_UID         = VOLUTA_BIT(7),
-	VOLUTA_IATTR_GID         = VOLUTA_BIT(8),
-	VOLUTA_IATTR_BTIME       = VOLUTA_BIT(9),
-	VOLUTA_IATTR_ATIME       = VOLUTA_BIT(10),
-	VOLUTA_IATTR_MTIME       = VOLUTA_BIT(11),
-	VOLUTA_IATTR_CTIME       = VOLUTA_BIT(12),
-	VOLUTA_IATTR_NOW         = VOLUTA_BIT(13),
+	VOLUTA_IATTR_SPAN        = VOLUTA_BIT(4),
+	VOLUTA_IATTR_NLINK       = VOLUTA_BIT(5),
+	VOLUTA_IATTR_BLOCKS      = VOLUTA_BIT(6),
+	VOLUTA_IATTR_MODE        = VOLUTA_BIT(7),
+	VOLUTA_IATTR_UID         = VOLUTA_BIT(8),
+	VOLUTA_IATTR_GID         = VOLUTA_BIT(9),
+	VOLUTA_IATTR_BTIME       = VOLUTA_BIT(10),
+	VOLUTA_IATTR_ATIME       = VOLUTA_BIT(11),
+	VOLUTA_IATTR_MTIME       = VOLUTA_BIT(12),
+	VOLUTA_IATTR_CTIME       = VOLUTA_BIT(13),
+	VOLUTA_IATTR_NOW         = VOLUTA_BIT(14),
 	VOLUTA_IATTR_MCTIME      = VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME,
 	VOLUTA_IATTR_TIMES       = VOLUTA_IATTR_BTIME | VOLUTA_IATTR_ATIME |
 	                           VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME
@@ -220,6 +221,7 @@ struct voluta_iattr {
 	gid_t           ia_gid;
 	dev_t           ia_rdev;
 	loff_t          ia_size;
+	loff_t          ia_span;
 	blkcnt_t        ia_blocks;
 	struct voluta_itimes ia_t;
 };

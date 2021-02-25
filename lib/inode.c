@@ -137,6 +137,16 @@ static void inode_set_size(struct voluta_inode *inode, loff_t off)
 	inode->i_size = cpu_to_off(off);
 }
 
+static loff_t inode_span(const struct voluta_inode *inode)
+{
+	return off_to_cpu(inode->i_span);
+}
+
+static void inode_set_span(struct voluta_inode *inode, loff_t off)
+{
+	inode->i_span = cpu_to_off(off);
+}
+
 static blkcnt_t inode_blocks(const struct voluta_inode *inode)
 {
 	return (blkcnt_t)le64_to_cpu(inode->i_blocks);
@@ -287,6 +297,11 @@ loff_t voluta_ii_size(const struct voluta_inode_info *ii)
 	return inode_size(ii->inode);
 }
 
+loff_t voluta_ii_span(const struct voluta_inode_info *ii)
+{
+	return inode_span(ii->inode);
+}
+
 blkcnt_t voluta_ii_blocks(const struct voluta_inode_info *ii)
 {
 	return inode_blocks(ii->inode);
@@ -395,6 +410,7 @@ static void setup_inode_common(struct voluta_inode *inode,
 	inode_set_mode(inode, mode & ~ucred->umask);
 	inode_set_flags(inode, 0);
 	inode_set_size(inode, 0);
+	inode_set_span(inode, 0);
 	inode_set_blocks(inode, 0);
 	inode_set_nlink(inode, 0);
 	inode_set_revision(inode, 0);
@@ -1033,6 +1049,9 @@ static void update_inode_attr(struct voluta_inode_info *ii,
 	}
 	if (flags & VOLUTA_IATTR_SIZE) {
 		inode_set_size(inode, iattr->ia_size);
+	}
+	if (flags & VOLUTA_IATTR_SPAN) {
+		inode_set_span(inode, iattr->ia_span);
 	}
 	if (flags & VOLUTA_IATTR_BLOCKS) {
 		inode_set_blocks(inode, iattr->ia_blocks);

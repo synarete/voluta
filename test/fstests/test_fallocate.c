@@ -175,19 +175,90 @@ static void test_fallocate_truncate_(struct vt_env *vte,
 	vt_unlink(path);
 }
 
-static void test_fallocate_truncate(struct vt_env *ut_env)
+static void test_fallocate_truncate(struct vt_env *vte)
 {
-	test_fallocate_truncate_(ut_env, 0, VT_BK_SIZE / 4);
-	test_fallocate_truncate_(ut_env, 3, VT_BK_SIZE / 3);
-	test_fallocate_truncate_(ut_env, VT_BK_SIZE / 2, VT_BK_SIZE);
-	test_fallocate_truncate_(ut_env, 0, VT_BK_SIZE);
-	test_fallocate_truncate_(ut_env, 11, VT_BK_SIZE);
-	test_fallocate_truncate_(ut_env, 11, VT_UMEGA + 111);
-	test_fallocate_truncate_(ut_env, 0, VOLUTA_AG_SIZE);
-	test_fallocate_truncate_(ut_env, VT_MEGA - 1, VOLUTA_AG_SIZE + 2);
-	test_fallocate_truncate_(ut_env, VT_GIGA, VT_UMEGA);
-	test_fallocate_truncate_(ut_env, VT_TERA - 2, VOLUTA_AG_SIZE + 3);
-	test_fallocate_truncate_(ut_env, VT_TERA - 1111, VT_UMEGA + 1111);
+	test_fallocate_truncate_(vte, 0, VT_BK_SIZE / 4);
+	test_fallocate_truncate_(vte, 3, VT_BK_SIZE / 3);
+	test_fallocate_truncate_(vte, VT_BK_SIZE / 2, VT_BK_SIZE);
+	test_fallocate_truncate_(vte, 0, VT_BK_SIZE);
+	test_fallocate_truncate_(vte, 11, VT_BK_SIZE);
+	test_fallocate_truncate_(vte, 11, VT_UMEGA + 111);
+	test_fallocate_truncate_(vte, 0, VOLUTA_AG_SIZE);
+	test_fallocate_truncate_(vte, VT_MEGA - 1, VOLUTA_AG_SIZE + 2);
+	test_fallocate_truncate_(vte, VT_GIGA, VT_UMEGA);
+	test_fallocate_truncate_(vte, VT_TERA - 2, VOLUTA_AG_SIZE + 3);
+	test_fallocate_truncate_(vte, VT_TERA - 1111, VT_UMEGA + 1111);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects successful fallocate(2) beyond end-of-file.
+ */
+static void test_fallocate_beyond_(struct vt_env *vte, loff_t off, size_t bsz)
+{
+	int fd = -1;
+	uint8_t byte = 1;
+	blkcnt_t blocks = 0;
+	struct stat st;
+	const ssize_t ssz = (ssize_t)bsz;
+	void *data = vt_new_buf_rands(vte, bsz);
+	void *rand = vt_new_buf_rands(vte, bsz);
+	void *zero = vt_new_buf_zeros(vte, bsz);
+	const char *path = vt_new_path_unique(vte);
+	const int mode = FALLOC_FL_KEEP_SIZE;
+
+	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	vt_fallocate(fd, 0, off, ssz);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off + ssz);
+	vt_preadn(fd, rand, bsz, off);
+	vt_expect_eqm(zero, rand, bsz);
+	vt_close(fd);
+	vt_unlink(path);
+
+	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	vt_fallocate(fd, mode, off, ssz);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, 0);
+	vt_ftruncate(fd, off + 1);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off + 1);
+	vt_preadn(fd, &byte, 1, off);
+	vt_expect_eq(byte, 0);
+	vt_pwriten(fd, data, bsz, off);
+	vt_preadn(fd, rand, bsz, off);
+	vt_expect_eqm(data, rand, bsz);
+	vt_ftruncate(fd, off);
+	vt_close(fd);
+	vt_unlink(path);
+
+	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	vt_ftruncate(fd, off);
+	vt_fallocate(fd, mode, off + ssz, ssz);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off);
+	vt_expect_gt(st.st_blocks, 0);
+	blocks = st.st_blocks;
+	vt_pwriten(fd, data, bsz, off + (ssz / 2));
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off + (ssz / 2) + ssz);
+	vt_expect_gt(st.st_blocks, blocks);
+	vt_ftruncate(fd, 0);
+	vt_close(fd);
+	vt_unlink(path);
+}
+
+static void test_fallocate_beyond(struct vt_env *vte)
+{
+	test_fallocate_beyond_(vte, 0, VT_1K_SIZE);
+	test_fallocate_beyond_(vte, 0, VT_4K_SIZE);
+	test_fallocate_beyond_(vte, 0, VT_BK_SIZE);
+	test_fallocate_beyond_(vte, VT_MEGA, VT_BK_SIZE);
+	test_fallocate_beyond_(vte, VT_GIGA, 2 * VT_BK_SIZE);
+	test_fallocate_beyond_(vte, VT_TERA, VT_MEGA);
+	test_fallocate_beyond_(vte, VT_MEGA - 11, (11 * VT_BK_SIZE) + 111);
+	test_fallocate_beyond_(vte, VT_GIGA - 111, VT_MEGA + 1111);
+	test_fallocate_beyond_(vte, VT_TERA - 1111, VT_MEGA + 11111);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -200,23 +271,18 @@ static void test_fallocate_punch_hole_(struct vt_env *vte,
 {
 	int fd = -1;
 	loff_t pos;
-	size_t nwr;
-	size_t nrd;
 	uint8_t byte;
 	int mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
 	const void *buf =  vt_new_buf_rands(vte, data_len);
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_pwrite(fd, buf, data_len, data_off, &nwr);
-	vt_expect_eq(nwr, data_len);
+	vt_pwriten(fd, buf, data_len, data_off);
 	vt_fallocate(fd, mode, hole_off, (loff_t)hole_len);
-	vt_pread(fd, &byte, 1, hole_off, &nrd);
-	vt_expect_eq(nrd, 1);
+	vt_preadn(fd, &byte, 1, hole_off);
 	vt_expect_eq(byte, 0);
 	pos = hole_off + (loff_t)(hole_len - 1);
-	vt_pread(fd, &byte, 1, pos, &nrd);
-	vt_expect_eq(nrd, 1);
+	vt_preadn(fd, &byte, 1, pos);
 	vt_expect_eq(byte, 0);
 	vt_close(fd);
 	vt_unlink(path);
@@ -326,11 +392,11 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE om
+ * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE on
  * ranges with and without data.
  */
-static void test_fallocate_zero_range2_(struct vt_env *vte,
-                                        int keep_size, loff_t off, size_t bsz)
+static void test_fallocate_zero_range_(struct vt_env *vte,
+                                       loff_t off, size_t bsz)
 {
 	int fd = -1;
 	size_t nwr = 0;
@@ -340,7 +406,7 @@ static void test_fallocate_zero_range2_(struct vt_env *vte,
 	uint8_t *read_buf = vt_new_buf_rands(vte, bsz);
 	uint8_t *zero_buf = vt_new_buf_zeros(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
-	const int mode = FALLOC_FL_ZERO_RANGE | keep_size;
+	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
 	struct stat st[2];
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
@@ -398,13 +464,6 @@ static void test_fallocate_zero_range2_(struct vt_env *vte,
 	vt_ftruncate(fd, 0);
 	vt_close(fd);
 	vt_unlink(path);
-}
-
-static void test_fallocate_zero_range_(struct vt_env *vte,
-                                       loff_t off, size_t bsz)
-{
-	test_fallocate_zero_range2_(vte, FALLOC_FL_KEEP_SIZE, off, bsz);
-	test_fallocate_zero_range2_(vte, 0, off, bsz);
 }
 
 static void test_fallocate_zero_range(struct vt_env *vte)
@@ -499,6 +558,7 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_fallocate_zeros),
 	VT_DEFTEST(test_fallocate_sparse),
 	VT_DEFTEST(test_fallocate_truncate),
+	VT_DEFTEST(test_fallocate_beyond),
 	VT_DEFTEST(test_fallocate_punch_hole),
 	VT_DEFTEST(test_fallocate_punch_into_hole),
 	VT_DEFTEST(test_fallocate_punch_into_allocated),

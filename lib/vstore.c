@@ -1226,13 +1226,33 @@ int voluta_vstore_flush(struct voluta_vstore *vstore,
 	return err;
 }
 
-int voluta_vstore_punch_bk(const struct voluta_vstore *vstore, loff_t lba)
+int voluta_vstore_clear_bk(struct voluta_vstore *vstore, loff_t lba)
 {
+	int err;
+	void *zeros_bk = NULL;
 	const loff_t off = lba_to_off(lba);
 	const size_t len = VOLUTA_BK_SIZE;
+	struct voluta_pstore *pstore = &vstore->vs_pstore;
 
 	voluta_assert_eq(off % (long)len, 0);
 
-	return voluta_pstore_punch_hole(&vstore->vs_pstore, off, len);
+	/* fast-case: just do fallocate zero-range */
+	err = voluta_pstore_zero_range(pstore, off, len);
+	if (!err || (err != -ENOTSUP)) {
+		return err;
+	}
+	/* standard-case: do fallocate punch-hole (releases block) */
+	err = voluta_pstore_punch_hole(pstore, off, len);
+	if (!err || (err != -ENOTSUP)) {
+		return err;
+	}
+	/* slow-case: explicit overwrite with zeros */
+	zeros_bk = voluta_qalloc_zmalloc(vstore->vs_qalloc, len);
+	if (zeros_bk == NULL) {
+		return -ENOMEM;
+	}
+	err = voluta_pstore_write(pstore, off, len, zeros_bk);
+	voluta_qalloc_free(vstore->vs_qalloc, zeros_bk, len);
+	return err;
 }
 

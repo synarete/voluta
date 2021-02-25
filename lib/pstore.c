@@ -737,11 +737,24 @@ int voluta_pstore_clone(const struct voluta_pstore *pstore,
 	return err;
 }
 
+static int pstore_fallocate(const struct voluta_pstore *pstore, int mode,
+                            loff_t off, size_t len)
+{
+	return voluta_sys_fallocate(pstore->ps_vfd, mode, off, (loff_t)len);
+}
+
 int voluta_pstore_punch_hole(const struct voluta_pstore *pstore,
                              loff_t off, size_t len)
 {
 	const int mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
 
-	return voluta_sys_fallocate(pstore->ps_vfd, mode,
-	                            off, (loff_t)len);
+	return pstore_fallocate(pstore, mode, off, len);
+}
+
+int voluta_pstore_zero_range(const struct voluta_pstore *pstore,
+                             loff_t off, size_t len)
+{
+	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+
+	return pstore_fallocate(pstore, mode, off, len);
 }

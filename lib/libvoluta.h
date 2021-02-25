@@ -386,7 +386,7 @@ int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
 int voluta_vstore_flush(struct voluta_vstore *vstore,
                         const struct voluta_cache *cache, long ds_key);
 
-int voluta_vstore_punch_bk(const struct voluta_vstore *vstore, loff_t lba);
+int voluta_vstore_clear_bk(struct voluta_vstore *vstore, loff_t lba);
 
 /* super */
 int voluta_sbi_init(struct voluta_sb_info *sbi,
@@ -872,6 +872,9 @@ int voluta_pstore_clone(const struct voluta_pstore *pstore,
                         const struct voluta_str *name);
 
 int voluta_pstore_punch_hole(const struct voluta_pstore *pstore,
+                             loff_t off, size_t len);
+
+int voluta_pstore_zero_range(const struct voluta_pstore *pstore,
                              loff_t off, size_t len);
 
 int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size);

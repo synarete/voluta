@@ -1539,8 +1539,7 @@ static int spawn_bki_of(struct voluta_super_ctx *s_ctx,
 	return -ENOMEM;
 }
 
-static const struct voluta_vstore *
-vstore_of(const struct voluta_super_ctx *s_ctx)
+static struct voluta_vstore *vstore_of(const struct voluta_super_ctx *s_ctx)
 {
 	return s_ctx->sbi->sb_vstore;
 }
@@ -2808,7 +2807,7 @@ static int traverse_by_balloc_info(struct voluta_super_ctx *s_ctx,
 		vi = vis[i];
 		vi_dirtify(vi);
 	}
-	err = voluta_vstore_punch_bk(vstore_of(s_ctx), bai->lba);
+	err = voluta_vstore_clear_bk(vstore_of(s_ctx), bai->lba);
 out:
 	for (size_t i = 0; i < nvis; ++i) {
 		vi = vis[i];

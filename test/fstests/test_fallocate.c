@@ -492,7 +492,6 @@ static void test_fallocate_collpase_range_holes(struct vt_env *vte)
  * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE om
  * ranges with and without data.
  */
-
 static void
 test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 {
@@ -505,6 +504,7 @@ test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 	uint8_t *zero_buf = vt_new_buf_zeros(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
 	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+	struct stat st[2];
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 
@@ -514,13 +514,21 @@ test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 	vt_expect_eq(bsz, nrd);
 	vt_expect_eqm(read_buf, data_buf, bsz);
 
+	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off, ssz);
+	vt_fstat(fd, &st[1]);
+	vt_expect_eq(st[0].st_size, st[1].st_size);
+	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
 	vt_pread(fd, read_buf, bsz, off, &nrd);
 	vt_expect_eq(bsz, nrd);
 	vt_expect_eqm(read_buf, zero_buf, bsz);
 
 	vt_pwrite(fd, data_buf, bsz, off, &nwr);
+	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off, 1);
+	vt_fstat(fd, &st[1]);
+	vt_expect_eq(st[0].st_size, st[1].st_size);
+	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
 	vt_pread(fd, read_buf, 1, off, &nrd);
 	vt_expect_eq(1, nrd);
 	vt_expect_eq(read_buf[0], 0);
@@ -530,13 +538,21 @@ test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 
 	vt_ftruncate(fd, off + (2 * ssz));
 	vt_pwrite(fd, data_buf, bsz, off, &nwr);
+	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off + ssz - 1, ssz);
+	vt_fstat(fd, &st[1]);
+	vt_expect_eq(st[0].st_size, st[1].st_size);
+	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
 	vt_pwrite(fd, data_buf, bsz - 1, off, &nwr);
 	vt_pread(fd, read_buf, 1, off + ssz - 1, &nrd);
 	vt_expect_eq(read_buf[0], 0);
 
 	vt_pwrite(fd, data_buf, bsz, off + ssz, &nwr);
+	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off, ssz);
+	vt_fstat(fd, &st[1]);
+	vt_expect_eq(st[0].st_size, st[1].st_size);
+	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
 	vt_pread(fd, read_buf, bsz, off, &nrd);
 	vt_expect_eq(bsz, nrd);
 	vt_expect_eq(read_buf[0], 0);

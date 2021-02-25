@@ -25,7 +25,8 @@ _clang_analyzer_checkers_args() {
   clang -cc1 -analyzer-checker-help \
     | awk '{print $1}' \
     | egrep -v 'OVERVIEW|USAGE|CHECKERS' \
-    | egrep -v 'osx|fuchsia|cplusplus|optin|strcpy' \
+    | egrep -v 'osx|fuchsia|cplusplus|optin|strcpy|webkit' \
+    | egrep -v '^Check|^Warn|^Reports' \
     | egrep -v 'DeprecatedOrUnsafeBufferHandling' \
     | awk '{print $1}' \
     | sed '/^$/d' \

@@ -88,10 +88,11 @@ static void show_mount_flags(long flags, char *buf, size_t bsz)
 	for (size_t i = 0; i < VOLUTA_ARRAY_SIZE(ms_names); ++i) {
 		ms_name = &ms_names[i];
 		len = strlen(ms_name->name);
-		if (((buf + len + 1) < end) && (flags & ms_name->ms_flag)) {
-			strncpy(buf, ms_names[i].name, len);
+		if (((buf + len + 2) < end) && (flags & ms_name->ms_flag)) {
+			memcpy(buf, ms_names[i].name, len);
 			buf[len] = ' ';
 			buf += len + 1;
+			buf[0] = '\0';
 		}
 	}
 }

@@ -618,7 +618,7 @@ static int check_xattr(const struct voluta_xattr_ctx *xa_ctx, int access_mode)
 		return -EINVAL;
 	}
 	if (!is_valid_xflags(xa_ctx->flags)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	err = voluta_do_access(xa_ctx->op, ii, access_mode);
 	if (err) {

@@ -3060,7 +3060,7 @@ static int sbi_init_iconv(struct voluta_sb_info *sbi)
 	/* Using UTF32LE to avoid BOM (byte-order-mark) character */
 	sbi->sb_iconv = iconv_open("UTF32LE", "UTF8");
 	if (sbi->sb_iconv == (iconv_t)(-1)) {
-		err = errno ? -errno : -ENOTSUP;
+		err = errno ? -errno : -EOPNOTSUPP;
 	}
 	return err;
 }
@@ -3550,7 +3550,7 @@ static int require_supported_itype(mode_t mode)
 	const mode_t sup = S_IFDIR | S_IFREG | S_IFLNK |
 	                   S_IFSOCK | S_IFIFO | S_IFCHR | S_IFBLK;
 
-	return (((mode & S_IFMT) | sup) == sup) ? 0 : -ENOTSUP;
+	return (((mode & S_IFMT) | sup) == sup) ? 0 : -EOPNOTSUPP;
 }
 
 static int acquire_ino(struct voluta_super_ctx *s_ctx,

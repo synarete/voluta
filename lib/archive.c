@@ -1145,12 +1145,12 @@ static int arc_clone_blob(struct voluta_archiver *arc,
 	const char *name = bli->b_name.name;
 
 	if (!arc->try_clone) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	log_info("clone-blob: %s %ldM..%ldM", name,
 	         off_mega(voff), off_end_mega(voff, bsz));
 	err = bstore_clone_v2d(arc->ar_bstore, idx, name, voff, bsz);
-	if (err == -ENOTSUP) {
+	if (err == -EOPNOTSUPP) {
 		arc->try_clone = 0;
 	}
 	return err;
@@ -1179,7 +1179,7 @@ static int arc_save_blob(struct voluta_archiver *arc,
 		return err;
 	}
 	err = arc_clone_blob(arc, bli);
-	if (err != -ENOTSUP) {
+	if (err != -EOPNOTSUPP) {
 		return err;
 	}
 	err = arc_store_blob(arc, bli);
@@ -1333,7 +1333,7 @@ static int arc_rclone_blob(struct voluta_archiver *arc,
 	const char *name = bli->b_name.name;
 
 	if (!arc->try_clone) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	err = arc_find_blob(arc, bli);
 	if (err) {
@@ -1349,7 +1349,7 @@ static int arc_rclone_blob(struct voluta_archiver *arc,
 	if (err) {
 		return err;
 	}
-	if (err == -ENOTSUP) {
+	if (err == -EOPNOTSUPP) {
 		arc->try_clone = 0;
 	}
 	return err;
@@ -1361,7 +1361,7 @@ static int arc_restore_blob(struct voluta_archiver *arc,
 	int err;
 
 	err = arc_rclone_blob(arc, bli);
-	if (err != -ENOTSUP) {
+	if (err != -EOPNOTSUPP) {
 		return err;
 	}
 	err = arc_load_blob(arc, bli);

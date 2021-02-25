@@ -1238,12 +1238,12 @@ int voluta_vstore_clear_bk(struct voluta_vstore *vstore, loff_t lba)
 
 	/* fast-case: just do fallocate zero-range */
 	err = voluta_pstore_zero_range(pstore, off, len);
-	if (!err || (err != -ENOTSUP)) {
+	if (!err || (err != -EOPNOTSUPP)) {
 		return err;
 	}
 	/* standard-case: do fallocate punch-hole (releases block) */
 	err = voluta_pstore_punch_hole(pstore, off, len);
-	if (!err || (err != -ENOTSUP)) {
+	if (!err || (err != -EOPNOTSUPP)) {
 		return err;
 	}
 	/* slow-case: explicit overwrite with zeros */

@@ -747,10 +747,10 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 	        (MS_LAZYTIME | MS_NOEXEC | MS_NOSUID | MS_NODEV | MS_RDONLY);
 
 	if (mntp->flags & ~sup_mnt_mask) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	if ((mntp->root_mode & S_IRWXU) == 0) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	if ((mntp->root_mode & S_IFDIR) == 0) {
 		return -EINVAL;
@@ -896,7 +896,7 @@ static void mntsvc_exec_request(struct voluta_mntsvc *msvc,
 		break;
 	case VOLUTA_MNTCMD_NONE:
 	default:
-		err = -ENOTSUP;
+		err = -EOPNOTSUPP;
 		break;
 	}
 	mntmsg_set_status(mmsg, err);

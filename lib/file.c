@@ -3024,7 +3024,7 @@ static int lseek_hole(struct voluta_file_ctx *f_ctx)
 static int lseek_notsupp(struct voluta_file_ctx *f_ctx)
 {
 	f_ctx->off = f_ctx->end;
-	return -ENOTSUP;
+	return -EOPNOTSUPP;
 }
 
 static int do_lseek(struct voluta_file_ctx *f_ctx)
@@ -3107,18 +3107,25 @@ static bool fl_zero_range(const struct voluta_file_ctx *f_ctx)
  */
 static int check_fl_mode(const struct voluta_file_ctx *f_ctx)
 {
-	const int fl_mode = f_ctx->fl_mode;
-	const int fl_keep_size = FALLOC_FL_KEEP_SIZE;
-	const int fl_supported =
-	        FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
+	int mask;
+	const int mode = f_ctx->fl_mode;
+	const loff_t isz = ii_size(f_ctx->ii);
 
-	if (fl_mode & ~(fl_supported | fl_keep_size)) {
-		return -ENOTSUP;
+	/* punch hole and zero range are mutually exclusive */
+	mask = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
+	if ((mode & mask) == mask) {
+		return -EOPNOTSUPP;
 	}
-	if (fl_mode && !(fl_mode & fl_keep_size)) {
-		/* currently, requires FALLOC_FL_KEEP_SIZE */
-		/* TODO: support fallocate modes without KEEP_SIZE */
-		return -EINVAL;
+	/* currently supported modes */
+	mask = FALLOC_FL_KEEP_SIZE |
+	       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_ZERO_RANGE;
+	if (mode & ~mask) {
+		return -EOPNOTSUPP;
+	}
+	/* does not support punch-hole and zero-range beyond end-of-file */
+	mask = FALLOC_FL_KEEP_SIZE;
+	if (mode && (mode & mask) && (f_ctx->end > isz)) {
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -3276,7 +3283,7 @@ static int do_fallocate_op(struct voluta_file_ctx *f_ctx)
 	} else if (fl_zero_range(f_ctx)) {
 		err = fallocate_zero_range(f_ctx);
 	} else {
-		err = -ENOTSUP;
+		err = -EOPNOTSUPP;
 	}
 	return err;
 }
@@ -3454,10 +3461,10 @@ static int check_fm_flags(const struct voluta_file_ctx *f_ctx)
 	        FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR | FIEMAP_FLAG_CACHE;
 
 	if (f_ctx->fm_flags & ~fm_allowed) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	if (f_ctx->fm_flags & fm_allowed) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }

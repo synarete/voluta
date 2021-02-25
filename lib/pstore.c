@@ -426,7 +426,7 @@ int voluta_pstore_expand(struct voluta_pstore *pstore, loff_t cap)
 		return 0;
 	}
 	if (pstore->ps_ctl_flags & VOLUTA_F_BLKDEV) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	err = voluta_sys_ftruncate(pstore->ps_vfd, cap);
 	if (err) {

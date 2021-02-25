@@ -210,7 +210,7 @@ static int new_inode_by_mode(const struct voluta_oper *op,
 	} else if (S_ISFIFO(mode) || S_ISSOCK(mode)) {
 		err = new_inode(op, parent_dir_ii, mode, rdev, out_ii);
 	} else {
-		err = -ENOTSUP;
+		err = -EOPNOTSUPP;
 	}
 	return err;
 }
@@ -511,7 +511,7 @@ static int check_create_mode(mode_t mode)
 		return -EINVAL;
 	}
 	if (!S_ISREG(mode) && !S_ISFIFO(mode) && !S_ISSOCK(mode)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -674,14 +674,14 @@ static int check_mknod(const struct voluta_oper *op,
 	}
 	if (!S_ISFIFO(mode) && !S_ISSOCK(mode) &&
 	    !S_ISCHR(mode) && !S_ISBLK(mode)) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	if (S_ISCHR(mode) || S_ISBLK(mode)) {
 		if (rdev == 0) {
 			return -EINVAL;
 		}
 		if (sbi->sb_ms_flags & MS_NODEV) {
-			return -ENOTSUP;
+			return -EOPNOTSUPP;
 		}
 	} else {
 		if (rdev != 0) {
@@ -1967,7 +1967,7 @@ static int check_cloneable_volume(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_pstore *pstore = &sbi->sb_vstore->vs_pstore;
 
-	return (pstore->ps_ctl_flags & VOLUTA_F_MEMFD) ? -ENOTSUP : 0;
+	return (pstore->ps_ctl_flags & VOLUTA_F_MEMFD) ? -EOPNOTSUPP : 0;
 }
 
 static int check_rootdir(const struct voluta_inode_info *ii)

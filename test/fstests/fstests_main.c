@@ -134,9 +134,6 @@ static int vt_tests_mask(void)
 {
 	int mask = VT_NORMAL | VT_VERIFY;
 
-	if (vt_g_globals.do_extra_tests) {
-		mask |= VT_IO_EXTRA;
-	}
 	if (vt_g_globals.no_check_statvfs) {
 		mask &= ~VT_VERIFY;
 	}
@@ -270,7 +267,6 @@ static void vt_parse_args(void)
 	struct option long_opts[] = {
 		{ "test", required_argument, NULL, 't' },
 		{ "repeat", required_argument, NULL, 'n' },
-		{ "extra", no_argument, NULL, 'e' },
 		{ "random", no_argument, NULL, 'r' },
 		{ "nostatvfs", no_argument, NULL, 'C' },
 		{ "list", no_argument, NULL, 'l' },
@@ -287,8 +283,6 @@ static void vt_parse_args(void)
 			vt_g_globals.test_name = optarg;
 		} else if (opt_chr == 'n') {
 			vt_g_globals.repeat_count = vt_strtol_safe(optarg);
-		} else if (opt_chr == 'e') {
-			vt_g_globals.do_extra_tests = true;
 		} else if (opt_chr == 'r') {
 			vt_g_globals.random_order = true;
 		} else if (opt_chr == 'C') {

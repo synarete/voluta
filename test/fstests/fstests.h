@@ -98,10 +98,9 @@ enum vt_flags {
 	VT_NORMAL             = (1 << 2),
 	VT_POSIX_EXTRA        = (1 << 3),
 	VT_STAVFS             = (1 << 4),
-	VT_IO_EXTRA           = (1 << 5),
-	VT_IO_TMPFILE         = (1 << 6),
-	VT_VERIFY             = (1 << 7),
-	VT_RANDOM             = (1 << 8),
+	VT_IO_TMPFILE         = (1 << 5),
+	VT_VERIFY             = (1 << 6),
+	VT_RANDOM             = (1 << 7),
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

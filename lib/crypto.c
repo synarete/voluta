@@ -245,7 +245,7 @@ static int chiper_verify(const struct voluta_cipher *ci,
 	voluta_unused(ci);
 	if ((algo != GCRY_CIPHER_AES256) || (mode != GCRY_CIPHER_MODE_GCM)) {
 		log_warn("illegal chipher-algo-mode: %d", algo, mode);
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -412,7 +412,7 @@ static int derive_iv(const struct voluta_kdf_desc *kdf,
 	struct voluta_hash256 salt;
 
 	if (kdf->kd_salt_md != VOLUTA_MD_SHA3_256) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	voluta_sha3_256_of(md, pp->pass, pp->passlen, &salt);
 
@@ -439,7 +439,7 @@ static int derive_key(const struct voluta_kdf_desc *kdf,
 	struct voluta_hash512 salt;
 
 	if (kdf->kd_salt_md != VOLUTA_MD_SHA3_512) {
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 	}
 	voluta_sha3_512_of(md, pp->pass, pp->passlen, &salt);
 

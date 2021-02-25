@@ -326,174 +326,11 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Tests fallocate(2) with FALLOC_FL_COLLAPSE_RANGE on continues range.
- */
-static void test_collpase_range_continues(struct vt_env *vte, loff_t base)
-{
-	int fd = -1;
-	loff_t off1 = -1;
-	loff_t off2 = -1;
-	loff_t off3 = -1;
-	loff_t slen1 = 0;
-	loff_t slen2 = 0;
-	loff_t slen3 = 0;
-	size_t nwr = 0;
-	size_t nrd = 0;
-	size_t len1 = 0;
-	size_t len2 = 0;
-	size_t len3 = 0;
-	size_t len4 = 0;
-	char *buf1 = NULL;
-	char *buf2 = NULL;
-	char *buf3 = NULL;
-	char *buf4 = NULL;
-	struct stat st;
-	const int mode = FALLOC_FL_COLLAPSE_RANGE;
-	char *path =  vt_new_path_unique(vte);
-
-	off1 = base;
-	len1 = 32 * VT_BK_SIZE;
-	slen1 = (loff_t)len1;
-	buf1 = vt_new_buf_rands(vte, len1);
-	off2 = off1 + (loff_t)(len1);
-	len2 = 16 * VT_BK_SIZE;
-	slen2 = (loff_t)len2;
-	buf2 = vt_new_buf_rands(vte, len2);
-	off3 = off2 + (loff_t)(len2);
-	len3 = 8 * VT_BK_SIZE;
-	slen3 = (loff_t)len3;
-	buf3 = vt_new_buf_rands(vte, len3);
-	len4 = len1 + len2 + len3;
-	buf4 = vt_new_buf_rands(vte, len4);
-
-	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_pwrite(fd, buf1, len1, off1, &nwr);
-	vt_expect_eq(nwr, len1);
-	vt_pwrite(fd, buf2, len2, off2, &nwr);
-	vt_expect_eq(nwr, len2);
-	vt_pwrite(fd, buf3, len3, off3, &nwr);
-	vt_expect_eq(nwr, len3);
-
-	vt_fallocate(fd, mode, off2, slen2);
-	vt_fstat(fd, &st);
-	vt_expect_eq(st.st_size, off1 + slen1 + slen3);
-	vt_pread(fd, buf4, len1 + len3, off1, &nrd);
-	vt_expect_eq(nrd, len1 + len3);
-	vt_expect_eqm(buf1, buf4, len1);
-
-	vt_fallocate(fd, mode, off1, slen1);
-	vt_fstat(fd, &st);
-	vt_expect_eq(st.st_size, off1 + slen3);
-	vt_pread(fd, buf4, len3, off1, &nrd);
-	vt_expect_eq(nrd, len3);
-	vt_expect_eqm(buf3, buf4, len3);
-
-	vt_ftruncate(fd, 0);
-	vt_close(fd);
-	vt_unlink(path);
-}
-
-static void test_fallocate_collpase_range_simple(struct vt_env *vte)
-{
-	test_collpase_range_continues(vte, 0);
-	test_collpase_range_continues(vte, VT_BK_SIZE);
-	test_collpase_range_continues(vte, VT_UMEGA);
-	test_collpase_range_continues(vte, VT_UGIGA);
-}
-
-/*
- * Tests fallocate(2) with FALLOC_FL_COLLAPSE_RANGE on range with holes.
- */
-static void
-test_collpase_range_with_holes(struct vt_env *vte, loff_t base, loff_t holesz)
-{
-	int fd = -1;
-	loff_t off1 = -1;
-	loff_t off2 = -1;
-	loff_t off3 = -1;
-	loff_t slen1 = -1;
-	loff_t slen2 = -1;
-	loff_t slen3 = -1;
-	size_t nwr = 0;
-	size_t nrd = 0;
-	size_t len1 = 0;
-	size_t len2 = 0;
-	size_t len3 = 0;
-	size_t len4 = 0;
-	char *buf1 = NULL;
-	char *buf2 = NULL;
-	char *buf3 = NULL;
-	char *buf4 = NULL;
-	struct stat st;
-	const char *path = vt_new_path_unique(vte);
-	const int mode = FALLOC_FL_COLLAPSE_RANGE;
-
-	off1 = base;
-	len1 = 32 * VT_BK_SIZE;
-	slen1 = (loff_t)len1;
-	buf1 = vt_new_buf_rands(vte, len1);
-	off2 = off1 + holesz + slen1;
-	len2 = 16 * VT_BK_SIZE;
-	slen2 = (loff_t)len2;
-	buf2 = vt_new_buf_rands(vte, len2);
-	off3 = off2 + holesz + slen2;
-	len3 = 8 * VT_BK_SIZE;
-	slen3 = (loff_t)len3;
-	buf3 = vt_new_buf_rands(vte, len3);
-	len4 = len1 + len2 + len3;
-	buf4 = vt_new_buf_rands(vte, len4);
-
-	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_pwrite(fd, buf1, len1, off1, &nwr);
-	vt_expect_eq(nwr, len1);
-	vt_pwrite(fd, buf2, len2, off2, &nwr);
-	vt_expect_eq(nwr, len2);
-	vt_pwrite(fd, buf3, len3, off3, &nwr);
-	vt_expect_eq(nwr, len3);
-
-	vt_fallocate(fd, mode, off3 - holesz, holesz);
-	vt_fstat(fd, &st);
-	vt_expect_eq(st.st_size, off3 + slen3 - holesz);
-	vt_fallocate(fd, mode, off2 - holesz, holesz);
-	vt_fstat(fd, &st);
-	vt_expect_eq(st.st_size, off1 + slen1 + slen2 + slen3);
-	vt_pread(fd, buf4, len4, off1, &nrd);
-	vt_expect_eq(nrd, len4);
-	vt_expect_eqm(buf1, buf4, len1);
-	vt_expect_eqm(buf2, &buf4[len1], len2);
-	vt_expect_eqm(buf3, &buf4[len1 + len2], len3);
-
-	vt_fallocate(fd, mode, off1, slen1);
-	vt_fallocate(fd, mode, off1, slen2);
-	vt_fstat(fd, &st);
-	vt_expect_eq(st.st_size, off1 + slen3);
-	vt_pread(fd, buf4, len3, off1, &nrd);
-	vt_expect_eq(nrd, len3);
-	vt_expect_eqm(buf3, buf4, len3);
-
-	vt_close(fd);
-	vt_unlink(path);
-}
-
-static void test_fallocate_collpase_range_holes(struct vt_env *vte)
-{
-	test_collpase_range_with_holes(vte, 0, VT_BK_SIZE);
-	test_collpase_range_with_holes(vte, VT_BK_SIZE, VT_BK_SIZE);
-	test_collpase_range_with_holes(vte, VT_UMEGA, VT_BK_SIZE);
-	test_collpase_range_with_holes(vte, VT_UGIGA, VT_BK_SIZE);
-	test_collpase_range_with_holes(vte, 0, VT_UMEGA);
-	test_collpase_range_with_holes(vte, VT_BK_SIZE, VT_UMEGA);
-	test_collpase_range_with_holes(vte, VT_UMEGA, VT_UMEGA);
-	test_collpase_range_with_holes(vte, VT_UGIGA, VT_UMEGA);
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/*
  * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE om
  * ranges with and without data.
  */
-static void
-test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
+static void test_fallocate_zero_range2_(struct vt_env *vte,
+                                        int keep_size, loff_t off, size_t bsz)
 {
 	int fd = -1;
 	size_t nwr = 0;
@@ -503,7 +340,7 @@ test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 	uint8_t *read_buf = vt_new_buf_rands(vte, bsz);
 	uint8_t *zero_buf = vt_new_buf_zeros(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
-	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+	const int mode = FALLOC_FL_ZERO_RANGE | keep_size;
 	struct stat st[2];
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
@@ -561,6 +398,13 @@ test_fallocate_zero_range_(struct vt_env *vte, loff_t off, size_t bsz)
 	vt_ftruncate(fd, 0);
 	vt_close(fd);
 	vt_unlink(path);
+}
+
+static void test_fallocate_zero_range_(struct vt_env *vte,
+                                       loff_t off, size_t bsz)
+{
+	test_fallocate_zero_range2_(vte, FALLOC_FL_KEEP_SIZE, off, bsz);
+	test_fallocate_zero_range2_(vte, 0, off, bsz);
 }
 
 static void test_fallocate_zero_range(struct vt_env *vte)
@@ -659,10 +503,6 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_fallocate_punch_into_hole),
 	VT_DEFTEST(test_fallocate_punch_into_allocated),
 	VT_DEFTEST(test_fallocate_zero_range),
-
-	/* Unsupported, yet */
-	VT_DEFTESTF(test_fallocate_collpase_range_simple, VT_IO_EXTRA),
-	VT_DEFTESTF(test_fallocate_collpase_range_holes, VT_IO_EXTRA),
 };
 
 const struct vt_tests vt_test_fallocate = VT_DEFTESTS(vt_local_tests);

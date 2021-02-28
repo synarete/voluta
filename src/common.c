@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include <ctype.h>
 #include <math.h>
 #include <time.h>
@@ -197,14 +198,15 @@ static struct voluta_zero_block4 *read_zb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
-	struct stat st;
+	loff_t size = 0;
+	struct stat st = { .st_size = 0 };
 	struct voluta_zero_block4 *zb = zb_new();
 
-	voluta_stat_reg(path, &st);
-	if (st.st_size == 0) {
-		voluta_die(0, "empty file: %s", path);
+	voluta_stat_reg_or_blk(path, &st, &size);
+	if (size == 0) {
+		voluta_die(0, "empty volume: %s", path);
 	}
-	if (st.st_size < (int)sizeof(*zb)) {
+	if (size < (int)sizeof(*zb)) {
 		voluta_die(0, "no zero-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
@@ -265,14 +267,15 @@ static struct voluta_super_block *read_sb_or_die(const char *path)
 {
 	int fd = -1;
 	int err;
-	struct stat st;
+	loff_t size = 0;
+	struct stat st = { .st_size = 0 };
 	struct voluta_super_block *sb = sb_new();
 
-	voluta_stat_reg(path, &st);
-	if (st.st_size == 0) {
+	voluta_stat_reg_or_blk(path, &st, &size);
+	if (size == 0) {
 		voluta_die(0, "empty file: %s", path);
 	}
-	if (st.st_size < (int)sizeof(*sb)) {
+	if (size < (int)sizeof(*sb)) {
 		voluta_die(0, "no super-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
@@ -777,26 +780,6 @@ void voluta_prctl_non_dumpable(void)
 	}
 }
 
-char *voluta_strdup_safe(const char *s)
-{
-	char *d = strdup(s);
-
-	if (d == NULL) {
-		voluta_die(errno, "strdup failed");
-	}
-	return d;
-}
-
-char *voluta_strndup_safe(const char *s, size_t n)
-{
-	char *d = strndup(s, n);
-
-	if (d == NULL) {
-		voluta_die(errno, "strndup failed: n=%lu", n);
-	}
-	return d;
-}
-
 char *voluta_joinpath_safe(const char *path, const char *base)
 {
 	char *rpath;
@@ -909,8 +892,8 @@ void voluta_statpath_safe(const char *path, struct stat *st)
 		voluta_die(err, "stat failure: %s", path);
 	}
 	mode = st->st_mode;
-	if (!S_ISREG(mode) && !S_ISDIR(mode)) {
-		voluta_die(0, "not dir-or-reg: %s", path);
+	if (!S_ISREG(mode) && !S_ISDIR(mode) && !S_ISBLK(mode)) {
+		voluta_die(0, "unsupported mode: 0%o %s", mode, path);
 	}
 }
 
@@ -922,13 +905,50 @@ void voluta_stat_reg(const char *path, struct stat *st)
 	}
 }
 
-void voluta_stat_dir_or_reg(const char *path, struct stat *st)
+void voluta_stat_reg_or_dir(const char *path, struct stat *st)
 {
 	voluta_statpath_safe(path, st);
 	if (!S_ISDIR(st->st_mode) && !S_ISREG(st->st_mode)) {
 		voluta_die(0, "not dir-or-reg: %s", path);
 	}
 }
+
+void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz)
+{
+	voluta_statpath_safe(path, st);
+	if (!S_ISREG(st->st_mode) && !S_ISBLK(st->st_mode)) {
+		voluta_die(0, "not a regular-file or block-device: %s", path);
+	}
+	if (S_ISREG(st->st_mode)) {
+		*out_sz = st->st_size;
+	} else {
+		*out_sz = voluta_blkgetsize_safe(path);
+	}
+}
+
+
+loff_t voluta_blkgetsize_safe(const char *path)
+{
+	int fd = -1;
+	int err;
+	size_t sz;
+
+	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
+	if (err) {
+		voluta_die(err, "open failure: %s", path);
+	}
+	err = voluta_sys_ioctl_blkgetsize64(fd, &sz);
+	voluta_sys_close(fd);
+	if (err) {
+		voluta_die(err, "ioctl BLKGETSIZE64 failed: %s", path);
+	}
+	if (sz >= (size_t)(LONG_MAX)) {
+		voluta_die(0, "illegal block-device size: %lu", sz);
+	}
+	return (loff_t)sz;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void *voluta_malloc_safe(size_t n)
 {
@@ -946,6 +966,26 @@ void voluta_pfree_string(char **pp)
 		free(*pp);
 		*pp = NULL;
 	}
+}
+
+char *voluta_strdup_safe(const char *s)
+{
+	char *d = strdup(s);
+
+	if (d == NULL) {
+		voluta_die(errno, "strdup failed");
+	}
+	return d;
+}
+
+char *voluta_strndup_safe(const char *s, size_t n)
+{
+	char *d = strndup(s, n);
+
+	if (d == NULL) {
+		voluta_die(errno, "strndup failed: n=%lu", n);
+	}
+	return d;
 }
 
 char *voluta_sprintf_path(const char *fmt, ...)

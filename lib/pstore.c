@@ -710,6 +710,9 @@ static int pstore_check_clone(const struct voluta_pstore *pstore,
 	if (!pstore_has_open_fds(pstore)) {
 		return -EBADF;
 	}
+	if (pstore->ps_ctl_flags & VOLUTA_F_BLKDEV) {
+		return -EOPNOTSUPP;
+	}
 	err = voluta_sys_fstatat(pstore->ps_dfd, name->str, &st, 0);
 	if (!err) {
 		return -EEXIST;

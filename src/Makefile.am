@@ -1,5 +1,7 @@
 -include $(top_builddir)/common.mk
 
+dist_sbin_SCRIPTS = mount.voluta
+
 noinst_LIBRARIES = libvoluta_prog.a
 libvoluta_prog_a_CPPFLAGS = -I$(top_srcdir)/include
 libvoluta_prog_a_SOURCES = $(NULL)

@@ -324,19 +324,15 @@ void voluta_setrlimit_nocore(void);
 
 void voluta_prctl_non_dumpable(void);
 
-char *voluta_strdup_safe(const char *s);
-
-char *voluta_strndup_safe(const char *s, size_t n);
-
-void voluta_pfree_string(char **pp);
-
-char *voluta_sprintf_path(const char *fmt, ...);
-
 void voluta_statpath_safe(const char *path, struct stat *st);
 
 void voluta_stat_reg(const char *path, struct stat *st);
 
-void voluta_stat_dir_or_reg(const char *path, struct stat *st);
+void voluta_stat_reg_or_dir(const char *path, struct stat *st);
+
+void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz);
+
+loff_t voluta_blkgetsize_safe(const char *path);
 
 char *voluta_realpath_safe(const char *path);
 
@@ -347,8 +343,6 @@ char *voluta_dirpath_safe(const char *path);
 char *voluta_basename_safe(const char *path);
 
 char *voluta_joinpath_safe(const char *path, const char *base);
-
-void *voluta_malloc_safe(size_t n);
 
 void voluta_setup_globals(int argc, char *argv[]);
 
@@ -363,6 +357,17 @@ void voluta_show_help_and_exit(const char **help_strings);
 void voluta_show_version_and_exit(const char *prog);
 
 void voluta_pretty_size(size_t n, char *buf, size_t bsz);
+
+
+void *voluta_malloc_safe(size_t n);
+
+void voluta_pfree_string(char **pp);
+
+char *voluta_strdup_safe(const char *s);
+
+char *voluta_strndup_safe(const char *s, size_t n);
+
+char *voluta_sprintf_path(const char *fmt, ...);
 
 /* singleton instances */
 void voluta_create_fse_inst(const struct voluta_fs_args *args);

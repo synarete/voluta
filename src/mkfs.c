@@ -29,10 +29,12 @@ static void mkfs_setup_check_params(void)
 {
 	int err;
 	int exists;
+	int blkdev;
 	size_t len = 0;
 	loff_t size = 0;
 	loff_t *psz = NULL;
 	struct stat st = { .st_size = 0 };
+	const mode_t mask = S_IRUSR | S_IWUSR;
 	const char *path = NULL;
 	const char *passfile = NULL;
 
@@ -45,19 +47,24 @@ static void mkfs_setup_check_params(void)
 		voluta_die(-ENAMETOOLONG, "illegal volume path");
 	}
 	err = voluta_sys_stat(path, &st);
-	exists = !err;
-
-	if (exists && S_ISDIR(st.st_mode)) {
-		voluta_die(-EISDIR, "illegal volume path: %s", path);
-	}
-	if (exists && !S_ISBLK(st.st_mode) &&
-	    !voluta_globals.cmd.mkfs.force && !S_ISBLK(st.st_mode)) {
-		voluta_die(err, "file exists: %s", path);
-	}
 	if (err && (err != -ENOENT)) {
 		voluta_die(err, "stat failure: %s", path);
 	}
-	if (!voluta_globals.cmd.mkfs.size) {
+	exists = !err;
+	if (exists && S_ISDIR(st.st_mode)) {
+		voluta_die(-EISDIR, "illegal volume path: %s", path);
+	}
+	blkdev = S_ISBLK(st.st_mode);
+	if (exists && !blkdev && !voluta_globals.cmd.mkfs.force) {
+		voluta_die(err, "file exists: %s", path);
+	}
+	if (exists && ((st.st_mode & mask) != mask)) {
+		voluta_die(-EPERM, "no read-write permissions: %s", path);
+	}
+	if (blkdev) {
+		voluta_globals.cmd.mkfs.volume_size =
+		        voluta_blkgetsize_safe(path);
+	} else if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
 	}
 	psz = &voluta_globals.cmd.mkfs.volume_size;

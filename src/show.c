@@ -28,7 +28,7 @@ static void show_setup_check_params(void)
 {
 	struct stat st;
 
-	voluta_stat_dir_or_reg(voluta_globals.cmd.show.pathname, &st);
+	voluta_stat_reg_or_dir(voluta_globals.cmd.show.pathname, &st);
 }
 
 static void show_do_ioctl_query(struct voluta_ioc_query *query)

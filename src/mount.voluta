@@ -1,0 +1,13 @@
+#!/bin/bash
+self=$(basename ${BASH_SOURCE[0]})
+
+_die() {
+  echo "$self: $*" >&2; exit 1;
+}
+
+_run() {
+  ( "$@" ) || _die "failed: '$*'";
+}
+
+_run which voluta > /dev/null
+_run voluta mount "$@"

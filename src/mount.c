@@ -304,6 +304,7 @@ static const char *voluta_mount_usage[] = {
 	"  -x, --noexec                 Do not allow programs execution",
 	"  -S, --nosuid                 Do not honor special bits",
 	"      --nodev                  Do not allow access to device files",
+	"  -o  --options                Additional mount options",
 	"  -D, --nodaemon               Do not run as daemon process",
 	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
 	"  -C, --coredump               Allow core-dumps upon fatal errors",
@@ -319,6 +320,7 @@ void voluta_getopt_mount(void)
 		{ "noexec", no_argument, NULL, 'x' },
 		{ "nosuid", no_argument, NULL, 'S' },
 		{ "nodev", no_argument, NULL, 'Z' },
+		{ "options", required_argument, NULL, 'o' },
 		{ "nodaemon", no_argument, NULL, 'D' },
 		{ "verbose", required_argument, NULL, 'V' },
 		{ "coredump", no_argument, NULL, 'C' },
@@ -328,7 +330,7 @@ void voluta_getopt_mount(void)
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("rxSZDV:CP:h", opts);
+		opt_chr = voluta_getopt_subcmd("rxSZo:DV:CP:h", opts);
 		if (opt_chr == 'r') {
 			voluta_globals.cmd.mount.rdonly = true;
 		} else if (opt_chr == 'x') {
@@ -337,6 +339,9 @@ void voluta_getopt_mount(void)
 			voluta_globals.cmd.mount.nosuid = true;
 		} else if (opt_chr == 'Z') {
 			voluta_globals.cmd.mount.nodev = true;
+		} else if (opt_chr == 'o') {
+			/* currently, only for xfstests */
+			voluta_globals.cmd.mount.options = optarg;
 		} else if (opt_chr == 'D') {
 			voluta_globals.dont_daemonize = true;
 		} else if (opt_chr == 'V') {

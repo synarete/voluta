@@ -1,6 +1,9 @@
 -include $(top_builddir)/common.mk
 
-dist_sbin_SCRIPTS = mount.voluta
+dist_sbin_SCRIPTS = $(NULL)
+dist_sbin_SCRIPTS += fsck.voluta
+dist_sbin_SCRIPTS += mkfs.voluta
+dist_sbin_SCRIPTS += mount.voluta
 
 noinst_LIBRARIES = libvoluta_prog.a
 libvoluta_prog_a_CPPFLAGS = -I$(top_srcdir)/include

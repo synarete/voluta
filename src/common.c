@@ -47,9 +47,12 @@
 #include <getopt.h>
 #include "voluta-prog.h"
 
-#define VOLUTA_LOG_DEFAULT \
-	(VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
-	 VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
+#define VOLUTA_LOG_DEFAULT  \
+	(VOLUTA_LOG_INFO  | \
+	 VOLUTA_LOG_WARN  | \
+	 VOLUTA_LOG_ERROR | \
+	 VOLUTA_LOG_CRIT  | \
+	 VOLUTA_LOG_STDOUT)
 
 /* Global process' variables */
 struct voluta_globals voluta_globals;
@@ -432,7 +435,8 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 		if (err == -EINVAL) {
 			voluta_die(0, "illegal vfstype at: %s", path);
 		} else if (err) {
-			voluta_die(err, "can not mount on: %s",  path);
+			voluta_die(err, "can not mount on: %s uid=%d gid=%d",
+				   path, (int)getuid(), (int)getgid());
 		}
 		voluta_die_if_not_empty_dir(path, true);
 	} else {

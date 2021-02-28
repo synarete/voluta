@@ -46,6 +46,7 @@ Development files for voluta
 %{_bindir}/%{name}
 %{_bindir}/%{name}-fstests
 %{_sbindir}/%{name}-mountd
+%{_sbindir}/*.%{name}
 %exclude %{_bindir}/%{name}-unitest
 %exclude %{_libdir}/lib%{name}*.la
 %config(noreplace) %{_sysconfdir}/%{name}/*.conf

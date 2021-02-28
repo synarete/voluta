@@ -1187,7 +1187,8 @@ static int voluta_mse_exec(struct voluta_ms_env *mse)
 		if (err == -ETIMEDOUT) {
 			sleep(1);
 		}
-		/* TODO: handle non-valid errors */
+		/* TODO: handle non-valid terminating errors */
+		usleep(1000);
 	}
 	return 0;
 }

@@ -1,8 +1,8 @@
 dnl SPDX-License-Identifier: GPL-3.0-or-later
 m4_define(VOLUTA_VERSION, m4_esyscmd([./version.sh --version]))
 AC_PREREQ([2.69])
-AC_INIT([voluta], VOLUTA_VERSION, [synarete@xxxxxx])
-AC_COPYRIGHT([Copyright (C) 2020, Shachar Sharon])
+AC_INIT([voluta], VOLUTA_VERSION, [synarete@xxxxxxxx])
+AC_COPYRIGHT([Copyright (C) 2020-2021, Shachar Sharon])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([lib/super.c])

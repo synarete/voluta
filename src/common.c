@@ -436,7 +436,7 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 			voluta_die(0, "illegal vfstype at: %s", path);
 		} else if (err) {
 			voluta_die(err, "can not mount on: %s uid=%d gid=%d",
-				   path, (int)getuid(), (int)getgid());
+			           path, (int)getuid(), (int)getgid());
 		}
 		voluta_die_if_not_empty_dir(path, true);
 	} else {

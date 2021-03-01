@@ -397,6 +397,34 @@ static void test_rmdir_openat(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects mkdir(3p) to preserve S_ISGID of parent directory
+ */
+static void test_mkdir_setgid(struct vt_env *vte)
+{
+	struct stat st;
+	const char *path1 = vt_new_path_unique(vte);
+	const char *path2 = vt_new_path_under(vte, path1);
+	const char *path3 = vt_new_path_under(vte, path2);
+
+	vt_mkdir(path1, 0700);
+	vt_stat(path1, &st);
+	vt_expect_eq(st.st_mode & S_ISGID, 0);
+	vt_mkdir(path2, 0700);
+	vt_stat(path2, &st);
+	vt_expect_eq(st.st_mode & S_ISGID, 0);
+	vt_chmod(path2, st.st_mode | S_ISGID);
+	vt_stat(path2, &st);
+	vt_expect_eq(st.st_mode & S_ISGID, S_ISGID);
+	vt_mkdir(path3, 0700);
+	vt_stat(path3, &st);
+	vt_expect_eq(st.st_mode & S_ISGID, S_ISGID);
+	vt_rmdir(path3);
+	vt_rmdir(path2);
+	vt_rmdir(path1);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_rmdir),
@@ -409,6 +437,7 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_tree_wide),
 	VT_DEFTEST(test_mkdir_tree_deep),
 	VT_DEFTEST(test_rmdir_openat),
+	VT_DEFTEST(test_mkdir_setgid),
 };
 
 const struct vt_tests vt_test_mkdir = VT_DEFTESTS(vt_local_tests);

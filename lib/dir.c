@@ -856,14 +856,17 @@ enum voluta_dirf voluta_dir_flags(const struct voluta_inode_info *dir_ii)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_setup_dir(struct voluta_inode_info *dir_ii, nlink_t nlink)
+void voluta_setup_dir(struct voluta_inode_info *dir_ii,
+                      mode_t parent_mode, nlink_t nlink)
 {
 	struct voluta_iattr iattr = {
 		.ia_size = VOLUTA_DIR_EMPTY_SIZE,
 		.ia_nlink = nlink,
 		.ia_blocks = 0,
+		.ia_mode = ii_mode(dir_ii) | (parent_mode & S_ISGID),
 		.ia_flags =
-		VOLUTA_IATTR_SIZE | VOLUTA_IATTR_BLOCKS | VOLUTA_IATTR_NLINK
+		VOLUTA_IATTR_SIZE | VOLUTA_IATTR_BLOCKS |
+		VOLUTA_IATTR_NLINK | VOLUTA_IATTR_MODE
 	};
 
 	dis_setup(dis_of(dir_ii->inode));
@@ -1957,7 +1960,7 @@ static int finalize_htree(struct voluta_dir_ctx *d_ctx)
 	if (err) {
 		return err;
 	}
-	voluta_setup_dir(dir_ii, ii_nlink(dir_ii));
+	voluta_setup_dir(dir_ii, 0, ii_nlink(dir_ii));
 	ii_dirtify(dir_ii);
 	return 0;
 }

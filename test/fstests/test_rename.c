@@ -191,7 +191,6 @@ static void test_rename_isdirto(struct vt_env *vte)
 static void test_rename_symlink_(struct vt_env *vte, size_t bsz)
 {
 	int fd = -1;
-	size_t nwr = 0;
 	void *buf = vt_new_buf_rands(vte, bsz);
 	const char *path0 = vt_new_path_unique(vte);
 	const char *path1 = vt_new_path_under(vte, path0);
@@ -200,7 +199,7 @@ static void test_rename_symlink_(struct vt_env *vte, size_t bsz)
 
 	vt_mkdir(path0, 0755);
 	vt_creat(path1, 0600, &fd);
-	vt_pwrite(fd, buf, bsz, 0, &nwr);
+	vt_pwriten(fd, buf, bsz, 0);
 	vt_symlink(path1, path2);
 	vt_rename(path2, path3);
 	vt_close(fd);

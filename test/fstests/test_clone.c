@@ -28,8 +28,6 @@ static void test_clone_file_range_(struct vt_env *vte, size_t bsz)
 {
 	int fd1 = -1;
 	int fd2 = -1;
-	size_t nwr = 0;
-	size_t nrd = 0;
 	struct stat st[2];
 	void *data1 = vt_new_buf_rands(vte, bsz);
 	void *data2 = vt_new_buf_rands(vte, bsz);
@@ -38,15 +36,13 @@ static void test_clone_file_range_(struct vt_env *vte, size_t bsz)
 
 	vt_open(path1, O_CREAT | O_RDWR, 0600, &fd1);
 	vt_open(path2, O_CREAT | O_RDWR, 0600, &fd2);
-	vt_pwrite(fd1, data1, bsz, 0, &nwr);
-	vt_expect_eq(bsz, nwr);
+	vt_pwriten(fd1, data1, bsz, 0);
 	vt_fstat(fd1, &st[0]);
 	vt_expect_eq(bsz, st[0].st_size);
 	vt_ioctl_ficlone(fd2, fd1);
 	vt_fstat(fd2, &st[1]);
 	vt_expect_eq(bsz, st[1].st_size);
-	vt_pread(fd1, data2, bsz, 0, &nrd);
-	vt_expect_eq(bsz, nrd);
+	vt_preadn(fd1, data2, bsz, 0);
 	vt_expect_eqm(data1, data2, bsz);
 	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
 	vt_close(fd1);

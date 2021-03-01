@@ -146,7 +146,6 @@ static void test_stat_punch_(struct vt_env *vte,
                              const struct vt_ioargs *ioargs)
 {
 	int fd = -1;
-	size_t nwr = 0;
 	blkcnt_t bcnt_min = 0;
 	blkcnt_t bcnt_max = 0;
 	struct stat st = { .st_ino = 0 };
@@ -160,8 +159,7 @@ static void test_stat_punch_(struct vt_env *vte,
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_size, 0);
 	vt_expect_eq(st.st_blocks, 0);
-	vt_pwrite(fd, buf, bsz, off, &nwr);
-	vt_expect_eq(bsz, nwr);
+	vt_pwriten(fd, buf, bsz, off);
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_size, off + (loff_t)bsz);
 	vt_calc_stat_blkcnt(off, bsz, &bcnt_min, &bcnt_max);

@@ -138,16 +138,14 @@ static void test_write_mctimes_(struct vt_env *vte, loff_t off, size_t bsz)
 
 	vt_fstat(fd, &st[0]);
 	vt_suspends(vte, 1);
-	vt_pwrite(fd, buf, bsz, off, &nwr);
-	vt_expect_eq(nwr, bsz);
+	vt_pwriten(fd, buf, bsz, off);
 	vt_fstat(fd, &st[1]);
 	vt_expect_ctime_gt(&st[0], &st[1]);
 	vt_expect_mtime_gt(&st[0], &st[1]);
 
 	vt_fstat(fd, &st[0]);
 	vt_suspends(vte, 1);
-	vt_pwrite(fd, buf, bsz, off, &nwr);
-	vt_expect_eq(nwr, bsz);
+	vt_pwriten(fd, buf, bsz, off);
 	vt_fstat(fd, &st[1]);
 	vt_expect_ctime_gt(&st[0], &st[1]);
 	vt_expect_mtime_gt(&st[0], &st[1]);
@@ -229,7 +227,6 @@ static void test_write_read_sgid_(struct vt_env *vte,
 	mode_t mode = 0710;
 	mode_t mask = S_IRWXU | S_IRWXG | S_IRWXO;
 	size_t nwr = 0;
-	size_t nrd = 0;
 	struct stat st;
 	void *buf = vt_new_buf_rands(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
@@ -247,8 +244,7 @@ static void test_write_read_sgid_(struct vt_env *vte,
 	vt_fchmod(fd, st.st_mode | S_ISGID);
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_mode & S_ISGID, S_ISGID);
-	vt_pread(fd, buf, bsz, off, &nrd);
-	vt_expect_eq(nrd, bsz);
+	vt_preadn(fd, buf, bsz, off);
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_mode & S_ISGID, S_ISGID);
 	vt_expect_eq(st.st_mode & mask, mode);

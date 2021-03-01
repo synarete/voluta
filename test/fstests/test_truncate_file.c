@@ -151,7 +151,6 @@ static void test_truncate_extend(struct vt_env *vte)
 static void test_truncate_zeros_(struct vt_env *vte, loff_t off, size_t len)
 {
 	int fd = -1;
-	size_t nrd;
 	uint8_t byte = 1;
 	loff_t end = off + (loff_t)len;
 	struct stat st;
@@ -161,11 +160,9 @@ static void test_truncate_zeros_(struct vt_env *vte, loff_t off, size_t len)
 	vt_ftruncate(fd, end);
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_size, end);
-	vt_pread(fd, &byte, 1, off, &nrd);
-	vt_expect_eq(nrd, 1);
+	vt_preadn(fd, &byte, 1, off);
 	vt_expect_eq(byte, 0);
-	vt_pread(fd, &byte, 1, end - 1, &nrd);
-	vt_expect_eq(nrd, 1);
+	vt_preadn(fd, &byte, 1, end - 1);
 	vt_expect_eq(byte, 0);
 	vt_fstat(fd, &st);
 	vt_expect_eq(st.st_size, end);

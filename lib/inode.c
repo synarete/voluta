@@ -401,7 +401,7 @@ static void voluta_setup_ispecial(struct voluta_inode_info *ii, dev_t rdev)
  */
 static void setup_inode_common(struct voluta_inode *inode,
                                const struct voluta_ucred *ucred,
-                               ino_t ino, mode_t mode, ino_t parent)
+                               ino_t ino, ino_t parent, mode_t mode)
 {
 	inode_set_ino(inode, ino);
 	inode_set_parent(inode, parent);
@@ -418,12 +418,13 @@ static void setup_inode_common(struct voluta_inode *inode,
 
 void voluta_setup_inode(struct voluta_inode_info *ii,
                         const struct voluta_ucred *ucred,
-                        mode_t mode, ino_t parent, dev_t rdev)
+                        ino_t parent_ino, mode_t parent_mode,
+                        mode_t mode, dev_t rdev)
 {
-	setup_inode_common(ii->inode, ucred, ii_ino(ii), mode, parent);
+	setup_inode_common(ii->inode, ucred, ii_ino(ii), parent_ino, mode);
 	voluta_setup_xattr(ii);
 	if (ii_isdir(ii)) {
-		voluta_setup_dir(ii, 1);
+		voluta_setup_dir(ii, parent_mode, 1);
 	} else if (ii_isreg(ii)) {
 		voluta_setup_reg(ii);
 	} else if (ii_islnk(ii)) {

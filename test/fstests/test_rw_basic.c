@@ -211,7 +211,6 @@ static void test_basic_reserve_at(struct vt_env *vte,
 	int fd;
 	loff_t pos = -1;
 	size_t nwr = 0;
-	size_t nrd = 0;
 	uint8_t buf[2] = { 0, 0 };
 	const char *path = vt_new_path_unique(vte);
 
@@ -224,8 +223,7 @@ static void test_basic_reserve_at(struct vt_env *vte,
 	}
 	for (size_t i = 0; i < ssz; ++i) {
 		pos = off + (loff_t)(ssz - i - 1);
-		vt_pread(fd, buf, 1, pos, &nrd);
-		vt_expect_eq(nrd, 1);
+		vt_preadn(fd, buf, 1, pos);
 		vt_expect_eq(buf[0], (uint8_t)i);
 		vt_expect_eq(buf[1], 0);
 	}

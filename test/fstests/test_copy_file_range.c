@@ -41,7 +41,6 @@ static void test_copy_file_range_(struct vt_env *vte,
 {
 	int src_fd = -1;
 	int dst_fd = -1;
-	size_t nb = 0;
 	size_t ncp = 0;
 	loff_t src_off = -1;
 	loff_t dst_off = -1;
@@ -59,16 +58,12 @@ static void test_copy_file_range_(struct vt_env *vte,
 
 	if (cri->src_datasz > 0) {
 		src_data = vt_new_buf_rands(vte, cri->src_datasz);
-		vt_pwrite(src_fd, src_data,
-		          cri->src_datasz, cri->src_doff, &nb);
-		vt_expect_eq(cri->src_datasz, nb);
+		vt_pwriten(src_fd, src_data, cri->src_datasz, cri->src_doff);
 	}
 
 	if (cri->dst_datasz > 0) {
 		dst_data = vt_new_buf_rands(vte, cri->dst_datasz);
-		vt_pwrite(dst_fd, dst_data,
-		          cri->dst_datasz, cri->dst_doff, &nb);
-		vt_expect_eq(cri->dst_datasz, nb);
+		vt_pwriten(dst_fd, dst_data, cri->dst_datasz, cri->dst_doff);
 	}
 
 	src_off = cri->src_doff;
@@ -78,12 +73,10 @@ static void test_copy_file_range_(struct vt_env *vte,
 	vt_expect_eq(cri->copysz, ncp);
 
 	src_data = vt_new_buf_rands(vte, cri->copysz);
-	vt_pread(src_fd, src_data, cri->copysz, cri->src_doff, &nb);
-	vt_expect_eq(cri->copysz, nb);
+	vt_preadn(src_fd, src_data, cri->copysz, cri->src_doff);
 
 	dst_data = vt_new_buf_rands(vte, cri->copysz);
-	vt_pread(dst_fd, dst_data, cri->copysz, cri->dst_doff, &nb);
-	vt_expect_eq(cri->copysz, nb);
+	vt_preadn(dst_fd, dst_data, cri->copysz, cri->dst_doff);
 	vt_expect_eqm(src_data, dst_data, cri->copysz);
 
 	vt_close(src_fd);

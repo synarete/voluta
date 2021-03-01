@@ -976,8 +976,9 @@ static int fse_format_rootdir(const struct voluta_fs_env *fse,
 	const mode_t mode = S_IFDIR | 0755;
 	struct voluta_inode_info *root_ii = NULL;
 	struct voluta_sb_info *sbi = fse->sbi;
+	const ino_t parent_ino = VOLUTA_INO_NULL;
 
-	err = voluta_create_inode(sbi, op, mode, VOLUTA_INO_NULL, 0, &root_ii);
+	err = voluta_create_inode(sbi, op, parent_ino, 0, mode, 0, &root_ii);
 	if (err) {
 		return err;
 	}

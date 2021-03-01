@@ -457,7 +457,8 @@ int voluta_stage_data(struct voluta_sb_info *sbi,
 
 int voluta_create_inode(struct voluta_sb_info *sbi,
                         const struct voluta_oper *op,
-                        mode_t mode, ino_t parent, dev_t rdev,
+                        ino_t parent_ino, mode_t parent_mode,
+                        mode_t mode, dev_t rdev,
                         struct voluta_inode_info **out_ii);
 
 int voluta_create_vnode(struct voluta_sb_info *sbi,
@@ -704,7 +705,8 @@ void voluta_refresh_atime(struct voluta_inode_info *ii, bool to_volatile);
 
 void voluta_setup_inode(struct voluta_inode_info *ii,
                         const struct voluta_ucred *ucred,
-                        mode_t mode, ino_t parent, dev_t rdev);
+                        ino_t parent_ino, mode_t parent_mode,
+                        mode_t mode, dev_t rdev);
 
 void voluta_clone_inode(struct voluta_inode_info *ii,
                         const struct voluta_inode_info *ii_other);
@@ -721,7 +723,8 @@ int voluta_verify_dir_inode(const struct voluta_inode *inode);
 
 int voluta_verify_dir_htree_node(const struct voluta_dir_htnode *htn);
 
-void voluta_setup_dir(struct voluta_inode_info *dir_ii, nlink_t nlink);
+void voluta_setup_dir(struct voluta_inode_info *dir_ii,
+                      mode_t parent_mode, nlink_t nlink);
 
 int voluta_lookup_dentry(const struct voluta_oper *op,
                          const struct voluta_inode_info *dir_ii,

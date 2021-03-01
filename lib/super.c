@@ -3579,16 +3579,19 @@ static int acquire_ino(struct voluta_super_ctx *s_ctx,
 
 static void setup_new_inode(struct voluta_super_ctx *s_ctx,
                             const struct voluta_oper *op,
-                            mode_t mode, ino_t parent, dev_t rdev)
+                            ino_t parent_ino, mode_t parent_mode,
+                            mode_t mode, dev_t rdev)
 {
 	vi_stamp_view(s_ctx->vi);
-	voluta_setup_inode(s_ctx->ii, &op->ucred, mode, parent, rdev);
+	voluta_setup_inode(s_ctx->ii, &op->ucred,
+	                   parent_ino, parent_mode, mode, rdev);
 	update_itimes(op, s_ctx->ii, VOLUTA_IATTR_TIMES);
 }
 
 static int create_inode(struct voluta_super_ctx *s_ctx,
                         const struct voluta_oper *op,
-                        mode_t mode, ino_t parent, dev_t rdev)
+                        ino_t parent_ino, mode_t parent_mode,
+                        mode_t mode, dev_t rdev)
 {
 	int err;
 	struct voluta_vaddr vaddr;
@@ -3608,13 +3611,14 @@ static int create_inode(struct voluta_super_ctx *s_ctx,
 		/* TODO: spfree inode from ag */
 		return err;
 	}
-	setup_new_inode(s_ctx, op, mode, parent, rdev);
+	setup_new_inode(s_ctx, op, parent_ino, parent_mode, mode, rdev);
 	return 0;
 }
 
 int voluta_create_inode(struct voluta_sb_info *sbi,
                         const struct voluta_oper *op,
-                        mode_t mode, ino_t parent, dev_t rdev,
+                        ino_t parent_ino, mode_t parent_mode,
+                        mode_t mode, dev_t rdev,
                         struct voluta_inode_info **out_ii)
 {
 	int err;
@@ -3624,7 +3628,7 @@ int voluta_create_inode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = create_inode(&s_ctx, op, mode, parent, rdev);
+	err = create_inode(&s_ctx, op, parent_ino, parent_mode, mode, rdev);
 	if (err) {
 		return err;
 	}

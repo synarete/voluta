@@ -392,29 +392,26 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE on
- * ranges with and without data.
+ * Tests fallocate(2) with FALLOC_FL_ZERO_RANGE on with/without data,
+ * with/without FALLOC_FL_KEEP_SIZE.
  */
 static void test_fallocate_zero_range_(struct vt_env *vte,
                                        loff_t off, size_t bsz)
 {
 	int fd = -1;
-	size_t nwr = 0;
-	size_t nrd = 0;
+	int mode;
 	const ssize_t ssz = (ssize_t)bsz;
 	uint8_t *data_buf = vt_new_buf_rands(vte, bsz);
 	uint8_t *read_buf = vt_new_buf_rands(vte, bsz);
 	uint8_t *zero_buf = vt_new_buf_zeros(vte, bsz);
 	const char *path = vt_new_path_unique(vte);
-	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
 	struct stat st[2];
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 
-	vt_pwrite(fd, data_buf, bsz, off, &nwr);
-	vt_expect_eq(bsz, nwr);
-	vt_pread(fd, read_buf, bsz, off, &nrd);
-	vt_expect_eq(bsz, nrd);
+	mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+	vt_pwriten(fd, data_buf, bsz, off);
+	vt_preadn(fd, read_buf, bsz, off);
 	vt_expect_eqm(read_buf, data_buf, bsz);
 
 	vt_fstat(fd, &st[0]);
@@ -422,44 +419,63 @@ static void test_fallocate_zero_range_(struct vt_env *vte,
 	vt_fstat(fd, &st[1]);
 	vt_expect_eq(st[0].st_size, st[1].st_size);
 	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
-	vt_pread(fd, read_buf, bsz, off, &nrd);
-	vt_expect_eq(bsz, nrd);
+	vt_preadn(fd, read_buf, bsz, off);
 	vt_expect_eqm(read_buf, zero_buf, bsz);
 
-	vt_pwrite(fd, data_buf, bsz, off, &nwr);
+	vt_pwriten(fd, data_buf, bsz, off);
 	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off, 1);
 	vt_fstat(fd, &st[1]);
 	vt_expect_eq(st[0].st_size, st[1].st_size);
 	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
-	vt_pread(fd, read_buf, 1, off, &nrd);
-	vt_expect_eq(1, nrd);
+	vt_preadn(fd, read_buf, 1, off);
 	vt_expect_eq(read_buf[0], 0);
-	vt_pread(fd, read_buf, bsz - 1, off + 1, &nrd);
-	vt_expect_eq(bsz - 1, nrd);
+	vt_preadn(fd, read_buf, bsz - 1, off + 1);
 	vt_expect_eqm(read_buf, data_buf + 1, bsz - 1);
 
 	vt_ftruncate(fd, off + (2 * ssz));
-	vt_pwrite(fd, data_buf, bsz, off, &nwr);
+	vt_pwriten(fd, data_buf, bsz, off);
 	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off + ssz - 1, ssz);
 	vt_fstat(fd, &st[1]);
 	vt_expect_eq(st[0].st_size, st[1].st_size);
 	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
-	vt_pwrite(fd, data_buf, bsz - 1, off, &nwr);
-	vt_pread(fd, read_buf, 1, off + ssz - 1, &nrd);
+	vt_pwriten(fd, data_buf, bsz - 1, off);
+	vt_preadn(fd, read_buf, 1, off + ssz - 1);
 	vt_expect_eq(read_buf[0], 0);
 
-	vt_pwrite(fd, data_buf, bsz, off + ssz, &nwr);
+	vt_pwriten(fd, data_buf, bsz, off + ssz);
 	vt_fstat(fd, &st[0]);
 	vt_fallocate(fd, mode, off, ssz);
 	vt_fstat(fd, &st[1]);
 	vt_expect_eq(st[0].st_size, st[1].st_size);
 	vt_expect_eq(st[0].st_blocks, st[1].st_blocks);
-	vt_pread(fd, read_buf, bsz, off, &nrd);
-	vt_expect_eq(bsz, nrd);
+	vt_preadn(fd, read_buf, bsz, off);
 	vt_expect_eq(read_buf[0], 0);
 	vt_expect_eq(read_buf[bsz - 1], 0);
+
+	/* TODO: split into 2 sub-tests */
+	mode = FALLOC_FL_ZERO_RANGE;
+	vt_ftruncate(fd, 0);
+	vt_fallocate(fd, mode, off, ssz);
+	vt_fstat(fd, &st[0]);
+	vt_expect_eq(st[0].st_size, off + ssz);
+	vt_preadn(fd, read_buf, 1, off);
+	vt_expect_eq(read_buf[0], 0);
+	vt_preadn(fd, read_buf, 1, off + ssz - 1);
+	vt_expect_eq(read_buf[0], 0);
+	vt_fallocate(fd, mode, off, ssz + 1);
+	vt_pwriten(fd, data_buf, bsz, off);
+	vt_preadn(fd, read_buf, bsz, off);
+	vt_expect_eqm(read_buf, data_buf, bsz);
+	vt_preadn(fd, read_buf, 1, off + ssz);
+	vt_expect_eq(read_buf[0], 0);
+	vt_fallocate(fd, mode, off + ssz, ssz);
+	vt_fstat(fd, &st[1]);
+	vt_expect_eq(st[1].st_size, off + (2 * ssz));
+	vt_pwriten(fd, data_buf, bsz, off + 1);
+	vt_preadn(fd, read_buf, 1, off + (2 * ssz) - 1);
+	vt_expect_eq(read_buf[0], 0);
 
 	vt_ftruncate(fd, 0);
 	vt_close(fd);

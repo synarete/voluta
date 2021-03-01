@@ -330,27 +330,40 @@ ut_file_fallocate_zero_range_(struct ut_env *ute, loff_t off, size_t bsz)
 	const ssize_t ssz = (ssize_t)bsz;
 	const char *name = UT_NAME;
 	uint8_t *buf = ut_randbuf(ute, bsz);
+	bool keep_size;
 
+	keep_size = true;
 	ut_mkdir_at_root(ute, name, &dino);
 	ut_create_file(ute, dino, name, &ino);
 	ut_write_read(ute, ino, buf, bsz, off);
-	ut_fallocate_zero_range(ute, ino, off, ssz);
+	ut_fallocate_zero_range(ute, ino, off, ssz, keep_size);
 	ut_read_zeros(ute, ino, off, bsz);
 	ut_write_read(ute, ino, buf, bsz, off);
-	ut_fallocate_zero_range(ute, ino, off, 1);
+	ut_fallocate_zero_range(ute, ino, off, 1, keep_size);
 	ut_read_zero(ute, ino, off);
 	ut_read_verify(ute, ino, buf + 1, bsz - 1, off + 1);
 
 	ut_trunacate_file(ute, ino, off + (2 * ssz));
 	ut_write_read(ute, ino, buf, bsz, off);
-	ut_fallocate_zero_range(ute, ino, off + ssz - 1, ssz);
+	ut_fallocate_zero_range(ute, ino, off + ssz - 1, ssz, keep_size);
 	ut_write_read(ute, ino, buf, bsz - 1, off);
 	ut_read_zero(ute, ino, off + ssz - 1);
 
 	ut_write_read(ute, ino, buf, bsz, off + ssz);
-	ut_fallocate_zero_range(ute, ino, off, ssz);
+	ut_fallocate_zero_range(ute, ino, off, ssz, keep_size);
 	ut_read_verify(ute, ino, buf, bsz, off + ssz);
 	ut_read_zeros(ute, ino, off, bsz);
+
+	keep_size = false;
+	ut_trunacate_file(ute, ino, 0);
+	ut_fallocate_zero_range(ute, ino, off, ssz, keep_size);
+	ut_read_zero(ute, ino, off + ssz - 1);
+	ut_fallocate_zero_range(ute, ino, off, ssz + 1, keep_size);
+	ut_write_read(ute, ino, buf, bsz, off);
+	ut_read_zero(ute, ino, off + ssz);
+	ut_fallocate_zero_range(ute, ino, off + ssz, ssz, keep_size);
+	ut_write_read(ute, ino, buf, bsz, off + 1);
+	ut_read_zero(ute, ino, off + (2 * ssz) - 1);
 
 	ut_remove_file(ute, dino, name, ino);
 	ut_rmdir_at_root(ute, name);
@@ -476,14 +489,14 @@ static void ut_file_fallocate_sparse_(struct ut_env *ute,
 		off = base_off + (i * step_size);
 		len = (int)sizeof(off);
 		ut_fallocate_reserve(ute, ino, off, len);
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_expect_eq(st.st_size, off + len);
 		ut_expect_gt(st.st_blocks, blocks);
 		ut_read_verify(ute, ino, &zero, (size_t)len, off);
 
 		blocks = st.st_blocks;
 		ut_write_read(ute, ino, &off, (size_t)len, off);
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_expect_eq(st.st_size, off + len);
 		ut_expect_eq(st.st_blocks, blocks);
 	}
@@ -520,7 +533,7 @@ static void ut_file_fallocate_beyond_(struct ut_env *ute,
 	ut_mkdir_at_root(ute, name, &dino);
 	ut_create_file(ute, dino, name, &ino);
 	ut_fallocate_reserve(ute, ino, off, ssz);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_size, off + ssz);
 	ut_read_zeros(ute, ino, off, bsz);
 	ut_write_read(ute, ino, buf, bsz, off);
@@ -528,10 +541,10 @@ static void ut_file_fallocate_beyond_(struct ut_env *ute,
 
 	ut_create_file(ute, dino, name, &ino);
 	ut_fallocate_keep_size(ute, ino, off, ssz);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_size, 0);
 	ut_trunacate_file(ute, ino, off + 1);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_size, off + 1);
 	ut_read_zeros(ute, ino, off, 1);
 	ut_write_read(ute, ino, buf, bsz, off);
@@ -541,12 +554,12 @@ static void ut_file_fallocate_beyond_(struct ut_env *ute,
 	ut_create_file(ute, dino, name, &ino);
 	ut_trunacate_file(ute, ino, off);
 	ut_fallocate_keep_size(ute, ino, off + ssz, ssz);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_size, off);
 	ut_expect_gt(st.st_blocks, 0);
 	blocks = st.st_blocks;
 	ut_write_read(ute, ino, buf, bsz, off + (ssz / 2));
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_size, off + (ssz / 2) + ssz);
 	ut_expect_gt(st.st_blocks, blocks);
 	ut_trunacate_zero(ute, ino);

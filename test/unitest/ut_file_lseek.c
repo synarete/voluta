@@ -32,7 +32,7 @@ static void ut_file_lseek_simple_(struct ut_env *ute, loff_t off)
 	ut_mkdir_at_root(ute, name, &dino);
 	ut_create_file(ute, dino, name, &ino);
 	ut_trunacate_file(ute, ino, off + step + 1);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_lseek_data(ute, ino, 0, &off_data);
 	ut_expect_eq(off_data, st.st_size);
 	ut_write_read(ute, ino, &d, 1, off);
@@ -78,7 +78,7 @@ static void ut_file_lseek_holes_(struct ut_env *ute,
 	for (size_t i = 0; i < cnt; ++i) {
 		off = base_off + (loff_t)(2 * bsz * (i + 1));
 		ut_write_read(ute, ino, buf, bsz, off);
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_lseek_hole(ute, ino, off, &off_hole);
 		ut_expect_eq(off_hole, st.st_size);
 	}

@@ -388,7 +388,7 @@ void ut_getattr_noent(struct ut_env *ute, ino_t ino)
 	ut_expect_err(err, -ENOENT);
 }
 
-void ut_getattr_file(struct ut_env *ute, ino_t ino, struct stat *st)
+void ut_getattr_reg(struct ut_env *ute, ino_t ino, struct stat *st)
 {
 	ut_getattr_ok(ute, ino, st);
 	ut_expect(S_ISREG(st->st_mode));
@@ -746,7 +746,7 @@ void ut_unlink_file(struct ut_env *ute,
 	struct stat st;
 
 	ut_lookup_ino(ute, parent, name, &ino);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_unlink_ok(ute, parent, name);
 }
 
@@ -913,7 +913,7 @@ void ut_release_file(struct ut_env *ute, ino_t ino)
 {
 	struct stat st;
 
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_release_ok(ute, ino);
 }
 
@@ -1092,26 +1092,26 @@ void ut_trunacate_zero(struct ut_env *ute, ino_t ino)
 	struct stat st;
 
 	ut_trunacate_file(ute, ino, 0);
-	ut_getattr_file(ute, ino, &st);
+	ut_getattr_reg(ute, ino, &st);
 	ut_expect_eq(st.st_blocks, 0);
 }
 
 void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
-                          loff_t offset, loff_t len)
+                          loff_t off, loff_t len)
 {
 	int err;
 	struct stat st;
 
-	err = ut_fallocate(ute, ino, 0, offset, len);
+	err = ut_fallocate(ute, ino, 0, off, len);
 	ut_expect_ok(err);
 
 	err = ut_getattr(ute, ino, &st);
 	ut_expect_ok(err);
-	ut_expect_ge(st.st_size, offset + len);
+	ut_expect_ge(st.st_size, off + len);
 }
 
 void ut_fallocate_keep_size(struct ut_env *ute, ino_t ino,
-                            loff_t offset, loff_t len)
+                            loff_t off, loff_t len)
 {
 	int err;
 	struct stat st[2];
@@ -1120,20 +1120,20 @@ void ut_fallocate_keep_size(struct ut_env *ute, ino_t ino,
 	err = ut_getattr(ute, ino, &st[0]);
 	ut_expect_ok(err);
 
-	err = ut_fallocate(ute, ino, mode, offset, len);
+	err = ut_fallocate(ute, ino, mode, off, len);
 	ut_expect_ok(err);
 
 	err = ut_getattr(ute, ino, &st[1]);
 	ut_expect_ok(err);
 
 	ut_expect_eq(st[1].st_size, st[0].st_size);
-	if ((offset >= st[1].st_size) && (len > 0)) {
+	if ((off >= st[1].st_size) && (len > 0)) {
 		ut_expect_gt(st[1].st_blocks, st[0].st_blocks);
 	}
 }
 
 void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
-                             loff_t offset, loff_t len)
+                             loff_t off, loff_t len)
 {
 	int err;
 	struct stat st[2];
@@ -1142,7 +1142,7 @@ void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
 	err = ut_getattr(ute, ino, &st[0]);
 	ut_expect_ok(err);
 
-	err = ut_fallocate(ute, ino, mode, offset, len);
+	err = ut_fallocate(ute, ino, mode, off, len);
 	ut_expect_ok(err);
 
 	err = ut_getattr(ute, ino, &st[1]);
@@ -1152,21 +1152,34 @@ void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
 }
 
 void ut_fallocate_zero_range(struct ut_env *ute, ino_t ino,
-                             loff_t offset, loff_t len)
+                             loff_t off, loff_t len, bool keep_size)
 {
 	int err;
 	struct stat st[2];
-	const int mode = FALLOC_FL_ZERO_RANGE | FALLOC_FL_KEEP_SIZE;
+	int mode = FALLOC_FL_ZERO_RANGE;
+	const loff_t end = off + len;
+
+	if (keep_size) {
+		mode |= FALLOC_FL_KEEP_SIZE;
+	}
 
 	err = ut_getattr(ute, ino, &st[0]);
 	ut_expect_ok(err);
 
-	err = ut_fallocate(ute, ino, mode, offset, len);
+	err = ut_fallocate(ute, ino, mode, off, len);
 	ut_expect_ok(err);
 
 	err = ut_getattr(ute, ino, &st[1]);
 	ut_expect_ok(err);
-	ut_expect_eq(st[1].st_size, st[0].st_size);
+	if (keep_size) {
+		ut_expect_eq(st[1].st_size, st[0].st_size);
+	} else {
+		if (end >= st[0].st_size) {
+			ut_expect_eq(st[1].st_size, end);
+		} else {
+			ut_expect_eq(st[1].st_size, st[0].st_size);
+		}
+	}
 	ut_expect_eq(st[1].st_blocks, st[0].st_blocks);
 }
 

@@ -80,7 +80,7 @@ static void ut_reload_mixed_(struct ut_env *ute, size_t nfiles)
 		name = ut_make_name(ute, "s", i);
 		ut_symlink_ok(ute, dino, name, tname, &sino);
 		ut_reload_ok(ute, dino);
-		ut_getattr_file(ute, fino, &st);
+		ut_getattr_reg(ute, fino, &st);
 		ut_lookup_lnk(ute, dino, name, sino);
 	}
 	for (size_t i = 0; i < nfiles; ++i) {
@@ -89,7 +89,7 @@ static void ut_reload_mixed_(struct ut_env *ute, size_t nfiles)
 		ut_getattr_dir(ute, dino, &st);
 		name = ut_make_name(ute, "f", i);
 		ut_lookup_ino(ute, dino, name, &fino);
-		ut_getattr_file(ute, fino, &st);
+		ut_getattr_reg(ute, fino, &st);
 		ut_reload_ok(ute, dino);
 		ut_remove_link(ute, dino, name);
 		name = ut_make_name(ute, "s", i);
@@ -151,7 +151,7 @@ static void ut_reload_io_(struct ut_env *ute, size_t nfiles, size_t step)
 		fname = ut_make_name(ute, "f", i);
 		ut_lookup_ino(ute, dino, fname, &fino);
 		off = make_offset(i, step);
-		ut_getattr_file(ute, fino, &st);
+		ut_getattr_reg(ute, fino, &st);
 		ut_expect_eq(st.st_size, off);
 		ut_unlink_ok(ute, dino, fname);
 	}

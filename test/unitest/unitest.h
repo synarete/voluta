@@ -226,7 +226,7 @@ void ut_getattr_ok(struct ut_env *ute, ino_t ino, struct stat *st);
 
 void ut_getattr_noent(struct ut_env *ute, ino_t ino);
 
-void ut_getattr_file(struct ut_env *ute, ino_t ino, struct stat *st);
+void ut_getattr_reg(struct ut_env *ute, ino_t ino, struct stat *st);
 
 void ut_getattr_lnk(struct ut_env *ute, ino_t ino, struct stat *st);
 
@@ -385,16 +385,16 @@ void ut_trunacate_file(struct ut_env *ute, ino_t ino, loff_t off);
 void ut_trunacate_zero(struct ut_env *ute, ino_t ino);
 
 void ut_fallocate_reserve(struct ut_env *ute, ino_t ino,
-                          loff_t offset, loff_t len);
+                          loff_t off, loff_t len);
 
 void ut_fallocate_keep_size(struct ut_env *ute, ino_t ino,
-                            loff_t offset, loff_t len);
+                            loff_t off, loff_t len);
 
 void ut_fallocate_punch_hole(struct ut_env *ute, ino_t ino,
-                             loff_t offset, loff_t len);
+                             loff_t off, loff_t len);
 
 void ut_fallocate_zero_range(struct ut_env *ute, ino_t ino,
-                             loff_t offset, loff_t len);
+                             loff_t off, loff_t len, bool keep_size);
 
 void ut_setxattr_create(struct ut_env *ute, ino_t ino,
                         const struct ut_keyval *kv);

@@ -1055,6 +1055,7 @@ static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
 	const loff_t isz = ii_size(ii);
 	const loff_t isp = ii_span(ii);
 	const loff_t off = f_ctx->off;
+	const loff_t end = f_ctx->end;
 	const size_t len = io_length(f_ctx);
 
 	iattr_setup(&iattr, ii_ino(ii));
@@ -1072,10 +1073,10 @@ static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
 		}
 	} else if (f_ctx->op_mask & OP_FALLOC) {
 		iattr.ia_flags |= VOLUTA_IATTR_MCTIME | VOLUTA_IATTR_SPAN;
-		iattr.ia_span = off_max(off, isp);
+		iattr.ia_span = off_max(end, isp);
 		if (!fl_keep_size(f_ctx)) {
 			iattr.ia_flags |= VOLUTA_IATTR_SIZE;
-			iattr.ia_size = off_max(off, isz);
+			iattr.ia_size = off_max(end, isz);
 		}
 	} else if (f_ctx->op_mask & OP_TRUNC) {
 		iattr.ia_flags |= VOLUTA_IATTR_SIZE | VOLUTA_IATTR_SPAN;

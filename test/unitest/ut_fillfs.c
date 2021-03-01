@@ -58,7 +58,7 @@ static void ut_fillfs_simple(struct ut_env *ute)
 	nwr = len;
 	buf = ut_randbuf(ute, bsz);
 	while (nwr == len) {
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_statfs_ok(ute, dino, &stv2);
 		len = calc_wr_size(&stv2, bsz);
 		nwr = 0;
@@ -66,7 +66,7 @@ static void ut_fillfs_simple(struct ut_env *ute)
 		ut_write_nospc(ute, ino, buf, len, off, &nwr);
 	}
 	for (size_t i = 0; i < 10; ++i) {
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		ut_statfs_ok(ute, dino, &stv2);
 		len = calc_wr_size(&stv2, bsz);
 		off = st.st_size;
@@ -131,7 +131,7 @@ static void ut_fillfs_append_(struct ut_env *ute, ino_t ino, size_t bsz)
 
 	ut_statfs_ok(ute, ino, &stv_cur);
 	while ((nwr == bsz) && stv_cur.f_bfree) {
-		ut_getattr_file(ute, ino, &st);
+		ut_getattr_reg(ute, ino, &st);
 		nwr = 0;
 		ut_write_nospc(ute, ino, buf, bsz, st.st_size, &nwr);
 		ut_statfs_ok(ute, ino, &stv_cur);

@@ -48,8 +48,7 @@
 #include "voluta-prog.h"
 
 #define VOLUTA_LOG_DEFAULT  \
-	(VOLUTA_LOG_INFO  | \
-	 VOLUTA_LOG_WARN  | \
+	(VOLUTA_LOG_WARN  | \
 	 VOLUTA_LOG_ERROR | \
 	 VOLUTA_LOG_CRIT  | \
 	 VOLUTA_LOG_STDOUT)
@@ -139,7 +138,7 @@ void voluta_die_if_not_dir(const char *path, bool w_ok)
 	struct stat st;
 	int access_mode = R_OK | X_OK | (w_ok ? W_OK : 0);
 
-	voluta_statpath_safe(path, &st);
+	voluta_stat_ok(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(-ENOTDIR, "illegal dir-path: %s", path);
 	}
@@ -155,7 +154,7 @@ void voluta_die_if_not_reg(const char *path, bool w_ok)
 	struct stat st;
 	int access_mode = R_OK | (w_ok ? W_OK : 0);
 
-	voluta_statpath_safe(path, &st);
+	voluta_stat_ok(path, &st);
 	if (S_ISDIR(st.st_mode)) {
 		voluta_die(-EISDIR, "illegal: %s", path);
 	}
@@ -344,7 +343,10 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	bool is_enc;
 
 	err = voluta_require_volume_path(path, rw);
-	if (err) {
+	if ((err == -EPERM) || (err == -EACCES)) {
+		voluta_die(err, "can not access volume: %s mode=%s",
+		           path, rw ? "rw" : "ro");
+	} else if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}
 	voluta_die_if_bad_zb(path, &ztype, &zbf);
@@ -361,6 +363,14 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	if (out_is_encrypted != NULL) {
 		*out_is_encrypted = is_enc;
 	}
+}
+
+void voluta_die_if_not_lockable(const char *path, bool rw)
+{
+	int fd = -1;
+
+	voluta_open_and_flock(path, rw, &fd);
+	voluta_funlock_and_close(path, &fd);
 }
 
 void voluta_die_if_not_archive(const char *path)
@@ -417,9 +427,11 @@ void voluta_die_if_not_empty_dir(const char *path, bool w_ok)
 
 void voluta_die_if_not_mntdir(const char *path, bool mount)
 {
-	int err;
+	long fstype;
 	struct stat st;
 	struct statfs stfs;
+	const struct voluta_fsinfo *fsi = NULL;
+
 
 	if (strlen(path) >= VOLUTA_MNTPATH_MAX) {
 		voluta_die(0, "illegal mount-path length: %s", path);
@@ -427,23 +439,80 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 	voluta_die_if_not_dir(path, mount);
 
 	if (mount) {
-		err = voluta_sys_statfs(path, &stfs);
-		if (err) {
-			voluta_die(err, "statfs failure: %s", path);
+		voluta_statfs_ok(path, &stfs);
+		fstype = (long)stfs.f_type;
+		fsi = voluta_fsinfo_by_vfstype(fstype);
+		if (fsi == NULL) {
+			voluta_die(0, "unknown fstype at: "
+			           "%s fstype=0x%lx", path, fstype);
 		}
-		err = voluta_check_mntdir_fstype(stfs.f_type);
-		if (err == -EINVAL) {
-			voluta_die(0, "illegal vfstype at: %s", path);
-		} else if (err) {
-			voluta_die(err, "can not mount on: %s uid=%d gid=%d",
-			           path, (int)getuid(), (int)getgid());
+		if (fsi->isfuse) {
+			voluta_die(0, "can not mount over FUSE file-system: "
+			           "%s fstype=0x%lx", path, fstype);
+		}
+		if (!fsi->allowed) {
+			voluta_die(0, "not allowed to mount over: "
+			           "%s fstype=0x%lx", path, fstype);
 		}
 		voluta_die_if_not_empty_dir(path, true);
 	} else {
-		voluta_statpath_safe(path, &st);
+		voluta_statfs_ok(path, &stfs);
+		fstype = (long)stfs.f_type;
+		fsi = voluta_fsinfo_by_vfstype(fstype);
+		if (fsi == NULL) {
+			voluta_die(0, "unknown fstype at: "
+			           "%s fstype=0x%lx", path, fstype);
+		}
+		if (!fsi->isfuse) {
+			voluta_die(0, "not a FUSE file-system: %s", path);
+		}
+		voluta_stat_ok(path, &st);
 		if (st.st_ino != VOLUTA_INO_ROOT) {
 			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
+{
+	int err;
+	const int o_flags = rw ? O_RDWR : O_RDONLY;
+	struct flock fl = {
+		.l_type = rw ? F_WRLCK : F_RDLCK,
+		.l_whence = SEEK_SET,
+		.l_start = 0,
+		.l_len = 0
+	};
+
+	*out_fd = -1;
+	err = voluta_sys_open(path, o_flags, 0, out_fd);
+	if (err) {
+		voluta_die(err, "failed to open: %s", path);
+	}
+	err = voluta_sys_fcntl_flock(*out_fd, F_SETLK, &fl);
+	if (err) {
+		voluta_die(err, "failed to flock: %s", path);
+	}
+}
+
+void voluta_funlock_and_close(const char *path, int *pfd)
+{
+	int err;
+	struct flock fl = {
+		.l_type = F_UNLCK,
+		.l_whence = SEEK_SET,
+		.l_start = 0,
+		.l_len = 0
+	};
+
+	if ((path != NULL) && (*pfd > 0)) {
+		err = voluta_sys_fcntl_flock(*pfd, F_SETLK, &fl);
+		if (err) {
+			voluta_die(err, "failed to funlock: %s", path);
+		}
+		voluta_sys_closefd(pfd);
 	}
 }
 
@@ -864,7 +933,7 @@ char *voluta_dirpath_safe(const char *path)
 	struct stat st;
 
 	rpath = voluta_realpath_safe(path);
-	voluta_statpath_safe(rpath, &st);
+	voluta_stat_ok(rpath, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		lasts = strrchr(rpath, '/');
 		if (lasts == NULL) {
@@ -886,10 +955,39 @@ char *voluta_basename_safe(const char *path)
 	return voluta_strdup_safe(base);
 }
 
-void voluta_statpath_safe(const char *path, struct stat *st)
+static void voluta_access_ok(const char *path)
+{
+	int err;
+	const uid_t uid = getuid();
+	const gid_t gid = getgid();
+
+	err = voluta_sys_access(path, R_OK);
+	if (err == -ENOENT) {
+		voluta_die(err, "no such path: %s", path);
+	}
+	if (err) {
+		voluta_die(err, "no access: %s uid=%d gid=%d", path, uid, gid);
+	}
+}
+
+void voluta_statfs_ok(const char *path, struct statfs *stfs)
+{
+	int err;
+
+	voluta_access_ok(path);
+
+	err = voluta_sys_statfs(path, stfs);
+	if (err) {
+		voluta_die(err, "statfs failure: %s", path);
+	}
+}
+
+void voluta_stat_ok(const char *path, struct stat *st)
 {
 	int err;
 	mode_t mode;
+
+	voluta_access_ok(path);
 
 	err = voluta_sys_stat(path, st);
 	if (err) {
@@ -903,7 +1001,7 @@ void voluta_statpath_safe(const char *path, struct stat *st)
 
 void voluta_stat_reg(const char *path, struct stat *st)
 {
-	voluta_statpath_safe(path, st);
+	voluta_stat_ok(path, st);
 	if (!S_ISREG(st->st_mode)) {
 		voluta_die(0, "not a regular file: %s", path);
 	}
@@ -911,7 +1009,7 @@ void voluta_stat_reg(const char *path, struct stat *st)
 
 void voluta_stat_reg_or_dir(const char *path, struct stat *st)
 {
-	voluta_statpath_safe(path, st);
+	voluta_stat_ok(path, st);
 	if (!S_ISDIR(st->st_mode) && !S_ISREG(st->st_mode)) {
 		voluta_die(0, "not dir-or-reg: %s", path);
 	}
@@ -919,19 +1017,19 @@ void voluta_stat_reg_or_dir(const char *path, struct stat *st)
 
 void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz)
 {
-	voluta_statpath_safe(path, st);
+	voluta_stat_ok(path, st);
 	if (!S_ISREG(st->st_mode) && !S_ISBLK(st->st_mode)) {
 		voluta_die(0, "not a regular-file or block-device: %s", path);
 	}
 	if (S_ISREG(st->st_mode)) {
 		*out_sz = st->st_size;
 	} else {
-		*out_sz = voluta_blkgetsize_safe(path);
+		*out_sz = voluta_blkgetsize_ok(path);
 	}
 }
 
 
-loff_t voluta_blkgetsize_safe(const char *path)
+loff_t voluta_blkgetsize_ok(const char *path)
 {
 	int fd = -1;
 	int err;

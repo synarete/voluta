@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 #include <sys/statfs.h>
 #include <sys/mount.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -45,7 +46,8 @@ struct voluta_mntmsg {
 	uint32_t        mn_group_id;
 	uint32_t        mn_root_mode;
 	uint32_t        mn_max_read;
-	uint32_t        mn_reserved2[22];
+	uint8_t         mn_allowother;
+	uint8_t         mn_reserved2[87];
 	uint8_t         mn_path[VOLUTA_MNTPATH_MAX];
 };
 
@@ -63,6 +65,7 @@ struct voluta_mntparams {
 	gid_t  group_id;
 	mode_t root_mode;
 	size_t max_read;
+	bool allowother;
 };
 
 struct voluta_mntclnt {
@@ -75,10 +78,8 @@ struct voluta_mntsvc {
 	struct voluta_mntsrv   *ms_srv;
 	struct voluta_socket    ms_asock;
 	struct voluta_sockaddr  ms_peer;
-	pid_t ms_pid;
-	uid_t ms_uid;
-	gid_t ms_gid;
-	int   ms_fuse_fd;
+	struct ucred            ms_peer_ucred;
+	int ms_fuse_fd;
 };
 
 struct voluta_mntsrv {
@@ -98,7 +99,6 @@ struct voluta_ms_env_obj {
 	struct voluta_ms_env    ms_env;
 };
 
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* Known file-systems */
@@ -116,32 +116,27 @@ struct voluta_ms_env_obj {
 #define NTFS_SB_MAGIC           0x5346544E
 #define OVERLAYFS_SUPER_MAGIC   0x794C7630
 
-#define MKFSINFO(t_, n_, f_) \
-	{ .vfstype = (t_), .name = (n_), .permitted_mount = (f_) }
+#define MKFSINFO(t_, n_, a_, i_) \
+	{ .vfstype = (t_), .name = (n_), .allowed = (a_), .isfuse = (i_) }
 
-struct voluta_fsinfo {
-	long vfstype;
-	const char *name;
-	int permitted_mount;
-};
 
 static const struct voluta_fsinfo fsinfo_allowed[] = {
-	MKFSINFO(FUSE_SUPER_MAGIC, "FUSE", 0),
-	MKFSINFO(TMPFS_MAGIC, "TMPFS", 0),
-	MKFSINFO(XFS_SB_MAGIC, "XFS", 1),
-	MKFSINFO(EXT234_SUPER_MAGIC, "EXT234", 1),
-	MKFSINFO(ZFS_SUPER_MAGIC, "ZFS", 1),
-	MKFSINFO(BTRFS_SUPER_MAGIC, "BTRFS", 1),
-	MKFSINFO(CEPH_SUPER_MAGIC, "CEPH", 1),
-	MKFSINFO(CIFS_MAGIC_NUMBER, "CIFS", 1),
-	MKFSINFO(ECRYPTFS_SUPER_MAGIC, "ECRYPTFS", 0),
-	MKFSINFO(F2FS_SUPER_MAGIC, "F2FS", 1),
-	MKFSINFO(NFS_SUPER_MAGIC, "NFS", 1),
-	MKFSINFO(NTFS_SB_MAGIC, "NTFS", 1),
-	MKFSINFO(OVERLAYFS_SUPER_MAGIC, "OVERLAYFS", 0)
+	MKFSINFO(FUSE_SUPER_MAGIC, "FUSE", 0, 1),
+	MKFSINFO(TMPFS_MAGIC, "TMPFS", 0, 0),
+	MKFSINFO(XFS_SB_MAGIC, "XFS", 1, 0),
+	MKFSINFO(EXT234_SUPER_MAGIC, "EXT234", 1, 0),
+	MKFSINFO(ZFS_SUPER_MAGIC, "ZFS", 1, 0),
+	MKFSINFO(BTRFS_SUPER_MAGIC, "BTRFS", 1, 0),
+	MKFSINFO(CEPH_SUPER_MAGIC, "CEPH", 1, 0),
+	MKFSINFO(CIFS_MAGIC_NUMBER, "CIFS", 1, 0),
+	MKFSINFO(ECRYPTFS_SUPER_MAGIC, "ECRYPTFS", 0, 0),
+	MKFSINFO(F2FS_SUPER_MAGIC, "F2FS", 1, 0),
+	MKFSINFO(NFS_SUPER_MAGIC, "NFS", 1, 0),
+	MKFSINFO(NTFS_SB_MAGIC, "NTFS", 1, 0),
+	MKFSINFO(OVERLAYFS_SUPER_MAGIC, "OVERLAYFS", 0, 0)
 };
 
-static const struct voluta_fsinfo *fsinfo_by_vfstype(long vfstype)
+const struct voluta_fsinfo *voluta_fsinfo_by_vfstype(long vfstype)
 {
 	const struct voluta_fsinfo *fsinfo = NULL;
 
@@ -159,23 +154,34 @@ int voluta_check_mntdir_fstype(long vfstype)
 {
 	const struct voluta_fsinfo *fsinfo;
 
-	fsinfo = fsinfo_by_vfstype(vfstype);
+	fsinfo = voluta_fsinfo_by_vfstype(vfstype);
 	if (fsinfo == NULL) {
 		return -EINVAL;
 	}
-	if (!fsinfo->permitted_mount) {
+	if (fsinfo->isfuse || !fsinfo->allowed) {
 		return -EPERM;
 	}
 	return 0;
 }
 
-static int voluta_check_mntpoint(const char *path, bool mounting)
+static int voluta_check_mntpoint(const char *path,
+                                 uid_t caller_uid, bool mounting)
 {
 	int err;
 	struct stat st;
 	struct statfs stfs;
 
 	err = voluta_sys_stat(path, &st);
+	if ((err == -EACCES) && !mounting) {
+		/*
+		 * special case where having a live mount without FUSE
+		 * 'allow_other' option; thus even privileged user can not
+		 * access to mount point. Fine with us
+		 *
+		 * TODO: at least type to parse '/proc/self/mounts'
+		 */
+		return 0;
+	}
 	if (err) {
 		return err;
 	}
@@ -194,6 +200,9 @@ static int voluta_check_mntpoint(const char *path, bool mounting)
 	err = voluta_sys_statfs(path, &stfs);
 	if (err) {
 		return err;
+	}
+	if (caller_uid != st.st_uid) {
+		return -EPERM;
 	}
 	if (mounting) {
 		err = voluta_check_mntdir_fstype(stfs.f_type);
@@ -262,7 +271,7 @@ static int check_canonical_path(const char *path)
 	return err;
 }
 
-static int check_mount_path(const char *path)
+static int check_mount_path(const char *path, uid_t caller_uid)
 {
 	int err;
 
@@ -270,18 +279,18 @@ static int check_mount_path(const char *path)
 	if (err) {
 		return err;
 	}
-	err = voluta_check_mntpoint(path, true);
+	err = voluta_check_mntpoint(path, caller_uid, true);
 	if (err) {
 		log_info("illegal mount-point: %s %d", path, err);
 	}
 	return err;
 }
 
-static int check_umount_path(const char *path)
+static int check_umount_path(const char *path, uid_t caller_uid)
 {
 	int err;
 
-	err = voluta_check_mntpoint(path, false);
+	err = voluta_check_mntpoint(path, caller_uid, false);
 	if (err && (err != -ENOTCONN)) {
 		log_info("illegal umount: %s %d", path, err);
 	}
@@ -322,16 +331,26 @@ static int open_fuse_dev(const char *devname, int *out_fd)
 	return 0;
 }
 
-static int format_mount_data(const struct voluta_mntparams *mntp, int fd,
-                             char *dat, size_t dat_size)
+static int format_mount_data(const struct voluta_mntparams *mntp,
+                             int fd, char *dat, int dat_size)
 {
-	int n;
+	int ret;
+	size_t len;
 
-	n = snprintf(dat, dat_size, "default_permissions,max_read=%d,"\
-	             "allow_other,fd=%d,rootmode=0%o,user_id=%d,group_id=%d",
-	             (int)mntp->max_read, fd, mntp->root_mode,
-	             mntp->user_id, mntp->group_id);
-	return (n < (int)dat_size) ? 0 : -EINVAL;
+	ret = snprintf(dat, (size_t)dat_size,
+	               "default_permissions,max_read=%d,fd=%d,"
+	               "rootmode=0%o,user_id=%d,group_id=%d,%s",
+	               (int)mntp->max_read, fd, mntp->root_mode,
+	               mntp->user_id, mntp->group_id,
+	               mntp->allowother ? "allow_other" : "");
+	if ((ret <= 0) || (ret >= dat_size)) {
+		return -EINVAL;
+	}
+	len = strlen(dat);
+	if (dat[len - 1] == ',') {
+		dat[len - 1] = '\0';
+	}
+	return 0;
 }
 
 static int do_fuse_mount(const struct voluta_mntparams *mntp, int *out_fd)
@@ -340,13 +359,13 @@ static int do_fuse_mount(const struct voluta_mntparams *mntp, int *out_fd)
 	const char *dev = "/dev/fuse";
 	const char *src = "voluta";
 	const char *fst = "fuse.voluta";
-	char data[512] = "";
+	char data[256] = "";
 
 	err = open_fuse_dev(dev, out_fd);
 	if (err) {
 		return err;
 	}
-	err = format_mount_data(mntp, *out_fd, data, sizeof(data));
+	err = format_mount_data(mntp, *out_fd, data, (int)sizeof(data));
 	if (err) {
 		close_fd(out_fd);
 		return err;
@@ -426,6 +445,7 @@ static void mntmsg_to_params(const struct voluta_mntmsg *mmsg,
 	mntp->group_id = mmsg->mn_group_id;
 	mntp->root_mode = mmsg->mn_root_mode;
 	mntp->max_read = mmsg->mn_max_read;
+	mntp->allowother = (mmsg->mn_allowother > 0);
 }
 
 static int mntmsg_set_from_params(struct voluta_mntmsg *mmsg,
@@ -436,6 +456,7 @@ static int mntmsg_set_from_params(struct voluta_mntmsg *mmsg,
 	mmsg->mn_group_id = (uint32_t)mntp->group_id;
 	mmsg->mn_root_mode = (uint32_t)mntp->root_mode;
 	mmsg->mn_max_read = (uint32_t)mntp->max_read;
+	mmsg->mn_allowother = mntp->allowother ? 1 : 0;
 
 	return mntp->path ? mntmsg_set_path(mmsg, mntp->path) : 0;
 }
@@ -619,18 +640,18 @@ static int mntmsg_recv2(const struct voluta_mntmsg *mmsg,
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-static void mntsvc_reset_cred(struct voluta_mntsvc *msvc)
+static void mntsvc_reset_peer_ucred(struct voluta_mntsvc *msvc)
 {
-	msvc->ms_uid = (uid_t)(-1);
-	msvc->ms_gid = (gid_t)(-1);
-	msvc->ms_pid = (pid_t)(-1);
+	msvc->ms_peer_ucred.pid = (pid_t)(-1);
+	msvc->ms_peer_ucred.uid = (uid_t)(-1);
+	msvc->ms_peer_ucred.gid = (gid_t)(-1);
 }
 
 static void mntsvc_init(struct voluta_mntsvc *msvc)
 {
 	voluta_streamsock_initu(&msvc->ms_asock);
 	voluta_sockaddr_none(&msvc->ms_peer);
-	mntsvc_reset_cred(msvc);
+	mntsvc_reset_peer_ucred(msvc);
 	msvc->ms_fuse_fd = -1;
 	msvc->ms_srv = NULL;
 }
@@ -650,9 +671,7 @@ static void mntsvc_fini(struct voluta_mntsvc *msvc)
 {
 	mntsvc_close_sock(msvc);
 	mntsvc_close_fd(msvc);
-	msvc->ms_uid = (uid_t)(-1);
-	msvc->ms_gid = (gid_t)(-1);
-	msvc->ms_pid = (pid_t)(-1);
+	mntsvc_reset_peer_ucred(msvc);
 	msvc->ms_srv = NULL;
 }
 
@@ -660,35 +679,34 @@ static int mntsvc_accept_from(struct voluta_mntsvc *msvc,
                               const struct voluta_socket *sock)
 {
 	int err;
-	struct ucred cred;
+	struct ucred *cred = &msvc->ms_peer_ucred;
 
 	err = voluta_socket_accept(sock, &msvc->ms_asock, &msvc->ms_peer);
 	if (err) {
 		return err;
 	}
-	err = voluta_socket_getpeercred(&msvc->ms_asock, &cred);
+	err = voluta_socket_getpeercred(&msvc->ms_asock, cred);
 	if (err) {
 		voluta_socket_fini(&msvc->ms_asock);
 		return err;
 	}
-	msvc->ms_pid = cred.pid;
-	msvc->ms_uid = cred.uid;
-	msvc->ms_gid = cred.gid;
 
 	log_info("new-connection: pid=%d uid=%d gid=%d",
-	         msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
+	         cred->pid, cred->uid, cred->gid);
 	return 0;
 }
 
 static void mntsvc_term_peer(struct voluta_mntsvc *msvc)
 {
+	const struct ucred *cred = &msvc->ms_peer_ucred;
+
 	log_info("end-connection: pid=%d uid=%d gid=%d",
-	         msvc->ms_pid, msvc->ms_uid, msvc->ms_gid);
+	         cred->pid, cred->uid, cred->gid);
 
 	voluta_socket_shutdown_rdwr(&msvc->ms_asock);
 	voluta_socket_fini(&msvc->ms_asock);
 	voluta_streamsock_initu(&msvc->ms_asock);
-	mntsvc_reset_cred(msvc);
+	mntsvc_reset_peer_ucred(msvc);
 }
 
 static int mntsvc_recv_request(struct voluta_mntsvc *msvc,
@@ -743,6 +761,7 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 {
 	int err;
 	size_t page_size;
+	const struct ucred *peer_cred = &msvc->ms_peer_ucred;
 	const unsigned long sup_mnt_mask =
 	        (MS_LAZYTIME | MS_NOEXEC | MS_NOSUID | MS_NODEV | MS_RDONLY);
 
@@ -755,9 +774,9 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 	if ((mntp->root_mode & S_IFDIR) == 0) {
 		return -EINVAL;
 	}
-	if ((mntp->user_id != msvc->ms_uid) ||
-	    (mntp->group_id != msvc->ms_gid)) {
-		return -EINVAL;
+	if ((mntp->user_id != peer_cred->uid) ||
+	    (mntp->group_id != peer_cred->gid)) {
+		return -EACCES;
 	}
 	page_size = voluta_sc_page_size();
 	if (mntp->max_read < (2 * page_size)) {
@@ -773,7 +792,7 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 	if (err) {
 		return err;
 	}
-	err = check_mount_path(mntp->path);
+	err = check_mount_path(mntp->path, peer_cred->uid);
 	if (err) {
 		return err;
 	}
@@ -815,6 +834,7 @@ static int mntsvc_check_umount(const struct voluta_mntsvc *msvc,
 {
 	int err;
 	const uint64_t mnt_allow = MNT_DETACH | MNT_FORCE;
+	const struct ucred *peer_cred = &msvc->ms_peer_ucred;
 	const char *path = mntp->path;
 
 	unused(msvc);
@@ -828,7 +848,7 @@ static int mntsvc_check_umount(const struct voluta_mntsvc *msvc,
 		return -EINVAL;
 	}
 	/* TODO: for MNT_FORCE, require valid uig/gid */
-	err = check_umount_path(path);
+	err = check_umount_path(path, peer_cred->uid);
 	if (err) {
 		return err;
 	}
@@ -1371,7 +1391,8 @@ static int do_rpc_mount(struct voluta_mntclnt *mclnt,
 }
 
 int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
-                     size_t max_read, unsigned long ms_flags, int *out_fd)
+                     size_t max_read, unsigned long ms_flags,
+                     bool allow_other, int *out_fd)
 {
 	int err;
 	struct voluta_mntclnt mclnt;
@@ -1381,7 +1402,8 @@ int voluta_rpc_mount(const char *mountpoint, uid_t uid, gid_t gid,
 		.root_mode = S_IFDIR | S_IRWXU,
 		.user_id = uid,
 		.group_id = gid,
-		.max_read = max_read
+		.max_read = max_read,
+		.allowother = allow_other
 	};
 
 	*out_fd = -1;

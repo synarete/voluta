@@ -364,7 +364,30 @@ static void test_mkdir_tree_deep(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects successful rmdir(3p) to update the last data modification and last
+ * file status change time-stamps of the parent directory
+ */
+static void test_rmdir_mctime(struct vt_env *vte)
+{
+	struct stat st[2];
+	const char *path1 = vt_new_path_unique(vte);
+	const char *path2 = vt_new_path_under(vte, path1);
 
+	vt_mkdir(path1, 0700);
+	vt_mkdir(path2, 0700);
+	vt_stat(path1, &st[0]);
+	vt_expect_true(S_ISDIR(st[0].st_mode));
+	vt_suspends(vte, 2);
+	vt_rmdir(path2);
+	vt_stat_err(path2, -ENOENT);
+	vt_stat(path1, &st[1]);
+	vt_expect_mtime_gt(&st[0], &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+	vt_rmdir(path1);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects successful rmdir(3p) on empty directory while still referenced by
  * open file-descriptor.
@@ -425,6 +448,29 @@ static void test_mkdir_setgid(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects mkdirat(2) to work with nested dirs/files
+ */
+static void test_mkdirat_nested(struct vt_env *vte)
+{
+	int dfd = -1;
+	const char *nested1 = "nested1";
+	const char *nested2 = "nested1/nested2";
+	const char *path = vt_new_path_unique(vte);
+
+	vt_mkdir(path, 0700);
+	vt_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
+	vt_mkdirat(dfd, nested1, 0755);
+	vt_mkdirat(dfd, nested2, 0755);
+	vt_unlinkat(dfd, nested2, AT_REMOVEDIR);
+	vt_mknodat(dfd, nested2, 0755, 0);
+	vt_unlinkat(dfd, nested2, 0);
+	vt_unlinkat(dfd, nested1, AT_REMOVEDIR);
+	vt_close(dfd);
+	vt_rmdir(path);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_rmdir),
@@ -436,8 +482,10 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_bigger),
 	VT_DEFTEST(test_mkdir_tree_wide),
 	VT_DEFTEST(test_mkdir_tree_deep),
+	VT_DEFTEST(test_rmdir_mctime),
 	VT_DEFTEST(test_rmdir_openat),
 	VT_DEFTEST(test_mkdir_setgid),
+	VT_DEFTEST(test_mkdirat_nested),
 };
 
 const struct vt_tests vt_test_mkdir = VT_DEFTESTS(vt_local_tests);

@@ -43,7 +43,6 @@ typedef void (*voluta_exec_fn)(void);
 /* sub-command descriptor */
 struct voluta_cmd_info {
 	const char *name;
-	voluta_exec_fn getopt_hook;
 	voluta_exec_fn action_hook;
 };
 
@@ -68,10 +67,12 @@ struct voluta_subcmd_mount {
 	char   *volume_real;
 	char   *volume_clone;
 	char   *volume_active;
+	int     volume_fd;
 	char   *point;
 	char   *point_real;
 	char   *options;
 	bool    encrypted;
+	bool    allowother;
 	bool    lazytime;
 	bool    noexec;
 	bool    nosuid;
@@ -240,27 +241,6 @@ void voluta_execute_export(void);
 void voluta_execute_import(void);
 
 
-void voluta_getopt_mkfs(void);
-
-void voluta_getopt_fsck(void);
-
-void voluta_getopt_mount(void);
-
-void voluta_getopt_umount(void);
-
-void voluta_getopt_show(void);
-
-void voluta_getopt_clone(void);
-
-void voluta_getopt_encrypt(void);
-
-void voluta_getopt_decrypt(void);
-
-void voluta_getopt_export(void);
-
-void voluta_getopt_import(void);
-
-
 /* common utilities */
 __attribute__((__noreturn__))
 void voluta_die(int errnum, const char *fmt, ...);
@@ -299,9 +279,16 @@ void voluta_die_if_bad_sb(const char *path, const char *pass);
 void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
                               bool mustnot_be_enc, bool *out_is_encrypted);
 
+void voluta_die_if_not_lockable(const char *path, bool rw);
+
 void voluta_die_if_not_archive(const char *path);
 
 void voluta_die_if_no_mountd(void);
+
+
+void voluta_open_and_flock(const char *path, bool rw, int *out_fd);
+
+void voluta_funlock_and_close(const char *path, int *pfd);
 
 char *voluta_clone_as_tmppath(const char *path);
 
@@ -325,7 +312,9 @@ void voluta_setrlimit_nocore(void);
 
 void voluta_prctl_non_dumpable(void);
 
-void voluta_statpath_safe(const char *path, struct stat *st);
+void voluta_statfs_ok(const char *path, struct statfs *stfs);
+
+void voluta_stat_ok(const char *path, struct stat *st);
 
 void voluta_stat_reg(const char *path, struct stat *st);
 
@@ -333,7 +322,7 @@ void voluta_stat_reg_or_dir(const char *path, struct stat *st);
 
 void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz);
 
-loff_t voluta_blkgetsize_safe(const char *path);
+loff_t voluta_blkgetsize_ok(const char *path);
 
 char *voluta_realpath_safe(const char *path);
 

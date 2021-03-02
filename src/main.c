@@ -33,7 +33,6 @@
 
 /* Local functions forward declarations */
 static void voluta_parse_global_args(void);
-static void voluta_parse_command_args(void);
 static void voluta_exec_subcmd(void);
 
 
@@ -41,7 +40,7 @@ static void voluta_exec_subcmd(void);
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *                                                                           *
  *                                                                           *
- *                       Voluta: File-System in a File                       *
+ *                       Voluta: a File-system Vault                         *
  *                                                                           *
  *                                                                           *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -53,9 +52,6 @@ int main(int argc, char *argv[])
 
 	/* Parse top-level arguments */
 	voluta_parse_global_args();
-
-	/* Parse sub-command arguments */
-	voluta_parse_command_args();
 
 	/* Common process initializations */
 	voluta_init_process();
@@ -72,8 +68,7 @@ int main(int argc, char *argv[])
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-#define DEFCMD(cmd_) \
-	{ #cmd_, voluta_getopt_##cmd_, voluta_execute_##cmd_ }
+#define DEFCMD(cmd_)    { #cmd_, voluta_execute_##cmd_ }
 
 static bool equals(const char *s1, const char *s2)
 {
@@ -147,19 +142,13 @@ static void voluta_parse_global_args(void)
 	voluta_globals.cmd_info = cmt_info_of(cmd_name);
 }
 
-static void voluta_parse_command_args(void)
-{
-	if (voluta_globals.cmd_info == NULL) {
-		show_main_help_and_exit(1);
-	}
-	voluta_globals.cmd_info->getopt_hook();
-}
-
 static void voluta_exec_subcmd(void)
 {
-	const struct voluta_cmd_info *cmdi = voluta_globals.cmd_info;
+	const struct voluta_cmd_info *cmd_info = voluta_globals.cmd_info;
 
-	if (cmdi && cmdi->action_hook) {
-		cmdi->action_hook();
+	if (cmd_info == NULL) {
+		show_main_help_and_exit(1);
+	} else if (cmd_info->action_hook != NULL) {
+		cmd_info->action_hook();
 	}
 }

@@ -210,7 +210,6 @@ static void test_basic_reserve_at(struct vt_env *vte,
 {
 	int fd;
 	loff_t pos = -1;
-	size_t nwr = 0;
 	uint8_t buf[2] = { 0, 0 };
 	const char *path = vt_new_path_unique(vte);
 
@@ -218,8 +217,7 @@ static void test_basic_reserve_at(struct vt_env *vte,
 	for (size_t i = 0; i < ssz; ++i) {
 		buf[0] = (uint8_t)i;
 		pos = off + (loff_t)(ssz - i - 1);
-		vt_pwrite(fd, buf, 1, pos, &nwr);
-		vt_expect_eq(nwr, 1);
+		vt_pwriten(fd, buf, 1, pos);
 	}
 	for (size_t i = 0; i < ssz; ++i) {
 		pos = off + (loff_t)(ssz - i - 1);
@@ -297,24 +295,22 @@ static void test_basic_overlap(struct vt_env *vte)
 /*
  * Expects read-write data-consistency when I/O in complex patterns
  */
-static void test_basic_(struct vt_env *vte,
-                        loff_t pos, loff_t lim, loff_t step)
+static void test_basic_rw(struct vt_env *vte,
+                          loff_t pos, loff_t lim, loff_t step)
 {
 	int fd;
-	loff_t off;
-	size_t nwr;
 	size_t bsz = VT_BK_SIZE;
 	void *buf1 = NULL;
 	void *buf2 = NULL;
 	const char *path = vt_new_path_unique(vte);
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	for (off = pos; off < lim; off += step) {
+	for (loff_t off = pos; off < lim; off += step) {
 		buf1 = vt_new_buf_rands(vte, bsz);
 		buf2 = vt_new_buf_rands(vte, bsz);
-		vt_pwrite(fd, buf1, bsz, off, &nwr);
+		vt_pwriten(fd, buf1, bsz, off);
 		vt_fsync(fd);
-		vt_pread(fd, buf2, bsz, off, &nwr);
+		vt_preadn(fd, buf2, bsz, off);
 		vt_fsync(fd);
 		vt_expect_eqm(buf1, buf2, bsz);
 	}
@@ -323,26 +319,26 @@ static void test_basic_(struct vt_env *vte,
 }
 
 
-static void test_basic_aligned(struct vt_env *vte)
+static void test_basic_rw_aligned(struct vt_env *vte)
 {
 	const loff_t step = VT_BK_SIZE;
 
-	test_basic_(vte, 0, VT_UMEGA, step);
-	test_basic_(vte, 0, 2 * VT_UMEGA, step);
-	test_basic_(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step);
+	test_basic_rw(vte, 0, VT_UMEGA, step);
+	test_basic_rw(vte, 0, 2 * VT_UMEGA, step);
+	test_basic_rw(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step);
 }
 
-static void test_basic_unaligned(struct vt_env *vte)
+static void test_basic_rw_unaligned(struct vt_env *vte)
 {
 	const loff_t step1 = VT_BK_SIZE + 1;
 	const loff_t step2 = VT_BK_SIZE - 1;
 
-	test_basic_(vte, 0, VT_UMEGA, step1);
-	test_basic_(vte, 0, VT_UMEGA, step2);
-	test_basic_(vte, 0, 2 * VT_UMEGA, step1);
-	test_basic_(vte, 0, 2 * VT_UMEGA, step2);
-	test_basic_(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step1);
-	test_basic_(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step2);
+	test_basic_rw(vte, 0, VT_UMEGA, step1);
+	test_basic_rw(vte, 0, VT_UMEGA, step2);
+	test_basic_rw(vte, 0, 2 * VT_UMEGA, step1);
+	test_basic_rw(vte, 0, 2 * VT_UMEGA, step2);
+	test_basic_rw(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step1);
+	test_basic_rw(vte, VT_UGIGA - VT_UMEGA, VT_UMEGA, step2);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -501,8 +497,8 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_basic_reserve3),
 	VT_DEFTEST(test_basic_reserve4),
 	VT_DEFTEST(test_basic_overlap),
-	VT_DEFTEST(test_basic_aligned),
-	VT_DEFTEST(test_basic_unaligned),
+	VT_DEFTEST(test_basic_rw_aligned),
+	VT_DEFTEST(test_basic_rw_unaligned),
 	VT_DEFTEST(test_basic_chunk_1m),
 	VT_DEFTEST(test_basic_chunk_2m),
 	VT_DEFTEST(test_basic_chunk_4m),

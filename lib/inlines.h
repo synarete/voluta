@@ -164,6 +164,32 @@ static inline bool uid_isroot(uid_t uid)
 	return uid_eq(uid, 0);
 }
 
+
+static inline bool capable_fsetid(const struct voluta_ucred *ucred)
+{
+	/* TODO: CAP_SYS_ADMIN */
+	return uid_isroot(ucred->uid);
+}
+
+static inline bool capable_chown(const struct voluta_ucred *ucred)
+{
+	/* TODO: CAP_CHOWN */
+	return uid_isroot(ucred->uid);
+}
+
+static inline bool capable_fowner(const struct voluta_ucred *ucred)
+{
+	/* TODO: CAP_FOWNER */
+	return uid_isroot(ucred->uid);
+}
+
+static inline bool capable_sys_admin(const struct voluta_ucred *ucred)
+{
+	/* TODO: CAP_SYS_ADMIN */
+	return uid_isroot(ucred->uid);
+}
+
+
 static inline bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
 {
 	return (vt1 == vt2);

@@ -322,15 +322,13 @@ test_fallocate_punch_into_hole_(struct vt_env *vte, loff_t base_off)
 	vt_fallocate(fd, mode, off, zlen);
 	vt_fstat(fd, &st[0]);
 	vt_expect_eq(st[0].st_blocks, 0);
-	vt_pread(fd, buf1, size, off, &nrd);
-	vt_expect_eq(nrd, size);
+	vt_preadn(fd, buf1, size, off);
 	vt_expect_eqm(buf1, buf2, size);
 	vt_fallocate(fd, mode, off_end - zlen, zlen);
 	vt_pread(fd, buf1, size, off_end - zlen, &nrd);
 	vt_expect_eq(nrd, zlen);
 	vt_expect_eqm(buf1, buf2, (size_t)zlen);
-	vt_pwrite(fd, buf3, (size_t)zlen, off, &nrd);
-	vt_expect_eq(nrd, zlen);
+	vt_pwriten(fd, buf3, (size_t)zlen, off);
 	vt_fstat(fd, &st[0]);
 	vt_expect_gt(st[0].st_blocks, 0);
 	vt_fallocate(fd, mode, off + zlen, zlen);
@@ -361,7 +359,6 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 {
 	int fd = -1;
 	loff_t pos;
-	size_t nwr = 0;
 	size_t nrd = 0;
 	const size_t size = 20 * VT_UKILO;
 	const size_t nzeros = 4 * VT_UKILO;
@@ -373,10 +370,8 @@ static void test_fallocate_punch_into_allocated(struct vt_env *vte)
 
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	vt_ftruncate(fd, (loff_t)size);
-	vt_pwrite(fd, buf2, nzeros, off, &nwr);
-	vt_expect_eq(nwr, nzeros);
-	vt_pread(fd, buf1, size, 0, &nrd);
-	vt_expect_eq(nrd, size);
+	vt_pwriten(fd, buf2, nzeros, off);
+	vt_preadn(fd, buf1, size, 0);
 	vt_expect_eqm(buf1, buf2, size);
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);
@@ -512,8 +507,6 @@ static void test_fallocate_sparse_(struct vt_env *vte,
                                    loff_t base_off, loff_t step_size)
 {
 	int fd = -1;
-	size_t nwr = 0;
-	size_t nrd = 0;
 	loff_t off = -1;
 	loff_t len = 0;
 	loff_t tmp = 0;
@@ -536,17 +529,14 @@ static void test_fallocate_sparse_(struct vt_env *vte,
 		vt_fstat(fd, &st);
 		vt_expect_eq(st.st_size, off + len);
 		vt_expect_gt(st.st_blocks, blocks);
-		vt_pread(fd, &tmp, (size_t)len, off, &nrd);
-		vt_expect_eq(nrd, len);
+		vt_preadn(fd, &tmp, (size_t)len, off);
 		vt_expect_eq(tmp, 0);
 		blocks = st.st_blocks;
-		vt_pwrite(fd, &off, (size_t)len, off, &nwr);
-		vt_expect_eq(nwr, len);
+		vt_pwriten(fd, &off, (size_t)len, off);
 		vt_fstat(fd, &st);
 		vt_expect_eq(st.st_size, off + len);
 		vt_expect_eq(st.st_blocks, blocks);
-		vt_pread(fd, &tmp, (size_t)len, off, &nrd);
-		vt_expect_eq(nrd, len);
+		vt_preadn(fd, &tmp, (size_t)len, off);
 		vt_expect_eq(tmp, off);
 	}
 	vt_ftruncate(fd, 0);

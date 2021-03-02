@@ -81,7 +81,7 @@ endif
 
 
 # Pedantic compilation flags
-CFLAGS += -pedantic -Wall -Wextra -Winit-self -Winline
+CFLAGS += -Wall -Wextra -Winit-self -Winline
 CFLAGS += -Wunused -Wunused-parameter -Wunused-result
 CFLAGS += -Wunused-local-typedefs -Wunused-label
 CFLAGS += -Wshadow -Wfloat-equal -Wwrite-strings -Wpointer-arith
@@ -97,6 +97,12 @@ CFLAGS += -Wstrict-aliasing=2 -Warray-bounds -Winline -Wcast-qual
 CFLAGS += -fPIC -fwrapv -fstrict-aliasing
 CFLAGS += -fstack-protector -fstack-protector-strong # -fstack-check
 # CFLAGS += -Wpadded
+
+# Have 'pedantic' flag only when not using private fuse header
+ifneq (,$(wildcard "$(TOP)/include/linux/fuse.h"))
+CFLAGS += -pedantic
+endif
+
 
 # C-Dialect compilation flags
 CFLAGS += -Wbad-function-cast -Wmissing-prototypes -Waggregate-return

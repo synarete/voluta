@@ -609,7 +609,7 @@ void voluta_substr_find_token_chr(const struct voluta_substr *ss, char sep,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Finds the next token in ss after tok, which is delimeted by any of the
+ * Finds the next token in ss after tok, which is delimited by any of the
  * characters of sep(s).
  */
 

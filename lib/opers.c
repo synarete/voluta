@@ -30,6 +30,8 @@
 #define ok_or_goto_out(err_) \
 	do { if ((err_) != 0) goto out; } while (0)
 
+#define ok_or_goto_out_ok(err_) \
+	do { if ((err_) != 0) goto out_ok; } while (0)
 
 static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
@@ -94,6 +96,7 @@ int voluta_fs_forget(struct voluta_sb_info *sbi,
                      ino_t ino, size_t nlookup)
 {
 	int err;
+	struct voluta_inode_info *ii = NULL;
 
 	err = op_start(sbi, op);
 	ok_or_goto_out(err);
@@ -101,8 +104,13 @@ int voluta_fs_forget(struct voluta_sb_info *sbi,
 	err = voluta_authorize(sbi, op);
 	ok_or_goto_out(err);
 
-	err = voluta_do_forget_inode(sbi, ino, nlookup);
+	err = voluta_fetch_cached_inode(sbi, ino, &ii);
+	ok_or_goto_out_ok(err);
+
+	err = voluta_do_forget(op, ii, nlookup);
 	ok_or_goto_out(err);
+out_ok:
+	err = 0;
 out:
 	return op_finish(sbi, op, err);
 }
@@ -1057,7 +1065,7 @@ out:
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
-                    struct statx *out_stx)
+                    unsigned int request_mask, struct statx *out_stx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1071,7 +1079,7 @@ int voluta_fs_statx(struct voluta_sb_info *sbi,
 	err = voluta_fetch_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
-	err = voluta_do_statx(op, ii, out_stx);
+	err = voluta_do_statx(op, ii, request_mask, out_stx);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);

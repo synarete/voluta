@@ -82,6 +82,9 @@ int voluta_sys_stat(const char *path, struct stat *st);
 
 int voluta_sys_lstat(const char *path, struct stat *st);
 
+int voluta_sys_statx(int dfd, const char *pathname, int flags,
+                     unsigned int mask, struct statx *stx);
+
 int voluta_sys_chmod(const char *path, mode_t mode);
 
 int voluta_sys_fchmod(int fd, mode_t mode);
@@ -322,6 +325,18 @@ int voluta_sys_getsockopt(int sd, int level, int optname,
                           void *optval, socklen_t *optlen);
 
 int voluta_sys_pipe2(int pipefd[2], int flags);
+
+int voluta_sys_seteuid(uid_t euid);
+
+int voluta_sys_setegid(gid_t egid);
+
+int voluta_sys_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid);
+
+int voluta_sys_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid);
+
+int voluta_sys_setresuid(uid_t ruid, uid_t euid, uid_t suid);
+
+int voluta_sys_setresgid(gid_t rgid, gid_t egid, gid_t sgid);
 
 
 /* syscallx */

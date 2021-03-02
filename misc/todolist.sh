@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 basedir=$(realpath $(dirname "$0")/../)
 find "${basedir}" \
   -type f -name '*.[ch]' \

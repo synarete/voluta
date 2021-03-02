@@ -412,6 +412,12 @@ int voluta_sys_lstat(const char *path, struct stat *st)
 	return ok_or_errno(lstat(path, st));
 }
 
+int voluta_sys_statx(int dfd, const char *pathname, int flags,
+                     unsigned int mask, struct statx *stx)
+{
+	return ok_or_errno(statx(dfd, pathname, flags, mask, stx));
+}
+
 int voluta_sys_statvfs(const char *path, struct statvfs *stv)
 {
 	return ok_or_errno(statvfs(path, stv));
@@ -891,4 +897,34 @@ int voluta_sys_pipe2(int pipefd[2], int flags)
 	return ok_or_errno(pipe2(pipefd, flags));
 }
 
+/* SETEUID/SETEGID et.al. */
+int voluta_sys_seteuid(uid_t euid)
+{
+	return ok_or_errno(seteuid(euid));
+}
+
+int voluta_sys_setegid(gid_t egid)
+{
+	return ok_or_errno(setegid(egid));
+}
+
+int voluta_sys_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid)
+{
+	return ok_or_errno(getresuid(ruid, euid, suid));
+}
+
+int voluta_sys_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid)
+{
+	return ok_or_errno(getresgid(rgid, egid, sgid));
+}
+
+int voluta_sys_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+{
+	return ok_or_errno(setresuid(ruid, euid, suid));
+}
+
+int voluta_sys_setresgid(gid_t rgid, gid_t egid, gid_t sgid)
+{
+	return ok_or_errno(setresgid(rgid, egid, sgid));
+}
 

@@ -87,6 +87,7 @@
 #define ii_incref(ii)                   vi_incref(ii_vi(ii))
 #define ii_decref(ii)                   vi_decref(ii_vi(ii))
 #define ii_dirtify(ii)                  voluta_ii_dirtify(ii)
+#define ii_undirtify(ii)                voluta_ii_undirtify(ii)
 #define ii_isrdonly(ii)                 voluta_ii_isrdonly(ii)
 #define ii_xino(ii)                     voluta_ii_xino(ii)
 #define ii_parent(ii)                   voluta_ii_parent(ii)

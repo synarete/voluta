@@ -782,16 +782,6 @@ int voluta_vstore_expand(struct voluta_vstore *vstore, loff_t cap)
 	return voluta_pstore_expand(&vstore->vs_pstore, cap);
 }
 
-int voluta_vstore_flock(const struct voluta_vstore *vstore)
-{
-	return voluta_pstore_flock(&vstore->vs_pstore);
-}
-
-int voluta_vstore_funlock(const struct voluta_vstore *vstore)
-{
-	return voluta_pstore_funlock(&vstore->vs_pstore);
-}
-
 int voluta_vstore_write(struct voluta_vstore *vstore,
                         loff_t off, size_t bsz, const void *buf)
 {
@@ -825,9 +815,10 @@ int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
                          loff_t off, size_t len, struct voluta_xiovec *xiov)
 {
 	int err;
+	const bool rw = false; /* TODO: propagate from top */
 	const struct voluta_pstore *pstore = &vstore->vs_pstore;
 
-	err = voluta_pstore_check_io(pstore, off, len);
+	err = voluta_pstore_check_io(pstore, rw, off, len);
 	if (!err) {
 		xiov->off = off;
 		xiov->len = len;

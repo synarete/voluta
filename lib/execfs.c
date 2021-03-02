@@ -340,6 +340,9 @@ static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
 			ctl_flags |= VOLUTA_F_ENCRYPTWR;
 		}
 	}
+	if (args->allowother) {
+		ctl_flags |= VOLUTA_F_ALLOWOTHER;
+	}
 	return ctl_flags;
 }
 
@@ -553,10 +556,6 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_flock(fse->vstore);
-	if (err && (err != -EPERM)) {
-		return err;
-	}
 	return 0;
 }
 
@@ -569,21 +568,11 @@ static int fse_create_vstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_flock(fse->vstore);
-	if (err) {
-		return err;
-	}
 	return 0;
 }
 
 static int fse_close_vstore(struct voluta_fs_env *fse)
 {
-	int err;
-
-	err = voluta_vstore_funlock(fse->vstore);
-	if (err) {
-		return err;
-	}
 	voluta_vstore_close(fse->vstore);
 	return 0;
 }
@@ -983,7 +972,10 @@ static int fse_format_rootdir(const struct voluta_fs_env *fse,
 		return err;
 	}
 	voluta_fixup_rootdir(root_ii);
-	voluta_bind_rootdir(sbi, root_ii);
+	err = voluta_bind_rootdir(sbi, root_ii);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 

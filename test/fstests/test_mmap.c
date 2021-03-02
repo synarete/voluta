@@ -36,7 +36,6 @@
 static void test_mmap_basic_(struct vt_env *vte, loff_t off, size_t nbk)
 {
 	int fd = -1;
-	size_t nwr = 0;
 	size_t msz = VT_BK_SIZE * nbk;
 	void *buf = NULL;
 	void *addr = NULL;
@@ -44,8 +43,7 @@ static void test_mmap_basic_(struct vt_env *vte, loff_t off, size_t nbk)
 
 	buf = vt_new_buf_rands(vte, msz);
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	vt_pwrite(fd, buf, msz, off, &nwr);
-	vt_expect_eq(msz, nwr);
+	vt_pwriten(fd, buf, msz, off);
 	vt_mmap(NULL, msz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off, &addr);
 	vt_expect_eqm(addr, buf, msz);
 	buf = vt_new_buf_rands(vte, msz);
@@ -105,7 +103,15 @@ static void test_mmap_fallocate_(struct vt_env *vte, loff_t off, size_t msz)
 	vt_mmap(NULL, msz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off, &addr);
 	memcpy(addr, data, msz);
 	vt_expect_eqm(addr, data, msz);
-	mode = FALLOC_FL_ZERO_RANGE;
+
+	/*
+	 * Linux kernel commit 4adb83029de8ef5144a14dbb5c21de0f156c1a03
+	 * disabled FALLOC_FL_ZERO_RANGE. Sigh..
+	 *
+	 * TODO: Submit patch to kernel upstream.
+	 */
+	/* mode = FALLOC_FL_ZERO_RANGE; */
+	mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
 	vt_fallocate(fd, mode, off, (loff_t)msz);
 	vt_expect_eqm(addr, zero, msz);
 	vt_munmap(addr, msz);

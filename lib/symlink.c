@@ -423,10 +423,10 @@ static loff_t length_of(const struct voluta_str *symval)
 	return (loff_t)symval->len;
 }
 
-static void post_symlink(const struct voluta_symlnk_ctx *sl_ctx)
+static void update_post_symlink(const struct voluta_symlnk_ctx *sl_ctx)
 {
-	struct voluta_iattr iattr;
 	struct voluta_inode_info *lnk_ii = sl_ctx->lnk_ii;
+	struct voluta_iattr iattr = { .ia_flags = 0 };
 
 	iattr_setup(&iattr, ii_ino(lnk_ii));
 	iattr.ia_size = length_of(sl_ctx->symval);
@@ -446,7 +446,7 @@ static int do_symlink(struct voluta_symlnk_ctx *sl_ctx)
 	if (err) {
 		return err;
 	}
-	post_symlink(sl_ctx);
+	update_post_symlink(sl_ctx);
 	return 0;
 }
 

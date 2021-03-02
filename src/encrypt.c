@@ -18,6 +18,43 @@
 #include "voluta-prog.h"
 
 
+static const char *encrypt_usage[] = {
+	"encrypt [options] <volume-path>",
+	"",
+	"options:",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
+	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
+	NULL
+};
+
+static void encrypt_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
+		{ "passphrase-file", required_argument, NULL, 'P' },
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.encrypt.passphrase_file = optarg;
+		} else if (opt_chr == 'h') {
+			voluta_show_help_and_exit(encrypt_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.encrypt.volume =
+	        voluta_consume_cmdarg("volume-path", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void encrypt_finalize(void)
 {
 	voluta_destrpy_fse_inst();
@@ -104,6 +141,9 @@ void voluta_execute_encrypt(void)
 	/* Do all cleanups upon exits */
 	atexit(encrypt_finalize);
 
+	/* Parse command's arguments */
+	encrypt_getopt();
+
 	/* Verify user's arguments */
 	encrypt_setup_check_params();
 
@@ -121,42 +161,5 @@ void voluta_execute_encrypt(void)
 
 	/* Post execution cleanups */
 	encrypt_finalize();
-}
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_encrypt_usage[] = {
-	"encrypt [options] <volume-path>",
-	"",
-	"options:",
-	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
-	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
-	NULL
-};
-
-void voluta_getopt_encrypt(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "verbose", required_argument, NULL, 'V' },
-		{ "passphrase-file", required_argument, NULL, 'P' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
-		if (opt_chr == 'V') {
-			voluta_set_verbose_mode(optarg);
-		} else if (opt_chr == 'P') {
-			voluta_globals.cmd.encrypt.passphrase_file = optarg;
-		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_encrypt_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.encrypt.volume =
-	        voluta_consume_cmdarg("volume-path", true);
 }
 

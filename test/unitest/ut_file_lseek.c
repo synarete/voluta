@@ -33,15 +33,13 @@ static void ut_file_lseek_simple_(struct ut_env *ute, loff_t off)
 	ut_create_file(ute, dino, name, &ino);
 	ut_trunacate_file(ute, ino, off + step + 1);
 	ut_getattr_reg(ute, ino, &st);
-	ut_lseek_data(ute, ino, 0, &off_data);
-	ut_expect_eq(off_data, st.st_size);
+	ut_lseek_nodata(ute, ino, 0);
 	ut_write_read(ute, ino, &d, 1, off);
 	ut_lseek_data(ute, ino, 0, &off_data);
 	ut_expect_eq(off_data, ut_off_baligned(off));
 	ut_lseek_data(ute, ino, off ? (off - 1) : 0, &off_data);
 	ut_expect_eq(ut_off_baligned(off_data), ut_off_baligned(off));
-	ut_lseek_data(ute, ino, off + step, &off_data);
-	ut_expect_eq(off_data, st.st_size);
+	ut_lseek_nodata(ute, ino, off + step);
 	ut_trunacate_file(ute, ino, off + 2);
 	ut_lseek_hole(ute, ino, off, &off_hole);
 	ut_expect_eq(off_hole, off + 2);

@@ -48,6 +48,14 @@
 #error "unsupported FUSE_KERNEL_MINOR_VERSION"
 #endif
 
+#if FUSE_KERNEL_MINOR_VERSION >= 34
+#define VOLUTA_FUSE_STATX 1
+#else
+#define VOLUTA_FUSE_STATX 0
+#endif
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 #define VOLUTA_IO_NBK_MAX \
 	(VOLUTA_FILE_HEAD2_NLEAVES + (VOLUTA_IO_SIZE_MAX / VOLUTA_BK_SIZE))
 
@@ -264,6 +272,12 @@ struct voluta_fuseq_copy_file_range_in {
 	struct fuse_copy_file_range_in arg;
 };
 
+#if VOLUTA_FUSE_STATX
+struct voluta_fuseq_statx_in {
+	struct fuse_in_header   hdr;
+	struct fuse_statx_in    arg;
+};
+#endif
 
 union voluta_fuseq_in_u {
 	struct voluta_fuseq_hdr_in              hdr;
@@ -303,6 +317,9 @@ union voluta_fuseq_in_u {
 	struct voluta_fuseq_write_in            write;
 	struct voluta_fuseq_write_iter_in       write_iter;
 	struct voluta_fuseq_copy_file_range_in  copy_file_range;
+#if VOLUTA_FUSE_STATX
+	struct voluta_fuseq_statx_in            statx;
+#endif
 };
 
 struct voluta_fuseq_in {
@@ -635,8 +652,8 @@ static const void *after_name(const char *name)
 	return name + strlen(name) + 1;
 }
 
-static void timespec_to_fuse_attr(const struct timespec *ts,
-                                  uint64_t *sec, uint32_t *nsec)
+static void ts_to_fuse_attr(const struct timespec *ts,
+                            uint64_t *sec, uint32_t *nsec)
 {
 	*sec = (uint64_t)ts->tv_sec;
 	*nsec = (uint32_t)ts->tv_nsec;
@@ -651,7 +668,6 @@ static void fuse_attr_to_timespec(uint64_t sec, uint32_t nsec,
 
 static void stat_to_fuse_attr(const struct stat *st, struct fuse_attr *attr)
 {
-	memset(attr, 0, sizeof(*attr));
 	attr->ino = st->st_ino;
 	attr->mode = st->st_mode;
 	attr->nlink = (uint32_t)st->st_nlink;
@@ -661,10 +677,41 @@ static void stat_to_fuse_attr(const struct stat *st, struct fuse_attr *attr)
 	attr->size = (uint64_t)st->st_size;
 	attr->blksize = (uint32_t)st->st_blksize;
 	attr->blocks = (uint64_t)st->st_blocks;
-	timespec_to_fuse_attr(&st->st_atim, &attr->atime, &attr->atimensec);
-	timespec_to_fuse_attr(&st->st_mtim, &attr->mtime, &attr->mtimensec);
-	timespec_to_fuse_attr(&st->st_ctim, &attr->ctime, &attr->ctimensec);
+	ts_to_fuse_attr(&st->st_atim, &attr->atime, &attr->atimensec);
+	ts_to_fuse_attr(&st->st_mtim, &attr->mtime, &attr->mtimensec);
+	ts_to_fuse_attr(&st->st_ctim, &attr->ctime, &attr->ctimensec);
 }
+
+#if VOLUTA_FUSE_STATX
+static void xts_to_fuse_timestamp(const struct statx_timestamp *xts,
+                                  struct fuse_statx_timestamp *fts)
+{
+	fts->sec = xts->tv_sec;
+	fts->nsec = xts->tv_nsec;
+}
+
+static void statx_to_fuse_attr(const struct statx *stx,
+                               struct fuse_statx *attr)
+{
+	attr->mask = stx->stx_mask;
+	attr->blksize = stx->stx_blksize;
+	attr->attributes = stx->stx_attributes;
+	attr->nlink = stx->stx_nlink;
+	attr->uid = stx->stx_uid;
+	attr->gid = stx->stx_gid;
+	attr->mode = stx->stx_mode;
+	attr->ino = stx->stx_ino;
+	attr->size = stx->stx_size;
+	attr->blocks = stx->stx_blocks;
+	attr->attributes_mask = stx->stx_attributes_mask;
+	xts_to_fuse_timestamp(&stx->stx_atime, &attr->atime);
+	xts_to_fuse_timestamp(&stx->stx_btime, &attr->btime);
+	xts_to_fuse_timestamp(&stx->stx_ctime, &attr->ctime);
+	xts_to_fuse_timestamp(&stx->stx_mtime, &attr->mtime);
+	attr->rdev_major = stx->stx_rdev_major;
+	attr->rdev_minor = stx->stx_rdev_minor;
+}
+#endif
 
 static void
 fuse_setattr_to_stat(const struct fuse_setattr_in *attr, struct stat *st)
@@ -708,6 +755,22 @@ static void fill_fuse_attr(struct fuse_attr_out *attr, const struct stat *st)
 	attr->attr_valid = UINT_MAX;
 	stat_to_fuse_attr(st, &attr->attr);
 }
+
+#if VOLUTA_FUSE_STATX
+static void fill_fuse_statx(struct fuse_statx_out *attr,
+                            const struct statx *stx)
+{
+	STATICASSERT_EQ(sizeof(*stx), 256);
+	STATICASSERT_EQ(sizeof(attr->attr), 240);
+	STATICASSERT_EQ(sizeof(*attr), 256);
+	STATICASSERT_EQ(sizeof(struct fuse_out_header) + sizeof(*attr), 272);
+	STATICASSERT_EQ(sizeof(struct fuse_attr), 88);
+
+	memset(attr, 0, sizeof(*attr));
+	attr->attr_valid = UINT_MAX;
+	statx_to_fuse_attr(stx, &attr->attr);
+}
+#endif
 
 static void fill_fuse_open(struct fuse_open_out *open)
 {
@@ -850,6 +913,17 @@ static int fuseq_reply_attr_ok(struct voluta_fuseq_worker *fqw,
 	fill_fuse_attr(&arg, st);
 	return fuseq_reply_arg(fqw, &arg, sizeof(arg));
 }
+
+#if VOLUTA_FUSE_STATX
+static int fuseq_reply_statx_ok(struct voluta_fuseq_worker *fqw,
+                                const struct statx *stx)
+{
+	struct fuse_statx_out arg;
+
+	fill_fuse_statx(&arg, stx);
+	return fuseq_reply_arg(fqw, &arg, sizeof(arg));
+}
+#endif
 
 static int fuseq_reply_statfs_ok(struct voluta_fuseq_worker *fqw,
                                  const struct statvfs *stv)
@@ -1104,6 +1178,21 @@ static int fuseq_reply_copy_file_range(struct voluta_fuseq_worker *fqw,
 	}
 	return ret;
 }
+
+#if VOLUTA_FUSE_STATX
+static int fuseq_reply_statx(struct voluta_fuseq_worker *fqw,
+                             const struct statx *stx, int err)
+{
+	int ret;
+
+	if (unlikely(err)) {
+		ret = fuseq_reply_err(fqw, err);
+	} else {
+		ret = fuseq_reply_statx_ok(fqw, stx);
+	}
+	return ret;
+}
+#endif
 
 static int fuseq_reply_init(struct voluta_fuseq_worker *fqw, int err)
 {
@@ -1513,7 +1602,7 @@ static int check_init(const struct voluta_fuseq_worker *fqw,
 	const unsigned int u_minor = FUSE_KERNEL_MINOR_VERSION;
 
 	unused(fqw);
-	if ((arg->major != u_major) || (arg->minor != u_minor)) {
+	if ((arg->major != u_major) || (arg->minor < u_minor)) {
 		log_warn("version mismatch: kernel=%u.%u userspace=%u.%u",
 		         arg->major, arg->minor, u_major, u_minor);
 	}
@@ -1636,12 +1725,14 @@ uid_gid_of(const struct stat *attr, int to_set, uid_t *uid, gid_t *gid)
 
 static void utimens_of(const struct stat *st, int to_set, struct stat *times)
 {
-	bool ctime_now = !(to_set & FATTR_AMTIME_NOW);
+	const int set_ctime_now =
+	        FATTR_AMTIME_NOW | FATTR_AMCTIME | FATTR_MODE |
+	        FATTR_UID | FATTR_GID | FATTR_SIZE;
 
 	voluta_memzero(times, sizeof(*times));
 	times->st_atim.tv_nsec = UTIME_OMIT;
 	times->st_mtim.tv_nsec = UTIME_OMIT;
-	times->st_ctim.tv_nsec = ctime_now ? UTIME_NOW : UTIME_OMIT;
+	times->st_ctim.tv_nsec = UTIME_OMIT;
 
 	if (to_set & FATTR_ATIME) {
 		ts_copy(&times->st_atim, &st->st_atim);
@@ -1651,6 +1742,8 @@ static void utimens_of(const struct stat *st, int to_set, struct stat *times)
 	}
 	if (to_set & FATTR_CTIME) {
 		ts_copy(&times->st_ctim, &st->st_ctim);
+	} else if (to_set & set_ctime_now) {
+		times->st_ctim.tv_nsec = UTIME_NOW;
 	}
 }
 
@@ -2232,6 +2325,22 @@ static int do_copy_file_range(struct voluta_fuseq_worker *fqw, ino_t ino_in,
 	return fuseq_reply_copy_file_range(fqw, cnt, err);
 }
 
+#if VOLUTA_FUSE_STATX
+static int do_statx(struct voluta_fuseq_worker *fqw, ino_t ino,
+                    const struct voluta_fuseq_in *in)
+{
+	int err;
+	const unsigned int request_mask = (loff_t)in->u.statx.arg.mask;
+	struct statx stx = { .stx_mask = 0 };
+
+	fuseq_lock_fs(fqw);
+	err = voluta_fs_statx(fqw->sbi, fqw->op, ino, request_mask, &stx);
+	fuseq_unlock_fs(fqw);
+
+	return fuseq_reply_statx(fqw, &stx, err);
+}
+#endif
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void xiovec_copy(struct voluta_xiovec *dst,
@@ -2483,17 +2592,20 @@ static int do_ioc_getflags(struct voluta_fuseq_worker *fqw, ino_t ino,
 	int err;
 	long attr = 0;
 	size_t out_bufsz;
-	struct statx stx;
+	struct stat st;
 
 	out_bufsz = in->u.ioctl.arg.out_size;
 	if (out_bufsz != sizeof(attr)) {
 		err = -EINVAL;
 	} else {
 		fuseq_lock_fs(fqw);
-		err = voluta_fs_statx(fqw->sbi, fqw->op, ino, &stx);
+		err = voluta_fs_getattr(fqw->sbi, fqw->op, ino, &st);
 		fuseq_unlock_fs(fqw);
 
-		attr = (long)stx.stx_attributes;
+		if (!err) {
+			/* TODO: proper impl */
+			attr = (long)(FS_NOATIME_FL);
+		}
 	}
 	return fuseq_reply_ioctl(fqw, 0, &attr, sizeof(attr), err);
 }
@@ -2623,57 +2735,60 @@ static int do_ioctl(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-#define FUSEQ_CMDDEF(opcode_, hook_, rtime_) \
+#define FUSEQ_CMD(opcode_, hook_, rtime_) \
 	[opcode_] = { hook_, VOLUTA_STR(opcode_), opcode_, rtime_ }
 
 static const struct voluta_fuseq_cmd fuseq_cmd_tbl[] = {
-	FUSEQ_CMDDEF(FUSE_LOOKUP, do_lookup, 0),
-	FUSEQ_CMDDEF(FUSE_FORGET, do_forget, 0),
-	FUSEQ_CMDDEF(FUSE_GETATTR, do_getattr, 0),
-	FUSEQ_CMDDEF(FUSE_SETATTR, do_setattr, 1),
-	FUSEQ_CMDDEF(FUSE_READLINK, do_readlink, 0),
-	FUSEQ_CMDDEF(FUSE_SYMLINK, do_symlink, 1),
-	FUSEQ_CMDDEF(FUSE_MKNOD, do_mknod, 1),
-	FUSEQ_CMDDEF(FUSE_MKDIR, do_mkdir, 1),
-	FUSEQ_CMDDEF(FUSE_UNLINK, do_unlink, 1),
-	FUSEQ_CMDDEF(FUSE_RMDIR, do_rmdir, 1),
-	FUSEQ_CMDDEF(FUSE_RENAME, do_rename, 1),
-	FUSEQ_CMDDEF(FUSE_LINK, do_link, 1),
-	FUSEQ_CMDDEF(FUSE_OPEN, do_open, 1),
-	FUSEQ_CMDDEF(FUSE_READ, do_read, 0),
-	FUSEQ_CMDDEF(FUSE_WRITE, do_write, 1),
-	FUSEQ_CMDDEF(FUSE_STATFS, do_statfs, 0),
-	FUSEQ_CMDDEF(FUSE_RELEASE, do_release, 0),
-	FUSEQ_CMDDEF(FUSE_FSYNC, do_fsync, 0),
-	FUSEQ_CMDDEF(FUSE_SETXATTR, do_setxattr, 1),
-	FUSEQ_CMDDEF(FUSE_GETXATTR, do_getxattr, 0),
-	FUSEQ_CMDDEF(FUSE_LISTXATTR, do_listxattr, 0),
-	FUSEQ_CMDDEF(FUSE_REMOVEXATTR, do_removexattr, 1),
-	FUSEQ_CMDDEF(FUSE_FLUSH, do_flush, 0),
-	FUSEQ_CMDDEF(FUSE_INIT, do_init, 1),
-	FUSEQ_CMDDEF(FUSE_OPENDIR, do_opendir, 1),
-	FUSEQ_CMDDEF(FUSE_READDIR, do_readdir, 1),
-	FUSEQ_CMDDEF(FUSE_RELEASEDIR, do_releasedir, 1),
-	FUSEQ_CMDDEF(FUSE_FSYNCDIR, do_fsyncdir, 1),
-	FUSEQ_CMDDEF(FUSE_GETLK, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_SETLKW, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_ACCESS, do_access, 0),
-	FUSEQ_CMDDEF(FUSE_CREATE, do_create, 1),
-	FUSEQ_CMDDEF(FUSE_INTERRUPT, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_BMAP, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_DESTROY, do_destroy, 1),
-	FUSEQ_CMDDEF(FUSE_IOCTL, do_ioctl, 1),
-	FUSEQ_CMDDEF(FUSE_POLL, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_NOTIFY_REPLY, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_BATCH_FORGET, do_batch_forget, 0),
-	FUSEQ_CMDDEF(FUSE_FALLOCATE, do_fallocate, 1),
-	FUSEQ_CMDDEF(FUSE_READDIRPLUS, do_readdirplus, 0),
-	FUSEQ_CMDDEF(FUSE_RENAME2, do_rename2, 1),
-	FUSEQ_CMDDEF(FUSE_LSEEK, do_lseek, 0),
-	FUSEQ_CMDDEF(FUSE_COPY_FILE_RANGE, do_copy_file_range, 1),
+	FUSEQ_CMD(FUSE_LOOKUP, do_lookup, 0),
+	FUSEQ_CMD(FUSE_FORGET, do_forget, 0),
+	FUSEQ_CMD(FUSE_GETATTR, do_getattr, 0),
+	FUSEQ_CMD(FUSE_SETATTR, do_setattr, 1),
+	FUSEQ_CMD(FUSE_READLINK, do_readlink, 0),
+	FUSEQ_CMD(FUSE_SYMLINK, do_symlink, 1),
+	FUSEQ_CMD(FUSE_MKNOD, do_mknod, 1),
+	FUSEQ_CMD(FUSE_MKDIR, do_mkdir, 1),
+	FUSEQ_CMD(FUSE_UNLINK, do_unlink, 1),
+	FUSEQ_CMD(FUSE_RMDIR, do_rmdir, 1),
+	FUSEQ_CMD(FUSE_RENAME, do_rename, 1),
+	FUSEQ_CMD(FUSE_LINK, do_link, 1),
+	FUSEQ_CMD(FUSE_OPEN, do_open, 1),
+	FUSEQ_CMD(FUSE_READ, do_read, 0),
+	FUSEQ_CMD(FUSE_WRITE, do_write, 1),
+	FUSEQ_CMD(FUSE_STATFS, do_statfs, 0),
+	FUSEQ_CMD(FUSE_RELEASE, do_release, 0),
+	FUSEQ_CMD(FUSE_FSYNC, do_fsync, 0),
+	FUSEQ_CMD(FUSE_SETXATTR, do_setxattr, 1),
+	FUSEQ_CMD(FUSE_GETXATTR, do_getxattr, 0),
+	FUSEQ_CMD(FUSE_LISTXATTR, do_listxattr, 0),
+	FUSEQ_CMD(FUSE_REMOVEXATTR, do_removexattr, 1),
+	FUSEQ_CMD(FUSE_FLUSH, do_flush, 0),
+	FUSEQ_CMD(FUSE_INIT, do_init, 1),
+	FUSEQ_CMD(FUSE_OPENDIR, do_opendir, 1),
+	FUSEQ_CMD(FUSE_READDIR, do_readdir, 1),
+	FUSEQ_CMD(FUSE_RELEASEDIR, do_releasedir, 1),
+	FUSEQ_CMD(FUSE_FSYNCDIR, do_fsyncdir, 1),
+	FUSEQ_CMD(FUSE_GETLK, NULL, 0),
+	FUSEQ_CMD(FUSE_SETLKW, NULL, 0),
+	FUSEQ_CMD(FUSE_ACCESS, do_access, 0),
+	FUSEQ_CMD(FUSE_CREATE, do_create, 1),
+	FUSEQ_CMD(FUSE_INTERRUPT, NULL, 0),
+	FUSEQ_CMD(FUSE_BMAP, NULL, 0),
+	FUSEQ_CMD(FUSE_DESTROY, do_destroy, 1),
+	FUSEQ_CMD(FUSE_IOCTL, do_ioctl, 1),
+	FUSEQ_CMD(FUSE_POLL, NULL, 0),
+	FUSEQ_CMD(FUSE_NOTIFY_REPLY, NULL, 0),
+	FUSEQ_CMD(FUSE_BATCH_FORGET, do_batch_forget, 0),
+	FUSEQ_CMD(FUSE_FALLOCATE, do_fallocate, 1),
+	FUSEQ_CMD(FUSE_READDIRPLUS, do_readdirplus, 0),
+	FUSEQ_CMD(FUSE_RENAME2, do_rename2, 1),
+	FUSEQ_CMD(FUSE_LSEEK, do_lseek, 0),
+	FUSEQ_CMD(FUSE_COPY_FILE_RANGE, do_copy_file_range, 1),
 #if FUSE_KERNEL_MINOR_VERSION > 31
-	FUSEQ_CMDDEF(FUSE_SETUPMAPPING, NULL, 0),
-	FUSEQ_CMDDEF(FUSE_REMOVEMAPPING, NULL, 0),
+	FUSEQ_CMD(FUSE_SETUPMAPPING, NULL, 0),
+	FUSEQ_CMD(FUSE_REMOVEMAPPING, NULL, 0),
+#endif
+#if FUSE_KERNEL_MINOR_VERSION >= 34
+	FUSEQ_CMD(FUSE_STATX, do_statx, 0),
 #endif
 };
 
@@ -2690,6 +2805,7 @@ static int fuseq_resolve_opdesc(struct voluta_fuseq_worker *fqw,
 	const struct voluta_fuseq_cmd *cmd = cmd_of(opc);
 
 	if ((cmd == NULL) || (cmd->hook == NULL)) {
+		/* TODO: handle cases of FUSE_INTERUPT properly */
 		return -ENOSYS;
 	}
 	if (!fqw->fq->fq_got_init && (cmd->code != FUSE_INIT)) {
@@ -3413,23 +3529,28 @@ int voluta_fuseq_mount(struct voluta_fuseq *fq, const char *path)
 {
 	int err;
 	int fd = -1;
-	const uid_t uid = fq->fq_sbi->sb_owner.uid;
-	const gid_t gid = fq->fq_sbi->sb_owner.gid;
+	bool allow_other;
+	const struct voluta_sb_info *sbi = fq->fq_sbi;
+	const uid_t uid = sbi->sb_owner.uid;
+	const gid_t gid = sbi->sb_owner.gid;
+	const uint64_t ms_flags = sbi->sb_ms_flags;
+	const uint64_t ctl_flags = sbi->sb_ctl_flags;
 	const size_t max_read = fq->fq_coni.buffsize;
-	const uint64_t ms_flags = fq->fq_sbi->sb_ms_flags;
 	const char *sock = VOLUTA_MNTSOCK_NAME;
 
 	err = voluta_rpc_handshake(uid, gid);
 	if (err) {
-		log_err("no handshake with mountd: "\
+		log_err("handshake with mountd failed: "\
 		        "sock=@%s err=%d", sock, err);
 		return err;
 	}
-	err = voluta_rpc_mount(path, uid, gid, max_read, ms_flags, &fd);
+	allow_other = (ctl_flags & VOLUTA_F_ALLOWOTHER) > 0;
+	err = voluta_rpc_mount(path, uid, gid, max_read,
+	                       ms_flags, allow_other, &fd);
 	if (err) {
 		log_err("mount failed: path=%s max_read=%lu "\
-		        "mnt_flags=0x%lx err=%d", path,
-		        max_read, ms_flags, err);
+		        "ms_flags=0x%lx allow_other=%d err=%d", path,
+		        max_read, ms_flags, (int)allow_other, err);
 		return err;
 	}
 	fq->fq_fuse_fd = fd;
@@ -3547,7 +3668,7 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 
 		/* XXX FIXME */
 		if (err == -ENOENT) {
-			log_err("unexpected: err=%d", err);
+			log_err("unexpected fuseq-status: err=%d", err);
 			sleep(1);
 			err = 0;
 		}

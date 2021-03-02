@@ -29,6 +29,78 @@
 #include "voluta-prog.h"
 
 
+static const char *mount_usage[] = {
+	"mount [options] <volume-path> <mount-point>",
+	"",
+	"options:",
+	"  -r, --rdonly                 Mount filesystem read-only",
+	"  -x, --noexec                 Do not allow programs execution",
+	"  -S, --nosuid                 Do not honor special bits",
+	"      --nodev                  Do not allow access to device files",
+	"  -o  --options                Additional mount options",
+	"  -A  --allow-other            Allow other users to access fs",
+	"  -D, --nodaemon               Do not run as daemon process",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
+	"  -C, --coredump               Allow core-dumps upon fatal errors",
+	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
+	NULL
+};
+
+static void mount_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "rdonly", no_argument, NULL, 'r' },
+		{ "noexec", no_argument, NULL, 'x' },
+		{ "nosuid", no_argument, NULL, 'S' },
+		{ "nodev", no_argument, NULL, 'Z' },
+		{ "options", required_argument, NULL, 'o' },
+		{ "allow-other", no_argument, NULL, 'A' },
+		{ "nodaemon", no_argument, NULL, 'D' },
+		{ "verbose", required_argument, NULL, 'V' },
+		{ "coredump", no_argument, NULL, 'C' },
+		{ "passphrase-file", required_argument, NULL, 'P' },
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("rxSZo:ADV:CP:h", opts);
+		if (opt_chr == 'r') {
+			voluta_globals.cmd.mount.rdonly = true;
+		} else if (opt_chr == 'x') {
+			voluta_globals.cmd.mount.noexec = true;
+		} else if (opt_chr == 'S') {
+			voluta_globals.cmd.mount.nosuid = true;
+		} else if (opt_chr == 'Z') {
+			voluta_globals.cmd.mount.nodev = true;
+		} else if (opt_chr == 'o') {
+			/* currently, only for xfstests */
+			voluta_globals.cmd.mount.options = optarg;
+		} else if (opt_chr == 'A') {
+			voluta_globals.cmd.mount.allowother = true;
+		} else if (opt_chr == 'D') {
+			voluta_globals.dont_daemonize = true;
+		} else if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'C') {
+			voluta_globals.allow_coredump = true;
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.mount.passphrase_file = optarg;
+		} else if (opt_chr == 'h') {
+			voluta_show_help_and_exit(mount_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.mount.volume =
+	        voluta_consume_cmdarg("volume-path", false);
+	voluta_globals.cmd.mount.point =
+	        voluta_consume_cmdarg("mount-point", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void mount_halt_by_signal(int signum)
 {
 	struct voluta_fs_env *fse = voluta_fse_inst();
@@ -59,7 +131,10 @@ static void mount_execute_fs(void)
 
 static void mount_finalize(void)
 {
+	int *pfd = &voluta_globals.cmd.mount.volume_fd;
+
 	voluta_destrpy_fse_inst();
+	voluta_funlock_and_close(voluta_globals.cmd.mount.volume_real, pfd);
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_clone);
 	voluta_pfree_string(&voluta_globals.cmd.mount.point_real);
@@ -81,6 +156,7 @@ static void mount_setup_check_volume(void)
 {
 	bool is_enc = false;
 	const char *path = NULL;
+	const char *passfile = NULL;
 	const bool rw = !voluta_globals.cmd.mount.rdonly;
 
 	voluta_globals.cmd.mount.volume_real =
@@ -90,9 +166,11 @@ static void mount_setup_check_volume(void)
 
 	path = voluta_globals.cmd.mount.volume_real;
 	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
+	voluta_die_if_not_lockable(path, rw);
+
 	if (is_enc) {
-		voluta_globals.cmd.mount.passphrase =
-		        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
+		passfile = voluta_globals.cmd.mount.passphrase_file;
+		voluta_globals.cmd.mount.passphrase = voluta_getpass(passfile);
 		voluta_globals.cmd.mount.encrypted = true;
 	}
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.mount.passphrase);
@@ -132,7 +210,7 @@ static int mount_probe_rootdir(void)
 	struct stat st;
 	const char *path = voluta_globals.cmd.mount.point_real;
 
-	voluta_statpath_safe(path, &st);
+	voluta_stat_ok(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(0, "illegal mount-point: %s", path);
 	}
@@ -165,6 +243,8 @@ static void mount_start_daemon(void)
 
 static void mount_boostrap_process(void)
 {
+	voluta_globals.log_mask |= VOLUTA_LOG_INFO;
+
 	if (!voluta_globals.dont_daemonize) {
 		mount_start_daemon();
 		voluta_open_syslog();
@@ -175,6 +255,13 @@ static void mount_boostrap_process(void)
 	if (!voluta_globals.disable_ptrace) {
 		voluta_prctl_non_dumpable();
 	}
+}
+
+static void mount_flock_volume(void)
+{
+	voluta_open_and_flock(voluta_globals.cmd.mount.volume_real,
+	                      !voluta_globals.cmd.mount.rdonly,
+	                      &voluta_globals.cmd.mount.volume_fd);
 }
 
 static void mount_create_fs_env(void)
@@ -189,6 +276,7 @@ static void mount_create_fs_env(void)
 		.passwd = voluta_globals.cmd.mount.passphrase,
 		.encrypted = voluta_globals.cmd.mount.encrypted,
 		.encryptwr = voluta_globals.cmd.mount.encrypted,
+		.allowother = voluta_globals.cmd.mount.allowother,
 		.lazytime = voluta_globals.cmd.mount.lazytime,
 		.noexec = voluta_globals.cmd.mount.noexec,
 		.nosuid = voluta_globals.cmd.mount.nosuid,
@@ -255,6 +343,9 @@ void voluta_execute_mount(void)
 	/* Do all cleanups upon exits */
 	atexit(mount_finalize);
 
+	/* Parse command's arguments */
+	mount_getopt();
+
 	/* Require valid mount-point */
 	mount_setup_check_mntpoint();
 
@@ -266,6 +357,9 @@ void voluta_execute_mount(void)
 
 	/* Become daemon process */
 	mount_boostrap_process();
+
+	/* Lock volume as daemon process */
+	mount_flock_volume();
 
 	/* Setup environment instance */
 	mount_create_fs_env();
@@ -293,72 +387,3 @@ void voluta_execute_mount(void)
 
 	/* Return to main for global cleanups */
 }
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_mount_usage[] = {
-	"mount [options] <volume-path> <mount-point>",
-	"",
-	"options:",
-	"  -r, --rdonly                 Mount filesystem read-only",
-	"  -x, --noexec                 Do not allow programs execution",
-	"  -S, --nosuid                 Do not honor special bits",
-	"      --nodev                  Do not allow access to device files",
-	"  -o  --options                Additional mount options",
-	"  -D, --nodaemon               Do not run as daemon process",
-	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
-	"  -C, --coredump               Allow core-dumps upon fatal errors",
-	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
-	NULL
-};
-
-void voluta_getopt_mount(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "rdonly", no_argument, NULL, 'r' },
-		{ "noexec", no_argument, NULL, 'x' },
-		{ "nosuid", no_argument, NULL, 'S' },
-		{ "nodev", no_argument, NULL, 'Z' },
-		{ "options", required_argument, NULL, 'o' },
-		{ "nodaemon", no_argument, NULL, 'D' },
-		{ "verbose", required_argument, NULL, 'V' },
-		{ "coredump", no_argument, NULL, 'C' },
-		{ "passphrase-file", required_argument, NULL, 'P' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("rxSZo:DV:CP:h", opts);
-		if (opt_chr == 'r') {
-			voluta_globals.cmd.mount.rdonly = true;
-		} else if (opt_chr == 'x') {
-			voluta_globals.cmd.mount.noexec = true;
-		} else if (opt_chr == 'S') {
-			voluta_globals.cmd.mount.nosuid = true;
-		} else if (opt_chr == 'Z') {
-			voluta_globals.cmd.mount.nodev = true;
-		} else if (opt_chr == 'o') {
-			/* currently, only for xfstests */
-			voluta_globals.cmd.mount.options = optarg;
-		} else if (opt_chr == 'D') {
-			voluta_globals.dont_daemonize = true;
-		} else if (opt_chr == 'V') {
-			voluta_set_verbose_mode(optarg);
-		} else if (opt_chr == 'C') {
-			voluta_globals.allow_coredump = true;
-		} else if (opt_chr == 'P') {
-			voluta_globals.cmd.mount.passphrase_file = optarg;
-		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_mount_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.mount.volume =
-	        voluta_consume_cmdarg("volume-path", false);
-	voluta_globals.cmd.mount.point =
-	        voluta_consume_cmdarg("mount-point", true);
-}
-

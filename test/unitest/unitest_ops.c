@@ -53,9 +53,10 @@ static int ut_statfs(struct ut_env *ute,
 	return voluta_fs_statfs(sbi(ute), op(ute), ino, st);
 }
 
-static int ut_statx(struct ut_env *ute, ino_t ino, struct statx *stx)
+static int ut_statx(struct ut_env *ute, ino_t ino,
+                    unsigned int request_mask, struct statx *stx)
 {
-	return voluta_fs_statx(sbi(ute), op(ute), ino, stx);
+	return voluta_fs_statx(sbi(ute), op(ute), ino, request_mask, stx);
 }
 
 static int ut_access(struct ut_env *ute, ino_t ino, int mode)
@@ -361,12 +362,14 @@ static void ut_expect_sane_statx(const struct statx *stx)
 	ut_expect_le(stx->stx_btime.tv_sec, stx->stx_mtime.tv_sec);
 }
 
-void ut_statx_exists(struct ut_env *ute, ino_t ino, struct statx *stx)
+void ut_statx_ok(struct ut_env *ute, ino_t ino, struct statx *stx)
 {
 	int err;
+	const unsigned int mask = STATX_ALL | STATX_BTIME;
 
-	err = ut_statx(ute, ino, stx);
+	err = ut_statx(ute, ino, mask, stx);
 	ut_expect_ok(err);
+	ut_expect_eq(stx->stx_mask & mask, mask);
 	ut_expect_sane_statx(stx);
 }
 
@@ -1361,6 +1364,15 @@ void ut_lseek_hole(struct ut_env *ute,
                    ino_t ino, loff_t off, loff_t *out_off)
 {
 	ut_lseek_ok(ute, ino, off, SEEK_HOLE, out_off);
+}
+
+void ut_lseek_nodata(struct ut_env *ute, ino_t ino, loff_t off)
+{
+	int err;
+	loff_t res_off = -1;
+
+	err = ut_lseek(ute, ino, off, SEEK_DATA, &res_off);
+	ut_expect_err(err, -ENXIO);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -199,7 +199,6 @@ static void test_write_stat_(struct vt_env *vte,
 	int dfd = -1;
 	long dif;
 	loff_t off;
-	size_t nwr;
 	struct stat st;
 	struct stat *sts = vt_new_buf_zeros(vte, nfiles * sizeof(st));
 	const char *path = vt_new_path_unique(vte);
@@ -212,7 +211,7 @@ static void test_write_stat_(struct vt_env *vte,
 		snprintf(name, sizeof(name) - 1, "%lx-%ld", i, off);
 		vt_openat(dfd, name, O_CREAT | O_RDWR, 0600, &fd);
 		vt_fstat(fd, &st);
-		vt_pwrite(fd, name, strlen(name), off, &nwr);
+		vt_pwriten(fd, name, strlen(name), off);
 		vt_fstat(fd, &sts[i]);
 		vt_expect_mtime_gt(&st, &sts[i]);
 		vt_expect_ctime_gt(&st, &sts[i]);

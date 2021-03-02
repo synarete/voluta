@@ -260,7 +260,7 @@ int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
-                    struct statx *out_stx);
+                    unsigned int request_mask, struct statx *out_stx);
 
 int voluta_fs_fiemap(struct voluta_sb_info *sbi,
                      const struct voluta_oper *op, ino_t ino,
@@ -360,10 +360,6 @@ int voluta_vstore_close(struct voluta_vstore *vstore);
 int voluta_vstore_create(struct voluta_vstore *vstore,
                          const char *path, loff_t size);
 
-int voluta_vstore_flock(const struct voluta_vstore *vstore);
-
-int voluta_vstore_funlock(const struct voluta_vstore *vstore);
-
 int voluta_vstore_expand(struct voluta_vstore *vstore, loff_t cap);
 
 int voluta_vstore_write(struct voluta_vstore *vstore,
@@ -441,6 +437,9 @@ int voluta_shut_super(struct voluta_sb_info *sbi);
 
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
+
+int voluta_fetch_cached_inode(struct voluta_sb_info *sbi, ino_t xino,
+                              struct voluta_inode_info **out_ii);
 
 int voluta_stage_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
@@ -522,8 +521,8 @@ int voluta_real_ino(const struct voluta_sb_info *sbi,
 const struct voluta_vaddr *
 voluta_root_of_itable(const struct voluta_sb_info *sbi);
 
-void voluta_bind_rootdir(struct voluta_sb_info *sbi,
-                         const struct voluta_inode_info *ii);
+int voluta_bind_rootdir(struct voluta_sb_info *sbi,
+                        const struct voluta_inode_info *ii);
 
 int voluta_reload_itable_at(struct voluta_sb_info *sbi,
                             const struct voluta_vaddr *vaddr);
@@ -538,8 +537,8 @@ int voluta_authorize(const struct voluta_sb_info *sbi,
 int voluta_make_namestr(const struct voluta_inode_info *ii,
                         const char *name, struct voluta_namestr *str);
 
-int voluta_do_forget_inode(struct voluta_sb_info *sbi,
-                           ino_t xino, size_t nlookup);
+int voluta_do_forget(const struct voluta_oper *op,
+                     struct voluta_inode_info *ii, size_t nlookup);
 
 int voluta_do_statvfs(const struct voluta_oper *op,
                       struct voluta_inode_info *ii,
@@ -668,7 +667,7 @@ int voluta_do_getattr(const struct voluta_oper *op,
 
 int voluta_do_statx(const struct voluta_oper *op,
                     const struct voluta_inode_info *ii,
-                    struct statx *out_stx);
+                    unsigned int request_mask, struct statx *out_stx);
 
 int voluta_do_chmod(const struct voluta_oper *op,
                     struct voluta_inode_info *ii, mode_t mode,
@@ -856,7 +855,7 @@ int voluta_pstore_open(struct voluta_pstore *pstore,
 int voluta_pstore_close(struct voluta_pstore *pstore);
 
 int voluta_pstore_check_io(const struct voluta_pstore *pstore,
-                           loff_t off, size_t len);
+                           bool rw, loff_t off, size_t len);
 
 int voluta_pstore_read(const struct voluta_pstore *pstore,
                        loff_t off, size_t bsz, void *buf);
@@ -868,10 +867,6 @@ int voluta_pstore_writev(struct voluta_pstore *pstore, loff_t off,
                          size_t len, const struct iovec *iov, size_t cnt);
 
 int voluta_pstore_sync(struct voluta_pstore *pstore, bool all);
-
-int voluta_pstore_flock(const struct voluta_pstore *pstore);
-
-int voluta_pstore_funlock(const struct voluta_pstore *pstore);
 
 int voluta_pstore_clone(const struct voluta_pstore *pstore,
                         const struct voluta_str *name);
@@ -1005,6 +1000,8 @@ void voluta_vi_dirtify(struct voluta_vnode_info *vi);
 void voluta_vi_undirtify(struct voluta_vnode_info *vi);
 
 void voluta_ii_dirtify(struct voluta_inode_info *ii);
+
+void voluta_ii_undirtify(struct voluta_inode_info *ii);
 
 bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
 

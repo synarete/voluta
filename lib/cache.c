@@ -524,6 +524,7 @@ static void ii_init(struct voluta_inode_info *ii)
 	ii->i_ino = VOLUTA_INO_NULL;
 	ii->i_nopen = 0;
 	ii->i_nlookup = 0;
+	ii->i_pinned = false;
 }
 
 static void ii_fini(struct voluta_inode_info *ii)
@@ -545,7 +546,7 @@ static void ii_assign(struct voluta_inode_info *ii,
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 {
-	return !ii->i_nopen && vi_is_evictable(ii_vi(ii));
+	return !ii->i_pinned && !ii->i_nopen && vi_is_evictable(ii_vi(ii));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -2080,6 +2081,11 @@ void voluta_vi_undirtify(struct voluta_vnode_info *vi)
 void voluta_ii_dirtify(struct voluta_inode_info *ii)
 {
 	voluta_vi_dirtify(ii_vi(ii));
+}
+
+void voluta_ii_undirtify(struct voluta_inode_info *ii)
+{
+	voluta_vi_undirtify(ii_vi(ii));
 }
 
 bool voluta_ii_isrdonly(const struct voluta_inode_info *ii)

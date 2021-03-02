@@ -972,7 +972,7 @@ static int check_range(loff_t off, size_t len)
 static int check_seek_pos(loff_t pos, loff_t isz, int whence)
 {
 	if ((whence == SEEK_DATA) || (whence == SEEK_HOLE)) {
-		if (pos >= isz) {
+		if ((pos >= isz) || (pos < 0)) {
 			return -ENXIO;
 		}
 	}
@@ -1048,7 +1048,8 @@ static bool is_mapping_boundaries(const struct voluta_file_ctx *f_ctx)
 	return ((f_ctx->off % mapping_size) == 0);
 }
 
-static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
+static void update_post_io(const struct voluta_file_ctx *f_ctx,
+                           bool kill_suid_sgid)
 {
 	struct voluta_iattr iattr;
 	struct voluta_inode_info *ii = f_ctx->ii;
@@ -1067,8 +1068,9 @@ static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
 		iattr.ia_span = off_max(off, isp);
 		if (len > 0) {
 			iattr.ia_flags |= VOLUTA_IATTR_MCTIME;
-			if (killprv) {
-				iattr.ia_flags |= VOLUTA_IATTR_KILL_PRIV;
+			if (kill_suid_sgid) {
+				iattr.ia_flags |= VOLUTA_IATTR_KILL_SUID;
+				iattr.ia_flags |= VOLUTA_IATTR_KILL_SGID;
 			}
 		}
 	} else if (f_ctx->op_mask & OP_FALLOC) {
@@ -1084,8 +1086,9 @@ static void post_io_update(const struct voluta_file_ctx *f_ctx, bool killprv)
 		iattr.ia_span = f_ctx->beg;
 		if (isz != f_ctx->beg) {
 			iattr.ia_flags |= VOLUTA_IATTR_MCTIME;
-			if (killprv) {
-				iattr.ia_flags |= VOLUTA_IATTR_KILL_PRIV;
+			if (kill_suid_sgid) {
+				iattr.ia_flags |= VOLUTA_IATTR_KILL_SUID;
+				iattr.ia_flags |= VOLUTA_IATTR_KILL_SGID;
 			}
 		}
 	}
@@ -1754,7 +1757,7 @@ static int do_read_iter(struct voluta_file_ctx *f_ctx)
 		return err;
 	}
 	err = read_data(f_ctx);
-	post_io_update(f_ctx, false);
+	update_post_io(f_ctx, false);
 	return err;
 }
 
@@ -2396,8 +2399,7 @@ static int do_write_iter(struct voluta_file_ctx *f_ctx)
 		return err;
 	}
 	err = write_data(f_ctx);
-	post_io_update(f_ctx, err == 0);
-
+	update_post_io(f_ctx, !err && (f_ctx->off > f_ctx->beg));
 	return err;
 }
 
@@ -2928,7 +2930,7 @@ static int do_truncate(struct voluta_file_ctx *f_ctx)
 	if (err) {
 		return err;
 	}
-	post_io_update(f_ctx, err == 0);
+	update_post_io(f_ctx, err == 0);
 	return err;
 }
 
@@ -2991,7 +2993,7 @@ static int lseek_data(struct voluta_file_ctx *f_ctx)
 		f_ctx->off = off_max_min(fnr.file_pos, f_ctx->off, isz);
 	} else if (err == -ENOENT) {
 		f_ctx->off = isz;
-		err = 0;
+		err = -ENXIO;
 	}
 	return err;
 }
@@ -3307,7 +3309,7 @@ static int do_fallocate(struct voluta_file_ctx *f_ctx)
 	if (err) {
 		return err;
 	}
-	post_io_update(f_ctx, false);
+	update_post_io(f_ctx, false);
 	return err;
 }
 

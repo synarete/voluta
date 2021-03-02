@@ -21,6 +21,43 @@
 #include "voluta-prog.h"
 
 
+static const char *umount_usage[] = {
+	"umount [options] <mount-point>",
+	"",
+	"options:",
+	"  -l, --lazy                   Detach umount",
+	"  -f, --force                  Forced umount",
+	NULL
+};
+
+static void umount_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "lazy", no_argument, NULL, 'l' },
+		{ "force", no_argument, NULL, 'f' },
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("lfh", opts);
+		if (opt_chr == 'l') {
+			voluta_globals.cmd.umount.lazy = true;
+		} else if (opt_chr == 'f') {
+			voluta_globals.cmd.umount.force = true;
+		} else if (opt_chr == 'h') {
+			voluta_show_help_and_exit(umount_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.umount.point =
+	        voluta_consume_cmdarg("mount-point", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void umount_finalize(void)
 {
 	voluta_pfree_string(&voluta_globals.cmd.umount.point_real);
@@ -114,6 +151,9 @@ void voluta_execute_umount(void)
 	/* Do all cleanups upon exits */
 	atexit(umount_finalize);
 
+	/* Parse command's arguments */
+	umount_getopt();
+
 	/* Verify user's arguments */
 	umount_setup_check_params();
 
@@ -127,40 +167,4 @@ void voluta_execute_umount(void)
 	umount_finalize();
 }
 
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_umount_usage[] = {
-	"umount [options] <mount-point>",
-	"",
-	"options:",
-	"  -l, --lazy                   Detach umount",
-	"  -f, --force                  Forced umount",
-	NULL
-};
-
-void voluta_getopt_umount(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "lazy", no_argument, NULL, 'l' },
-		{ "force", no_argument, NULL, 'f' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("lfh", opts);
-		if (opt_chr == 'l') {
-			voluta_globals.cmd.umount.lazy = true;
-		} else if (opt_chr == 'f') {
-			voluta_globals.cmd.umount.force = true;
-		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_umount_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.umount.point =
-	        voluta_consume_cmdarg("mount-point", true);
-}
 

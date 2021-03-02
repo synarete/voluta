@@ -43,7 +43,6 @@ typedef void (*voluta_exec_fn)(void);
 /* sub-command descriptor */
 struct voluta_cmd_info {
 	const char *name;
-	voluta_exec_fn getopt_hook;
 	voluta_exec_fn action_hook;
 };
 
@@ -238,27 +237,6 @@ void voluta_execute_decrypt(void);
 void voluta_execute_export(void);
 
 void voluta_execute_import(void);
-
-
-void voluta_getopt_mkfs(void);
-
-void voluta_getopt_fsck(void);
-
-void voluta_getopt_mount(void);
-
-void voluta_getopt_umount(void);
-
-void voluta_getopt_show(void);
-
-void voluta_getopt_clone(void);
-
-void voluta_getopt_encrypt(void);
-
-void voluta_getopt_decrypt(void);
-
-void voluta_getopt_export(void);
-
-void voluta_getopt_import(void);
 
 
 /* common utilities */

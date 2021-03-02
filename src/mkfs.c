@@ -18,6 +18,62 @@
 #include "voluta-prog.h"
 
 
+static const char *mkfs_usage[] = {
+	"mkfs [options] <volume-path>",
+	"",
+	"options:",
+	"  -s, --size=NBYTES            Volume size",
+	"  -n, --name=NAME              Private name",
+	"  -e, --encrypted              Encrypted volume",
+	"  -F, --force                  Force overwrite if volume exists",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
+	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
+	NULL
+};
+
+static void mkfs_getopt(void)
+{
+	int opt_chr = 1;
+	long size = 0;
+	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
+		{ "size", required_argument, NULL, 's' },
+		{ "name", required_argument, NULL, 'n' },
+		{ "encrypted", no_argument, NULL, 'e' },
+		{ "force", no_argument, NULL, 'F' },
+		{ "passphrase-file", required_argument, NULL, 'P' },
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("V:s:n:eFP:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 's') {
+			size = voluta_parse_size(optarg);
+			voluta_globals.cmd.mkfs.size = optarg;
+			voluta_globals.cmd.mkfs.volume_size = size;
+		} else if (opt_chr == 'n') {
+			voluta_globals.cmd.mkfs.name = optarg;
+		} else if (opt_chr == 'e') {
+			voluta_globals.cmd.mkfs.encrypted = true;
+		} else if (opt_chr == 'F') {
+			voluta_globals.cmd.mkfs.force = true;
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.mkfs.passphrase_file = optarg;
+		} else if (opt_chr == 'h') {
+			voluta_show_help_and_exit(mkfs_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.mkfs.volume =
+	        voluta_consume_cmdarg("volume-path", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void mkfs_finalize(void)
 {
 	voluta_destrpy_fse_inst();
@@ -117,6 +173,9 @@ void voluta_execute_mkfs(void)
 	/* Do all cleanups upon exits */
 	atexit(mkfs_finalize);
 
+	/* Parse command's arguments */
+	mkfs_getopt();
+
 	/* Verify user's arguments */
 	mkfs_setup_check_params();
 
@@ -130,55 +189,4 @@ void voluta_execute_mkfs(void)
 	mkfs_finalize();
 }
 
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_mkfs_usage[] = {
-	"mkfs [options] <volume-path>",
-	"",
-	"options:",
-	"  -s, --size=NBYTES            Volume size",
-	"  -n, --name=NAME              Private name",
-	"  -e, --encrypted              Encrypted volume",
-	"  -F, --force                  Force overwrite if volume exists",
-	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
-	NULL
-};
-
-void voluta_getopt_mkfs(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "size", required_argument, NULL, 's' },
-		{ "name", required_argument, NULL, 'n' },
-		{ "encrypted", no_argument, NULL, 'e' },
-		{ "force", no_argument, NULL, 'F' },
-		{ "passphrase-file", required_argument, NULL, 'P' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("s:n:eFP:h", opts);
-		if (opt_chr == 's') {
-			voluta_globals.cmd.mkfs.size = optarg;
-			voluta_globals.cmd.mkfs.volume_size =
-			        voluta_parse_size(optarg);
-		} else if (opt_chr == 'n') {
-			voluta_globals.cmd.mkfs.name = optarg;
-		} else if (opt_chr == 'e') {
-			voluta_globals.cmd.mkfs.encrypted = true;
-		} else if (opt_chr == 'F') {
-			voluta_globals.cmd.mkfs.force = true;
-		} else if (opt_chr == 'P') {
-			voluta_globals.cmd.mkfs.passphrase_file = optarg;
-		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_mkfs_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.mkfs.volume =
-	        voluta_consume_cmdarg("volume-path", true);
-}
 

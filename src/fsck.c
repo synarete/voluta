@@ -18,27 +18,6 @@
 #include "voluta-prog.h"
 
 
-static void fsck_finalize(void)
-{
-	voluta_destrpy_fse_inst();
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void voluta_execute_fsck(void)
-{
-	/* Do all cleanups upon exits */
-	atexit(fsck_finalize);
-
-	/* TODO: FSCK... */
-
-	/* Post execution cleanups */
-	fsck_finalize();
-}
-
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
 static const char *voluta_fsck_usage[] = {
 	"fsck [options] <volume-path>",
 	"",
@@ -47,7 +26,7 @@ static const char *voluta_fsck_usage[] = {
 	NULL
 };
 
-void voluta_getopt_fsck(void)
+static void fsck_getopt(void)
 {
 	int c = 1;
 	int opt_index;
@@ -80,5 +59,27 @@ void voluta_getopt_fsck(void)
 	}
 	voluta_globals.cmd.fsck.volume = argv[optind++];
 	voluta_die_if_redundant_arg();
+}
+
+
+static void fsck_finalize(void)
+{
+	voluta_destrpy_fse_inst();
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
+void voluta_execute_fsck(void)
+{
+	/* Do all cleanups upon exits */
+	atexit(fsck_finalize);
+
+	/* Parse command's arguments */
+	fsck_getopt();
+
+	/* TODO: FSCK... */
+
+	/* Post execution cleanups */
+	fsck_finalize();
 }
 

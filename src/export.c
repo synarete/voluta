@@ -17,6 +17,46 @@
 #define _GNU_SOURCE 1
 #include "voluta-prog.h"
 
+
+static const char *export_usage[] = {
+	"export <volume-file> <export-dir>",
+	"",
+	"options:",
+	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
+	"  -P, --passphrase-file=PATH   Passphrase input file (unsafe)",
+	NULL
+};
+
+static void export_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "verbose", required_argument, NULL, 'V' },
+		{ "passphrase-file", required_argument, NULL, 'P' },
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
+		if (opt_chr == 'V') {
+			voluta_set_verbose_mode(optarg);
+		} else if (opt_chr == 'P') {
+			voluta_globals.cmd.export.passphrase_file = optarg;
+		} else if (opt_chr == 'h') {
+			voluta_show_help_and_exit(export_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.export.volume =
+	        voluta_consume_cmdarg("volume-file", false);
+	voluta_globals.cmd.export.archive =
+	        voluta_consume_cmdarg("export-dir", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void export_finalize(void)
 {
 	voluta_destroy_arc_inst();
@@ -95,6 +135,9 @@ void voluta_execute_export(void)
 	/* Do all cleanups upon exits */
 	atexit(export_finalize);
 
+	/* Parse command's arguments */
+	export_getopt();
+
 	/* Verify user's arguments */
 	export_setup_check_params();
 
@@ -106,44 +149,5 @@ void voluta_execute_export(void)
 
 	/* Post execution cleanups */
 	export_finalize();
-}
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_export_usage[] = {
-	"export <volume-file> <export-dir>",
-	"",
-	"options:",
-	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
-	"  -P, --passphrase-file=PATH   Passphrase input file (unsafe)",
-	NULL
-};
-
-void voluta_getopt_export(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "verbose", required_argument, NULL, 'V' },
-		{ "passphrase-file", required_argument, NULL, 'P' },
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("V:P:h", opts);
-		if (opt_chr == 'V') {
-			voluta_set_verbose_mode(optarg);
-		} else if (opt_chr == 'P') {
-			voluta_globals.cmd.export.passphrase_file = optarg;
-		} else if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_export_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.export.volume =
-	        voluta_consume_cmdarg("volume-file", false);
-	voluta_globals.cmd.export.archive =
-	        voluta_consume_cmdarg("export-dir", true);
 }
 

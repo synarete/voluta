@@ -29,6 +29,36 @@
 #include "voluta-prog.h"
 
 
+static const char *clone_usage[] = {
+	"clone [options] <mount-point> <volume-path>",
+	"",
+	NULL
+};
+
+static void clone_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("h", opts);
+		if (opt_chr == 'h') {
+			voluta_show_help_and_exit(clone_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.clone.point =
+	        voluta_consume_cmdarg("mount-point", false);
+	voluta_globals.cmd.clone.volume =
+	        voluta_consume_cmdarg("volume-path", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void clone_finalize(void)
 {
 	voluta_pfree_string(&voluta_globals.cmd.clone.point_real);
@@ -152,6 +182,9 @@ void voluta_execute_clone(void)
 	/* Do all cleanups upon exits */
 	atexit(clone_finalize);
 
+	/* Parse command's arguments */
+	clone_getopt();
+
 	/* Verify user's arguments */
 	clone_setup_check_params();
 
@@ -163,35 +196,5 @@ void voluta_execute_clone(void)
 
 	/* Post execution cleanups */
 	clone_finalize();
-}
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_clone_usage[] = {
-	"clone [options] <mount-point> <volume-path>",
-	"",
-	NULL
-};
-
-void voluta_getopt_clone(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("h", opts);
-		if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_clone_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.clone.point =
-	        voluta_consume_cmdarg("mount-point", false);
-	voluta_globals.cmd.clone.volume =
-	        voluta_consume_cmdarg("volume-path", true);
 }
 

@@ -19,6 +19,33 @@
 #include "voluta-prog.h"
 
 
+static const char *show_usage[] = {
+	"show <pathname>",
+	NULL
+};
+
+static void show_getopt(void)
+{
+	int opt_chr = 1;
+	const struct option opts[] = {
+		{ "help", no_argument, NULL, 'h' },
+		{ NULL, no_argument, NULL, 0 },
+	};
+
+	while (opt_chr > 0) {
+		opt_chr = voluta_getopt_subcmd("h", opts);
+		if (opt_chr == 'h') {
+			voluta_show_help_and_exit(show_usage);
+		} else if (opt_chr > 0) {
+			voluta_die_unsupported_opt();
+		}
+	}
+	voluta_globals.cmd.show.pathname =
+	        voluta_consume_cmdarg("pathname", true);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
 static void show_finalize(void)
 {
 	/* no-op */
@@ -128,6 +155,9 @@ void voluta_execute_show(void)
 	/* Do all cleanups upon exits */
 	atexit(show_finalize);
 
+	/* Parse command's arguments */
+	show_getopt();
+
 	/* Verify user's arguments */
 	show_setup_check_params();
 
@@ -138,31 +168,4 @@ void voluta_execute_show(void)
 	show_finalize();
 }
 
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static const char *voluta_show_usage[] = {
-	"show <pathname>",
-	NULL
-};
-
-
-void voluta_getopt_show(void)
-{
-	int opt_chr = 1;
-	const struct option opts[] = {
-		{ "help", no_argument, NULL, 'h' },
-		{ NULL, no_argument, NULL, 0 },
-	};
-
-	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("h", opts);
-		if (opt_chr == 'h') {
-			voluta_show_help_and_exit(voluta_show_usage);
-		} else if (opt_chr > 0) {
-			voluta_die_unsupported_opt();
-		}
-	}
-	voluta_globals.cmd.show.pathname =
-	        voluta_consume_cmdarg("pathname", true);
-}
 

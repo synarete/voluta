@@ -48,8 +48,7 @@
 #include "voluta-prog.h"
 
 #define VOLUTA_LOG_DEFAULT  \
-	(VOLUTA_LOG_INFO  | \
-	 VOLUTA_LOG_WARN  | \
+	(VOLUTA_LOG_WARN  | \
 	 VOLUTA_LOG_ERROR | \
 	 VOLUTA_LOG_CRIT  | \
 	 VOLUTA_LOG_STDOUT)

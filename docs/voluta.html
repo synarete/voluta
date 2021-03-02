@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.15.2: http://docutils.sourceforge.net/" />
+<title>Voluta -- a File-System Vault</title>
+<style type="text/css">
+
+/*
+ * voluta.css
+ *
+ * Voluta's stylesheet for rst2html
+ *
+ * :copyright: Copyright 2021, Shachar Sharon
+ * :license: CC0
+ *
+ */
+
+
+.borderless, table.borderless td, table.borderless th {
+  border: 0
+}
+
+table.borderless td, table.borderless th {
+  padding: 0 0.5em 0 0 ! important
+}
+
+.first {
+  margin-top: 0 ! important
+}
+
+.last, .with-subtitle {
+  margin-bottom: 0 ! important
+}
+
+.hidden {
+  display: none
+}
+
+.subscript {
+  vertical-align: sub;
+  font-size: smaller
+}
+
+.superscript {
+  vertical-align: super;
+  font-size: smaller
+}
+
+a.toc-backref {
+  text-decoration: none;
+  color: black
+}
+
+blockquote.epigraph {
+  margin: 2em 5em;
+}
+
+body {
+  font-family: Georgia, serif-serif;
+  line-height: 120%;
+  font-size: 120%;
+  background-color: #fff;
+  color: #000;
+  margin: 1em;
+  padding: 1em;
+}
+
+dl.docutils dd {
+  margin-bottom: 0.5em
+}
+
+object[type="image/svg+xml"], object[type="application/x-shockwave-flash"] {
+  overflow: hidden;
+}
+
+/* Uncomment (and remove this text!) to get bold-faced definition list terms
+dl.docutils dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em
+}
+
+div.abstract p.topic-title {
+  font-weight: bold;
+  text-align: center
+}
+
+div.admonition, div.attention, div.caution, div.danger, div.error, div.hint,
+div.important, div.note, div.tip, div.warning {
+  margin: 2em;
+  border: medium outset;
+  padding: 1em
+}
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title {
+  font-weight: bold;
+  font-family: sans-serif
+}
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title, .code .error {
+  color: red;
+  font-weight: bold;
+  font-family: sans-serif
+}
+
+div.compound .compound-first, div.compound .compound-middle {
+  margin-bottom: 0.5em
+}
+
+div.compound .compound-last, div.compound .compound-middle {
+  margin-top: 0.5em
+}
+
+div.dedication {
+  margin: 2em 5em;
+  text-align: center;
+  font-style: italic
+}
+
+div.dedication p.topic-title {
+  font-weight: bold;
+  font-style: normal
+}
+
+div.document {
+    width: 56em;
+    margin: 1em auto 0 auto;
+}
+
+div.figure {
+  margin-left: 2em;
+  margin-right: 2em
+}
+
+div.footer, div.header {
+  clear: both;
+  font-size: smaller
+}
+
+div.line-block {
+  display: block;
+  margin-top: 1em;
+  margin-bottom: 1em
+}
+
+div.line-block div.line-block {
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-left: 1.5em
+}
+
+div.sidebar {
+  margin: 0 0 0.5em 1em;
+  border: medium outset;
+  padding: 1em;
+  background-color: #ffffee;
+  width: 40%;
+  float: right;
+  clear: right
+}
+
+div.sidebar p.rubric {
+  font-family: sans-serif;
+  font-size: medium
+}
+
+div.system-messages {
+  margin: 5em
+}
+
+div.system-messages h1 {
+  color: red
+}
+
+div.system-message {
+  border: medium outset;
+  padding: 1em
+}
+
+div.system-message p.system-message-title {
+  color: red;
+  font-weight: bold
+}
+
+div.topic {
+  margin: 2em
+}
+
+h1.section-subtitle,
+h2.section-subtitle,
+h3.section-subtitle,
+h4.section-subtitle,
+h5.section-subtitle,
+h6.section-subtitle {
+  margin-top: 0.4em
+}
+
+h1.title {
+  text-align: center
+}
+
+h2.subtitle {
+  text-align: center
+}
+
+hr.docutils {
+  width: 75%
+}
+
+img.align-left, .figure.align-left, object.align-left, table.align-left {
+  clear: left;
+  float: left;
+  margin-right: 1em
+}
+
+img.align-right, .figure.align-right, object.align-right, table.align-right {
+  clear: right;
+  float: right;
+  margin-left: 1em
+}
+
+img.align-center, .figure.align-center, object.align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table.align-center {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.align-left {
+  text-align: left
+}
+
+.align-center {
+  clear: both;
+  text-align: center
+}
+
+.align-right {
+  text-align: right
+}
+
+/* reset inner alignment in figures */
+
+div.align-right {
+  text-align: inherit
+}
+
+/* div.align-center * { */
+
+/*   text-align: left } */
+
+.align-top {
+  vertical-align: top
+}
+
+.align-middle {
+  vertical-align: middle
+}
+
+.align-bottom {
+  vertical-align: bottom
+}
+
+ol.simple, ul.simple {
+  margin-bottom: 1em
+}
+
+ol.arabic {
+  list-style: decimal
+}
+
+ol.loweralpha {
+  list-style: lower-alpha
+}
+
+ol.upperalpha {
+  list-style: upper-alpha
+}
+
+ol.lowerroman {
+  list-style: lower-roman
+}
+
+ol.upperroman {
+  list-style: upper-roman
+}
+
+p.attribution {
+  text-align: right;
+  margin-left: 50%
+}
+
+p.caption {
+  font-style: italic
+}
+
+p.credits {
+  font-style: italic;
+  font-size: smaller
+}
+
+p.label {
+  white-space: nowrap
+}
+
+p.rubric {
+  font-weight: bold;
+  font-size: larger;
+  color: maroon;
+  text-align: center
+}
+
+p.sidebar-title {
+  font-family: sans-serif;
+  font-weight: bold;
+  font-size: larger
+}
+
+p.sidebar-subtitle {
+  font-family: sans-serif;
+  font-weight: bold
+}
+
+p.topic-title {
+  font-weight: bold
+}
+
+pre.address {
+  margin-bottom: 0;
+  margin-top: 0;
+  font: inherit
+}
+
+pre.literal-block, pre.doctest-block, pre.math, pre.code {
+  margin-left: 2em;
+  margin-right: 2em;
+  padding: 1em;
+}
+
+pre.code .ln {
+  color: grey;
+}
+
+/* line numbers */
+
+pre.code, code {
+  background-color: #eeeeee
+}
+
+pre.code .comment, code .comment {
+  color: #5C6576
+}
+
+pre.code .keyword, code .keyword {
+  color: #3B0D06;
+  font-weight: bold
+}
+
+pre.code .literal.string, code .literal.string {
+  color: #0C5404
+}
+
+pre.code .name.builtin, code .name.builtin {
+  color: #352B84
+}
+
+pre.code .deleted, code .deleted {
+  background-color: #DEB0A1
+}
+
+pre.code .inserted, code .inserted {
+  background-color: #A3D289
+}
+
+span.classifier {
+  font-family: sans-serif;
+  font-style: oblique
+}
+
+span.classifier-delimiter {
+  font-family: sans-serif;
+  font-weight: bold
+}
+
+span.interpreted {
+  font-family: sans-serif
+}
+
+span.option {
+  white-space: nowrap
+}
+
+span.pre {
+  white-space: pre
+}
+
+span.problematic {
+  color: red
+}
+
+span.section-subtitle {
+  /* font-size relative to parent (h1..h6 element) */
+  font-size: 80%
+}
+
+table.citation {
+  border-left: solid 1px gray;
+  margin-left: 1px
+}
+
+table.docinfo {
+  margin: 2em 4em
+}
+
+table.docutils {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em
+}
+
+table.footnote {
+  border-left: solid 1px black;
+  margin-left: 1px
+}
+
+table.docutils td, table.docutils th, table.docinfo td, table.docinfo th {
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  vertical-align: top
+}
+
+table.docutils th.field-name, table.docinfo th.docinfo-name {
+  font-weight: bold;
+  text-align: left;
+  white-space: nowrap;
+  padding-left: 0
+}
+
+/* "booktabs" style (no vertical lines) */
+
+table.docutils.booktabs {
+  border: 0px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-collapse: collapse;
+}
+
+table.docutils.booktabs * {
+  border: 0px;
+}
+
+table.docutils.booktabs th {
+  border-bottom: thin solid;
+  text-align: left;
+}
+
+h1 tt.docutils, h2 tt.docutils, h3 tt.docutils, h4 tt.docutils, h5 tt.docutils, h6 tt.docutils {
+  font-size: 100%
+}
+
+ul.auto-toc {
+  list-style-type: none
+}
+
+</style>
+</head>
+<body>
+<div class="document" id="voluta-a-file-system-vault">
+<h1 class="title">Voluta -- a File-System Vault</h1>
+
+<div class="contents topic" id="contents">
+<p class="topic-title first">Contents</p>
+<ul class="auto-toc simple">
+<li><a class="reference internal" href="#overview" id="id2">1&nbsp;&nbsp;&nbsp;Overview</a><ul class="auto-toc">
+<li><a class="reference internal" href="#what-is-voluta" id="id3">1.1&nbsp;&nbsp;&nbsp;What is Voluta?</a></li>
+<li><a class="reference internal" href="#what-is-voluta-not" id="id4">1.2&nbsp;&nbsp;&nbsp;What is Voluta not?</a></li>
+<li><a class="reference internal" href="#encryption-mode" id="id5">1.3&nbsp;&nbsp;&nbsp;Encryption mode</a></li>
+<li><a class="reference internal" href="#system-requirements" id="id6">1.4&nbsp;&nbsp;&nbsp;System requirements</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#build-and-install" id="id7">2&nbsp;&nbsp;&nbsp;Build and Install</a><ul class="auto-toc">
+<li><a class="reference internal" href="#preparation" id="id8">2.1&nbsp;&nbsp;&nbsp;Preparation</a></li>
+<li><a class="reference internal" href="#build-with-gnu-autotools" id="id9">2.2&nbsp;&nbsp;&nbsp;Build with GNU/autotools</a></li>
+<li><a class="reference internal" href="#build-as-rpm-deb-package" id="id10">2.3&nbsp;&nbsp;&nbsp;Build as rpm/deb package</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#usage" id="id11">3&nbsp;&nbsp;&nbsp;Usage</a><ul class="auto-toc">
+<li><a class="reference internal" href="#id1" id="id12">3.1&nbsp;&nbsp;&nbsp;Preparation</a></li>
+<li><a class="reference internal" href="#creation" id="id13">3.2&nbsp;&nbsp;&nbsp;Creation</a></li>
+<li><a class="reference internal" href="#mounting" id="id14">3.3&nbsp;&nbsp;&nbsp;Mounting</a></li>
+<li><a class="reference internal" href="#cloning" id="id15">3.4&nbsp;&nbsp;&nbsp;Cloning</a></li>
+<li><a class="reference internal" href="#offline-encryption" id="id16">3.5&nbsp;&nbsp;&nbsp;Offline encryption</a></li>
+<li><a class="reference internal" href="#archiving" id="id17">3.6&nbsp;&nbsp;&nbsp;Archiving</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#design" id="id18">4&nbsp;&nbsp;&nbsp;Design</a></li>
+<li><a class="reference internal" href="#license" id="id19">5&nbsp;&nbsp;&nbsp;License</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h1><a class="toc-backref" href="#id2">1&nbsp;&nbsp;&nbsp;Overview</a></h1>
+<div class="section" id="what-is-voluta">
+<h2><a class="toc-backref" href="#id3">1.1&nbsp;&nbsp;&nbsp;What is Voluta?</a></h2>
+<p>Voluta is an encrypted file-system in user-space. Using it, a user can store
+large data-sets within single regular file &quot;vault&quot;, either with inline or
+offline encryption. She may also archive an entire file-system into an
+encrypted objects representation, which can later be shipped into remote
+cloud provider.</p>
+<p>As an example, consider the case of storing the home directory of different
+users under an isolated namespaces, each encrypted with its own unique private
+key. Alternatively, executing fully encrypted containers, where their entire
+data-set is stored in a single file.</p>
+<p>Unlike many in-kernel file-systems, voluta uses regular file as its backing
+storage volume, instead of raw block device. It also tries to pack the data
+into the file without leaving holes, instead of spreading it all over the
+device. Thus, for mostly append workloads, the file size correlates to the
+amount of data used by a voluta file-system. When the backing storage file
+resides on a file-system which supports the <tt class="docutils literal">copy_file_range(2)</tt> system
+call (such as <tt class="docutils literal">XFS</tt> or <tt class="docutils literal">BTRFS</tt>), voluta also support instant file-system
+clones.</p>
+</div>
+<div class="section" id="what-is-voluta-not">
+<h2><a class="toc-backref" href="#id4">1.2&nbsp;&nbsp;&nbsp;What is Voluta not?</a></h2>
+<p>Voluta can not be used as a root file-system, nor was it designed to serve as
+a high performance storage system. While a lot of effort has been made to
+minimize the penalty of user-space file-system (especially when not using
+inline encryption), its data-packing strategy and usage of regular file as
+backing storage implies performance degradation compared to in-kernel
+file-systems.</p>
+</div>
+<div class="section" id="encryption-mode">
+<h2><a class="toc-backref" href="#id5">1.3&nbsp;&nbsp;&nbsp;Encryption mode</a></h2>
+<p>TODO</p>
+</div>
+<div class="section" id="system-requirements">
+<h2><a class="toc-backref" href="#id6">1.4&nbsp;&nbsp;&nbsp;System requirements</a></h2>
+<p>Voluta is implemented for the GNU/Linux environment. It requires <tt class="docutils literal"><span class="pre">FUSE-7.31</span></tt>
+or higher, and <tt class="docutils literal"><span class="pre">libgcrypt-1.8.0</span></tt> or higher. Currently tested on <tt class="docutils literal">x86_64</tt>
+architecture only.</p>
+</div>
+</div>
+<div class="section" id="build-and-install">
+<h1><a class="toc-backref" href="#id7">2&nbsp;&nbsp;&nbsp;Build and Install</a></h1>
+<div class="section" id="preparation">
+<h2><a class="toc-backref" href="#id8">2.1&nbsp;&nbsp;&nbsp;Preparation</a></h2>
+<p>Clone voluta's source code:</p>
+<pre class="code sh literal-block">
+$ git clone https://github.com/synarete/voluta
+</pre>
+<p>Depending on your system, you may need to install additional development
+packages in order to compile voluta from source.</p>
+<p>On rpm-based systems, install the following packages:</p>
+<pre class="code sh literal-block">
+$ <span class="comment single"># run as privileged user:
+</span>$ dnf install gcc make automake libtool libuuid-devel libattr-devel
+$ dnf install libcap-devel libunwind-devel libgcrypt-devel kernel-headers
+$ dnf install python3-docutils
+</pre>
+<p>On deb-based systems, install the following packages:</p>
+<pre class="code sh literal-block">
+$ <span class="comment single"># run as privileged user:
+</span>$ apt-get install gcc make automake libtool uuid-dev attr-dev libcap-dev
+$ apt-get install libunwind-dev libgcrypt-dev kernel-headers
+$ apt-get install python3-docutils
+</pre>
+</div>
+<div class="section" id="build-with-gnu-autotools">
+<h2><a class="toc-backref" href="#id9">2.2&nbsp;&nbsp;&nbsp;Build with GNU/autotools</a></h2>
+<pre class="code sh literal-block">
+$ git clone https://github.com/synarete/voluta
+$ <span class="name builtin">cd</span> voluta
+$ ./bootstrap
+$ <span class="name builtin">cd</span> build
+$ ../configure
+$ make
+$ make install
+</pre>
+</div>
+<div class="section" id="build-as-rpm-deb-package">
+<h2><a class="toc-backref" href="#id10">2.3&nbsp;&nbsp;&nbsp;Build as rpm/deb package</a></h2>
+<p>On rpm/deb system, you may try installtion via package managers. A helper
+script is provided to build packages:</p>
+<pre class="code sh literal-block">
+$ ./pkg/packagize.sh
+...
+</pre>
+<p>When done, packages are located under <tt class="docutils literal">build</tt> directory, and should be
+installed by privileged user.</p>
+</div>
+</div>
+<div class="section" id="usage">
+<h1><a class="toc-backref" href="#id11">3&nbsp;&nbsp;&nbsp;Usage</a></h1>
+<div class="section" id="id1">
+<h2><a class="toc-backref" href="#id12">3.1&nbsp;&nbsp;&nbsp;Preparation</a></h2>
+<p>Voluta is designed to operate as a non-privileged process. A user can mount
+his own isolated file-system, without any need for special resources or
+capabilities from the system. However, an appropriate privilege (Linux: the
+<tt class="docutils literal">CAP_SYS_ADMIN</tt> capability) is required to mount a voluta filesystem.</p>
+<p>Voluta uses a dedicated mounting daemon service, which allows a non-privileged
+processes to mount and umount file-systems (similar to <tt class="docutils literal">fusermount3</tt>). As
+a security enhancement, only well-known directories, which are listed in
+<tt class="docutils literal">/etc/voluta/mountd.conf</tt> configuration file, may be valid as mount point.
+Whenever adding new entries to this file, the <tt class="docutils literal"><span class="pre">voluta-mountd.service</span></tt> must be
+restarted for changes to take effect.</p>
+<p>Before mounting new file-system, the sysadmin should add new entry to the
+local system configuration file:</p>
+<pre class="code sh literal-block">
+$ <span class="name builtin">echo</span> <span class="literal string single">'/path/to/mount/dir'</span> &gt;&gt; /etc/voluta/mountd.conf
+$ systemctl restart voluta-mountd.service
+</pre>
+</div>
+<div class="section" id="creation">
+<h2><a class="toc-backref" href="#id13">3.2&nbsp;&nbsp;&nbsp;Creation</a></h2>
+<p>Voluta allows users to create both an encrypted and non-encrypted file-system,
+where a non-encrypted file-system can be encrypted offline later on, and vise
+versa (i.e., an encrypted file-system may be decrypted offline). Upon
+creating an encrypted file-system, the user should provide a strong passphrase
+which will later be used during the mount process.</p>
+<p>The file-system's data resides on a regular file, which the owner of this
+volume-file must have read-write access permissions. The maximal file-system
+size should be defined upon creation, thou the actual used file-size will be
+much smaller.</p>
+<p>To format a new encrypted voluta file-system, use the <tt class="docutils literal">mkfs</tt> sub-command:</p>
+<pre class="code sh literal-block">
+$ voluta mkfs --encrypted --size<span class="operator">=</span>SIZE /path/to/volume/name.voluta
+enter passphrase:
+re-enter passphrase:
+...
+</pre>
+<p>To format a non-encrypted voluta file-system, use the <tt class="docutils literal">mkfs</tt> sub-command
+without the <tt class="docutils literal"><span class="pre">--encrypted</span></tt> option.</p>
+</div>
+<div class="section" id="mounting">
+<h2><a class="toc-backref" href="#id14">3.3&nbsp;&nbsp;&nbsp;Mounting</a></h2>
+<p>Mounting a voluta file-system can be made only when all the following
+conditions are met:</p>
+<ol class="arabic simple">
+<li>The target mount directory is empty.</li>
+<li>User has read-write-execute access to the mount directory.</li>
+<li>The mount directory is listed in <tt class="docutils literal">/etc/voluta/mountd.conf</tt> file.</li>
+<li>System-wide <tt class="docutils literal"><span class="pre">voluta-mountd.service</span></tt> is active.</li>
+</ol>
+<p>To mount a previously formatted voluta file-system, use the <tt class="docutils literal">mount</tt>
+sub-command:</p>
+<pre class="code sh literal-block">
+$ voluta mount /path/to/volume/fsname.voluta /path/to/mount/dir
+</pre>
+<p>Depending on volume's size, encryption mode and local system's characteristics,
+mount should be active within few seconds:</p>
+<pre class="code sh literal-block">
+$ df -h /path/to/mount/dir
+</pre>
+<p>To unmount a live volute file-system, use the <tt class="docutils literal">umount</tt> sub-command (note that
+the <tt class="docutils literal"><span class="pre">voluta-mountd.service</span></tt> must be active):</p>
+<pre class="code sh literal-block">
+$ systemctl status voluta-mountd.service
+$ voluta umount /path/to/mount/dir
+</pre>
+</div>
+<div class="section" id="cloning">
+<h2><a class="toc-backref" href="#id15">3.4&nbsp;&nbsp;&nbsp;Cloning</a></h2>
+<p>When the underlying volume file residues within a file-system which supports
+the <tt class="docutils literal">copy_file_range(2)</tt> system call (such as <tt class="docutils literal">XFS</tt> or <tt class="docutils literal">BTRFS</tt>), a user
+my create a writable snapshot of an active file-system:</p>
+<pre class="code sh literal-block">
+$ voluta clone /path/to/mount/dir /path/to/volume/fsclone.voluta
+</pre>
+<p>Note that the target cloned volume file must reside on the file-system as
+the original volume.</p>
+</div>
+<div class="section" id="offline-encryption">
+<h2><a class="toc-backref" href="#id16">3.5&nbsp;&nbsp;&nbsp;Offline encryption</a></h2>
+<p>A user choose to run a voluta file-system in non-encryption mode, primarly
+when she wants to avoid the run-time performance penalty of copy and encryption
+of data. In such cases, it may be desired to encrypt the underlying volume in
+offline mode (encryption is done in-place):</p>
+<pre class="code sh literal-block">
+$ voluta encrypt /path/to/volume/fsname.voluta
+enter passphrase:
+re-enter passphrase:
+...
+</pre>
+<p>The reversed operation is also valid: take an encrypted volume and decrypt it
+in-place:</p>
+<pre class="code sh literal-block">
+$ voluta decrypt /path/to/volume/fsname.voluta
+enter passphrase:
+</pre>
+</div>
+<div class="section" id="archiving">
+<h2><a class="toc-backref" href="#id17">3.6&nbsp;&nbsp;&nbsp;Archiving</a></h2>
+<p>It is often desired to archive large voluta volumes as encrypted objects
+represnations, which may be shipped to remote machine or remote cloud. Voluta
+provides a mechanism to export and import:</p>
+<pre class="code sh literal-block">
+$ voluta <span class="name builtin">export</span> /path/to/volume/fsname.voluta /pash/to/repo/dir
+$ voluta import /pash/to/repo/dir/fsname.voluta /path/to/volume/dir
+</pre>
+</div>
+</div>
+<div class="section" id="design">
+<h1><a class="toc-backref" href="#id18">4&nbsp;&nbsp;&nbsp;Design</a></h1>
+<p>TODO</p>
+</div>
+<div class="section" id="license">
+<h1><a class="toc-backref" href="#id19">5&nbsp;&nbsp;&nbsp;License</a></h1>
+<p>Voluta is distributed under <strong>GPL-3.0-or-later</strong> license. It is a free
+software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation,
+either version 3 of the License, or (at your option) any later version.</p>
+<p>Voluta is distributed in the hope that it will be useful, but without any
+warranty; without even the implied warranty of merchantability or fitness
+for a particular purpose. You should have received a copy of the GNU General
+Public License along with this program. If not, see <a class="reference external" href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPLv3</a></p>
+</div>
+</div>
+</body>
+</html>

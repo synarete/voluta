@@ -148,8 +148,7 @@ static void voluta_exec_subcmd(void)
 
 	if (cmd_info == NULL) {
 		show_main_help_and_exit(1);
-	}
-	if (cmd_info->action_hook != NULL) {
+	} else if (cmd_info->action_hook != NULL) {
 		cmd_info->action_hook();
 	}
 }

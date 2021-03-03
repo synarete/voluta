@@ -161,7 +161,6 @@ static void test_lseek_data_sparse_(struct vt_env *vte, size_t nsteps)
 	loff_t off;
 	loff_t pos;
 	loff_t data_off;
-	size_t nwr = 0;
 	const size_t size = VT_BK_SIZE;
 	const ssize_t ssize = (ssize_t)size;
 	const size_t step = VT_UMEGA;
@@ -173,8 +172,7 @@ static void test_lseek_data_sparse_(struct vt_env *vte, size_t nsteps)
 		off = (loff_t)(step * (i + 1));
 		data_off = off - ssize;
 		vt_ftruncate(fd, off);
-		vt_pwrite(fd, buf1, size, data_off, &nwr);
-		vt_expect_eq(nwr, size);
+		vt_pwriten(fd, buf1, size, data_off);
 	}
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);
@@ -200,10 +198,9 @@ static void test_lseek_data_sparse(struct vt_env *vte)
 static void test_lseek_hole_sparse_(struct vt_env *vte, size_t nsteps)
 {
 	int fd = -1;
+	loff_t pos = 0;
 	loff_t off = 0;
 	loff_t hole_off = 0;
-	loff_t pos = 0;
-	size_t nwr = 0;
 	const size_t size = VT_BK_SIZE;
 	const ssize_t ssize = (loff_t)size;
 	const size_t step = VT_UMEGA;
@@ -213,8 +210,7 @@ static void test_lseek_hole_sparse_(struct vt_env *vte, size_t nsteps)
 	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
 	for (size_t i = 0; i < nsteps; ++i) {
 		off = (loff_t)(step * i);
-		vt_pwrite(fd, buf1, size, off, &nwr);
-		vt_expect_eq(nwr, size);
+		vt_pwriten(fd, buf1, size, off);
 	}
 	vt_llseek(fd, 0, SEEK_SET, &pos);
 	vt_expect_eq(pos, 0);

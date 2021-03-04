@@ -362,6 +362,14 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	}
 }
 
+void voluta_die_if_not_lockable(const char *path, bool rw)
+{
+	int fd = -1;
+
+	voluta_open_and_flock(path, rw, &fd);
+	voluta_funlock_and_close(path, &fd);
+}
+
 void voluta_die_if_not_archive(const char *path)
 {
 	enum voluta_ztype ztype;
@@ -443,6 +451,49 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 		if (st.st_ino != VOLUTA_INO_ROOT) {
 			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
+{
+	int err;
+	const int o_flags = rw ? O_RDWR : O_RDONLY;
+	struct flock fl = {
+		.l_type = rw ? F_WRLCK : F_RDLCK,
+		.l_whence = SEEK_SET,
+		.l_start = 0,
+		.l_len = 0
+	};
+
+	*out_fd = -1;
+	err = voluta_sys_open(path, o_flags, 0, out_fd);
+	if (err) {
+		voluta_die(err, "failed to open: %s", path);
+	}
+	err = voluta_sys_fcntl_flock(*out_fd, F_SETLK, &fl);
+	if (err) {
+		voluta_die(err, "failed to flock: %s", path);
+	}
+}
+
+void voluta_funlock_and_close(const char *path, int *pfd)
+{
+	int err;
+	struct flock fl = {
+		.l_type = F_UNLCK,
+		.l_whence = SEEK_SET,
+		.l_start = 0,
+		.l_len = 0
+	};
+
+	if ((path != NULL) && (*pfd > 0)) {
+		err = voluta_sys_fcntl_flock(*pfd, F_SETLK, &fl);
+		if (err) {
+			voluta_die(err, "failed to funlock: %s", path);
+		}
+		voluta_sys_closefd(pfd);
 	}
 }
 

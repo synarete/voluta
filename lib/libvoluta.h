@@ -360,10 +360,6 @@ int voluta_vstore_close(struct voluta_vstore *vstore);
 int voluta_vstore_create(struct voluta_vstore *vstore,
                          const char *path, loff_t size);
 
-int voluta_vstore_flock(const struct voluta_vstore *vstore);
-
-int voluta_vstore_funlock(const struct voluta_vstore *vstore);
-
 int voluta_vstore_expand(struct voluta_vstore *vstore, loff_t cap);
 
 int voluta_vstore_write(struct voluta_vstore *vstore,
@@ -856,7 +852,7 @@ int voluta_pstore_open(struct voluta_pstore *pstore,
 int voluta_pstore_close(struct voluta_pstore *pstore);
 
 int voluta_pstore_check_io(const struct voluta_pstore *pstore,
-                           loff_t off, size_t len);
+                           bool rw, loff_t off, size_t len);
 
 int voluta_pstore_read(const struct voluta_pstore *pstore,
                        loff_t off, size_t bsz, void *buf);
@@ -868,10 +864,6 @@ int voluta_pstore_writev(struct voluta_pstore *pstore, loff_t off,
                          size_t len, const struct iovec *iov, size_t cnt);
 
 int voluta_pstore_sync(struct voluta_pstore *pstore, bool all);
-
-int voluta_pstore_flock(const struct voluta_pstore *pstore);
-
-int voluta_pstore_funlock(const struct voluta_pstore *pstore);
 
 int voluta_pstore_clone(const struct voluta_pstore *pstore,
                         const struct voluta_str *name);

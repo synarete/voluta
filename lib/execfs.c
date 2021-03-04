@@ -553,10 +553,6 @@ static int fse_open_vstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_flock(fse->vstore);
-	if (err && (err != -EPERM)) {
-		return err;
-	}
 	return 0;
 }
 
@@ -569,21 +565,11 @@ static int fse_create_vstore(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_flock(fse->vstore);
-	if (err) {
-		return err;
-	}
 	return 0;
 }
 
 static int fse_close_vstore(struct voluta_fs_env *fse)
 {
-	int err;
-
-	err = voluta_vstore_funlock(fse->vstore);
-	if (err) {
-		return err;
-	}
 	voluta_vstore_close(fse->vstore);
 	return 0;
 }

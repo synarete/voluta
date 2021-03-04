@@ -67,6 +67,7 @@ struct voluta_subcmd_mount {
 	char   *volume_real;
 	char   *volume_clone;
 	char   *volume_active;
+	int     volume_fd;
 	char   *point;
 	char   *point_real;
 	char   *options;
@@ -277,9 +278,16 @@ void voluta_die_if_bad_sb(const char *path, const char *pass);
 void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
                               bool mustnot_be_enc, bool *out_is_encrypted);
 
+void voluta_die_if_not_lockable(const char *path, bool rw);
+
 void voluta_die_if_not_archive(const char *path);
 
 void voluta_die_if_no_mountd(void);
+
+
+void voluta_open_and_flock(const char *path, bool rw, int *out_fd);
+
+void voluta_funlock_and_close(const char *path, int *pfd);
 
 char *voluta_clone_as_tmppath(const char *path);
 

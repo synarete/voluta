@@ -127,7 +127,10 @@ static void mount_execute_fs(void)
 
 static void mount_finalize(void)
 {
+	int *pfd = &voluta_globals.cmd.mount.volume_fd;
+
 	voluta_destrpy_fse_inst();
+	voluta_funlock_and_close(voluta_globals.cmd.mount.volume_real, pfd);
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.mount.volume_clone);
 	voluta_pfree_string(&voluta_globals.cmd.mount.point_real);
@@ -149,6 +152,7 @@ static void mount_setup_check_volume(void)
 {
 	bool is_enc = false;
 	const char *path = NULL;
+	const char *passfile = NULL;
 	const bool rw = !voluta_globals.cmd.mount.rdonly;
 
 	voluta_globals.cmd.mount.volume_real =
@@ -158,9 +162,11 @@ static void mount_setup_check_volume(void)
 
 	path = voluta_globals.cmd.mount.volume_real;
 	voluta_die_if_not_volume(path, rw, false, false, &is_enc);
+	voluta_die_if_not_lockable(path, rw);
+
 	if (is_enc) {
-		voluta_globals.cmd.mount.passphrase =
-		        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
+		passfile = voluta_globals.cmd.mount.passphrase_file;
+		voluta_globals.cmd.mount.passphrase = voluta_getpass(passfile);
 		voluta_globals.cmd.mount.encrypted = true;
 	}
 	voluta_die_if_bad_sb(path, voluta_globals.cmd.mount.passphrase);
@@ -245,6 +251,13 @@ static void mount_boostrap_process(void)
 	if (!voluta_globals.disable_ptrace) {
 		voluta_prctl_non_dumpable();
 	}
+}
+
+static void mount_flock_volume(void)
+{
+	voluta_open_and_flock(voluta_globals.cmd.mount.volume_real,
+	                      !voluta_globals.cmd.mount.rdonly,
+	                      &voluta_globals.cmd.mount.volume_fd);
 }
 
 static void mount_create_fs_env(void)
@@ -339,6 +352,9 @@ void voluta_execute_mount(void)
 
 	/* Become daemon process */
 	mount_boostrap_process();
+
+	/* Lock volume as daemon process */
+	mount_flock_volume();
 
 	/* Setup environment instance */
 	mount_create_fs_env();

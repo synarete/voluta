@@ -364,7 +364,30 @@ static void test_mkdir_tree_deep(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects successful rmdir(3p) to update the last data modification and last
+ * file status change time-stamps of the parent directory
+ */
+static void test_rmdir_mctime(struct vt_env *vte)
+{
+	struct stat st[2];
+	const char *path1 = vt_new_path_unique(vte);
+	const char *path2 = vt_new_path_under(vte, path1);
 
+	vt_mkdir(path1, 0700);
+	vt_mkdir(path2, 0700);
+	vt_stat(path1, &st[0]);
+	vt_expect_true(S_ISDIR(st[0].st_mode));
+	vt_suspends(vte, 2);
+	vt_rmdir(path2);
+	vt_stat_err(path2, -ENOENT);
+	vt_stat(path1, &st[1]);
+	vt_expect_mtime_gt(&st[0], &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+	vt_rmdir(path1);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects successful rmdir(3p) on empty directory while still referenced by
  * open file-descriptor.
@@ -436,6 +459,7 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_bigger),
 	VT_DEFTEST(test_mkdir_tree_wide),
 	VT_DEFTEST(test_mkdir_tree_deep),
+	VT_DEFTEST(test_rmdir_mctime),
 	VT_DEFTEST(test_rmdir_openat),
 	VT_DEFTEST(test_mkdir_setgid),
 };

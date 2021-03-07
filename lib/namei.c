@@ -1183,6 +1183,7 @@ static int do_rmdir(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
+	update_itimes(op, dir_ii, VOLUTA_IATTR_MCTIME);
 	return 0;
 }
 

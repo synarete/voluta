@@ -2690,6 +2690,7 @@ static int fuseq_resolve_opdesc(struct voluta_fuseq_worker *fqw,
 	const struct voluta_fuseq_cmd *cmd = cmd_of(opc);
 
 	if ((cmd == NULL) || (cmd->hook == NULL)) {
+		/* TODO: handle cases of FUSE_INTERUPT properly */
 		return -ENOSYS;
 	}
 	if (!fqw->fq->fq_got_init && (cmd->code != FUSE_INIT)) {
@@ -3547,7 +3548,7 @@ static int fuseq_sub_exec_loop(struct voluta_fuseq_worker *fqw)
 
 		/* XXX FIXME */
 		if (err == -ENOENT) {
-			log_err("unexpected: err=%d", err);
+			log_err("unexpected fuseq-status: err=%d", err);
 			sleep(1);
 			err = 0;
 		}

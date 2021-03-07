@@ -506,24 +506,6 @@ static bool isowner(const struct voluta_ucred *ucred,
 	return uid_eq(ucred->uid, ii_uid(ii));
 }
 
-static bool capable_fsetid(const struct voluta_ucred *ucred)
-{
-	/* TODO: CAP_SYS_ADMIN */
-	return uid_isroot(ucred->uid);
-}
-
-static bool capable_chown(const struct voluta_ucred *ucred)
-{
-	/* TODO: CAP_CHOWN */
-	return uid_isroot(ucred->uid);
-}
-
-static bool capable_fowner(const struct voluta_ucred *ucred)
-{
-	/* TODO: CAP_FOWNER */
-	return uid_isroot(ucred->uid);
-}
-
 static bool has_itype(const struct voluta_inode_info *ii, mode_t mode)
 {
 	const mode_t imode = ii_mode(ii);
@@ -562,31 +544,21 @@ static int check_xaccess_parent(const struct voluta_oper *op,
 	return 0;
 }
 
-static void i_unset_mode(struct voluta_inode_info *ii, mode_t mask)
+static void kill_suid_sgid(struct voluta_inode_info *ii, long flags)
 {
-	inode_set_mode(ii->inode, ii_mode(ii) & ~mask);
-	ii_dirtify(ii);
-}
-
-static void i_kill_priv(const struct voluta_oper *op,
-                        struct voluta_inode_info *ii)
-{
-	mode_t mode;
 	mode_t mask = 0;
-	const struct voluta_ucred *ucred = &op->ucred;
+	const mode_t mode = ii_mode(ii);
 
-	if (ii_isreg(ii)) {
-		mode = ii_mode(ii);
-
-		if (mode & S_ISUID) {
-			mask |= S_ISUID;
-		}
-		if ((mode & S_ISGID) && (mode & S_IXGRP)) {
-			mask |= S_ISGID;
-		}
-		if (!capable_fsetid(ucred)) {
-			i_unset_mode(ii, mask);
-		}
+	if ((flags & VOLUTA_IATTR_KILL_SUID) && (mode & S_ISUID)) {
+		mask |= S_ISUID;
+	}
+	if ((flags & VOLUTA_IATTR_KILL_SGID) &&
+	    ((mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP))) {
+		mask |= S_ISGID;
+	}
+	if (mask) {
+		inode_set_mode(ii->inode, mode & ~mask);
+		ii_dirtify(ii);
 	}
 }
 
@@ -631,12 +603,27 @@ static void update_times_attr(const struct voluta_oper *op,
  *
  * Support special mode for file as read-only permanently (immutable).
  */
+
+static void update_post_chmod(const struct voluta_oper *op,
+                              struct voluta_inode_info *ii,
+                              struct voluta_iattr *iattr)
+{
+	const gid_t gid = ii_gid(ii);
+	const struct voluta_ucred *ucred = &op->ucred;
+
+	iattr->ia_flags |= VOLUTA_IATTR_MODE | VOLUTA_IATTR_CTIME;
+	if (!gid_eq(gid, ucred->gid) && !capable_fsetid(ucred)) {
+		iattr->ia_flags |= VOLUTA_IATTR_KILL_SGID;
+	}
+	update_iattrs(op, ii, iattr);
+}
+
 static int do_chmod(const struct voluta_oper *op,
                     struct voluta_inode_info *ii, mode_t mode,
                     const struct voluta_itimes *itimes)
 {
 	int err;
-	struct voluta_iattr iattr;
+	struct voluta_iattr iattr = { .ia_flags = 0 };
 
 	err = check_chmod(op, ii, mode);
 	if (err) {
@@ -649,9 +636,7 @@ static int do_chmod(const struct voluta_oper *op,
 
 	iattr_setup3(&iattr, ii_ino(ii), itimes);
 	iattr.ia_mode = new_mode_of(ii, mode);
-	iattr.ia_flags |= VOLUTA_IATTR_MODE | VOLUTA_IATTR_CTIME;
-	update_iattrs(op, ii, &iattr);
-
+	update_post_chmod(op, ii, &iattr);
 	return 0;
 }
 
@@ -714,6 +699,21 @@ static int check_chown(const struct voluta_oper *op,
 	return err;
 }
 
+static void update_post_chown(const struct voluta_oper *op,
+                              struct voluta_inode_info *ii,
+                              struct voluta_iattr *iattr)
+{
+	const mode_t mode = ii_mode(ii);
+	const mode_t mask = S_IXUSR | S_IXGRP | S_IXOTH;
+
+	iattr->ia_flags |= VOLUTA_IATTR_CTIME;
+	if (mode & mask) {
+		iattr->ia_flags |= VOLUTA_IATTR_KILL_SUID;
+		iattr->ia_flags |= VOLUTA_IATTR_KILL_SGID;
+	}
+	update_iattrs(op, ii, iattr);
+}
+
 static int do_chown(const struct voluta_oper *op,
                     struct voluta_inode_info *ii, uid_t uid, gid_t gid,
                     const struct voluta_itimes *itimes)
@@ -721,7 +721,7 @@ static int do_chown(const struct voluta_oper *op,
 	int err;
 	bool chown_uid = !uid_isnull(uid);
 	bool chown_gid = !gid_isnull(gid);
-	struct voluta_iattr iattr;
+	struct voluta_iattr iattr = { .ia_flags = 0 };
 
 	if (!chown_uid && !chown_gid) {
 		return 0; /* no-op */
@@ -739,8 +739,7 @@ static int do_chown(const struct voluta_oper *op,
 		iattr.ia_gid = gid;
 		iattr.ia_flags |= VOLUTA_IATTR_GID;
 	}
-	iattr.ia_flags |= VOLUTA_IATTR_KILL_PRIV | VOLUTA_IATTR_CTIME;
-	update_iattrs(op, ii, &iattr);
+	update_post_chown(op, ii, &iattr);
 	return 0;
 }
 
@@ -1089,8 +1088,8 @@ static void update_inode_attr(struct voluta_inode_info *ii,
 	} else if (flags & VOLUTA_IATTR_TIMES) {
 		voluta_refresh_atime(ii, false);
 	}
-	if (flags & VOLUTA_IATTR_KILL_PRIV) {
-		i_kill_priv(op, ii);
+	if (flags & (VOLUTA_IATTR_KILL_SUID | VOLUTA_IATTR_KILL_SGID)) {
+		kill_suid_sgid(ii, flags);
 	}
 	inode_inc_revision(inode);
 	ii_dirtify(ii);

@@ -73,6 +73,11 @@ static bool isowner(const struct voluta_oper *op,
 	return uid_eq(op->ucred.uid, ii_uid(ii));
 }
 
+static bool has_cap_fowner(const struct voluta_oper *op)
+{
+	return capable_fowner(&op->ucred);
+}
+
 static int check_isdir(const struct voluta_inode_info *ii)
 {
 	return ii_isdir(ii) ? 0 : -ENOTDIR;
@@ -140,7 +145,6 @@ static int check_sticky(const struct voluta_oper *op,
                         const struct voluta_inode_info *dir_ii,
                         const struct voluta_inode_info *ii)
 {
-
 	if (!has_sticky_bit(dir_ii)) {
 		return 0; /* No sticky-bit, we're fine */
 	}
@@ -150,7 +154,9 @@ static int check_sticky(const struct voluta_oper *op,
 	if (ii && isowner(op, ii)) {
 		return 0;
 	}
-	/* TODO: Check CAP_FOWNER */
+	if (has_cap_fowner(op)) {
+		return 0;
+	}
 	return -EPERM;
 }
 
@@ -232,10 +238,12 @@ int voluta_authorize(const struct voluta_sb_info *sbi,
 	if (uid_eq(ucred->uid, sbi->sb_owner.uid)) {
 		return 0;
 	}
-	if (uid_eq(ucred->uid, 0)) {
+	if (capable_sys_admin(ucred)) {
 		return 0;
 	}
-	/* TODO: Check CAP_SYS_ADMIN */
+	/* TODO: enable only with explicit mount flags */
+	return 0;
+
 	return -EPERM;
 }
 

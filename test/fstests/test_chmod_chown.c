@@ -199,8 +199,6 @@ static void test_chmod_suid_sgid(struct vt_env *vte)
 	vt_close(fd);
 }
 
-/* TODO: Check fchmodat */
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects chown(3p) to update CTIME
@@ -249,7 +247,7 @@ static void test_chown_unlinked(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Expects fchown(3p) to properly clear SUID/SGID
+ * Expects fchown(3p) to properly sets/clear SUID/SGID
  */
 static void test_chown_suid_sgid(struct vt_env *vte)
 {
@@ -257,7 +255,7 @@ static void test_chown_suid_sgid(struct vt_env *vte)
 	struct stat st;
 	const char *path = vt_new_path_unique(vte);
 
-	vt_creat(path, 0600, &fd);
+	vt_creat(path, S_IFREG | S_IXUSR | S_IWUSR | S_IRUSR, &fd);
 	vt_fstat(fd, &st);
 	vt_fchmod(fd, st.st_mode | S_ISUID);
 	vt_fstat(fd, &st);
@@ -276,6 +274,9 @@ static void test_chown_suid_sgid(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+/* TODO: Check fchmodat */
+
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_chmod_basic),

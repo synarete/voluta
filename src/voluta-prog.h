@@ -72,6 +72,7 @@ struct voluta_subcmd_mount {
 	char   *point_real;
 	char   *options;
 	bool    encrypted;
+	bool    allowother;
 	bool    lazytime;
 	bool    noexec;
 	bool    nosuid;

@@ -3414,23 +3414,28 @@ int voluta_fuseq_mount(struct voluta_fuseq *fq, const char *path)
 {
 	int err;
 	int fd = -1;
-	const uid_t uid = fq->fq_sbi->sb_owner.uid;
-	const gid_t gid = fq->fq_sbi->sb_owner.gid;
+	bool allow_other;
+	const struct voluta_sb_info *sbi = fq->fq_sbi;
+	const uid_t uid = sbi->sb_owner.uid;
+	const gid_t gid = sbi->sb_owner.gid;
+	const uint64_t ms_flags = sbi->sb_ms_flags;
+	const uint64_t ctl_flags = sbi->sb_ctl_flags;
 	const size_t max_read = fq->fq_coni.buffsize;
-	const uint64_t ms_flags = fq->fq_sbi->sb_ms_flags;
 	const char *sock = VOLUTA_MNTSOCK_NAME;
 
 	err = voluta_rpc_handshake(uid, gid);
 	if (err) {
-		log_err("no handshake with mountd: "\
+		log_err("handshake with mountd failed: "\
 		        "sock=@%s err=%d", sock, err);
 		return err;
 	}
-	err = voluta_rpc_mount(path, uid, gid, max_read, ms_flags, &fd);
+	allow_other = (ctl_flags & VOLUTA_F_ALLOWOTHER) > 0;
+	err = voluta_rpc_mount(path, uid, gid, max_read,
+	                       ms_flags, allow_other, &fd);
 	if (err) {
 		log_err("mount failed: path=%s max_read=%lu "\
-		        "mnt_flags=0x%lx err=%d", path,
-		        max_read, ms_flags, err);
+		        "ms_flags=0x%lx allow_other=%d err=%d", path,
+		        max_read, ms_flags, (int)allow_other, err);
 		return err;
 	}
 	fq->fq_fuse_fd = fd;

@@ -230,20 +230,33 @@ static int del_inode(struct voluta_inode_info *ii)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static bool is_fsowner(const struct voluta_sb_info *sbi,
+                       const struct voluta_ucred *ucred)
+{
+	return uid_eq(ucred->uid, sbi->sb_owner.uid);
+}
+
+static bool has_allow_other(const struct voluta_sb_info *sbi)
+{
+	const unsigned long mask = VOLUTA_F_ALLOWOTHER;
+
+	return ((sbi->sb_ctl_flags & mask) == mask);
+}
+
 int voluta_authorize(const struct voluta_sb_info *sbi,
                      const struct voluta_oper *op)
 {
 	const struct voluta_ucred *ucred = &op->ucred;
 
-	if (uid_eq(ucred->uid, sbi->sb_owner.uid)) {
+	if (is_fsowner(sbi, ucred)) {
 		return 0;
 	}
 	if (capable_sys_admin(ucred)) {
 		return 0;
 	}
-	/* TODO: enable only with explicit mount flags */
-	return 0;
-
+	if (has_allow_other(sbi)) {
+		return 0;
+	}
 	return -EPERM;
 }
 

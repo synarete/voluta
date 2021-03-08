@@ -339,6 +339,9 @@ static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
 		if (args->encryptwr) {
 			ctl_flags |= VOLUTA_F_ENCRYPTWR;
 		}
+		if (args->allowother) {
+			ctl_flags |= VOLUTA_F_ALLOWOTHER;
+		}
 	}
 	return ctl_flags;
 }

@@ -19,6 +19,7 @@ _voluta_mount() {
   if [[ "$cur" == -* ]]; then
     COMPREPLY+=( $( compgen -W ' -D --nodaemon -C --coredump -h' -- "$cur" ) )
     COMPREPLY+=( $( compgen -W ' -r --rdonly -x --noexec' -- "$cur" ) )
+    COMPREPLY+=( $( compgen -W ' -A --allow-other' -- "$cur" ) )
   fi
 }
 

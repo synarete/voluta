@@ -38,6 +38,7 @@ static const char *mount_usage[] = {
 	"  -S, --nosuid                 Do not honor special bits",
 	"      --nodev                  Do not allow access to device files",
 	"  -o  --options                Additional mount options",
+	"  -A  --allow-other            Allow other users to access fs",
 	"  -D, --nodaemon               Do not run as daemon process",
 	"  -V, --verbose=LEVEL          Run in verbose mode (0..2)",
 	"  -C, --coredump               Allow core-dumps upon fatal errors",
@@ -54,6 +55,7 @@ static void mount_getopt(void)
 		{ "nosuid", no_argument, NULL, 'S' },
 		{ "nodev", no_argument, NULL, 'Z' },
 		{ "options", required_argument, NULL, 'o' },
+		{ "allow-other", no_argument, NULL, 'A' },
 		{ "nodaemon", no_argument, NULL, 'D' },
 		{ "verbose", required_argument, NULL, 'V' },
 		{ "coredump", no_argument, NULL, 'C' },
@@ -63,7 +65,7 @@ static void mount_getopt(void)
 	};
 
 	while (opt_chr > 0) {
-		opt_chr = voluta_getopt_subcmd("rxSZo:DV:CP:h", opts);
+		opt_chr = voluta_getopt_subcmd("rxSZo:ADV:CP:h", opts);
 		if (opt_chr == 'r') {
 			voluta_globals.cmd.mount.rdonly = true;
 		} else if (opt_chr == 'x') {
@@ -75,6 +77,8 @@ static void mount_getopt(void)
 		} else if (opt_chr == 'o') {
 			/* currently, only for xfstests */
 			voluta_globals.cmd.mount.options = optarg;
+		} else if (opt_chr == 'A') {
+			voluta_globals.cmd.mount.allowother = true;
 		} else if (opt_chr == 'D') {
 			voluta_globals.dont_daemonize = true;
 		} else if (opt_chr == 'V') {
@@ -272,6 +276,7 @@ static void mount_create_fs_env(void)
 		.passwd = voluta_globals.cmd.mount.passphrase,
 		.encrypted = voluta_globals.cmd.mount.encrypted,
 		.encryptwr = voluta_globals.cmd.mount.encrypted,
+		.allowother = voluta_globals.cmd.mount.allowother,
 		.lazytime = voluta_globals.cmd.mount.lazytime,
 		.noexec = voluta_globals.cmd.mount.noexec,
 		.nosuid = voluta_globals.cmd.mount.nosuid,

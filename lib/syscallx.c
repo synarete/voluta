@@ -281,5 +281,3 @@ int voluta_proc_pipe_max_size(long *out_value)
 {
 	return sys_readproc_long("/proc/sys/fs", "pipe-max-size", out_value);
 }
-
-

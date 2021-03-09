@@ -316,6 +316,7 @@ struct voluta_inode_info {
 	ino_t  i_ino;
 	long   i_nopen;
 	long   i_nlookup;
+	bool   i_pinned;
 };
 
 /* caching */

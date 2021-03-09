@@ -752,6 +752,10 @@ static int do_mknod(const struct voluta_oper *op,
 	}
 	update_itimes(op, dir_ii, VOLUTA_IATTR_MCTIME);
 
+	/* can not use 'nopen' as FUSE does not sent OPEN on fifo, and
+	 * therefore no RELEASE */
+	ii->i_pinned = true;
+
 	*out_ii = ii;
 	return 0;
 }
@@ -897,34 +901,76 @@ static int drop_unlinked(struct voluta_inode_info *ii)
 	return 0;
 }
 
-static bool i_isdropable(const struct voluta_inode_info *ii)
+/*
+ * TODO-0022: Do not allocate special files persistently
+ *
+ * Special files which are created via FUSE_MKNOD (FIFO, SOCK et.al.) should
+ * not be allocated on persistent volume. They should have special ino
+ * enumeration and should live in volatile memory only.
+ *
+ * More specifically to the case of 'dropable' here, there is no 'FUSE_RLEASE'
+ * to mknod, even if it is held open by a file-descriptor. Defer space release
+ * to later on when forget.
+ *
+ * Need further investigating on the kernel side.
+ */
+static bool ii_isnlink_orphan(const struct voluta_inode_info *ii)
 {
-	bool res = false;
+	const bool isdir = ii_isdir(ii);
 	const nlink_t nlink = ii_nlink(ii);
 
-	if ((ii->i_nopen == 0) && !ii_refcnt(ii)) {
-		res = ii_isdir(ii) ? (nlink <= 1) : (nlink < 1);
+	if (isdir && (nlink > 1)) {
+		return false;
+	} else if (!isdir && nlink) {
+		return false;
 	}
-	return res;
+	return true;
+}
+
+static bool ii_isdropable(const struct voluta_inode_info *ii)
+{
+	if (!ii_isevictable(ii)) {
+		return false;
+	}
+	if (!ii_isnlink_orphan(ii)) {
+		return false;
+	}
+	return true;
 }
 
 static int try_prune_inode(const struct voluta_oper *op,
                            struct voluta_inode_info *ii, bool update_ctime)
 {
-	int err = 0;
-
-	if (i_isdropable(ii)) {
-		err = drop_unlinked(ii);
-	} else if (update_ctime) {
+	if (!ii->i_nopen && ii_isnlink_orphan(ii)) {
+		ii_undirtify(ii);
+	}
+	if (ii_isdropable(ii)) {
+		return drop_unlinked(ii);
+	}
+	if (update_ctime) {
 		update_itimes(op, ii, VOLUTA_IATTR_CTIME);
 	}
+	return 0;
+}
+
+static int remove_dentry_of(const struct voluta_oper *op,
+                            struct voluta_inode_info *dir_ii,
+                            struct voluta_inode_info *ii,
+                            const struct voluta_qstr *name)
+{
+	int err;
+
+	ii_incref(ii);
+	err = voluta_remove_dentry(op, dir_ii, name);
+	ii_decref(ii);
+
 	return err;
 }
 
-static int do_remove_dentry(const struct voluta_oper *op,
-                            struct voluta_inode_info *dir_ii,
-                            const struct voluta_namestr *nstr,
-                            struct voluta_inode_info *ii)
+static int do_remove_and_prune(const struct voluta_oper *op,
+                               struct voluta_inode_info *dir_ii,
+                               const struct voluta_namestr *nstr,
+                               struct voluta_inode_info *ii)
 {
 	int err;
 	struct voluta_qstr name;
@@ -933,11 +979,15 @@ static int do_remove_dentry(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	ii_incref(ii);
-	err = voluta_remove_dentry(op, dir_ii, &name);
-	ii_decref(ii);
-
-	return !err ? try_prune_inode(op, ii, true) : err;
+	err = remove_dentry_of(op, dir_ii, ii, &name);
+	if (err) {
+		return err;
+	}
+	err = try_prune_inode(op, ii, true);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 static int check_prepare_unlink(const struct voluta_oper *op,
@@ -979,7 +1029,7 @@ static int do_unlink(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = do_remove_dentry(op, dir_ii, nstr, ii);
+	err = do_remove_and_prune(op, dir_ii, nstr, ii);
 	if (err) {
 		return err;
 	}
@@ -1200,7 +1250,7 @@ static int do_rmdir(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = do_remove_dentry(op, dir_ii, name, ii);
+	err = do_remove_and_prune(op, dir_ii, name, ii);
 	if (err) {
 		return err;
 	}
@@ -1574,12 +1624,12 @@ static int do_add_dentry_at(const struct voluta_oper *op,
 	return 0;
 }
 
-static int do_remove_dentry_at(const struct voluta_oper *op,
-                               struct voluta_dentry_ref *dref)
+static int do_remove_and_prune_at(const struct voluta_oper *op,
+                                  struct voluta_dentry_ref *dref)
 {
 	int err;
 
-	err = do_remove_dentry(op, dref->dir_ii, dref->name, dref->ii);
+	err = do_remove_and_prune(op, dref->dir_ii, dref->name, dref->ii);
 	if (err) {
 		return err;
 	}
@@ -1598,7 +1648,7 @@ static int do_rename_move(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = do_remove_dentry_at(op, cur_dref);
+	err = do_remove_and_prune_at(op, cur_dref);
 	if (err) {
 		return err;
 	}
@@ -1626,7 +1676,7 @@ static int rename_move(const struct voluta_oper *op,
 static int rename_unlink(const struct voluta_oper *op,
                          struct voluta_dentry_ref *dref)
 {
-	return do_remove_dentry_at(op, dref);
+	return do_remove_and_prune_at(op, dref);
 }
 
 static int do_rename_replace(const struct voluta_oper *op,
@@ -1636,11 +1686,11 @@ static int do_rename_replace(const struct voluta_oper *op,
 	int err;
 	struct voluta_inode_info *ii = cur_dref->ii;
 
-	err = do_remove_dentry_at(op, cur_dref);
+	err = do_remove_and_prune_at(op, cur_dref);
 	if (err) {
 		return err;
 	}
-	err = do_remove_dentry_at(op, new_dref);
+	err = do_remove_and_prune_at(op, new_dref);
 	if (err) {
 		return err;
 	}
@@ -1672,11 +1722,11 @@ static int do_rename_exchange(const struct voluta_oper *op,
 	struct voluta_inode_info *ii1 = dref1->ii;
 	struct voluta_inode_info *ii2 = dref2->ii;
 
-	err = do_remove_dentry_at(op, dref1);
+	err = do_remove_and_prune_at(op, dref1);
 	if (err) {
 		return err;
 	}
-	err = do_remove_dentry_at(op, dref2);
+	err = do_remove_and_prune_at(op, dref2);
 	if (err) {
 		return err;
 	}
@@ -2237,38 +2287,31 @@ int voluta_check_name(const char *name)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_inode_info *
-lookup_cached_ii(struct voluta_sb_info *sbi, const struct voluta_iaddr *iaddr)
-{
-	return voluta_cache_lookup_ii(sbi->sb_cache, iaddr);
-}
-
-static void try_forget_cached_ii(struct voluta_inode_info *ii, size_t nlookup)
+static int try_forget_cached_ii(struct voluta_inode_info *ii)
 {
 	struct voluta_sb_info *sbi = ii_sbi(ii);
 
-	ii_sub_nlookup(ii, (long)nlookup);
 	if ((ii->i_nlookup <= 0) && ii_isevictable(ii)) {
 		voulta_cache_forget_ii(sbi->sb_cache, ii);
 	}
+	return 0;
 }
 
-int voluta_do_forget_inode(struct voluta_sb_info *sbi,
-                           ino_t xino, size_t nlookup)
+int voluta_do_forget(const struct voluta_oper *op,
+                     struct voluta_inode_info *ii, size_t nlookup)
 {
 	int err;
-	struct voluta_iaddr iaddr;
-	struct voluta_inode_info *ii;
 
-	err = voluta_resolve_ino(sbi, xino, &iaddr);
-	if (err) {
-		return err;
+	ii_sub_nlookup(ii, (long)nlookup);
+
+	if (ii->i_pinned) {
+		/* late prune for special files created by MKNOD */
+		ii->i_pinned = false;
+		err = try_prune_inode(op, ii, false);
+	} else {
+		err = try_forget_cached_ii(ii);
 	}
-	ii = lookup_cached_ii(sbi, &iaddr);
-	if (ii != NULL) {
-		try_forget_cached_ii(ii, nlookup);
-	}
-	return 0;
+	return err;
 }
 
 

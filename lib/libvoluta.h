@@ -438,6 +438,9 @@ int voluta_shut_super(struct voluta_sb_info *sbi);
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 
+int voluta_fetch_cached_inode(struct voluta_sb_info *sbi, ino_t xino,
+                              struct voluta_inode_info **out_ii);
+
 int voluta_stage_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 
@@ -534,8 +537,8 @@ int voluta_authorize(const struct voluta_sb_info *sbi,
 int voluta_make_namestr(const struct voluta_inode_info *ii,
                         const char *name, struct voluta_namestr *str);
 
-int voluta_do_forget_inode(struct voluta_sb_info *sbi,
-                           ino_t xino, size_t nlookup);
+int voluta_do_forget(const struct voluta_oper *op,
+                     struct voluta_inode_info *ii, size_t nlookup);
 
 int voluta_do_statvfs(const struct voluta_oper *op,
                       struct voluta_inode_info *ii,
@@ -997,6 +1000,8 @@ void voluta_vi_dirtify(struct voluta_vnode_info *vi);
 void voluta_vi_undirtify(struct voluta_vnode_info *vi);
 
 void voluta_ii_dirtify(struct voluta_inode_info *ii);
+
+void voluta_ii_undirtify(struct voluta_inode_info *ii);
 
 bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
 

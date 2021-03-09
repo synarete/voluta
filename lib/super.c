@@ -3444,6 +3444,32 @@ int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
 	return 0;
 }
 
+int voluta_fetch_cached_inode(struct voluta_sb_info *sbi, ino_t xino,
+                              struct voluta_inode_info **out_ii)
+{
+	int err;
+	ino_t ino;
+	struct voluta_iaddr iaddr;
+	struct voluta_super_ctx s_ctx = { .sbi = sbi };
+
+	err = resolve_real_ino(&s_ctx, xino, &ino);
+	if (err) {
+		return err;
+	}
+	err = resolve_iaddr(&s_ctx, ino, &iaddr);
+	if (err) {
+		return err;
+	}
+	err = find_cached_ii(&s_ctx, &iaddr);
+	if (err) {
+		return err;
+	}
+	voluta_assert_not_null(s_ctx.ii);
+	*out_ii = s_ctx.ii;
+
+	return 0;
+}
+
 int voluta_stage_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii)
 {
@@ -3689,7 +3715,7 @@ static int deallocate_vnode_space(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int forgat_and_discard_inode(struct voluta_super_ctx *s_ctx,
+static int forget_and_discard_inode(struct voluta_super_ctx *s_ctx,
                                     const struct voluta_iaddr *iaddr)
 {
 	int err;
@@ -3723,7 +3749,7 @@ int voluta_remove_inode(struct voluta_sb_info *sbi,
 	};
 
 	iaddr_of(ii, &iaddr);
-	return forgat_and_discard_inode(&s_ctx, &iaddr);
+	return forget_and_discard_inode(&s_ctx, &iaddr);
 }
 
 static void mark_opaque_at(struct voluta_sb_info *sbi,

@@ -448,6 +448,29 @@ static void test_mkdir_setgid(struct vt_env *vte)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects mkdirat(2) to work with nested dirs/files
+ */
+static void test_mkdirat_nested(struct vt_env *vte)
+{
+	int dfd = -1;
+	const char *nested1 = "nested1";
+	const char *nested2 = "nested1/nested2";
+	const char *path = vt_new_path_unique(vte);
+
+	vt_mkdir(path, 0700);
+	vt_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
+	vt_mkdirat(dfd, nested1, 0755);
+	vt_mkdirat(dfd, nested2, 0755);
+	vt_unlinkat(dfd, nested2, AT_REMOVEDIR);
+	vt_mknodat(dfd, nested2, 0755, 0);
+	vt_unlinkat(dfd, nested2, 0);
+	vt_unlinkat(dfd, nested1, AT_REMOVEDIR);
+	vt_close(dfd);
+	vt_rmdir(path);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_mkdir_rmdir),
@@ -462,6 +485,7 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_rmdir_mctime),
 	VT_DEFTEST(test_rmdir_openat),
 	VT_DEFTEST(test_mkdir_setgid),
+	VT_DEFTEST(test_mkdirat_nested),
 };
 
 const struct vt_tests vt_test_mkdir = VT_DEFTESTS(vt_local_tests);

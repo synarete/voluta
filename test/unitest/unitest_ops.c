@@ -1363,6 +1363,15 @@ void ut_lseek_hole(struct ut_env *ute,
 	ut_lseek_ok(ute, ino, off, SEEK_HOLE, out_off);
 }
 
+void ut_lseek_nodata(struct ut_env *ute, ino_t ino, loff_t off)
+{
+	int err;
+	loff_t res_off = -1;
+
+	err = ut_lseek(ute, ino, off, SEEK_DATA, &res_off);
+	ut_expect_err(err, -ENXIO);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void ut_write_dvec(struct ut_env *ute, ino_t ino,

@@ -725,11 +725,28 @@ static int create_special_inode(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-
 	return 0;
 }
 
-static int do_mknod(const struct voluta_oper *op,
+static int do_mknod_reg(const struct voluta_oper *op,
+                     struct voluta_inode_info *dir_ii,
+                     const struct voluta_namestr *name, mode_t mode,
+                     struct voluta_inode_info **out_ii)
+{
+	int err;
+	struct voluta_inode_info *ii = NULL;
+
+	err = do_create(op, dir_ii, name, mode, &ii);
+	if (err) {
+		return err;
+	}
+	/* create reg via 'mknod' does not follow by release */
+	update_nopen(ii, -1);
+	*out_ii = ii;
+	return 0;
+}
+
+static int do_mknod_special(const struct voluta_oper *op,
                     struct voluta_inode_info *dir_ii,
                     const struct voluta_namestr *name,
                     mode_t mode, dev_t rdev,
@@ -767,10 +784,15 @@ int voluta_do_mknod(const struct voluta_oper *op,
                     struct voluta_inode_info **out_ii)
 {
 	int err;
+	const bool mknod_reg = S_ISREG(mode);
 	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_mknod(op, dir_ii, name, mode, dev, &ii);
+	if (mknod_reg) {
+		err = do_mknod_reg(op, dir_ii, name, mode, &ii);
+	} else {
+		err = do_mknod_special(op, dir_ii, name, mode, dev, &ii);
+	}
 	ii_inc_nlookup(ii, err);
 	ii_decref(dir_ii);
 

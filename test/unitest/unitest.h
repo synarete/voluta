@@ -434,6 +434,8 @@ void ut_lseek_data(struct ut_env *ute,
 void ut_lseek_hole(struct ut_env *ute,
                    ino_t ino, loff_t off, loff_t *out_off);
 
+void ut_lseek_nodata(struct ut_env *ute, ino_t ino, loff_t off);
+
 void ut_write_dvec(struct ut_env *ute, ino_t ino,
                    const struct ut_dvec *dvec);
 

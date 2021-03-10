@@ -972,7 +972,7 @@ static int check_range(loff_t off, size_t len)
 static int check_seek_pos(loff_t pos, loff_t isz, int whence)
 {
 	if ((whence == SEEK_DATA) || (whence == SEEK_HOLE)) {
-		if (pos >= isz) {
+		if ((pos >= isz) || (pos < 0)) {
 			return -ENXIO;
 		}
 	}
@@ -2993,7 +2993,7 @@ static int lseek_data(struct voluta_file_ctx *f_ctx)
 		f_ctx->off = off_max_min(fnr.file_pos, f_ctx->off, isz);
 	} else if (err == -ENOENT) {
 		f_ctx->off = isz;
-		err = 0;
+		err = -ENXIO;
 	}
 	return err;
 }

@@ -1480,11 +1480,6 @@ static int check_stage_parent(struct voluta_dir_ctx *d_ctx)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void ii_stat(const struct voluta_inode_info *ii, struct stat *st)
-{
-	voluta_stat_of(ii, st);
-}
-
 static bool index_inrange(const struct voluta_dir_ctx *d_ctx, size_t index)
 {
 	const size_t last = last_node_index_of(d_ctx);
@@ -1539,7 +1534,7 @@ static bool emit_dirent(struct voluta_dir_ctx *d_ctx,
 	struct stat st;
 
 	if (ii != NULL) {
-		ii_stat(ii, &st);
+		voluta_stat_of(ii, &st);
 		attr = &st;
 	}
 
@@ -1554,7 +1549,7 @@ static bool emit_ii(struct voluta_dir_ctx *d_ctx, const char *name,
 	const mode_t mode = ii_mode(ii);
 	struct stat attr;
 
-	ii_stat(ii, &attr);
+	voluta_stat_of(ii, &attr);
 	return emit(d_ctx, name, nlen, xino, IFTODT(mode), &attr);
 }
 

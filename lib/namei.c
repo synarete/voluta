@@ -729,9 +729,9 @@ static int create_special_inode(const struct voluta_oper *op,
 }
 
 static int do_mknod_reg(const struct voluta_oper *op,
-                     struct voluta_inode_info *dir_ii,
-                     const struct voluta_namestr *name, mode_t mode,
-                     struct voluta_inode_info **out_ii)
+                        struct voluta_inode_info *dir_ii,
+                        const struct voluta_namestr *name, mode_t mode,
+                        struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -747,10 +747,10 @@ static int do_mknod_reg(const struct voluta_oper *op,
 }
 
 static int do_mknod_special(const struct voluta_oper *op,
-                    struct voluta_inode_info *dir_ii,
-                    const struct voluta_namestr *name,
-                    mode_t mode, dev_t rdev,
-                    struct voluta_inode_info **out_ii)
+                            struct voluta_inode_info *dir_ii,
+                            const struct voluta_namestr *name,
+                            mode_t mode, dev_t rdev,
+                            struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;

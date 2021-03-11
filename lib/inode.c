@@ -68,11 +68,10 @@ static void assign_ts(struct timespec *ts, const struct timespec *other)
 	ts->tv_nsec = other->tv_nsec;
 }
 
-static void assign_statx_ts(struct statx_timestamp *stx_ts,
-                            const struct timespec *ts)
+static void assign_xts(struct statx_timestamp *xts, const struct timespec *ts)
 {
-	stx_ts->tv_sec = ts->tv_sec;
-	stx_ts->tv_nsec = (uint32_t)ts->tv_nsec;
+	xts->tv_sec = ts->tv_sec;
+	xts->tv_nsec = (uint32_t)(ts->tv_nsec);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -378,6 +377,17 @@ bool voluta_is_rootdir(const struct voluta_inode_info *ii)
 enum voluta_inodef voluta_ii_flags(const struct voluta_inode_info *ii)
 {
 	return inode_flags(ii->inode);
+}
+
+static void voluta_ii_times(const struct voluta_inode_info *ii,
+                            struct voluta_itimes *tms)
+{
+	const struct voluta_inode *inode = ii->inode;
+
+	inode_btime(inode, &tms->btime);
+	inode_atime(inode, &tms->atime);
+	inode_mtime(inode, &tms->mtime);
+	inode_ctime(inode, &tms->ctime);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -880,6 +890,8 @@ static blkcnt_t stat_blocks_of(const struct voluta_inode_info *ii)
 
 void voluta_stat_of(const struct voluta_inode_info *ii, struct stat *st)
 {
+	struct voluta_itimes tms;
+
 	voluta_memzero(st, sizeof(*st));
 	st->st_ino = ii_xino(ii);
 	st->st_mode = ii_mode(ii);
@@ -890,40 +902,70 @@ void voluta_stat_of(const struct voluta_inode_info *ii, struct stat *st)
 	st->st_size = ii_size(ii);
 	st->st_blocks = stat_blocks_of(ii);
 	st->st_blksize = stat_blksize_of(ii);
+
+	voluta_ii_times(ii, &tms);
 	assign_ts(&st->st_atim, &ii->i_atime_lazy);
-	inode_mtime(ii->inode, &st->st_mtim);
-	inode_ctime(ii->inode, &st->st_ctim);
+	assign_ts(&st->st_ctim, &tms.ctime);
+	assign_ts(&st->st_mtim, &tms.mtime);
 }
 
-static void i_statx(const struct voluta_inode_info *ii, struct statx *stx)
+static void voluta_statx_of(const struct voluta_inode_info *ii,
+                            unsigned int request_mask, struct statx *stx)
 {
-	struct timespec ts;
+	struct voluta_itimes tms;
+	const mode_t ifmt = S_IFMT;
+	const unsigned int statx_times =
+	        STATX_ATIME | STATX_BTIME | STATX_CTIME | STATX_MTIME;
 
 	voluta_memzero(stx, sizeof(*stx));
-	stx->stx_mask = STATX_ALL;
-	stx->stx_blksize = (uint32_t)stat_blksize_of(ii);
-	stx->stx_nlink = (uint32_t)ii_nlink(ii);
-	stx->stx_uid = ii_uid(ii);
-	stx->stx_gid = ii_gid(ii);
-	stx->stx_mode = (uint16_t)ii_mode(ii);
-	stx->stx_ino = ii_xino(ii);
-	stx->stx_size = (uint64_t)ii_size(ii);
-	stx->stx_blocks = (uint64_t)stat_blocks_of(ii);
+	if (request_mask & STATX_NLINK) {
+		stx->stx_nlink = (uint32_t)ii_nlink(ii);
+		stx->stx_mask |= STATX_NLINK;
+	}
+	if (request_mask & STATX_UID) {
+		stx->stx_uid = ii_uid(ii);
+		stx->stx_mask |= STATX_UID;
+	}
+	if (request_mask & STATX_GID) {
+		stx->stx_gid = ii_gid(ii);
+		stx->stx_mask |= STATX_GID;
+	}
+	if (request_mask & STATX_TYPE) {
+		stx->stx_mode |= (uint16_t)(ii_mode(ii) & ifmt);
+		stx->stx_mask |= STATX_TYPE;
+	}
+	if (request_mask & STATX_MODE) {
+		stx->stx_mode |= (uint16_t)(ii_mode(ii) & ~ifmt);
+		stx->stx_mask |= STATX_MODE;
+	}
+	if (request_mask & STATX_INO) {
+		stx->stx_ino = ii_xino(ii);
+		stx->stx_mask |= STATX_INO;
+	}
+	if (request_mask & STATX_SIZE) {
+		stx->stx_size = (uint64_t)ii_size(ii);
+		stx->stx_mask |= STATX_SIZE;
+	}
+	if (request_mask & STATX_BLOCKS) {
+		stx->stx_blocks = (uint64_t)stat_blocks_of(ii);
+		stx->stx_mask |= STATX_BLOCKS;
+	}
+
 	stx->stx_blksize = (uint32_t)stat_blksize_of(ii);
 	stx->stx_rdev_minor =  i_rdev_minor_of(ii);
 	stx->stx_rdev_major =  i_rdev_major_of(ii);
 
-	stx->stx_attributes_mask =
-	        STATX_ATTR_IMMUTABLE | STATX_ATTR_ENCRYPTED;
+	stx->stx_attributes_mask = STATX_ATTR_ENCRYPTED;
 	stx->stx_attributes = STATX_ATTR_ENCRYPTED;
 
-	inode_btime(ii->inode, &ts);
-	assign_statx_ts(&stx->stx_btime, &ts);
-	assign_statx_ts(&stx->stx_atime, &ii->i_atime_lazy);
-	inode_mtime(ii->inode, &ts);
-	assign_statx_ts(&stx->stx_mtime, &ts);
-	inode_ctime(ii->inode, &ts);
-	assign_statx_ts(&stx->stx_ctime, &ts);
+	if (request_mask & statx_times) {
+		voluta_ii_times(ii, &tms);
+		assign_xts(&stx->stx_atime, &ii->i_atime_lazy);
+		assign_xts(&stx->stx_btime, &tms.btime);
+		assign_xts(&stx->stx_ctime, &tms.ctime);
+		assign_xts(&stx->stx_mtime, &tms.mtime);
+		stx->stx_mask |= statx_times;
+	}
 }
 
 /*
@@ -973,7 +1015,7 @@ int voluta_do_getattr(const struct voluta_oper *op,
 
 static int do_statx(const struct voluta_oper *op,
                     const struct voluta_inode_info *ii,
-                    struct statx *out_stx)
+                    unsigned int request_mask, struct statx *out_stx)
 {
 	int err;
 
@@ -981,18 +1023,18 @@ static int do_statx(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	i_statx(ii, out_stx);
+	voluta_statx_of(ii, request_mask, out_stx);
 	return 0;
 }
 
 int voluta_do_statx(const struct voluta_oper *op,
                     const struct voluta_inode_info *ii,
-                    struct statx *out_stx)
+                    unsigned int request_mask, struct statx *out_stx)
 {
 	int err;
 
 	ii_incref(ii);
-	err = do_statx(op, ii, out_stx);
+	err = do_statx(op, ii, request_mask, out_stx);
 	ii_decref(ii);
 
 	return err;

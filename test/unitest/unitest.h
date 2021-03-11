@@ -220,7 +220,7 @@ void ut_statfs_ok(struct ut_env *ute, ino_t ino, struct statvfs *st);
 
 void ut_statfs_rootd(struct ut_env *ute, struct statvfs *st);
 
-void ut_statx_exists(struct ut_env *ute, ino_t ino, struct statx *stx);
+void ut_statx_ok(struct ut_env *ute, ino_t ino, struct statx *stx);
 
 void ut_getattr_ok(struct ut_env *ute, ino_t ino, struct stat *st);
 

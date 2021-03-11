@@ -271,20 +271,34 @@ static void ut_expect_eq_statx(const struct statx *stx, const struct stat *st)
 	ut_expect_eq_tsx(&stx->stx_ctime, &st->st_ctim);
 }
 
+static void ut_getattr_statx(struct ut_env *ute, ino_t ino)
+{
+	struct stat st;
+	struct statx stx;
+
+	ut_getattr_ok(ute, ino, &st);
+	ut_statx_ok(ute, ino, &stx);
+	ut_expect_eq_statx(&stx, &st);
+}
+
 static void ut_inode_statx(struct ut_env *ute)
 {
 	ino_t ino;
 	ino_t dino;
+	ino_t dino2;
 	const char *name = UT_NAME;
-	struct stat st;
-	struct statx stx;
 
 	ut_mkdir_at_root(ute, name, &dino);
-	ut_create_file(ute, dino, name, &ino);
-	ut_getattr_ok(ute, ino, &st);
-	ut_statx_exists(ute, ino, &stx);
-	ut_expect_eq_statx(&stx, &st);
-	ut_remove_file(ute, dino, name, ino);
+	ut_mkdir_oki(ute, dino, name, &dino2);
+	ut_getattr_statx(ute, dino);
+	ut_getattr_statx(ute, dino2);
+	ut_create_file(ute, dino2, name, &ino);
+	ut_getattr_statx(ute, dino2);
+	ut_getattr_statx(ute, ino);
+	ut_remove_file(ute, dino2, name, ino);
+	ut_getattr_statx(ute, dino2);
+	ut_rmdir_ok(ute, dino, name);
+	ut_getattr_statx(ute, dino);
 	ut_rmdir_at_root(ute, name);
 }
 

@@ -260,7 +260,7 @@ int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
-                    struct statx *out_stx);
+                    unsigned int request_mask, struct statx *out_stx);
 
 int voluta_fs_fiemap(struct voluta_sb_info *sbi,
                      const struct voluta_oper *op, ino_t ino,
@@ -667,7 +667,7 @@ int voluta_do_getattr(const struct voluta_oper *op,
 
 int voluta_do_statx(const struct voluta_oper *op,
                     const struct voluta_inode_info *ii,
-                    struct statx *out_stx);
+                    unsigned int request_mask, struct statx *out_stx);
 
 int voluta_do_chmod(const struct voluta_oper *op,
                     struct voluta_inode_info *ii, mode_t mode,

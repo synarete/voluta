@@ -1489,7 +1489,7 @@ int voluta_substr_ends_with(const struct voluta_substr *ss, char c)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Mutable String Opeartions:
+ * Mutable String Operations:
  */
 char *voluta_substr_data(const struct voluta_substr *ss)
 {

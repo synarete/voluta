@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	/* Load mount-rules from config-file */
 	mountd_load_mntrules();
 
-	/* Setup enviroment instance */
+	/* Setup environment instance */
 	mountd_create_mse_inst();
 
 	/* Say something */

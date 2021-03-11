@@ -53,6 +53,7 @@ AC_DEFUN([AX_VOLUTA_NEED_HEADERS],
   AX_VOLUTA_CHECK_HEADERS([arpa/inet.h])
   AX_VOLUTA_CHECK_HEADERS([linux/kernel.h])
   AX_VOLUTA_CHECK_HEADERS([linux/types.h])
+  AX_VOLUTA_CHECK_HEADERS([linux/stat.h])
   AX_VOLUTA_CHECK_HEADERS([linux/falloc.h])
   AX_VOLUTA_CHECK_HEADERS([linux/fs.h])
   AX_VOLUTA_CHECK_HEADERS([linux/fuse.h])

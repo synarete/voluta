@@ -1065,7 +1065,7 @@ out:
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
-                    struct statx *out_stx)
+                    unsigned int request_mask, struct statx *out_stx)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1079,7 +1079,7 @@ int voluta_fs_statx(struct voluta_sb_info *sbi,
 	err = voluta_fetch_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
-	err = voluta_do_statx(op, ii, out_stx);
+	err = voluta_do_statx(op, ii, request_mask, out_stx);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);

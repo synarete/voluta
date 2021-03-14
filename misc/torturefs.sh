@@ -12,7 +12,7 @@ DIFFUTILS_GIT_URL="git://git.savannah.gnu.org/diffutils"
 FINDUTILS_GIT_URL="git://git.savannah.gnu.org/findutils"
 GCC_GIT_URL="https://github.com/gcc-mirror/gcc"
 GLIBC_GIT_URL="https://github.com/bminor/glibc"
-
+TAR_GIT_URL="https://git.savannah.gnu.org/git/tar.git"
 
 self=$(basename ${BASH_SOURCE[0]})
 msg() { echo "$self: $*" >&2; }
@@ -44,6 +44,24 @@ do_coreutils_check() {
   local workdir="$1/coreutils"
 
   git_clone ${COREUTILS_GIT_GRL} ${workdir}
+
+  cd ${workdir}
+  run ./bootstrap
+  run ./configure
+  run make
+  try make check
+  git_clean_fxd
+
+  cd ${currdir}
+  do_rm_rf ${workdir}
+}
+
+# GNU tar
+do_tar_check() {
+  local currdir=$(pwd)
+  local workdir="$1/tar"
+
+  git_clone ${TAR_GIT_URL} ${workdir}
 
   cd ${workdir}
   run ./bootstrap
@@ -233,6 +251,7 @@ do_all_checks() {
   do_rsync_check ${workdir}
   do_postgresql_check ${workdir}
   do_coreutils_check ${workdir}
+  do_tar_check ${workdir}
   do_diffutils_check ${workdir}
   do_findutils_check ${workdir}
   do_gcc_check ${workdir}
@@ -249,6 +268,7 @@ show_usage() {
   echo "  --coreutils        (${COREUTILS_GIT_GRL})"
   echo "  --diffutils        (${DIFFUTILS_GIT_URL})"
   echo "  --findutils        (${FINDUTILS_GIT_URL})"
+  echo "  --tar              (${TAR_GIT_URL})"
   echo "  --gcc              (${GCC_GIT_URL})"
   echo "  --glibc            (${GLIBC_GIT_URL})"
   echo "  --rsync            (${RSYNC_GIT_URL})"
@@ -273,6 +293,9 @@ case "$arg" in
     ;;
   --findutils)
     do_findutils_check ${wd}
+    ;;
+  --tar)
+    do_tar_check ${wd}
     ;;
   --gcc)
     do_gcc_check ${wd}

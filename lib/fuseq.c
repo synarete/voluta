@@ -1723,12 +1723,14 @@ uid_gid_of(const struct stat *attr, int to_set, uid_t *uid, gid_t *gid)
 
 static void utimens_of(const struct stat *st, int to_set, struct stat *times)
 {
-	bool ctime_now = !(to_set & FATTR_AMTIME_NOW);
+	const int set_ctime_now =
+	        FATTR_AMTIME_NOW | FATTR_AMCTIME | FATTR_MODE |
+	        FATTR_UID | FATTR_GID | FATTR_SIZE;
 
 	voluta_memzero(times, sizeof(*times));
 	times->st_atim.tv_nsec = UTIME_OMIT;
 	times->st_mtim.tv_nsec = UTIME_OMIT;
-	times->st_ctim.tv_nsec = ctime_now ? UTIME_NOW : UTIME_OMIT;
+	times->st_ctim.tv_nsec = UTIME_OMIT;
 
 	if (to_set & FATTR_ATIME) {
 		ts_copy(&times->st_atim, &st->st_atim);
@@ -1738,6 +1740,8 @@ static void utimens_of(const struct stat *st, int to_set, struct stat *times)
 	}
 	if (to_set & FATTR_CTIME) {
 		ts_copy(&times->st_ctim, &st->st_ctim);
+	} else if (to_set & set_ctime_now) {
+		times->st_ctim.tv_nsec = UTIME_NOW;
 	}
 }
 

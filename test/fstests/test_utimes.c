@@ -124,7 +124,6 @@ static void test_utimes_file(struct vt_env *vte)
 	vt_unlink(path);
 }
 
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects successful utimensat(3p) on regular file
@@ -133,7 +132,6 @@ static void test_utimensat_file(struct vt_env *vte)
 {
 	int fd = -1;
 	int dfd = -1;
-	size_t nwr = 0;
 	struct stat st[4];
 	struct timespec ts1[2];
 	struct timespec ts2[2];
@@ -155,7 +153,7 @@ static void test_utimensat_file(struct vt_env *vte)
 	vt_expect_ctime_ge(&st[0], &st[1]);
 	vt_expect_ts_eq(&st[1].st_atim, &ts1[0]);
 	vt_expect_ts_eq(&st[1].st_mtim, &ts1[1]);
-	vt_write(fd, name, strlen(name), &nwr);
+	vt_writen(fd, name, strlen(name));
 
 	ts2[0].tv_sec = 0;
 	ts2[0].tv_nsec = 0;
@@ -188,12 +186,69 @@ static void test_utimensat_file(struct vt_env *vte)
 /* TODO: Test with utimes for dir */
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects successful futimens(3p) to change CTIME
+ */
+static void test_futimens_ctime(struct vt_env *vte)
+{
+	int fd = -1;
+	int dfd = -1;
+	struct stat st[2];
+	struct timespec tm[2];
+	const char *path = vt_new_path_unique(vte);
+	const char *name = vt_new_name_unique(vte);
+
+	vt_mkdir(path, 0700);
+	vt_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
+	vt_openat(dfd, name, O_CREAT | O_RDWR, 0600, &fd);
+	vt_suspends(vte, 2);
+
+	tm[0].tv_sec = 9999;
+	tm[0].tv_nsec = 99;
+	tm[1].tv_sec = 1111;
+	tm[1].tv_nsec = 11;
+	vt_fstat(fd, &st[0]);
+	vt_futimens(fd, tm);
+	vt_fstat(fd, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+	vt_expect_ts_eq(&st[1].st_atim, &tm[0]);
+	vt_expect_ts_eq(&st[1].st_mtim, &tm[1]);
+
+	tm[0].tv_sec = 121212;
+	tm[0].tv_nsec = 12;
+	tm[1].tv_sec = 343434;
+	tm[1].tv_nsec = 34;
+	vt_fstat(dfd, &st[0]);
+	vt_futimens(dfd, tm);
+	vt_fstat(dfd, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+	vt_expect_ts_eq(&st[1].st_atim, &tm[0]);
+	vt_expect_ts_eq(&st[1].st_mtim, &tm[1]);
+
+	vt_fstat(fd, &st[0]);
+	vt_futimens(fd, NULL);
+	vt_fstat(fd, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+
+	vt_fstat(dfd, &st[0]);
+	vt_futimens(dfd, NULL);
+	vt_fstat(dfd, &st[1]);
+	vt_expect_ctime_gt(&st[0], &st[1]);
+
+	vt_close(fd);
+	vt_unlinkat(dfd, name, 0);
+	vt_close(dfd);
+	vt_rmdir(path);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_utime_file),
 	VT_DEFTEST(test_utime_now),
 	VT_DEFTEST(test_utimes_file),
 	VT_DEFTEST(test_utimensat_file),
+	VT_DEFTEST(test_futimens_ctime),
 };
 
 const struct vt_tests vt_test_utimes = VT_DEFTESTS(vt_local_tests);

@@ -312,7 +312,9 @@ void voluta_setrlimit_nocore(void);
 
 void voluta_prctl_non_dumpable(void);
 
-void voluta_statpath_safe(const char *path, struct stat *st);
+void voluta_statfs_ok(const char *path, struct statfs *stfs);
+
+void voluta_stat_ok(const char *path, struct stat *st);
 
 void voluta_stat_reg(const char *path, struct stat *st);
 
@@ -320,7 +322,7 @@ void voluta_stat_reg_or_dir(const char *path, struct stat *st);
 
 void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz);
 
-loff_t voluta_blkgetsize_safe(const char *path);
+loff_t voluta_blkgetsize_ok(const char *path);
 
 char *voluta_realpath_safe(const char *path);
 

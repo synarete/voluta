@@ -21,6 +21,13 @@
 #include <stdbool.h>
 
 
+struct voluta_fsinfo {
+	long vfstype;
+	const char *name;
+	bool allowed;
+	bool isfuse;
+};
+
 struct voluta_mntrule {
 	char *path;
 	uid_t uid;
@@ -49,6 +56,8 @@ int voluta_resolve_volume_size(const char *path,
                                loff_t size_want, loff_t *out_size);
 
 int voluta_require_volume_path(const char *path, bool rw);
+
+const struct voluta_fsinfo *voluta_fsinfo_by_vfstype(long vfstype);
 
 int voluta_check_mntdir_fstype(long vfstype);
 

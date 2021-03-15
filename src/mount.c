@@ -210,7 +210,7 @@ static int mount_probe_rootdir(void)
 	struct stat st;
 	const char *path = voluta_globals.cmd.mount.point_real;
 
-	voluta_statpath_safe(path, &st);
+	voluta_stat_ok(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(0, "illegal mount-point: %s", path);
 	}

@@ -74,7 +74,7 @@ static void clone_setup_check_params(void)
 	const char *path;
 
 	path = voluta_globals.cmd.clone.point;
-	voluta_statpath_safe(path, &st);
+	voluta_stat_ok(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(-ENOTDIR, "bad mount-point: %s", path);
 	}

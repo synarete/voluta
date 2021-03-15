@@ -119,7 +119,7 @@ static void mkfs_setup_check_params(void)
 	}
 	if (blkdev) {
 		voluta_globals.cmd.mkfs.volume_size =
-		        voluta_blkgetsize_safe(path);
+		        voluta_blkgetsize_ok(path);
 	} else if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
 	}

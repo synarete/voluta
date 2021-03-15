@@ -116,32 +116,27 @@ struct voluta_ms_env_obj {
 #define NTFS_SB_MAGIC           0x5346544E
 #define OVERLAYFS_SUPER_MAGIC   0x794C7630
 
-#define MKFSINFO(t_, n_, f_) \
-	{ .vfstype = (t_), .name = (n_), .permitted_mount = (f_) }
+#define MKFSINFO(t_, n_, a_, i_) \
+	{ .vfstype = (t_), .name = (n_), .allowed = (a_), .isfuse = (i_) }
 
-struct voluta_fsinfo {
-	long vfstype;
-	const char *name;
-	int permitted_mount;
-};
 
 static const struct voluta_fsinfo fsinfo_allowed[] = {
-	MKFSINFO(FUSE_SUPER_MAGIC, "FUSE", 0),
-	MKFSINFO(TMPFS_MAGIC, "TMPFS", 0),
-	MKFSINFO(XFS_SB_MAGIC, "XFS", 1),
-	MKFSINFO(EXT234_SUPER_MAGIC, "EXT234", 1),
-	MKFSINFO(ZFS_SUPER_MAGIC, "ZFS", 1),
-	MKFSINFO(BTRFS_SUPER_MAGIC, "BTRFS", 1),
-	MKFSINFO(CEPH_SUPER_MAGIC, "CEPH", 1),
-	MKFSINFO(CIFS_MAGIC_NUMBER, "CIFS", 1),
-	MKFSINFO(ECRYPTFS_SUPER_MAGIC, "ECRYPTFS", 0),
-	MKFSINFO(F2FS_SUPER_MAGIC, "F2FS", 1),
-	MKFSINFO(NFS_SUPER_MAGIC, "NFS", 1),
-	MKFSINFO(NTFS_SB_MAGIC, "NTFS", 1),
-	MKFSINFO(OVERLAYFS_SUPER_MAGIC, "OVERLAYFS", 0)
+	MKFSINFO(FUSE_SUPER_MAGIC, "FUSE", 0, 1),
+	MKFSINFO(TMPFS_MAGIC, "TMPFS", 0, 0),
+	MKFSINFO(XFS_SB_MAGIC, "XFS", 1, 0),
+	MKFSINFO(EXT234_SUPER_MAGIC, "EXT234", 1, 0),
+	MKFSINFO(ZFS_SUPER_MAGIC, "ZFS", 1, 0),
+	MKFSINFO(BTRFS_SUPER_MAGIC, "BTRFS", 1, 0),
+	MKFSINFO(CEPH_SUPER_MAGIC, "CEPH", 1, 0),
+	MKFSINFO(CIFS_MAGIC_NUMBER, "CIFS", 1, 0),
+	MKFSINFO(ECRYPTFS_SUPER_MAGIC, "ECRYPTFS", 0, 0),
+	MKFSINFO(F2FS_SUPER_MAGIC, "F2FS", 1, 0),
+	MKFSINFO(NFS_SUPER_MAGIC, "NFS", 1, 0),
+	MKFSINFO(NTFS_SB_MAGIC, "NTFS", 1, 0),
+	MKFSINFO(OVERLAYFS_SUPER_MAGIC, "OVERLAYFS", 0, 0)
 };
 
-static const struct voluta_fsinfo *fsinfo_by_vfstype(long vfstype)
+const struct voluta_fsinfo *voluta_fsinfo_by_vfstype(long vfstype)
 {
 	const struct voluta_fsinfo *fsinfo = NULL;
 
@@ -159,11 +154,11 @@ int voluta_check_mntdir_fstype(long vfstype)
 {
 	const struct voluta_fsinfo *fsinfo;
 
-	fsinfo = fsinfo_by_vfstype(vfstype);
+	fsinfo = voluta_fsinfo_by_vfstype(vfstype);
 	if (fsinfo == NULL) {
 		return -EINVAL;
 	}
-	if (!fsinfo->permitted_mount) {
+	if (fsinfo->isfuse || !fsinfo->allowed) {
 		return -EPERM;
 	}
 	return 0;

@@ -345,7 +345,7 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	err = voluta_require_volume_path(path, rw);
 	if ((err == -EPERM) || (err == -EACCES)) {
 		voluta_die(err, "can not access volume: %s mode=%s",
-				path, rw ? "rw" : "ro");
+		           path, rw ? "rw" : "ro");
 	} else if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}

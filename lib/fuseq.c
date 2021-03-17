@@ -683,11 +683,11 @@ static void stat_to_fuse_attr(const struct stat *st, struct fuse_attr *attr)
 }
 
 #if VOLUTA_FUSE_STATX
-static void xts_to_fuse_attr(const struct statx_timestamp *xts,
-                             uint64_t *sec, uint32_t *nsec)
+static void xts_to_fuse_timestamp(const struct statx_timestamp *xts,
+                                  struct fuse_statx_timestamp *fts)
 {
-	*sec = (uint64_t)xts->tv_sec;
-	*nsec = (uint32_t)xts->tv_nsec;
+	fts->sec = xts->tv_sec;
+	fts->nsec = xts->tv_nsec;
 }
 
 static void statx_to_fuse_attr(const struct statx *stx,
@@ -704,10 +704,10 @@ static void statx_to_fuse_attr(const struct statx *stx,
 	attr->size = stx->stx_size;
 	attr->blocks = stx->stx_blocks;
 	attr->attributes_mask = stx->stx_attributes_mask;
-	xts_to_fuse_attr(&stx->stx_atime, &attr->atime, &attr->atimensec);
-	xts_to_fuse_attr(&stx->stx_btime, &attr->btime, &attr->btimensec);
-	xts_to_fuse_attr(&stx->stx_ctime, &attr->ctime, &attr->ctimensec);
-	xts_to_fuse_attr(&stx->stx_mtime, &attr->mtime, &attr->mtimensec);
+	xts_to_fuse_timestamp(&stx->stx_atime, &attr->atime);
+	xts_to_fuse_timestamp(&stx->stx_btime, &attr->btime);
+	xts_to_fuse_timestamp(&stx->stx_ctime, &attr->ctime);
+	xts_to_fuse_timestamp(&stx->stx_mtime, &attr->mtime);
 	attr->rdev_major = stx->stx_rdev_major;
 	attr->rdev_minor = stx->stx_rdev_minor;
 }
@@ -761,8 +761,9 @@ static void fill_fuse_statx(struct fuse_statx_out *attr,
                             const struct statx *stx)
 {
 	STATICASSERT_EQ(sizeof(*stx), 256);
-	STATICASSERT_LT(sizeof(*attr), 256);
-	STATICASSERT_EQ(sizeof(struct fuse_out_header) + sizeof(*attr), 256);
+	STATICASSERT_EQ(sizeof(attr->attr), 240);
+	STATICASSERT_EQ(sizeof(*attr), 256);
+	STATICASSERT_EQ(sizeof(struct fuse_out_header) + sizeof(*attr), 272);
 
 	memset(attr, 0, sizeof(*attr));
 	attr->attr_valid = UINT_MAX;

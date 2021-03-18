@@ -412,6 +412,12 @@ int voluta_sys_lstat(const char *path, struct stat *st)
 	return ok_or_errno(lstat(path, st));
 }
 
+int voluta_sys_statx(int dfd, const char *pathname, int flags,
+                     unsigned int mask, struct statx *stx)
+{
+	return ok_or_errno(statx(dfd, pathname, flags, mask, stx));
+}
+
 int voluta_sys_statvfs(const char *path, struct statvfs *stv)
 {
 	return ok_or_errno(statvfs(path, stv));

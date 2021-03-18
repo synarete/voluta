@@ -101,12 +101,51 @@ static void test_stat_statvfs(struct vt_env *vte)
 	vt_rmdir(path0);
 }
 
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/*
+ * Expects statx(2) to return valid and constant birth time.
+ */
+static void test_statx_btime(struct vt_env *vte)
+{
+	int fd = -1;
+	int dfd = -1;
+	struct statx stx[2];
+	const char *name = vt_new_name_unique(vte);
+	const char *path = vt_new_path_unique(vte);
+	const int flags = AT_STATX_FORCE_SYNC;
+
+	vt_mkdir(path, 0750);
+	vt_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
+	vt_openat(dfd, name, O_CREAT | O_RDWR, 0600, &fd);
+
+	vt_statx(dfd, name, flags, STATX_ALL, &stx[0]);
+	if (!(stx[0].stx_mask & STATX_BTIME)) {
+		goto out; /* no FUSE statx */
+	}
+	vt_expect_eq(stx[0].stx_mask & STATX_ALL, STATX_ALL);
+	vt_expect_xts_eq(&stx[0].stx_btime, &stx[0].stx_mtime);
+	vt_expect_xts_eq(&stx[0].stx_btime, &stx[0].stx_ctime);
+	vt_suspends(vte, 1);
+	vt_writen(fd, name, strlen(name));
+	vt_statx(dfd, name, flags, STATX_ALL, &stx[1]);
+	vt_expect_xts_eq(&stx[0].stx_btime, &stx[1].stx_btime);
+	vt_expect_xts_gt(&stx[1].stx_btime, &stx[1].stx_mtime);
+	vt_expect_xts_gt(&stx[1].stx_btime, &stx[1].stx_ctime);
+out:
+	vt_close(fd);
+	vt_unlinkat(dfd, name, 0);
+	vt_close(dfd);
+	vt_rmdir(path);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_stat_simple),
 	VT_DEFTEST(test_stat_notdir),
 	VT_DEFTEST(test_stat_statvfs),
+	VT_DEFTEST(test_statx_btime),
 };
 
 const struct vt_tests vt_test_stat = VT_DEFTESTS(vt_local_tests);

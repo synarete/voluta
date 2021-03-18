@@ -379,6 +379,16 @@ long vt_timespec_diff(const struct timespec *ts1, const struct timespec *ts2)
 	return (d_sec * n) + d_nsec;
 }
 
+long vt_xtimestamp_diff(const struct statx_timestamp *ts1,
+                        const struct statx_timestamp *ts2)
+{
+	const long n = 1000000000L;
+	const long d_sec = ts2->tv_sec - ts1->tv_sec;
+	const long d_nsec = ts2->tv_nsec - ts1->tv_nsec;
+
+	return (d_sec * n) + d_nsec;
+}
+
 size_t vt_page_size(void)
 {
 	return (size_t)sysconf(_SC_PAGE_SIZE);

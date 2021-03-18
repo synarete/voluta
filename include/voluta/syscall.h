@@ -82,6 +82,9 @@ int voluta_sys_stat(const char *path, struct stat *st);
 
 int voluta_sys_lstat(const char *path, struct stat *st);
 
+int voluta_sys_statx(int dfd, const char *pathname, int flags,
+                     unsigned int mask, struct statx *stx);
+
 int voluta_sys_chmod(const char *path, mode_t mode);
 
 int voluta_sys_fchmod(int fd, mode_t mode);

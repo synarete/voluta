@@ -125,6 +125,12 @@ void vt_lstat_err(const char *path, int err)
 	expect_err(voluta_sys_lstat(path, &st), err);
 }
 
+void vt_statx(int dfd, const char *pathname, int flags,
+              unsigned int mask, struct statx *stx)
+{
+	expect_ok(voluta_sys_statx(dfd, pathname, flags, mask, stx));
+}
+
 void vt_statvfs(const char *path, struct statvfs *stv)
 {
 	expect_ok(voluta_sys_statvfs(path, stv));

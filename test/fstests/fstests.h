@@ -87,6 +87,12 @@
 #define vt_expect_ctime_ge(st1, st2) \
 	vt_expect_ts_ge(&((st1)->st_ctim), &((st2)->st_ctim))
 
+#define vt_expect_xts_eq(xt1, xt2) \
+	vt_expect_eq(vt_xtimestamp_diff(xt1, xt2), 0)
+#define vt_expect_xts_gt(xt1, xt2) \
+	vt_expect_gt(vt_xtimestamp_diff(xt1, xt2), 0)
+
+
 #define vt_expect_dir(m)        vt_expect_true(S_ISDIR(m))
 #define vt_expect_reg(m)        vt_expect_true(S_ISREG(m))
 #define vt_expect_lnk(m)        vt_expect_true(S_ISLNK(m))
@@ -206,6 +212,9 @@ long vt_lrand(struct vt_env *vte);
 
 long vt_timespec_diff(const struct timespec *ts1, const struct timespec *ts2);
 
+long vt_xtimestamp_diff(const struct statx_timestamp *ts1,
+                        const struct statx_timestamp *ts2);
+
 size_t vt_page_size(void);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -240,6 +249,9 @@ void vt_fstatat_err(int dirfd, const char *path, int flags, int err);
 void vt_lstat(const char *path, struct stat *st);
 
 void vt_lstat_err(const char *path, int err);
+
+void vt_statx(int dfd, const char *pathname, int flags,
+              unsigned int mask, struct statx *stx);
 
 void vt_stat_exists(const char *path);
 

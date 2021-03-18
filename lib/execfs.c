@@ -972,7 +972,10 @@ static int fse_format_rootdir(const struct voluta_fs_env *fse,
 		return err;
 	}
 	voluta_fixup_rootdir(root_ii);
-	voluta_bind_rootdir(sbi, root_ii);
+	err = voluta_bind_rootdir(sbi, root_ii);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 

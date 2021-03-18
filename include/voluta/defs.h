@@ -139,6 +139,9 @@
 /* export ino towards vfs of root inode */
 #define VOLUTA_INO_ROOT                 (1)
 
+/* max number of "pseudo" inodes */
+#define VOLUTA_INO_PSEUDO_MAX           ((1L << 16) - 1)
+
 /* max valid ino number */
 #define VOLUTA_INO_MAX                  ((1L << 56) - 1)
 

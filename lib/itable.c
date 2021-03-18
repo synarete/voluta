@@ -491,7 +491,7 @@ static void iti_init_common(struct voluta_itable_info *iti)
 {
 	vaddr_reset(&iti->it_treeroot);
 	iaddr_reset(&iti->it_rootdir);
-	iti->it_apex_ino = VOLUTA_INO_ROOT + 1;
+	iti->it_apex_ino = VOLUTA_INO_ROOT + VOLUTA_INO_PSEUDO_MAX;
 	iti->it_ninodes_max = ULONG_MAX / 2;
 	iti->it_ninodes = 0;
 }
@@ -515,10 +515,17 @@ void voluta_iti_fini(struct voluta_itable_info *iti)
 	iti->it_ninodes_max = 0;
 }
 
-static void iti_set_rootdir(struct voluta_itable_info *iti, ino_t ino,
-                            const struct voluta_vaddr *vaddr)
+static int iti_set_rootdir(struct voluta_itable_info *iti, ino_t ino,
+                           const struct voluta_vaddr *vaddr)
 {
-	iaddr_setup(&iti->it_rootdir, ino, vaddr);
+	int err = 0;
+
+	if (ino > VOLUTA_INO_PSEUDO_MAX) {
+		iaddr_setup(&iti->it_rootdir, ino, vaddr);
+	} else {
+		log_err("illegal root-ino: ino=%ld off=%ld", ino, vaddr->off);
+	}
+	return err;
 }
 
 static int iti_next_ino(struct voluta_itable_info *iti, ino_t *out_ino)
@@ -1415,7 +1422,10 @@ int voluta_reload_itable_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	voluta_bind_rootdir(sbi, root_ii);
+	err = voluta_bind_rootdir(sbi, root_ii);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
@@ -1425,14 +1435,18 @@ voluta_root_of_itable(const struct voluta_sb_info *sbi)
 	return itreeroot_vaddr(sbi);
 }
 
-void voluta_bind_rootdir(struct voluta_sb_info *sbi,
-                         const struct voluta_inode_info *ii)
+int voluta_bind_rootdir(struct voluta_sb_info *sbi,
+                        const struct voluta_inode_info *ii)
 {
+	int err;
 	const ino_t ino = ii_ino(ii);
 	struct voluta_itable_info *iti = iti_of(sbi);
 
-	iti_set_rootdir(iti, ino, ii_vaddr(ii));
-	iti_fixup_apex_ino(iti, ino);
+	err = iti_set_rootdir(iti, ino, ii_vaddr(ii));
+	if (!err) {
+		iti_fixup_apex_ino(iti, ino);
+	}
+	return err;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

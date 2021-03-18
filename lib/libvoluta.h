@@ -521,8 +521,8 @@ int voluta_real_ino(const struct voluta_sb_info *sbi,
 const struct voluta_vaddr *
 voluta_root_of_itable(const struct voluta_sb_info *sbi);
 
-void voluta_bind_rootdir(struct voluta_sb_info *sbi,
-                         const struct voluta_inode_info *ii);
+int voluta_bind_rootdir(struct voluta_sb_info *sbi,
+                        const struct voluta_inode_info *ii);
 
 int voluta_reload_itable_at(struct voluta_sb_info *sbi,
                             const struct voluta_vaddr *vaddr);

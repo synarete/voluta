@@ -4,12 +4,12 @@
  voluta
 ========
 
------------------------
-secure content archiver
------------------------
+-------------------
+a file-system vault
+-------------------
 
 :Author:         Shachar Sharon
-:Date:           Feb 2021
+:Date:           Mar 2021
 :Copyright:      GPLv3
 :Manual section: 1
 :Manual group:   Voluta Manual
@@ -64,13 +64,32 @@ all other commands which access this volume.
 
 mount
 -----
-**voluta mount** [--no-daemon] *pathname* *mountpoint*
+**voluta mount** [options] *pathname* *mountpoint*
 
 Start a user-space daemon which mounts *voluta* volume as FUSE file system.
 The regular file *pathname* must refer to a previously formatted volume with
 **mkfs**, and *mountpoint* must be an empty directory. Upon start, the user
 is requested to provide the passphrase which was used upon volume's *mkfs*.
 
+..
+
+|
+| *-r*, *--rdonly*
+|  Read-only mount
+|
+| *-x*, *--noexec*
+| Do not allow programs execution.
+|
+| *-A*, *--allow-other*
+|  Allow other users to access the file-system. By default, only the owner of
+|  the file-system may have any access permissions.
+|
+| *-D*, *--nodaemon*
+| Do not run as daemon process.
+|
+| *-P*, *--passphrase-file=FILE*
+|  Passphrase file. This option should be considered insecure. Avoid it.
+|
 
 ..
 
@@ -118,7 +137,7 @@ Still a work-in-progress. Do not use in production.
 SEE ALSO
 ========
 
-**mount**\(8)
+**voluta-mountd**\(8), **mount**\(8)
 
 ..
 

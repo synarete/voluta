@@ -764,6 +764,7 @@ static void fill_fuse_statx(struct fuse_statx_out *attr,
 	STATICASSERT_EQ(sizeof(attr->attr), 240);
 	STATICASSERT_EQ(sizeof(*attr), 256);
 	STATICASSERT_EQ(sizeof(struct fuse_out_header) + sizeof(*attr), 272);
+	STATICASSERT_EQ(sizeof(struct fuse_attr), 88);
 
 	memset(attr, 0, sizeof(*attr));
 	attr->attr_valid = UINT_MAX;

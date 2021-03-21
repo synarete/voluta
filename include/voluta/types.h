@@ -128,6 +128,10 @@ struct voluta_pipe {
 	size_t  pend;
 };
 
+struct voluta_nullfd {
+	int     fd;
+};
+
 /* strings & buffer */
 struct voluta_str {
 	const char *str;
@@ -204,6 +208,9 @@ struct voluta_ucred {
 	pid_t  pid;
 	mode_t umask;
 };
+
+/* space-allocations */
+typedef uint64_t voluta_index_t;
 
 /* inode's attributes */
 struct voluta_itimes {
@@ -351,7 +358,7 @@ struct voluta_space_info {
 	loff_t  sp_size;
 	size_t  sp_hs_count;
 	size_t  sp_hs_active;
-	size_t  sp_hs_index_lo;
+	voluta_index_t  sp_hs_index_lo;
 	size_t  sp_ag_count;
 	ssize_t sp_used_meta;
 	ssize_t sp_used_data;
@@ -377,6 +384,7 @@ struct voluta_pstore {
 struct voluta_vstore {
 	struct voluta_pstore            vs_pstore;
 	struct voluta_crypto            vs_crypto;
+	struct voluta_pipe              vs_pipe;
 	struct voluta_qalloc           *vs_qalloc;
 	struct voluta_encbuf           *vs_encbuf;
 	const char *vs_volpath;
@@ -477,6 +485,7 @@ struct voluta_fuseq_worker {
 	struct voluta_oper             *op;
 	struct voluta_oper              oper;
 	struct voluta_pipe              pipe;
+	struct voluta_nullfd            nfd;
 	struct voluta_thread            th;
 	int idx;
 } voluta_aligned64;
@@ -494,7 +503,6 @@ struct voluta_fuseq {
 	int             fq_nworkers_active;
 	volatile int    fq_active;
 	volatile int    fq_fuse_fd;
-	volatile int    fq_null_fd;
 	bool            fq_got_init;
 	bool            fq_got_destroy;
 	bool            fq_deny_others;
@@ -578,7 +586,6 @@ struct voluta_rwiter_ctx {
 	loff_t off;
 	size_t len;
 };
-
 
 /* archiving */
 struct voluta_ar_args {

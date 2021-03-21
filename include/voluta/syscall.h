@@ -279,7 +279,9 @@ int voluta_sys_fcntl_getfl(int fd, int *out_fl);
 
 int voluta_sys_fcntl_setfl(int fd, int fl);
 
-int voluta_sys_fcntl_setpipesz(int fd, size_t pipesize);
+int voluta_sys_fcntl_setpipesz(int fd, int pipesize);
+
+int voluta_sys_fcntl_getpipesz(int fd, int *out_pipesize);
 
 int voluta_sys_socket(int domain, int type, int protocol, int *out_sd);
 

@@ -659,7 +659,6 @@ int voluta_do_chmod(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_chmod(op, ii, mode, itimes);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -762,7 +761,6 @@ int voluta_do_chown(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_chown(op, ii, uid, gid, itimes);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -832,7 +830,6 @@ int voluta_do_utimens(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_utimens(op, ii, itimes);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1009,7 +1006,6 @@ int voluta_do_getattr(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_getattr(op, ii, out_st);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1036,7 +1032,6 @@ int voluta_do_statx(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_statx(op, ii, request_mask, out_stx);
 	ii_decref(ii);
-
 	return err;
 }
 

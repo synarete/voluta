@@ -326,7 +326,6 @@ int voluta_do_access(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_access(op, ii, mode);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -514,14 +513,11 @@ int voluta_do_lookup(const struct voluta_oper *op,
                      struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_lookup(op, dir_ii, name, &ii);
-	ii_inc_nlookup(ii, err);
+	err = do_lookup(op, dir_ii, name, out_ii);
+	ii_inc_nlookup(*out_ii, err);
 	ii_decref(dir_ii);
-
-	*out_ii = ii;
 	return err;
 }
 
@@ -666,14 +662,11 @@ int voluta_do_create(const struct voluta_oper *op,
                      struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_create(op, dir_ii, name, mode, &ii);
-	ii_inc_nlookup(ii, err);
+	err = do_create(op, dir_ii, name, mode, out_ii);
+	ii_inc_nlookup(*out_ii, err);
 	ii_decref(dir_ii);
-
-	*out_ii = ii;
 	return err;
 }
 
@@ -785,18 +778,15 @@ int voluta_do_mknod(const struct voluta_oper *op,
 {
 	int err;
 	const bool mknod_reg = S_ISREG(mode);
-	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
 	if (mknod_reg) {
-		err = do_mknod_reg(op, dir_ii, name, mode, &ii);
+		err = do_mknod_reg(op, dir_ii, name, mode, out_ii);
 	} else {
-		err = do_mknod_special(op, dir_ii, name, mode, dev, &ii);
+		err = do_mknod_special(op, dir_ii, name, mode, dev, out_ii);
 	}
-	ii_inc_nlookup(ii, err);
+	ii_inc_nlookup(*out_ii, err);
 	ii_decref(dir_ii);
-
-	*out_ii = ii;
 	return err;
 }
 
@@ -884,7 +874,6 @@ int voluta_do_open(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_open(op, ii, o_flags);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -985,7 +974,6 @@ static int remove_dentry_of(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = voluta_remove_dentry(op, dir_ii, name);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1068,7 +1056,6 @@ int voluta_do_unlink(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_unlink(op, dir_ii, name);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1139,7 +1126,6 @@ int voluta_do_link(const struct voluta_oper *op,
 	ii_inc_nlookup(ii, err);
 	ii_decref(ii);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1192,14 +1178,11 @@ int voluta_do_mkdir(const struct voluta_oper *op,
                     struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_mkdir(op, dir_ii, name, mode, &ii);
-	ii_inc_nlookup(ii, err);
+	err = do_mkdir(op, dir_ii, name, mode, out_ii);
+	ii_inc_nlookup(*out_ii, err);
 	ii_decref(dir_ii);
-
-	*out_ii = ii;
 	return err;
 }
 
@@ -1289,7 +1272,6 @@ int voluta_do_rmdir(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_rmdir(op, dir_ii, name);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1375,14 +1357,11 @@ int voluta_do_symlink(const struct voluta_oper *op,
                       struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_inode_info *ii = NULL;
 
 	ii_incref(dir_ii);
-	err = do_symlink(op, dir_ii, name, symval, &ii);
-	ii_inc_nlookup(ii, err);
+	err = do_symlink(op, dir_ii, name, symval, out_ii);
+	ii_inc_nlookup(*out_ii, err);
 	ii_decref(dir_ii);
-
-	*out_ii = ii;
 	return err;
 }
 
@@ -1691,7 +1670,6 @@ static int rename_move(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_rename_move(op, cur_dref, new_dref);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1776,7 +1754,6 @@ static int rename_exchange(const struct voluta_oper *op,
 	err = do_rename_exchange(op, dref1, dref2);
 	ii_decref(ii2);
 	ii_decref(ii1);
-
 	return err;
 }
 
@@ -1919,7 +1896,6 @@ int voluta_do_rename(const struct voluta_oper *op,
 	err = do_rename(op, dir_ii, name, newdir_ii, newname, flags);
 	ii_decref(newdir_ii);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1944,7 +1920,6 @@ int voluta_do_statvfs(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_statvfs(op, ii, out_stv);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -2047,7 +2022,6 @@ int voluta_do_query(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_query(op, ii, out_qry);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -2156,10 +2130,8 @@ int voluta_do_clone(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_clone(op, ii, str, lim);
 	ii_decref(ii);
-
 	return err;
 }
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

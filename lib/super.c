@@ -715,14 +715,14 @@ static void bkr_set_flags(struct voluta_bk_rec *bkr, uint32_t f)
 	bkr->bk_flags = cpu_to_le32(f);
 }
 
-static uint32_t bkr_refcnt(const struct voluta_bk_rec *bkr)
+static size_t bkr_refcnt(const struct voluta_bk_rec *bkr)
 {
-	return le32_to_cpu(bkr->bk_refcnt);
+	return le64_to_cpu(bkr->bk_refcnt);
 }
 
-static void bkr_set_refcnt(struct voluta_bk_rec *bkr, uint32_t refcnt)
+static void bkr_set_refcnt(struct voluta_bk_rec *bkr, size_t refcnt)
 {
-	bkr->bk_refcnt = cpu_to_le32(refcnt);
+	bkr->bk_refcnt = cpu_to_le64(refcnt);
 }
 
 static void bkr_inc_refcnt(struct voluta_bk_rec *bkr)
@@ -951,7 +951,7 @@ static void agm_setup_keys(struct voluta_agroup_map *agm)
 static void agm_init(struct voluta_agroup_map *agm, size_t ag_index)
 {
 	agm_set_index(agm, ag_index);
-	agm_set_it_root(agm, &voluta_vaddr_none);
+	agm_set_it_root(agm, vaddr_none());
 	agm_setup_keys(agm);
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }

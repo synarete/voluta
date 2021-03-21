@@ -313,6 +313,9 @@ size_t voluta_size_to_ag_count(size_t nbytes);
 loff_t voluta_lba_by_ag(size_t ag_index, size_t bn);
 
 
+
+const struct voluta_vaddr *voluta_vaddr_none(void);
+
 void voluta_vaddr_reset(struct voluta_vaddr *vaddr);
 
 bool voluta_vaddr_isnull(const struct voluta_vaddr *vaddr);

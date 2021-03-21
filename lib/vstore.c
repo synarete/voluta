@@ -204,12 +204,17 @@ size_t voluta_size_to_ag_count(size_t nbytes)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-const struct voluta_vaddr voluta_vaddr_none = {
+static const struct voluta_vaddr s_vaddr_none = {
 	.off = VOLUTA_OFF_NULL,
 	.lba = VOLUTA_LBA_NULL,
 	.vtype = VOLUTA_VTYPE_NONE,
 	.len = 0
 };
+
+const struct voluta_vaddr *voluta_vaddr_none(void)
+{
+	return &s_vaddr_none;
+}
 
 size_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
 {

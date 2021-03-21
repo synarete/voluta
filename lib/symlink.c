@@ -151,7 +151,7 @@ static void lis_set_tail_part(struct voluta_lnk_ispec *lis, size_t slot,
 
 static void lis_reset_tail_part(struct voluta_lnk_ispec *lis, size_t slot)
 {
-	lis_set_tail_part(lis, slot, &voluta_vaddr_none);
+	lis_set_tail_part(lis, slot, vaddr_none());
 }
 
 static void lis_setup(struct voluta_lnk_ispec *lis)
@@ -323,7 +323,6 @@ int voluta_do_readlink(const struct voluta_oper *op,
 	ii_incref(lnk_ii);
 	err = readlink_of(&sl_ctx, &buf);
 	ii_decref(lnk_ii);
-
 	*out_len = buf.len;
 	return err;
 }
@@ -465,7 +464,6 @@ int voluta_setup_symlink(const struct voluta_oper *op,
 	ii_incref(lnk_ii);
 	err = do_symlink(&sl_ctx);
 	ii_decref(lnk_ii);
-
 	return err;
 }
 
@@ -498,7 +496,6 @@ int voluta_drop_symlink(struct voluta_inode_info *lnk_ii)
 	ii_incref(lnk_ii);
 	err = drop_symval(&sl_ctx);
 	ii_decref(lnk_ii);
-
 	return err;
 }
 

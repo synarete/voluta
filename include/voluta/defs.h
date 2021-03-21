@@ -601,12 +601,8 @@ struct voluta_bk_rec {
 	uint32_t                bk_flags;
 	uint64_t                bk_allocated;
 	uint64_t                bk_unwritten;
-	uint32_t                bk_refcnt;
-	uint32_t                bk_reserved2;
-	uint32_t                bk_reserved3;
-	uint32_t                bk_reserved4;
-	uint32_t                bk_reserved5;
-	uint32_t                bk_reserved6;
+	uint64_t                bk_refcnt;
+	uint32_t                bk_reserved2[4];
 	uint64_t                bk_seed;
 } voluta_packed_aligned8;
 
@@ -730,11 +726,12 @@ struct voluta_inode {
 
 struct voluta_radix_tnode {
 	struct voluta_header    r_hdr;
+	uint64_t                r_refcnt;
 	uint64_t                r_ino;
 	int64_t                 r_beg;
 	int64_t                 r_end;
 	uint8_t                 r_height;
-	uint8_t                 r_reserved1[23];
+	uint8_t                 r_reserved1[15];
 	uint8_t                 r_zeros[960];
 	struct voluta_vaddr56   r_child[VOLUTA_FILE_TREE_NCHILDS];
 } voluta_packed_aligned64;

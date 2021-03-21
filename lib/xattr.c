@@ -387,7 +387,7 @@ static void xai_set_vaddr(struct voluta_xattr_ispec *xai, size_t slot,
 
 static void xai_reset_vaddr(struct voluta_xattr_ispec *xai, size_t slot)
 {
-	xai_set_vaddr(xai, slot, &voluta_vaddr_none);
+	xai_set_vaddr(xai, slot, vaddr_none());
 }
 
 static size_t xai_nslots_max(const struct voluta_xattr_ispec *xai)
@@ -744,7 +744,6 @@ int voluta_do_getxattr(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_getxattr(&xa_ctx, out_size);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -968,7 +967,6 @@ int voluta_do_setxattr(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_setxattr(&xa_ctx);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1013,7 +1011,6 @@ int voluta_do_removexattr(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_removexattr(&xa_ctx);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1144,7 +1141,6 @@ int voluta_do_listxattr(const struct voluta_oper *op,
 	ii_incref(ii);
 	err = do_listxattr(&xa_ctx);
 	ii_decref(ii);
-
 	return err;
 }
 
@@ -1189,7 +1185,6 @@ int voluta_drop_xattr(struct voluta_inode_info *ii)
 	ii_incref(ii);
 	err = drop_xattr_slots(&xa_ctx);
 	ii_decref(ii);
-
 	return err;
 }
 

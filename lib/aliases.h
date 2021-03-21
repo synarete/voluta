@@ -67,6 +67,7 @@
 #define vtype_isdata(vt)                voluta_vtype_isdata(vt)
 #define vtype_ismeta(vt)                voluta_vtype_ismeta(vt)
 
+#define vaddr_none()                    voluta_vaddr_none()
 #define vaddr_isnull(va)                voluta_vaddr_isnull(va)
 #define vaddr_isdata(va)                voluta_vaddr_isdata(va)
 #define vaddr_reset(va)                 voluta_vaddr_reset(va)

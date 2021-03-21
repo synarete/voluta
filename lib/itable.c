@@ -115,7 +115,7 @@ static void ite_setup(struct voluta_itable_entry *ite, ino_t ino,
 static void ite_reset(struct voluta_itable_entry *ite)
 {
 	ite_set_ino(ite, VOLUTA_INO_NULL);
-	ite_set_vaddr(ite, &voluta_vaddr_none);
+	ite_set_vaddr(ite, vaddr_none());
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -134,7 +134,7 @@ static void itn_set_parent(struct voluta_itable_tnode *itn,
 
 static void itn_reset_parent(struct voluta_itable_tnode *itn)
 {
-	itn_set_parent(itn, &voluta_vaddr_none);
+	itn_set_parent(itn, vaddr_none());
 }
 
 static size_t itn_depth(const struct voluta_itable_tnode *itn)
@@ -207,7 +207,7 @@ static void itn_set_child_at(struct voluta_itable_tnode *itn,
 
 static void itn_clear_child_at(struct voluta_itable_tnode *itn, size_t slot)
 {
-	itn_set_child_at(itn, slot, &voluta_vaddr_none);
+	itn_set_child_at(itn, slot, vaddr_none());
 }
 
 static size_t itn_child_slot(const struct voluta_itable_tnode *itn, ino_t ino)

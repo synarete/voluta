@@ -69,7 +69,7 @@ static bool ino_isvalid(ino_t ino)
 	return (ino > VOLUTA_INO_NULL);
 }
 
-static mode_t safe_dttoif(mode_t dt)
+static mode_t dttoif(mode_t dt)
 {
 	mode_t mode;
 
@@ -224,7 +224,7 @@ static void de_set_dt(struct voluta_dir_entry *de, mode_t dt)
 
 static bool de_isvalid(const struct voluta_dir_entry *de)
 {
-	return (safe_dttoif(de_dt(de)) != 0);
+	return (dttoif(de_dt(de)) != 0);
 }
 
 static ino_t de_ino(const struct voluta_dir_entry *de)
@@ -555,7 +555,7 @@ static void htn_set_child(struct voluta_dir_htnode *htn,
 static void htn_reset_childs(struct voluta_dir_htnode *htn)
 {
 	for (size_t ord = 0; ord < ARRAY_SIZE(htn->dh_child); ++ord) {
-		htn_set_child(htn, ord, &voluta_vaddr_none);
+		htn_set_child(htn, ord, vaddr_none());
 	}
 }
 
@@ -1214,7 +1214,6 @@ int voluta_lookup_dentry(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_lookup_dentry(&d_ctx, out_idt);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1446,7 +1445,6 @@ int voluta_add_dentry(const struct voluta_oper *op,
 	err = do_add_dentry(&d_ctx);
 	ii_decref(ii);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1847,7 +1845,6 @@ int voluta_do_readdir(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_readdir(&d_ctx);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1868,7 +1865,6 @@ int voluta_do_readdirplus(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_readdir(&d_ctx);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -1971,7 +1967,6 @@ int voluta_drop_dir(struct voluta_inode_info *dir_ii)
 	ii_incref(dir_ii);
 	err = finalize_htree(&d_ctx);
 	ii_decref(dir_ii);
-
 	return err;
 }
 
@@ -2004,7 +1999,6 @@ static int erase_dentry(struct voluta_dir_ctx *d_ctx,
 	ii_incref(d_ctx->child_ii);
 	err = do_erase_dentry(d_ctx, dei);
 	ii_decref(d_ctx->child_ii);
-
 	return err;
 }
 
@@ -2071,7 +2065,6 @@ int voluta_remove_dentry(const struct voluta_oper *op,
 	ii_incref(dir_ii);
 	err = do_remove_dentry(&d_ctx);
 	ii_decref(dir_ii);
-
 	return err;
 }
 

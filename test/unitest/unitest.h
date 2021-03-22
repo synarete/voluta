@@ -175,6 +175,7 @@ extern const struct ut_tests ut_test_file_edges;
 extern const struct ut_tests ut_test_file_fallocate;
 extern const struct ut_tests ut_test_file_fiemap;
 extern const struct ut_tests ut_test_file_lseek;
+extern const struct ut_tests ut_test_file_copy_range;
 extern const struct ut_tests ut_test_reload;
 extern const struct ut_tests ut_test_recrypt;
 extern const struct ut_tests ut_test_fillfs;
@@ -436,6 +437,9 @@ void ut_lseek_hole(struct ut_env *ute,
 
 void ut_lseek_nodata(struct ut_env *ute, ino_t ino, loff_t off);
 
+void ut_copy_file_range_ok(struct ut_env *ute, ino_t ino_in, loff_t off_in,
+                           ino_t ino_out, loff_t off_out, size_t len);
+
 void ut_write_dvec(struct ut_env *ute, ino_t ino,
                    const struct ut_dvec *dvec);
 
@@ -519,6 +523,8 @@ void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
 #define UT_FILEMAP_NCHILD       VOLUTA_FILE_TREE_NCHILDS
 #define UT_ROOT_INO             VOLUTA_INO_ROOT
 #define UT_NAME                 __func__
+#define UT_NAME_AT              VOLUTA_STR(__LINE__)
+
 
 #define ut_container_of(ptr_, type_, member_) \
 	voluta_container_of(ptr_, type_, member_)

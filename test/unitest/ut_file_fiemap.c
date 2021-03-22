@@ -39,10 +39,13 @@ ut_fiemap_of(struct ut_env *ute, ino_t ino, loff_t off, size_t len)
 		.fm_flags = 0,
 		.fm_extent_count = 0
 	};
+	const uint32_t magic = VOLUTA_SUPER_MAGIC;
 	struct fiemap *fm = NULL;
 	const struct fiemap_extent *fm_ext = NULL;
 
 	ut_fiemap_ok(ute, ino, &fm0);
+	ut_expect_eq(magic, VOLUTA_SUPER_MAGIC);
+	ut_expect_eq(fm0.fm_extent_count, 0);
 	ut_expect_null(fm);
 
 	fm = new_fiemap(ute, fm0.fm_mapped_extents);

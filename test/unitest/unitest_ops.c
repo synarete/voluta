@@ -183,6 +183,14 @@ static int ut_lseek(struct ut_env *ute, ino_t ino,
 	return voluta_fs_lseek(sbi(ute), op(ute), ino, off, whence, out);
 }
 
+static int ut_copy_file_range(struct ut_env *ute, ino_t ino_in,
+                              loff_t off_in, ino_t ino_out, loff_t off_out,
+                              size_t len, size_t *out_len)
+{
+	return voluta_fs_copy_file_range(sbi(ute), op(ute), ino_in, off_in,
+	                                 ino_out, off_out, len, 0, out_len);
+}
+
 static int ut_query(struct ut_env *ute, ino_t ino,
                     struct voluta_ioc_query *out_qry)
 {
@@ -1373,6 +1381,18 @@ void ut_lseek_nodata(struct ut_env *ute, ino_t ino, loff_t off)
 
 	err = ut_lseek(ute, ino, off, SEEK_DATA, &res_off);
 	ut_expect_err(err, -ENXIO);
+}
+
+void ut_copy_file_range_ok(struct ut_env *ute, ino_t ino_in, loff_t off_in,
+                           ino_t ino_out, loff_t off_out, size_t len)
+{
+	int err;
+	size_t cnt = 0;
+
+	err = ut_copy_file_range(ute, ino_in, off_in,
+	                         ino_out, off_out, len, &cnt);
+	ut_expect_ok(err);
+	ut_expect_eq(len, cnt);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

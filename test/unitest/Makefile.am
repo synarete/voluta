@@ -26,6 +26,7 @@ voluta_unitest_SOURCES += ut_dir_basic.c
 voluta_unitest_SOURCES += ut_dir_iter.c
 voluta_unitest_SOURCES += ut_dir_list.c
 voluta_unitest_SOURCES += ut_file_basic.c
+voluta_unitest_SOURCES += ut_file_copyrange.c
 voluta_unitest_SOURCES += ut_file_edges.c
 voluta_unitest_SOURCES += ut_file_falloc.c
 voluta_unitest_SOURCES += ut_file_fiemap.c

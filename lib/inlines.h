@@ -46,6 +46,11 @@ static inline size_t min3(size_t x, size_t y, size_t z)
 	return min(min(x, y), z);
 }
 
+static inline size_t min4(size_t p, size_t q, size_t d, size_t b)
+{
+	return min(min(p, q), min(d, b));
+}
+
 static inline size_t max(size_t x, size_t y)
 {
 	return (x > y) ? x : y;

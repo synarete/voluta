@@ -29,8 +29,6 @@ static void ut_file_copy_range_simple_(struct ut_env *ute,
 	const char *name_dst = UT_NAME_AT;
 	void *buf = ut_randbuf(ute, bsz);
 
-	return; /*XXX*/
-
 	ut_mkdir_at_root(ute, name, &dino);
 	ut_create_file(ute, dino, name_src, &ino_src);
 	ut_create_file(ute, dino, name_dst, &ino_dst);
@@ -45,7 +43,11 @@ static void ut_file_copy_range_simple_(struct ut_env *ute,
 
 static void ut_file_copy_range_simple(struct ut_env *ute)
 {
+	/* XXX FIXME */
+	return;
+
 	ut_file_copy_range_simple_(ute, 0, UT_1K_SIZE);
+	ut_file_copy_range_simple_(ute, 0, UT_4K_SIZE);
 }
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

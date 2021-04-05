@@ -43,12 +43,12 @@ static void ut_file_copy_range_simple_(struct ut_env *ute,
 
 static void ut_file_copy_range_simple(struct ut_env *ute)
 {
-	/* XXX FIXME */
-	return;
-
 	ut_file_copy_range_simple_(ute, 0, UT_1K_SIZE);
 	ut_file_copy_range_simple_(ute, 0, UT_4K_SIZE);
+	ut_file_copy_range_simple_(ute, 0, UT_BK_SIZE);
+	ut_file_copy_range_simple_(ute, UT_BK_SIZE, UT_BK_SIZE);
 }
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct ut_testdef ut_local_tests[] = {

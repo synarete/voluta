@@ -32,6 +32,7 @@ libvoluta_la_SOURCES += mpool.c
 libvoluta_la_SOURCES += namei.c
 libvoluta_la_SOURCES += opers.c
 libvoluta_la_SOURCES += panic.c
+libvoluta_la_SOURCES += pipe.c
 libvoluta_la_SOURCES += pstore.c
 libvoluta_la_SOURCES += qalloc.c
 libvoluta_la_SOURCES += socket.c

@@ -1078,6 +1078,36 @@ bool voluta_mutex_timedlock(struct voluta_mutex *mutex,
 
 void voluta_mutex_unlock(struct voluta_mutex *mutex);
 
+/* pipe */
+void voluta_pipe_init(struct voluta_pipe *pipe);
+
+int voluta_pipe_open(struct voluta_pipe *pipe);
+
+int voluta_pipe_setsize(struct voluta_pipe *pipe, size_t size);
+
+void voluta_pipe_close(struct voluta_pipe *pipe);
+
+void voluta_pipe_fini(struct voluta_pipe *pipe);
+
+int voluta_pipe_splice_from_fd(struct voluta_pipe *pipe,
+                               int fd, loff_t *off, size_t len);
+
+int voluta_pipe_vmsplice_from_iov(struct voluta_pipe *pipe,
+                                  const struct iovec *iov, size_t niov);
+
+int voluta_pipe_splice_to_fd(struct voluta_pipe *pipe,
+                             int fd, loff_t *off, size_t len);
+
+int voluta_pipe_vmsplice_to_iov(struct voluta_pipe *pipe,
+                                const struct iovec *iov, size_t niov);
+
+int voluta_pipe_copy_to_buf(struct voluta_pipe *pipe, void *buf, size_t len);
+
+int voluta_pipe_append_from_buf(struct voluta_pipe *pipe,
+                                const void *buf, size_t len);
+
+int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd);
+
 /* utility */
 void voluta_uuid_generate(struct voluta_uuid *uu);
 

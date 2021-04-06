@@ -423,228 +423,6 @@ struct voluta_fuseq_cmd {
 	int realtime;
 };
 
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-static size_t iov_length(const struct iovec *iov, size_t niov)
-{
-	size_t len = 0;
-
-	for (size_t i = 0; i < niov; ++i) {
-		len += iov[i].iov_len;
-	}
-	return len;
-}
-
-static size_t iov_count_ceil(const struct iovec *iov,
-                             size_t niov, size_t len_max)
-{
-	size_t cnt = 0;
-	size_t len = 0;
-
-	for (size_t i = 0; i < niov; ++i) {
-		if (len >= len_max) {
-			break;
-		}
-		cnt++;
-		len += iov[i].iov_len;
-	}
-	return cnt;
-}
-
-static void pipe_init(struct voluta_pipe *pipe)
-{
-	pipe->fd[0] = -1;
-	pipe->fd[1] = -1;
-	pipe->size = 0;
-	pipe->pend = 0; /* TODO: maybe use 'ioctl(FIONREAD)' ? */
-}
-
-static int pipe_open(struct voluta_pipe *pipe)
-{
-	int err;
-	size_t pgsz;
-
-	err = voluta_sys_pipe2(pipe->fd, O_CLOEXEC | O_NONBLOCK);
-	if (err) {
-		return err;
-	}
-	pgsz = voluta_sc_page_size();
-	pipe->size = pgsz * 16; /* Linux default ? */
-	return 0;
-}
-
-static int pipe_setsize(struct voluta_pipe *pipe, size_t size)
-{
-	int err;
-
-	err = voluta_sys_fcntl_setpipesz(pipe->fd[0], size);
-	if (!err) {
-		pipe->size = size;
-	}
-	return err;
-}
-
-static void pipe_close(struct voluta_pipe *pipe)
-{
-	if (pipe->fd[0] > 0) {
-		voluta_sys_close(pipe->fd[0]);
-		pipe->fd[0] = -1;
-	}
-	if (pipe->fd[1] > 0) {
-		voluta_sys_close(pipe->fd[1]);
-		pipe->fd[1] = -1;
-	}
-}
-
-static void pipe_fini(struct voluta_pipe *pipe)
-{
-	pipe_close(pipe);
-	pipe->size = 0;
-	pipe->pend = 0;
-}
-
-static size_t pipe_avail(const struct voluta_pipe *pipe)
-{
-	voluta_assert_le(pipe->pend, pipe->size);
-
-	return (pipe->size - pipe->pend);
-}
-
-static int pipe_splice_from_fd(struct voluta_pipe *pipe,
-                               int fd, loff_t *off, size_t len)
-{
-	int err;
-	size_t cnt;
-	size_t nsp = 0;
-	const loff_t off_in = off ? *off : 0;
-
-	voluta_assert_le(pipe->pend, pipe->size);
-
-	cnt = min(pipe_avail(pipe), len);
-	err = voluta_sys_splice(fd, off, pipe->fd[1], NULL, cnt, 0, &nsp);
-	if (err) {
-		log_err("splice-error: fd_in=%d off_in=%ld fd_out=%d "\
-		        "cnt=%lu err=%d", fd, off_in, pipe->fd[1], cnt, err);
-		return err;
-	}
-	if (nsp > cnt) {
-		log_err("bad-splice: fd_in=%d off_in=%ld fd_out=%d "\
-		        "cnt=%lu nsp=%lu", fd, off_in, pipe->fd[1], cnt, nsp);
-		return -EIO;
-	}
-	pipe->pend += nsp;
-	return 0;
-}
-
-static int pipe_vmsplice_from_iov(struct voluta_pipe *pipe,
-                                  const struct iovec *iov, size_t niov)
-{
-	int err;
-	size_t cnt;
-	size_t nsp = 0;
-	const unsigned int splice_flags = SPLICE_F_NONBLOCK;
-
-	cnt = iov_count_ceil(iov, niov, pipe_avail(pipe));
-	err = voluta_sys_vmsplice(pipe->fd[1], iov, cnt, splice_flags, &nsp);
-	if (err) {
-		log_err("vmsplice-error: fd=%d cnt=%lu splice_flags=%u err=%d",
-		        pipe->fd[1], cnt, splice_flags, err);
-		return err;
-	}
-	pipe->pend += nsp;
-	return 0;
-}
-
-static int pipe_splice_to_fd(struct voluta_pipe *pipe,
-                             int fd, loff_t *off, size_t len)
-{
-	int err;
-	size_t cnt;
-	size_t nsp = 0;
-	const loff_t off_out = off ? *off : 0;
-
-	cnt = min(pipe->pend, len);
-	err = voluta_sys_splice(pipe->fd[0], NULL, fd, off, cnt, 0, &nsp);
-	if (err) {
-		log_err("splice-error: fd_in=%d fd_out=%d off_out=%ld"\
-		        "cnt=%lu err=%d", pipe->fd[0], fd, off_out, cnt, err);
-		return err;
-	}
-	if (nsp > pipe->pend) {
-		log_err("bad-splice: fd_in=%d fd_out=%d off_out=%ld"\
-		        "cnt=%lu nsp=%lu", pipe->fd[0], fd, off_out, cnt, nsp);
-		return -EIO;
-	}
-	pipe->pend -= nsp;
-	return 0;
-}
-
-static int pipe_vmsplice_to_iov(struct voluta_pipe *pipe,
-                                const struct iovec *iov, size_t niov)
-{
-	int err;
-	size_t len;
-	size_t cnt;
-	size_t nsp = 0;
-
-	cnt = iov_count_ceil(iov, niov, pipe->pend);
-	len = iov_length(iov, cnt);
-	err = voluta_sys_vmsplice(pipe->fd[0], iov, cnt, 0, &nsp);
-	if (err) {
-		log_err("vmsplice-error: fd=%d cnt=%lu err=%d",
-		        pipe->fd[1], cnt, err);
-		return err;
-	}
-	if ((nsp != len) || (nsp > pipe->pend)) {
-		log_err("bad-vmsplice: fd=%d cnt=%lu nsp=%lu",
-		        pipe->fd[1], cnt, nsp);
-		return -EIO;
-	}
-	pipe->pend -= nsp;
-	return 0;
-}
-
-static int pipe_copy_to_buf(struct voluta_pipe *pipe,
-                            void *buf, size_t len)
-{
-	int err;
-	size_t cnt;
-
-	cnt = min(pipe->pend, len);
-	err = voluta_sys_readn(pipe->fd[0], buf, cnt);
-	if (err) {
-		log_err("readn-from-pipe: fd=%ld cnt=%lu err=%d",
-		        pipe->fd[0], cnt, err);
-		return err;
-	}
-	pipe->pend -= cnt;
-	return 0;
-}
-
-static int pipe_append_from_buf(struct voluta_pipe *pipe,
-                                const void *buf, size_t len)
-{
-	int err;
-	size_t cnt;
-
-	cnt = min(pipe->size, len);
-	err = voluta_sys_writen(pipe->fd[1], buf, cnt);
-	if (err) {
-		log_err("writen-to-pipe: fd=%ld cnt=%lu err=%d",
-		        pipe->fd[1], cnt, err);
-		return err;
-	}
-	pipe->pend += cnt;
-	return 0;
-}
-
-static int pipe_flush_to_fd(struct voluta_pipe *pipe, int fd)
-{
-	return (pipe->pend > 0) ?
-	       pipe_splice_to_fd(pipe, fd, NULL, pipe->pend) : 0;
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const void *after_name(const char *name)
@@ -1255,7 +1033,7 @@ static int fuseq_append_hdr_to_pipe(struct voluta_fuseq_worker *fqw,
 	struct fuse_out_header hdr;
 
 	fuseq_fill_out_header(fqw, &hdr,  sizeof(hdr) + len, 0);
-	return pipe_append_from_buf(&fqw->pipe, &hdr, sizeof(hdr));
+	return voluta_pipe_append_from_buf(&fqw->pipe, &hdr, sizeof(hdr));
 }
 
 
@@ -1265,7 +1043,7 @@ static int fuseq_append_to_pipe_by_fd(struct voluta_fuseq_worker *fqw,
 	size_t len = xiov->len;
 	loff_t off = xiov->off;
 
-	return pipe_splice_from_fd(&fqw->pipe, xiov->fd, &off, len);
+	return voluta_pipe_splice_from_fd(&fqw->pipe, xiov->fd, &off, len);
 }
 
 static int fuseq_append_to_pipe_by_iov(struct voluta_fuseq_worker *fqw,
@@ -1276,7 +1054,7 @@ static int fuseq_append_to_pipe_by_iov(struct voluta_fuseq_worker *fqw,
 		.iov_len = xiov->len
 	};
 
-	return pipe_vmsplice_from_iov(&fqw->pipe, &iov, 1);
+	return voluta_pipe_vmsplice_from_iov(&fqw->pipe, &iov, 1);
 }
 
 static int
@@ -1316,7 +1094,7 @@ static int fuseq_send_pipe(struct voluta_fuseq_worker *fqw)
 {
 	int err;
 
-	err = pipe_flush_to_fd(&fqw->pipe, fqw->fq->fq_fuse_fd);
+	err = voluta_pipe_flush_to_fd(&fqw->pipe, fqw->fq->fq_fuse_fd);
 	return err;
 }
 
@@ -2466,7 +2244,7 @@ fuseq_extract_from_pipe_by_fd(struct voluta_fuseq_worker *fqw,
 {
 	loff_t off = xiov->off;
 
-	return pipe_splice_to_fd(&fqw->pipe, xiov->fd, &off, xiov->len);
+	return voluta_pipe_splice_to_fd(&fqw->pipe, xiov->fd, &off, xiov->len);
 }
 
 static int
@@ -2478,7 +2256,7 @@ fuseq_extract_from_pipe_by_iov(struct voluta_fuseq_worker *fqw,
 		.iov_len = xiov->len
 	};
 
-	return pipe_vmsplice_to_iov(&fqw->pipe, &iov, 1);
+	return voluta_pipe_vmsplice_to_iov(&fqw->pipe, &iov, 1);
 }
 
 static int
@@ -3012,7 +2790,7 @@ static int fuseq_do_splice_in(struct voluta_fuseq_worker *fqw)
 	const int fuse_fd = fqw->fq->fq_fuse_fd;
 	struct voluta_pipe *pipe = &fqw->pipe;
 
-	return pipe_splice_from_fd(pipe, fuse_fd, NULL, pipe->size);
+	return voluta_pipe_splice_from_fd(pipe, fuse_fd, NULL, pipe->size);
 }
 
 static int fuseq_splice_in(struct voluta_fuseq_worker *fqw)
@@ -3045,7 +2823,7 @@ static int fuseq_splice_in(struct voluta_fuseq_worker *fqw)
 	}
 	in = fuseq_in_of(fqw);
 	len = min(nsp, sizeof(in->u.write));
-	err = pipe_copy_to_buf(pipe, in, len);
+	err = voluta_pipe_copy_to_buf(pipe, in, len);
 	if (err) {
 		log_err("pipe-copy failed: len=%lu err=%d", len, err);
 		return err;
@@ -3060,7 +2838,7 @@ static int fuseq_splice_in(struct voluta_fuseq_worker *fqw)
 		return 0;
 	}
 	tail = tail_of(in, len); /* FUSE_SETXATTR, FUSE_BATCH_FORGET et.al. */
-	err = pipe_copy_to_buf(pipe, tail, rem);
+	err = voluta_pipe_copy_to_buf(pipe, tail, rem);
 	if (err) {
 		log_err("pipe-copy-tail failed: "\
 		        "opc=%d len=%lu err=%d", opc, rem, err);
@@ -3135,7 +2913,7 @@ static int fuseq_prep_request(struct voluta_fuseq_worker *fqw)
 	const int null_fd = fqw->fq->fq_null_fd;
 
 	fuseq_reset_inhdr(fqw);
-	return pipe_flush_to_fd(&fqw->pipe, null_fd);
+	return voluta_pipe_flush_to_fd(&fqw->pipe, null_fd);
 }
 
 static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)
@@ -3274,12 +3052,12 @@ static int fuseq_init_pipe(struct voluta_fuseq_worker *fqw, size_t pipe_size)
 	int err;
 	struct voluta_pipe *pipe = &fqw->pipe;
 
-	pipe_init(pipe);
-	err = pipe_open(pipe);
+	voluta_pipe_init(pipe);
+	err = voluta_pipe_open(pipe);
 	if (err) {
 		return err;
 	}
-	err = pipe_setsize(pipe, pipe_size);
+	err = voluta_pipe_setsize(pipe, pipe_size);
 	if (err) {
 		return err;
 	}
@@ -3288,7 +3066,7 @@ static int fuseq_init_pipe(struct voluta_fuseq_worker *fqw, size_t pipe_size)
 
 static void fuseq_fini_pipe(struct voluta_fuseq_worker *fqw)
 {
-	pipe_fini(&fqw->pipe);
+	voluta_pipe_fini(&fqw->pipe);
 }
 
 static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)

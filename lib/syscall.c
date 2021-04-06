@@ -795,9 +795,14 @@ int voluta_sys_fcntl_setfl(int fd, int fl)
 	return ok_or_errno(fcntl(fd, F_SETFL, fl));
 }
 
-int voluta_sys_fcntl_setpipesz(int fd, size_t pipesize)
+int voluta_sys_fcntl_setpipesz(int fd, int pipesize)
 {
 	return ok_or_errno(fcntl(fd, F_SETPIPE_SZ, pipesize));
+}
+
+int voluta_sys_fcntl_getpipesz(int fd, int *out_pipesize)
+{
+	return val_or_errno2(fcntl(fd, F_GETPIPE_SZ), out_pipesize);
 }
 
 /* SELECT */

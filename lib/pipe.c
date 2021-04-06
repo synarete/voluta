@@ -97,6 +97,9 @@ int voluta_pipe_setsize(struct voluta_pipe *pipe, size_t size)
 {
 	int err;
 
+	if (size == pipe->size) {
+		return 0; /* no-op */
+	}
 	err = voluta_sys_fcntl_setpipesz(pipe->fd[0], (int)size);
 	if (err) {
 		log_warn("failed to set pipe size: "
@@ -265,3 +268,49 @@ int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd)
 	return (pipe->pend > 0) ?
 	       voluta_pipe_splice_to_fd(pipe, fd, NULL, pipe->pend) : 0;
 }
+
+int voluta_pipe_purge(struct voluta_pipe *pipe,
+                      const struct voluta_nullfd *nfd)
+{
+	return voluta_pipe_flush_to_fd(pipe, nfd->fd);
+}
+
+int voluta_pipe_kcopy(struct voluta_pipe *pipe, int fd_in, loff_t *off_in,
+                      int fd_out, loff_t *off_out, size_t len)
+{
+	int err;
+
+	err = voluta_pipe_splice_from_fd(pipe, fd_in, off_in, len);
+	if (err) {
+		return err;
+	}
+	err = voluta_pipe_splice_to_fd(pipe, fd_out, off_out, len);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+int voluta_nullfd_init(struct voluta_nullfd *nfd)
+{
+	int err;
+	const int o_flags = O_WRONLY | O_CREAT | O_TRUNC;
+	const char *path = "/dev/null";
+
+	err = voluta_sys_open(path, o_flags, 0666, &nfd->fd);
+	if (err) {
+		log_warn("failed to open '%s': "
+		         "o_flags=%o err=%d", path, o_flags, err);
+	}
+	return err;
+}
+
+void voluta_nullfd_fini(struct voluta_nullfd *nfd)
+{
+	voluta_sys_closefd(&nfd->fd);
+}
+
+
+

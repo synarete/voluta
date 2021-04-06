@@ -24,6 +24,9 @@
 	{ .tests = &(t_), .name = VOLUTA_STR(t_) }
 
 static struct ut_tgroup const g_ut_tgroups[] = {
+	/* XXX */
+	UT_DEFTGRP(ut_test_file_copy_range),
+
 	UT_DEFTGRP(ut_test_strings),
 	UT_DEFTGRP(ut_test_avl),
 	UT_DEFTGRP(ut_test_qalloc),
@@ -318,11 +321,11 @@ void ut_execute_tests(void)
 	args.ar_args.blobsdir = testdir;
 
 	args.fs_args.passwd = args.ar_args.passwd = ut_make_passwd(&passph);
-	args.fs_args.encrypted = args.fs_args.encryptwr = true;
+	args.fs_args.encrypted = args.fs_args.encryptwr = false;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 
-	args.fs_args.encrypted = args.fs_args.encryptwr = false;
+	args.fs_args.encrypted = args.fs_args.encryptwr = true;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 

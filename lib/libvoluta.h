@@ -1108,6 +1108,16 @@ int voluta_pipe_append_from_buf(struct voluta_pipe *pipe,
 
 int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd);
 
+int voluta_pipe_purge(struct voluta_pipe *pipe,
+                      const struct voluta_nullfd *nfd);
+
+int voluta_pipe_kcopy(struct voluta_pipe *pipe, int fd_in, loff_t *off_in,
+                      int fd_out, loff_t *off_out, size_t len);
+
+int voluta_nullfd_init(struct voluta_nullfd *nfd);
+
+void voluta_nullfd_fini(struct voluta_nullfd *nfd);
+
 /* utility */
 void voluta_uuid_generate(struct voluta_uuid *uu);
 

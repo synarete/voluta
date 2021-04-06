@@ -128,6 +128,10 @@ struct voluta_pipe {
 	size_t  pend;
 };
 
+struct voluta_nullfd {
+	int     fd;
+};
+
 /* strings & buffer */
 struct voluta_str {
 	const char *str;
@@ -377,6 +381,7 @@ struct voluta_pstore {
 struct voluta_vstore {
 	struct voluta_pstore            vs_pstore;
 	struct voluta_crypto            vs_crypto;
+	struct voluta_pipe              vs_pipe;
 	struct voluta_qalloc           *vs_qalloc;
 	struct voluta_encbuf           *vs_encbuf;
 	const char *vs_volpath;
@@ -477,6 +482,7 @@ struct voluta_fuseq_worker {
 	struct voluta_oper             *op;
 	struct voluta_oper              oper;
 	struct voluta_pipe              pipe;
+	struct voluta_nullfd            nfd;
 	struct voluta_thread            th;
 	int idx;
 } voluta_aligned64;
@@ -494,7 +500,6 @@ struct voluta_fuseq {
 	int             fq_nworkers_active;
 	volatile int    fq_active;
 	volatile int    fq_fuse_fd;
-	volatile int    fq_null_fd;
 	bool            fq_got_init;
 	bool            fq_got_destroy;
 	bool            fq_deny_others;

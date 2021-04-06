@@ -263,7 +263,7 @@ static int xiovec_copy_from(const struct voluta_xiovec *xiov, const void *buf)
 	return err;
 }
 
-static int xiovec_copy_dup(const struct voluta_xiovec *xiov_src,
+static int xiovec_copy_mem(const struct voluta_xiovec *xiov_src,
                            const struct voluta_xiovec *xiov_dst, size_t len)
 {
 	voluta_assert_ge(xiov_src->len, len);
@@ -276,6 +276,20 @@ static int xiovec_copy_dup(const struct voluta_xiovec *xiov_src,
 
 	return 0;
 }
+
+static int xiovec_copy_splice(const struct voluta_xiovec *xiov_src,
+                              const struct voluta_xiovec *xiov_dst,
+                              struct voluta_pipe *pipe, size_t len)
+{
+	loff_t off_src = xiov_src->off;
+	loff_t off_dst = xiov_dst->off;
+	const int fd_src = xiov_src->fd;
+	const int fd_dst = xiov_dst->fd;
+
+	return voluta_pipe_kcopy(pipe, fd_src, &off_src,
+	                         fd_dst, &off_dst, len);
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -1891,6 +1905,11 @@ static int clear_unwritten_of(const struct voluta_file_ctx *f_ctx,
 	}
 	dirtify_data_leaf(f_ctx, vi);
 	return 0;
+}
+
+static int clear_unwritten_by(const struct voluta_fmap_ctx *fm_ctx)
+{
+	return clear_unwritten_at(fm_ctx->f_ctx, &fm_ctx->vaddr);
 }
 
 static int new_data_vspace(const struct voluta_file_ctx *f_ctx,
@@ -3745,9 +3764,9 @@ static size_t copy_range_length(const struct voluta_fmap_ctx *fm_ctx_src,
 	return min4(io_len_src, io_len_dst, slot_len_src, slot_len_dst);
 }
 
-static int resolve_leaf(const struct voluta_fmap_ctx *fm_ctx,
-                        struct voluta_vnode_info **out_vi,
-                        struct voluta_xiovec *out_xiov)
+static int resolve_leaf_vnode(const struct voluta_fmap_ctx *fm_ctx,
+                              struct voluta_vnode_info **out_vi,
+                              struct voluta_xiovec *out_xiov)
 {
 	int err;
 
@@ -3760,6 +3779,19 @@ static int resolve_leaf(const struct voluta_fmap_ctx *fm_ctx,
 		return err;
 	}
 	return 0;
+}
+
+static int resolve_leaf_vaddr(const struct voluta_fmap_ctx *fm_ctx,
+                              struct voluta_xiovec *out_xiov)
+{
+	voluta_assert(!vaddr_isnull(&fm_ctx->vaddr));
+
+	return xiovec_of_vaddr(fm_ctx->f_ctx, &fm_ctx->vaddr, out_xiov);
+}
+
+static struct voluta_pipe *pipe_of(const struct voluta_fmap_ctx *fm_ctx)
+{
+	return & fm_ctx->f_ctx->sbi->sb_vstore->vs_pipe;
 }
 
 static int
@@ -3782,17 +3814,33 @@ copy_range_leaves(const struct voluta_fmap_ctx *fm_ctx_src,
 		return err;
 	}
 	if (kcopy_mode(fm_ctx_dst->f_ctx)) {
-		voluta_assert(err); /* XXX BUG_ON */
+		err = resolve_leaf_vaddr(fm_ctx_src, &xiov_src);
+		if (err) {
+			return err;
+		}
+		err = resolve_leaf_vaddr(fm_ctx_dst, &xiov_dst);
+		if (err) {
+			return err;
+		}
+		err = xiovec_copy_splice(&xiov_src, &xiov_dst,
+		                         pipe_of(fm_ctx_dst), len);
+		if (err) {
+			return err;
+		}
+		err = clear_unwritten_by(fm_ctx_dst);
+		if (err) {
+			return err;
+		}
 	} else {
-		err = resolve_leaf(fm_ctx_src, &vi_src, &xiov_src);
+		err = resolve_leaf_vnode(fm_ctx_src, &vi_src, &xiov_src);
 		if (err) {
 			return err;
 		}
-		err = resolve_leaf(fm_ctx_dst, &vi_dst, &xiov_dst);
+		err = resolve_leaf_vnode(fm_ctx_dst, &vi_dst, &xiov_dst);
 		if (err) {
 			return err;
 		}
-		err = xiovec_copy_dup(&xiov_src, &xiov_dst, len);
+		err = xiovec_copy_mem(&xiov_src, &xiov_dst, len);
 		if (err) {
 			return err;
 		}

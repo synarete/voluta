@@ -664,6 +664,32 @@ static void vstore_fini_crypto(struct voluta_vstore *vstore)
 	voluta_crypto_fini(&vstore->vs_crypto);
 }
 
+static int vstore_init_pipe(struct voluta_vstore *vstore)
+{
+	int err;
+	const size_t pipesz_want = VOLUTA_BK_SIZE;
+	struct voluta_pipe *pipe = &vstore->vs_pipe;
+
+	voluta_pipe_init(pipe);
+	err = voluta_pipe_open(pipe);
+	if (err) {
+		return err;
+	}
+	err = voluta_pipe_setsize(pipe, pipesz_want);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+static void vstore_fini_pipe(struct voluta_vstore *vstore)
+{
+	struct voluta_pipe *pipe = &vstore->vs_pipe;
+
+	voluta_pipe_close(pipe);
+	voluta_pipe_fini(pipe);
+}
+
 static int vstore_init_encbuf(struct voluta_vstore *vstore)
 {
 	vstore->vs_encbuf = voluta_qalloc_zmalloc(vstore->vs_qalloc,
@@ -705,6 +731,10 @@ int voluta_vstore_init(struct voluta_vstore *vstore,
 	if (err) {
 		return err;
 	}
+	err = vstore_init_pipe(vstore);
+	if (err) {
+		goto out;
+	}
 	err = vstore_init_encbuf(vstore);
 	if (err) {
 		goto out;
@@ -717,6 +747,7 @@ out:
 	if (err) {
 		vstore_fini_pstore(vstore);
 		vstore_fini_encbuf(vstore);
+		vstore_fini_pipe(vstore);
 		vstore_fini_crypto(vstore);
 	}
 	return err;
@@ -726,6 +757,7 @@ void voluta_vstore_fini(struct voluta_vstore *vstore)
 {
 	vstore_fini_pstore(vstore);
 	vstore_fini_encbuf(vstore);
+	vstore_fini_pipe(vstore);
 	vstore_fini_crypto(vstore);
 	vstore->vs_qalloc = NULL;
 	vstore->vs_volpath = NULL;

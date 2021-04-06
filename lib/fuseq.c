@@ -2910,10 +2910,8 @@ static int fuseq_read_or_splice_request(struct voluta_fuseq_worker *fqw)
 
 static int fuseq_prep_request(struct voluta_fuseq_worker *fqw)
 {
-	const int null_fd = fqw->fq->fq_null_fd;
-
 	fuseq_reset_inhdr(fqw);
-	return voluta_pipe_flush_to_fd(&fqw->pipe, null_fd);
+	return voluta_pipe_purge(&fqw->pipe, &fqw->nfd);
 }
 
 static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)
@@ -3069,6 +3067,16 @@ static void fuseq_fini_pipe(struct voluta_fuseq_worker *fqw)
 	voluta_pipe_fini(&fqw->pipe);
 }
 
+static int fuseq_init_nullfd(struct voluta_fuseq_worker *fqw)
+{
+	return voluta_nullfd_init(&fqw->nfd);
+}
+
+static void fuseq_fini_nullfd(struct voluta_fuseq_worker *fqw)
+{
+	voluta_nullfd_fini(&fqw->nfd);
+}
+
 static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)
 {
 	struct voluta_qalloc *qal = fqw->fq->fq_qal;
@@ -3138,8 +3146,13 @@ static int fuseq_init_worker(struct voluta_fuseq_worker *fqw,
 	if (err) {
 		goto out;
 	}
+	err = fuseq_init_nullfd(fqw);
+	if (err) {
+		goto out;
+	}
 out:
 	if (err) {
+		fuseq_fini_nullfd(fqw);
 		fuseq_fini_pipe(fqw);
 		fuseq_fini_rwi(fqw);
 		fuseq_fini_bufs(fqw);
@@ -3149,6 +3162,7 @@ out:
 
 static void fuseq_fini_worker(struct voluta_fuseq_worker *fqw)
 {
+	fuseq_fini_nullfd(fqw);
 	fuseq_fini_pipe(fqw);
 	fuseq_fini_rwi(fqw);
 	fuseq_fini_bufs(fqw);
@@ -3189,27 +3203,6 @@ static void fuseq_fini_workers(struct voluta_fuseq *fq)
 	}
 }
 
-static int fuseq_init_null_fd(struct voluta_fuseq *fq)
-{
-	int err;
-	int null_fd = -1;
-	const int o_flags = O_WRONLY | O_CREAT | O_TRUNC;
-
-	err =  voluta_sys_open("/dev/null", o_flags, 0666, &null_fd);
-	if (!err) {
-		fq->fq_null_fd = null_fd;
-	}
-	return err;
-}
-
-static void fuseq_fini_null_fd(struct voluta_fuseq *fq)
-{
-	if (fq->fq_null_fd > 0) {
-		voluta_sys_close(fq->fq_null_fd);
-		fq->fq_null_fd = -1;
-	}
-}
-
 static int fuseq_init_locks(struct voluta_fuseq *fq)
 {
 	int err;
@@ -3242,7 +3235,6 @@ static void fuseq_init_common(struct voluta_fuseq *fq,
 	fq->fq_nworkers_avail = 0;
 	fq->fq_nworkers_active = 0;
 	fq->fq_fuse_fd = -1;
-	fq->fq_null_fd = -1;
 	fq->fq_got_init = false;
 	fq->fq_got_destroy = false;
 	fq->fq_deny_others = false;
@@ -3270,14 +3262,9 @@ int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
 	if (err) {
 		goto out;
 	}
-	err = fuseq_init_null_fd(fq);
-	if (err) {
-		goto out;
-	}
 	sbi->sb_ctl_flags |= VOLUTA_F_NLOOKUP;
 out:
 	if (err) {
-		fuseq_fini_null_fd(fq);
 		fuseq_fini_workers(fq);
 		fuseq_fini_locks(fq);
 	}
@@ -3295,7 +3282,6 @@ static void fuseq_fini_fuse_fd(struct voluta_fuseq *fq)
 void voluta_fuseq_fini(struct voluta_fuseq *fq)
 {
 	fuseq_fini_fuse_fd(fq);
-	fuseq_fini_null_fd(fq);
 	fuseq_fini_workers(fq);
 	fuseq_fini_locks(fq);
 

@@ -2822,12 +2822,6 @@ static int discard_partial(const struct voluta_fmap_ctx *fm_ctx)
 	return err;
 }
 
-static void clear_subtree_mappings(struct voluta_vnode_info *vi, size_t slot)
-{
-	rtn_reset_child(vi->vu.rtn, slot);
-	vi_dirtify(vi);
-}
-
 static int discard_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx)
 {
 	int err;
@@ -2837,6 +2831,14 @@ static int discard_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx)
 	vi_decref(fm_ctx->parent);
 
 	return err;
+}
+
+static void clear_subtree_mappings(struct voluta_vnode_info *vi, size_t slot)
+{
+	if (likely(vi != NULL)) { /* make clang-scan happy */
+		rtn_reset_child(vi->vu.rtn, slot);
+		vi_dirtify(vi);
+	}
 }
 
 static int discard_entire(const struct voluta_fmap_ctx *fm_ctx)
@@ -3891,6 +3893,7 @@ copy_range_at_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 	size_t len = 0;
 	const struct voluta_file_ctx *f_ctx_dst = fm_ctx_dst->f_ctx;
 
+	len = copy_range_length(fm_ctx_src, fm_ctx_dst);
 	if (!fm_ctx_src->has_data) {
 		if (fm_ctx_dst->has_data) {
 			err = discard_data_at(fm_ctx_dst);
@@ -3905,13 +3908,12 @@ copy_range_at_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 				return err;
 			}
 		}
-		len = copy_range_length(fm_ctx_src, fm_ctx_dst);
 		err = copy_leaf(fm_ctx_src, fm_ctx_dst, len);
 		if (err) {
 			return err;
 		}
-		*out_len = len;
 	}
+	*out_len = len;
 	return 0;
 }
 

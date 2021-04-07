@@ -250,8 +250,8 @@ static void test_fallocate_beyond_(struct vt_env *vte, loff_t off, size_t bsz)
 
 static void test_fallocate_beyond(struct vt_env *vte)
 {
-	test_fallocate_beyond_(vte, 0, VT_1K_SIZE);
-	test_fallocate_beyond_(vte, 0, VT_4K_SIZE);
+	test_fallocate_beyond_(vte, 0, VT_1K);
+	test_fallocate_beyond_(vte, 0, VT_4K);
 	test_fallocate_beyond_(vte, 0, VT_BK_SIZE);
 	test_fallocate_beyond_(vte, VT_MEGA, VT_BK_SIZE);
 	test_fallocate_beyond_(vte, VT_GIGA, 2 * VT_BK_SIZE);
@@ -487,8 +487,8 @@ static void test_fallocate_zero_range(struct vt_env *vte)
 	 */
 	return;
 
-	test_fallocate_zero_range_(vte, 0, VT_1K_SIZE);
-	test_fallocate_zero_range_(vte, 0, VT_4K_SIZE);
+	test_fallocate_zero_range_(vte, 0, VT_1K);
+	test_fallocate_zero_range_(vte, 0, VT_4K);
 	test_fallocate_zero_range_(vte, 0, VT_BK_SIZE);
 	test_fallocate_zero_range_(vte, VT_MEGA, VT_BK_SIZE);
 	test_fallocate_zero_range_(vte, VT_GIGA, 2 * VT_BK_SIZE);

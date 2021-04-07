@@ -72,16 +72,16 @@ static void test_write_unlinked_(struct vt_env *vte, loff_t off, size_t bsz)
 
 static void test_write_unlinked(struct vt_env *vte)
 {
-	test_write_unlinked_(vte, 0, VT_1K_SIZE);
-	test_write_unlinked_(vte, 0, VT_4K_SIZE);
+	test_write_unlinked_(vte, 0, VT_1K);
+	test_write_unlinked_(vte, 0, VT_4K);
 	test_write_unlinked_(vte, 0, VT_BK_SIZE);
 	test_write_unlinked_(vte, VT_BK_SIZE, VT_MEGA);
 	test_write_unlinked_(vte, VT_MEGA, VT_BK_SIZE);
 	test_write_unlinked_(vte, VT_GIGA, VT_MEGA);
 	test_write_unlinked_(vte, VT_TERA, VT_MEGA);
 
-	test_write_unlinked_(vte, 1, VT_1K_SIZE + 1);
-	test_write_unlinked_(vte, 11, VT_4K_SIZE + 11);
+	test_write_unlinked_(vte, 1, VT_1K + 1);
+	test_write_unlinked_(vte, 11, VT_4K + 11);
 	test_write_unlinked_(vte, 111, VT_BK_SIZE - 11);
 	test_write_unlinked_(vte, VT_BK_SIZE - 111, VT_MEGA + 1111);
 	test_write_unlinked_(vte, VT_MEGA - 1111, VT_BK_SIZE + 111);

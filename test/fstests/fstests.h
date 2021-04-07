@@ -49,9 +49,11 @@
 #define VT_UTERA                VOLUTA_UTERA
 #define VT_UPETA                VOLUTA_UPETA
 
+#define VT_1K                   VOLUTA_KILO
+#define VT_4K                   (4 * VOLUTA_KILO)
+#define VT_64K                  (64 * VOLUTA_KILO)
+
 #define VT_FRGSIZE              (512) /* Fragment size (see stat(2)) */
-#define VT_1K_SIZE              (1024)
-#define VT_4K_SIZE              (4096)
 #define VT_BK_SIZE              VOLUTA_BK_SIZE
 #define VT_FILEMAP_NCHILD       VOLUTA_FILE_TREE_NCHILDS
 #define VT_FILESIZE_MAX         VOLUTA_FILE_SIZE_MAX

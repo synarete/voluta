@@ -19,16 +19,52 @@
 #include <string.h>
 #include "fstests.h"
 
-
-struct vt_copy_range_info {
-	loff_t src_fsize;
-	size_t src_datasz;
-	loff_t src_doff;
-	loff_t dst_fsize;
-	size_t dst_datasz;
-	loff_t dst_doff;
-	size_t copysz;
+struct vt_copy_args {
+	loff_t off_src;
+	size_t len_src;
+	loff_t off_dst;
+	size_t len_dst;
 };
+
+#define COPYARGS(off_src_, len_src_, off_dst_, len_dst_) \
+	{ \
+		.off_src = off_src_, \
+		           .len_src = len_src_, \
+		                      .off_dst = off_dst_, \
+		                                 .len_dst = len_dst_ \
+	}
+
+
+/* TODO: make me common util */
+static size_t vt_max(size_t a, size_t b)
+{
+	return (a > b) ? a : b;
+}
+
+static void vt_close2(int fd1, int fd2)
+{
+	vt_close(fd1);
+	vt_close(fd2);
+}
+
+static void vt_unlink2(const char *path1, const char *path2)
+{
+	vt_unlink(path1);
+	vt_unlink(path2);
+}
+
+static void vt_copy_file_rangen(int fd_src, loff_t off_in, int fd_dst,
+                                loff_t off_out, size_t len)
+{
+	size_t ncp = 0;
+	loff_t off_src = off_in;
+	loff_t off_dst = off_out;
+
+	vt_copy_file_range(fd_src, &off_src, fd_dst, &off_dst, len, &ncp);
+	vt_expect_eq(len, ncp);
+	vt_expect_eq(off_in + (long)ncp, off_src);
+	vt_expect_eq(off_out + (long)ncp, off_dst);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
@@ -36,163 +72,98 @@ struct vt_copy_range_info {
  * between two files.
  */
 static void test_copy_file_range_(struct vt_env *vte,
-                                  const struct vt_copy_range_info *cri)
-
+                                  loff_t off_src, size_t len_src,
+                                  loff_t off_dst, size_t len_dst)
 {
-	int src_fd = -1;
-	int dst_fd = -1;
-	size_t ncp = 0;
-	loff_t src_off = -1;
-	loff_t dst_off = -1;
-	void *src_data = NULL;
-	void *dst_data = NULL;
+	int fd_src = -1;
+	int fd_dst = -1;
+	const size_t len = vt_max(len_src, len_dst);
+	void *buf_src = vt_new_buf_rands(vte, len);
+	void *buf_dst = vt_new_buf_rands(vte, len);
+	const char *path_src = vt_new_path_unique(vte);
+	const char *path_dst = vt_new_path_unique(vte);
 
-	char *src_path = vt_new_path_unique(vte);
-	char *dst_path = vt_new_path_unique(vte);
+	vt_open(path_src, O_CREAT | O_RDWR, 0600, &fd_src);
+	vt_open(path_dst, O_CREAT | O_RDWR, 0600, &fd_dst);
+	vt_ftruncate(fd_src, off_src + (long)len);
+	vt_ftruncate(fd_dst, off_dst + (long)len);
+	vt_pwriten(fd_src, buf_src, len_src, off_src);
+	vt_pwriten(fd_dst, buf_dst, len_dst, off_dst);
+	vt_copy_file_rangen(fd_src, off_src, fd_dst, off_dst, len);
+	vt_preadn(fd_src, buf_src, len, off_src);
+	vt_preadn(fd_dst, buf_dst, len, off_dst);
+	vt_expect_eqm(buf_src, buf_dst, len);
+	vt_ftruncate(fd_src, off_src);
+	vt_ftruncate(fd_src, off_src + (long)len);
+	vt_copy_file_rangen(fd_src, off_src, fd_dst, off_dst, len);
+	vt_preadn(fd_src, buf_src, len, off_src);
+	vt_preadn(fd_dst, buf_dst, len, off_dst);
+	vt_expect_eqm(buf_src, buf_dst, len);
+	vt_close2(fd_src, fd_dst);
+	vt_unlink2(path_src, path_dst);
+}
 
-	vt_open(src_path, O_CREAT | O_RDWR, 0600, &src_fd);
-	vt_ftruncate(src_fd, cri->src_fsize);
+static void test_copy_file_range_aligned(struct vt_env *vte)
+{
+	const struct vt_copy_args args[] = {
+		COPYARGS(0, VT_1K, 0, VT_1K),
+		COPYARGS(0, VT_1K, VT_1K, VT_1K),
+		COPYARGS(VT_1K, VT_1K, 0, VT_1K),
+		COPYARGS(VT_1K, VT_1K, VT_1K, VT_1K),
+		COPYARGS(0, VT_1K, 2 * VT_1K, 2 * VT_1K),
+		COPYARGS(0, VT_4K, 0, VT_4K),
+		COPYARGS(VT_4K, VT_4K, VT_4K, VT_4K),
+		COPYARGS(VT_4K, VT_4K, 2 * VT_4K, 2 * VT_4K),
+		COPYARGS(2 * VT_4K, 4 * VT_4K, VT_4K, 2 * VT_4K),
+		COPYARGS(0, VT_4K, VT_1K, VT_4K),
+		COPYARGS(VT_1K, 2 * VT_4K, VT_4K, 3 * VT_4K),
+		COPYARGS(0, VT_64K, 0, VT_64K),
+		COPYARGS(VT_64K, VT_64K, VT_64K, VT_64K),
+		COPYARGS(VT_MEGA, VT_64K, 0, VT_64K),
+		COPYARGS(VT_MEGA, VT_64K, VT_GIGA, 2 * VT_64K),
+		COPYARGS(VT_TERA, 3 * VT_64K, VT_MEGA, VT_64K),
+		COPYARGS(VT_TERA, 3 * VT_64K, 0, VT_MEGA),
+	};
 
-	vt_open(dst_path, O_CREAT | O_RDWR, 0600, &dst_fd);
-	vt_ftruncate(dst_fd, cri->dst_fsize);
-
-	if (cri->src_datasz > 0) {
-		src_data = vt_new_buf_rands(vte, cri->src_datasz);
-		vt_pwriten(src_fd, src_data, cri->src_datasz, cri->src_doff);
+	for (size_t i = 0; i < VT_ARRAY_SIZE(args); ++i) {
+		test_copy_file_range_(vte, args[i].off_src, args[i].len_src,
+		                      args[i].off_dst, args[i].len_dst);
 	}
+}
 
-	if (cri->dst_datasz > 0) {
-		dst_data = vt_new_buf_rands(vte, cri->dst_datasz);
-		vt_pwriten(dst_fd, dst_data, cri->dst_datasz, cri->dst_doff);
+static void test_copy_file_range_unaligned(struct vt_env *vte)
+{
+	const struct vt_copy_args args[] = {
+		COPYARGS(1, VT_1K - 1, 1, VT_1K - 1),
+		COPYARGS(1, VT_1K - 1, 1, VT_1K - 1),
+		COPYARGS(1, VT_1K + 1, VT_1K + 2, VT_1K + 2),
+		COPYARGS(VT_1K + 3, 3 * VT_1K + 1, 3, 3 * VT_1K),
+		COPYARGS(VT_1K + 11, VT_1K + 1, VT_1K - 1, VT_1K),
+		COPYARGS(7, VT_1K + 17, 7 * VT_1K + 1, 17 * VT_1K),
+		COPYARGS(1, VT_4K - 1, 2, VT_4K - 2),
+		COPYARGS(VT_4K + 1, VT_4K + 1, VT_4K + 1, VT_4K + 1),
+		COPYARGS(VT_4K, VT_4K, 2 * VT_4K - 1, 2 * VT_4K + 3),
+		COPYARGS(2 * VT_4K + 2, 4 * VT_4K, VT_4K + 1, VT_4K),
+		COPYARGS(1, VT_4K, VT_1K + 1, VT_4K + 11),
+		COPYARGS(1, VT_64K + 11, 11, VT_64K + 1),
+		COPYARGS(VT_64K + 11, 11 * VT_64K, VT_64K + 1, VT_64K - 11),
+		COPYARGS(VT_MEGA - 1, VT_64K - 2, 1, VT_64K - 3),
+		COPYARGS(VT_MEGA + 11, VT_MEGA, VT_GIGA + 111, VT_MEGA + 1111),
+		COPYARGS(VT_TERA + 111, VT_MEGA + 333, VT_MEGA - 111, 11111),
+		COPYARGS(VT_TERA - 1111, 111111, 1, VT_MEGA + 1111),
+	};
+
+	for (size_t i = 0; i < VT_ARRAY_SIZE(args); ++i) {
+		test_copy_file_range_(vte, args[i].off_src, args[i].len_src,
+		                      args[i].off_dst, args[i].len_dst);
 	}
-
-	src_off = cri->src_doff;
-	dst_off = cri->dst_doff;
-	vt_copy_file_range(src_fd, &src_off, dst_fd,
-	                   &dst_off, cri->copysz, &ncp);
-	vt_expect_eq(cri->copysz, ncp);
-
-	src_data = vt_new_buf_rands(vte, cri->copysz);
-	vt_preadn(src_fd, src_data, cri->copysz, cri->src_doff);
-
-	dst_data = vt_new_buf_rands(vte, cri->copysz);
-	vt_preadn(dst_fd, dst_data, cri->copysz, cri->dst_doff);
-	vt_expect_eqm(src_data, dst_data, cri->copysz);
-
-	vt_close(src_fd);
-	vt_close(dst_fd);
-	vt_unlink(src_path);
-	vt_unlink(dst_path);
-}
-
-static void test_copy_file_range_simple1(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = VT_UMEGA,
-		.src_doff = 0,
-		.dst_fsize = VT_UMEGA,
-		.dst_datasz = VT_BK_SIZE,
-		.dst_doff = 0,
-		.copysz = VT_BK_SIZE
-	};
-	test_copy_file_range_(vte, &cri);
-}
-
-static void test_copy_file_range_simple2(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = VT_UMEGA,
-		.src_doff = 0,
-		.dst_fsize = VT_UMEGA,
-		.dst_datasz = VT_UMEGA,
-		.dst_doff = 0,
-		.copysz = VT_UMEGA
-	};
-	test_copy_file_range_(vte, &cri);
-}
-
-static void test_copy_file_range_simple3(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = VT_UMEGA,
-		.src_doff = 0,
-		.dst_fsize = 2 * VT_UMEGA,
-		.dst_datasz = VT_UMEGA,
-		.dst_doff = VT_UMEGA,
-		.copysz = VT_UMEGA
-	};
-	test_copy_file_range_(vte, &cri);
-}
-
-static void test_copy_file_range_nosrcdata1(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = 0,
-		.src_doff = 0,
-		.dst_fsize = VT_UMEGA,
-		.dst_datasz = VT_BK_SIZE,
-		.dst_doff = 0,
-		.copysz = 64 * VT_BK_SIZE
-	};
-	test_copy_file_range_(vte, &cri);
-}
-
-static void test_copy_file_range_nosrcdata2(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = 0,
-		.src_doff = 8 * VT_BK_SIZE,
-		.dst_fsize = VT_UMEGA,
-		.dst_datasz = VT_UMEGA,
-		.dst_doff = 7 * VT_BK_SIZE,
-		.copysz = 11 * VT_BK_SIZE
-	};
-	test_copy_file_range_(vte, &cri);
-}
-
-static void test_copy_file_range_nodstdata1(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cpri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = VT_UMEGA,
-		.src_doff = 0,
-		.dst_fsize = VT_UMEGA,
-		.dst_datasz = 0,
-		.dst_doff = 0,
-		.copysz = 64 * VT_BK_SIZE
-	};
-	test_copy_file_range_(vte, &cpri);
-}
-
-static void test_copy_file_range_nodstdata2(struct vt_env *vte)
-{
-	const struct vt_copy_range_info cpri = {
-		.src_fsize = VT_UMEGA,
-		.src_datasz = VT_UMEGA,
-		.src_doff = 17 * VT_BK_SIZE,
-		.dst_fsize = 2 * VT_UMEGA,
-		.dst_datasz = 0,
-		.dst_doff = VT_UMEGA,
-		.copysz = 64 * VT_BK_SIZE
-	};
-	test_copy_file_range_(vte, &cpri);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
-	VT_DEFTESTF(test_copy_file_range_simple1, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_simple2, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_simple3, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_nosrcdata1, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_nosrcdata2, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_nodstdata1, VT_IGNORE),
-	VT_DEFTESTF(test_copy_file_range_nodstdata2, VT_IGNORE),
+	VT_DEFTEST(test_copy_file_range_aligned),
+	VT_DEFTEST(test_copy_file_range_unaligned),
 };
 
 const struct vt_tests

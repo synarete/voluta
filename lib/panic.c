@@ -321,19 +321,41 @@ static void mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 	}
 }
 
-void voluta_expect_eqm_(const void *p, const void *q,
-                        size_t n, const char *fl, int ln)
+static size_t find_first_not_eq(const uint8_t *p, const uint8_t *q, size_t n)
+{
+	for (size_t i = 0; i < n; ++i) {
+		if (p[i] != q[i]) {
+			return i;
+		}
+	}
+	return n;
+}
+
+static void voluta_die_not_eqm(const uint8_t *p, const uint8_t *q,
+                               size_t n, const char *fl, int ln)
 {
 	char s1[20];
 	char s2[20];
 	struct voluta_fatal_msg fm;
-	const int cmp = memcmp(p, q, n);
+	const size_t pos = find_first_not_eq(p, q, n);
 
-	if (unlikely(cmp != 0)) {
+	if (pos > sizeof(s1)) {
+		fmtmsg(&fm, "memory-not-equal-at: %lu (%u != %u)",
+		       pos, (uint32_t)(p[pos]), (uint32_t)(q[pos]));
+	} else {
 		mem_to_str(p, n, s1, sizeof(s1));
 		mem_to_str(q, n, s2, sizeof(s2));
 		fmtmsg(&fm, "memory-not-equal: %s != %s ", s1, s2);
-		voluta_fatal_at(fm.str, fl, ln);
+	}
+	voluta_fatal_at(fm.str, fl, ln);
+
+}
+
+void voluta_expect_eqm_(const void *p, const void *q,
+                        size_t n, const char *fl, int ln)
+{
+	if (memcmp(p, q, n)) {
+		voluta_die_not_eqm(p, q, n, fl, ln);
 	}
 }
 

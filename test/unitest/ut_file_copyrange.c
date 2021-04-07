@@ -41,18 +41,41 @@ static void ut_file_copy_range_simple_(struct ut_env *ute,
 	ut_rmdir_at_root(ute, name);
 }
 
-static void ut_file_copy_range_simple(struct ut_env *ute)
+static void ut_file_copy_range_aligned(struct ut_env *ute)
 {
 	ut_file_copy_range_simple_(ute, 0, UT_1K_SIZE);
+	ut_file_copy_range_simple_(ute, UT_1K_SIZE, 2 * UT_1K_SIZE);
 	ut_file_copy_range_simple_(ute, 0, UT_4K_SIZE);
+	ut_file_copy_range_simple_(ute, UT_4K_SIZE, 8 * UT_4K_SIZE);
 	ut_file_copy_range_simple_(ute, 0, UT_BK_SIZE);
 	ut_file_copy_range_simple_(ute, UT_BK_SIZE, UT_BK_SIZE);
+	ut_file_copy_range_simple_(ute, 2 * UT_BK_SIZE, UT_BK_SIZE);
+	ut_file_copy_range_simple_(ute, UT_MEGA, 2 * UT_BK_SIZE);
+	ut_file_copy_range_simple_(ute, UT_GIGA, UT_MEGA);
+	ut_file_copy_range_simple_(ute, UT_TERA, UT_MEGA + UT_BK_SIZE);
+}
+
+static void ut_file_copy_range_unaligned(struct ut_env *ute)
+{
+	ut_file_copy_range_simple_(ute, 1, UT_1K_SIZE - 1);
+	ut_file_copy_range_simple_(ute, 2, UT_1K_SIZE + 2);
+	ut_file_copy_range_simple_(ute, 3, 3 * UT_1K_SIZE + 3);
+	ut_file_copy_range_simple_(ute, 4, UT_4K_SIZE + 4);
+	ut_file_copy_range_simple_(ute, UT_4K_SIZE - 5, UT_4K_SIZE + 7);
+	ut_file_copy_range_simple_(ute, 2 * UT_4K_SIZE - 5, 3 * UT_4K_SIZE);
+	ut_file_copy_range_simple_(ute, UT_BK_SIZE - 11, UT_BK_SIZE + 111);
+	ut_file_copy_range_simple_(ute, UT_BK_SIZE - 111, UT_MEGA + 1111);
+	ut_file_copy_range_simple_(ute, UT_MEGA - 1, 11 * UT_BK_SIZE + 11);
+	ut_file_copy_range_simple_(ute, UT_GIGA - 11, UT_MEGA + 111);
+	ut_file_copy_range_simple_(ute, UT_TERA - 111, 11 * UT_BK_SIZE + 111);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct ut_testdef ut_local_tests[] = {
-	UT_DEFTEST(ut_file_copy_range_simple),
+	UT_DEFTEST(ut_file_copy_range_aligned),
+	UT_DEFTEST(ut_file_copy_range_unaligned),
 };
+
 
 const struct ut_tests ut_test_file_copy_range = UT_MKTESTS(ut_local_tests);

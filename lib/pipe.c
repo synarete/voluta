@@ -30,8 +30,6 @@
 #include <limits.h>
 #include "libvoluta.h"
 
-
-
 static size_t iov_length(const struct iovec *iov, size_t niov)
 {
 	size_t len = 0;
@@ -311,6 +309,4 @@ void voluta_nullfd_fini(struct voluta_nullfd *nfd)
 {
 	voluta_sys_closefd(&nfd->fd);
 }
-
-
 

@@ -153,8 +153,8 @@ static void ut_file_lseek_sparse_(struct ut_env *ute,
 static void ut_file_lseek_sparse(struct ut_env *ute)
 {
 	ut_file_lseek_sparse_(ute, 0, 10 * UT_BK_SIZE, 10);
-	ut_file_lseek_sparse_(ute, UT_4K_SIZE, 10 * UT_BK_SIZE, 10);
-	ut_file_lseek_sparse_(ute, UT_8K_SIZE, 10 * UT_BK_SIZE, 10);
+	ut_file_lseek_sparse_(ute, UT_4K, 10 * UT_BK_SIZE, 10);
+	ut_file_lseek_sparse_(ute, UT_8K, 10 * UT_BK_SIZE, 10);
 	ut_file_lseek_sparse_(ute, UT_MEGA, UT_GIGA, 100);
 	ut_file_lseek_sparse_(ute, UT_GIGA, UT_MEGA, 1000);
 	ut_file_lseek_sparse_(ute, UT_TERA, 10 * UT_BK_SIZE, 10000);

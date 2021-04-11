@@ -70,9 +70,9 @@ static void ut_file_fallocate_read_(struct ut_env *ute,
 
 static void ut_file_fallocate_read(struct ut_env *ute)
 {
-	ut_file_fallocate_read_(ute, 0, UT_4K_SIZE);
-	ut_file_fallocate_read_(ute, 0, UT_8K_SIZE);
-	ut_file_fallocate_read_(ute, UT_8K_SIZE, UT_8K_SIZE);
+	ut_file_fallocate_read_(ute, 0, UT_4K);
+	ut_file_fallocate_read_(ute, 0, UT_8K);
+	ut_file_fallocate_read_(ute, UT_8K, UT_8K);
 	ut_file_fallocate_read_(ute, 0, UT_BK_SIZE);
 	ut_file_fallocate_read_(ute, 1, UT_UMEGA);
 	ut_file_fallocate_read_(ute, 0, VOLUTA_AG_SIZE);
@@ -114,11 +114,11 @@ static void ut_file_fallocate_truncate_(struct ut_env *ute,
 
 static void ut_file_fallocate_truncate(struct ut_env *ute)
 {
-	ut_file_fallocate_truncate_(ute, 0, UT_4K_SIZE);
-	ut_file_fallocate_truncate_(ute, UT_4K_SIZE, 2 * UT_4K_SIZE);
-	ut_file_fallocate_truncate_(ute, UT_4K_SIZE - 1, 2 * UT_4K_SIZE + 3);
-	ut_file_fallocate_truncate_(ute, 0, UT_8K_SIZE);
-	ut_file_fallocate_truncate_(ute, UT_8K_SIZE, UT_8K_SIZE);
+	ut_file_fallocate_truncate_(ute, 0, UT_4K);
+	ut_file_fallocate_truncate_(ute, UT_4K, 2 * UT_4K);
+	ut_file_fallocate_truncate_(ute, UT_4K - 1, 2 * UT_4K + 3);
+	ut_file_fallocate_truncate_(ute, 0, UT_8K);
+	ut_file_fallocate_truncate_(ute, UT_8K, UT_8K);
 	ut_file_fallocate_truncate_(ute, 0, UT_BK_SIZE);
 	ut_file_fallocate_truncate_(ute, 11, UT_BK_SIZE);
 	ut_file_fallocate_truncate_(ute, 11, UT_UMEGA);
@@ -371,8 +371,8 @@ ut_file_fallocate_zero_range_(struct ut_env *ute, loff_t off, size_t bsz)
 
 static void ut_file_fallocate_zero_range(struct ut_env *ute)
 {
-	ut_file_fallocate_zero_range_(ute, 0, UT_1K_SIZE);
-	ut_file_fallocate_zero_range_(ute, 0, UT_4K_SIZE);
+	ut_file_fallocate_zero_range_(ute, 0, UT_1K);
+	ut_file_fallocate_zero_range_(ute, 0, UT_4K);
 	ut_file_fallocate_zero_range_(ute, 0, UT_BK_SIZE);
 	ut_file_fallocate_zero_range_(ute, UT_MEGA, UT_BK_SIZE);
 	ut_file_fallocate_zero_range_(ute, UT_GIGA, 2 * UT_BK_SIZE);
@@ -570,8 +570,8 @@ static void ut_file_fallocate_beyond_(struct ut_env *ute,
 
 static void ut_file_fallocate_beyond(struct ut_env *ute)
 {
-	ut_file_fallocate_beyond_(ute, 0, UT_1K_SIZE);
-	ut_file_fallocate_beyond_(ute, 0, UT_4K_SIZE);
+	ut_file_fallocate_beyond_(ute, 0, UT_1K);
+	ut_file_fallocate_beyond_(ute, 0, UT_4K);
 	ut_file_fallocate_beyond_(ute, 0, UT_BK_SIZE);
 	ut_file_fallocate_beyond_(ute, UT_MEGA, UT_BK_SIZE);
 	ut_file_fallocate_beyond_(ute, UT_GIGA, 2 * UT_BK_SIZE);

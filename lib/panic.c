@@ -348,7 +348,6 @@ static void voluta_die_not_eqm(const uint8_t *p, const uint8_t *q,
 		fmtmsg(&fm, "memory-not-equal: %s != %s ", s1, s2);
 	}
 	voluta_fatal_at(fm.str, fl, ln);
-
 }
 
 void voluta_expect_eqm_(const void *p, const void *q,

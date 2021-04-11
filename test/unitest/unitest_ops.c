@@ -1076,9 +1076,12 @@ void ut_read_zero(struct ut_env *ute, ino_t ino, loff_t off)
 
 void ut_read_zeros(struct ut_env *ute, ino_t ino, loff_t off, size_t len)
 {
-	const void *zeros = ut_zerobuf(ute, len);
+	const void *zeros = NULL;
 
-	ut_read_verify(ute, ino, zeros, len, off);
+	if (len > 0) {
+		zeros = ut_zerobuf(ute, len);
+		ut_read_verify(ute, ino, zeros, len, off);
+	}
 }
 
 void ut_trunacate_file(struct ut_env *ute, ino_t ino, loff_t off)

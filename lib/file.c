@@ -269,12 +269,10 @@ static int xiovec_copy_mem(const struct voluta_xiovec *xiov_src,
 {
 	voluta_assert_ge(xiov_src->len, len);
 	voluta_assert_ge(xiov_dst->len, len);
-	voluta_assert_ge(xiov_dst->len, xiov_src->len);
 	voluta_assert_not_null(xiov_src->base);
 	voluta_assert_not_null(xiov_dst->base);
 
 	memcpy(xiov_dst->base, xiov_src->base, len);
-
 	return 0;
 }
 

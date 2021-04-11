@@ -78,10 +78,10 @@ static void ut_file_edges_1_(struct ut_env *ute, loff_t off, size_t len)
 
 static void ut_file_edges_aligned(struct ut_env *ute)
 {
-	ut_file_edges_1_(ute, UT_4K_SIZE, UT_4K_SIZE);
-	ut_file_edges_1_(ute, 2 * UT_4K_SIZE, UT_4K_SIZE);
-	ut_file_edges_1_(ute, UT_8K_SIZE, UT_8K_SIZE);
-	ut_file_edges_1_(ute, UT_8K_SIZE, UT_BK_SIZE);
+	ut_file_edges_1_(ute, UT_4K, UT_4K);
+	ut_file_edges_1_(ute, 2 * UT_4K, UT_4K);
+	ut_file_edges_1_(ute, UT_8K, UT_8K);
+	ut_file_edges_1_(ute, UT_8K, UT_BK_SIZE);
 	ut_file_edges_1_(ute, UT_BK_SIZE, UT_BK_SIZE);
 	ut_file_edges_1_(ute, UT_MEGA, 4 * UT_BK_SIZE);
 	ut_file_edges_1_(ute, UT_GIGA, 8 * UT_BK_SIZE);
@@ -90,7 +90,7 @@ static void ut_file_edges_aligned(struct ut_env *ute)
 
 static void ut_file_edges_unaligned(struct ut_env *ute)
 {
-	ut_file_edges_1_(ute, UT_8K_SIZE - 1, UT_BK_SIZE + 11);
+	ut_file_edges_1_(ute, UT_8K - 1, UT_BK_SIZE + 11);
 	ut_file_edges_1_(ute, UT_BK_SIZE + 11, UT_BK_SIZE - 1);
 	ut_file_edges_1_(ute, UT_MEGA - 1111, 4 * UT_BK_SIZE + 1);
 	ut_file_edges_1_(ute, UT_GIGA - 11111, 8 * UT_BK_SIZE + 11);
@@ -149,7 +149,7 @@ static void ut_file_edges_fmapping_(struct ut_env *ute,
 	}
 	for (size_t i = 0; i < cnt; ++i) {
 		off = off_arr[i];
-		ut_fallocate_punch_hole(ute, ino, off, UT_1K_SIZE / 2);
+		ut_fallocate_punch_hole(ute, ino, off, UT_1K / 2);
 	}
 	for (size_t i = 0; i < cnt; ++i) {
 		off = off_arr[i];
@@ -164,12 +164,12 @@ static void ut_file_edges_fmapping_(struct ut_env *ute,
 static void ut_file_edges_fmapping(struct ut_env *ute)
 {
 	long off_arr[] = {
-		UT_1K_SIZE,
-		2 * UT_1K_SIZE,
-		UT_4K_SIZE,
-		UT_8K_SIZE,
-		2 * UT_8K_SIZE,
-		4 * UT_8K_SIZE,
+		UT_1K,
+		2 * UT_1K,
+		UT_4K,
+		UT_8K,
+		2 * UT_8K,
+		4 * UT_8K,
 		UT_BK_SIZE,
 		2 * UT_BK_SIZE,
 		UT_BK_SIZE * UT_FTREE_NCHILDS,

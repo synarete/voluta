@@ -511,20 +511,21 @@ void ut_expect_statvfs(const struct statvfs *stv1, const struct statvfs *stv2);
 #define UT_UMEGA                VOLUTA_UMEGA
 #define UT_UGIGA                VOLUTA_UGIGA
 #define UT_UTERA                VOLUTA_UTERA
-#define UT_ARRAY_SIZE(x)        VOLUTA_ARRAY_SIZE(x)
-#define UT_NAME_MAX             VOLUTA_NAME_MAX
-#define UT_1K_SIZE              VOLUTA_KILO
-#define UT_4K_SIZE              (4 * VOLUTA_KILO)
-#define UT_8K_SIZE              (2 * UT_4K_SIZE)
+#define UT_1K                   VOLUTA_KILO
+#define UT_4K                   (4 * VOLUTA_KILO)
+#define UT_8K                   (8 * VOLUTA_KILO)
+#define UT_64K                  (64 * VOLUTA_KILO)
+
 #define UT_BK_SIZE              VOLUTA_BK_SIZE
 #define UT_FTREE_NCHILDS        VOLUTA_FILE_TREE_NCHILDS
 #define UT_FSIZE_MAX            VOLUTA_FILE_SIZE_MAX
 #define UT_IOSIZE_MAX           VOLUTA_IO_SIZE_MAX
 #define UT_FILEMAP_NCHILD       VOLUTA_FILE_TREE_NCHILDS
 #define UT_ROOT_INO             VOLUTA_INO_ROOT
+#define UT_NAME_MAX             VOLUTA_NAME_MAX
 #define UT_NAME                 __func__
 #define UT_NAME_AT              VOLUTA_STR(__LINE__)
-
+#define UT_ARRAY_SIZE(x)        VOLUTA_ARRAY_SIZE(x)
 
 #define ut_container_of(ptr_, type_, member_) \
 	voluta_container_of(ptr_, type_, member_)

@@ -77,13 +77,13 @@ static void ut_file_simple(struct ut_env *ute)
 {
 	ut_file_simple_(ute, 0);
 	ut_file_simple_(ute, 1);
-	ut_file_simple_(ute, UT_4K_SIZE);
-	ut_file_simple_(ute, UT_4K_SIZE - 1);
-	ut_file_simple_(ute, 3 * UT_4K_SIZE);
-	ut_file_simple_(ute, 3 * UT_4K_SIZE - 3);
-	ut_file_simple_(ute, UT_8K_SIZE);
-	ut_file_simple_(ute, UT_8K_SIZE - 1);
-	ut_file_simple_(ute, 2 * UT_8K_SIZE - 1);
+	ut_file_simple_(ute, UT_4K);
+	ut_file_simple_(ute, UT_4K - 1);
+	ut_file_simple_(ute, 3 * UT_4K);
+	ut_file_simple_(ute, 3 * UT_4K - 3);
+	ut_file_simple_(ute, UT_8K);
+	ut_file_simple_(ute, UT_8K - 1);
+	ut_file_simple_(ute, 2 * UT_8K - 1);
 	ut_file_simple_(ute, UT_BK_SIZE);
 	ut_file_simple_(ute, UT_BK_SIZE - 1);
 	ut_file_simple_(ute, UT_BK_SIZE + 1);
@@ -119,8 +119,8 @@ static void ut_file_minio_(struct ut_env *ute, loff_t off)
 static void ut_file_minio_aligned(struct ut_env *ute)
 {
 	ut_file_minio_(ute, 0);
-	ut_file_minio_(ute, UT_4K_SIZE);
-	ut_file_minio_(ute, UT_8K_SIZE);
+	ut_file_minio_(ute, UT_4K);
+	ut_file_minio_(ute, UT_8K);
 	ut_file_minio_(ute, UT_BK_SIZE);
 	ut_file_minio_(ute, UT_MEGA);
 	ut_file_minio_(ute, UT_GIGA);
@@ -129,8 +129,8 @@ static void ut_file_minio_aligned(struct ut_env *ute)
 
 static void ut_file_minio_unaligned(struct ut_env *ute)
 {
-	ut_file_minio_(ute, UT_4K_SIZE - 1);
-	ut_file_minio_(ute, UT_8K_SIZE - 1);
+	ut_file_minio_(ute, UT_4K - 1);
+	ut_file_minio_(ute, UT_8K - 1);
 	ut_file_minio_(ute, UT_BK_SIZE - 1);
 	ut_file_minio_(ute, UT_MEGA - 2);
 	ut_file_minio_(ute, UT_GIGA - 3);
@@ -155,10 +155,10 @@ static void ut_file_data_(struct ut_env *ute, loff_t off, size_t bsz)
 
 static void ut_file_data(struct ut_env *ute)
 {
-	ut_file_data_(ute, 0, UT_4K_SIZE);
-	ut_file_data_(ute, 0, UT_8K_SIZE);
-	ut_file_data_(ute, 0, 2 * UT_8K_SIZE);
-	ut_file_data_(ute, 3, 3 * UT_8K_SIZE + 3);
+	ut_file_data_(ute, 0, UT_4K);
+	ut_file_data_(ute, 0, UT_8K);
+	ut_file_data_(ute, 0, 2 * UT_8K);
+	ut_file_data_(ute, 3, 3 * UT_8K + 3);
 	ut_file_data_(ute, 0, UT_BK_SIZE);
 	ut_file_data_(ute, 0, UT_UMEGA);
 	ut_file_data_(ute, UT_MEGA, UT_BK_SIZE);
@@ -534,10 +534,10 @@ static void ut_file_firstlast_(struct ut_env *ute, loff_t beg, size_t len)
 
 static void ut_file_firstlast(struct ut_env *ute)
 {
-	ut_file_firstlast_(ute, 0, UT_4K_SIZE);
-	ut_file_firstlast_(ute, 1, UT_4K_SIZE);
-	ut_file_firstlast_(ute, 0, UT_8K_SIZE);
-	ut_file_firstlast_(ute, 1, UT_8K_SIZE);
+	ut_file_firstlast_(ute, 0, UT_4K);
+	ut_file_firstlast_(ute, 1, UT_4K);
+	ut_file_firstlast_(ute, 0, UT_8K);
+	ut_file_firstlast_(ute, 1, UT_8K);
 	ut_file_firstlast_(ute, 0, UT_BK_SIZE);
 	ut_file_firstlast_(ute, 1, UT_BK_SIZE);
 	ut_file_firstlast_(ute, 8, UT_BK_SIZE + 8);
@@ -724,8 +724,8 @@ static void ut_file_read_behind_(struct ut_env *ute, loff_t off)
 static void ut_file_read_behind(struct ut_env *ute)
 {
 	ut_file_read_behind_(ute, 1111);
-	ut_file_read_behind_(ute, UT_8K_SIZE - 1);
-	ut_file_read_behind_(ute, UT_8K_SIZE);
+	ut_file_read_behind_(ute, UT_8K - 1);
+	ut_file_read_behind_(ute, UT_8K);
 	ut_file_read_behind_(ute, UT_BK_SIZE);
 	ut_file_read_behind_(ute, UT_BK_SIZE + 1);
 	ut_file_read_behind_(ute, UT_MEGA);

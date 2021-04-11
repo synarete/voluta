@@ -51,6 +51,11 @@ static inline size_t max(size_t x, size_t y)
 	return (x > y) ? x : y;
 }
 
+static inline long lmax(long x, long y)
+{
+	return (x > y) ? x : y;
+}
+
 static inline size_t clamp(size_t v, size_t lo, size_t hi)
 {
 	return min(max(v, lo), hi);

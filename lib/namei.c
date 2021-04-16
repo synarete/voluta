@@ -790,7 +790,7 @@ int voluta_do_mknod(const struct voluta_oper *op,
 	return err;
 }
 
-static int o_flags_to_rwx_mask(int o_flags)
+static int o_flags_to_rwx(int o_flags)
 {
 	int mask = 0;
 
@@ -810,24 +810,37 @@ static int o_flags_to_rwx_mask(int o_flags)
 	return mask;
 }
 
-static int check_open(const struct voluta_oper *op,
-                      const struct voluta_inode_info *ii, int o_flags)
+static int check_open_flags(const struct voluta_inode_info *ii, int o_flags)
 {
-	int err;
-	int mask;
-
-	err = check_reg_or_fifo(ii);
-	if (err) {
-		return err;
-	}
 	if (o_flags & O_DIRECTORY) {
 		return -EISDIR;
 	}
 	if (o_flags & (O_CREAT | O_EXCL)) {
 		return -EEXIST; /* XXX ? */
 	}
-	mask = o_flags_to_rwx_mask(o_flags);
-	err = voluta_do_access(op, ii, mask);
+	if (ii_isreg(ii) && (o_flags & O_TRUNC) &&
+	    !(o_flags & (O_WRONLY | O_RDWR))) {
+		return -EACCES;
+	}
+	return 0;
+}
+
+static int check_open(const struct voluta_oper *op,
+                      const struct voluta_inode_info *ii, int o_flags)
+{
+	int err;
+	int rwx;
+
+	err = check_reg_or_fifo(ii);
+	if (err) {
+		return err;
+	}
+	err = check_open_flags(ii, o_flags);
+	if (err) {
+		return err;
+	}
+	rwx = o_flags_to_rwx(o_flags);
+	err = voluta_do_access(op, ii, rwx);
 	if (err) {
 		return err;
 	}
@@ -841,12 +854,8 @@ static int check_open(const struct voluta_oper *op,
 static int post_open(const struct voluta_oper *op,
                      struct voluta_inode_info *ii, int o_flags)
 {
-	int err = 0;
-
-	if ((o_flags & O_TRUNC) && ii_isreg(ii)) {
-		err = voluta_do_truncate(op, ii, 0);
-	}
-	return err;
+	return (ii_isreg(ii) && (o_flags & O_TRUNC)) ?
+	       voluta_do_truncate(op, ii, 0) : 0;
 }
 
 static int do_open(const struct voluta_oper *op,

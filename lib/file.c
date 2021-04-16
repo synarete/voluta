@@ -1143,7 +1143,7 @@ static void update_post_io(const struct voluta_file_ctx *f_ctx,
 	iattr_setup(&iattr, ii_ino(ii));
 	if (f_ctx->op_mask & OP_READ) {
 		iattr.ia_flags |= VOLUTA_IATTR_ATIME | VOLUTA_IATTR_LAZY;
-	} else if (f_ctx->op_mask & OP_WRITE) {
+	} else if (f_ctx->op_mask & (OP_WRITE | OP_COPY_RANGE)) {
 		iattr.ia_flags |= VOLUTA_IATTR_SIZE | VOLUTA_IATTR_SPAN;
 		iattr.ia_size = off_max(off, isz);
 		iattr.ia_span = off_max(off, isp);
@@ -3979,6 +3979,7 @@ static int do_copy_range(struct voluta_file_ctx *f_ctx_src,
 	if (err) {
 		return err;
 	}
+	update_post_io(f_ctx_dst, false);
 	*out_ncp = io_length(f_ctx_dst);
 	return 0;
 }

@@ -115,7 +115,7 @@ static void test_open_loop(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Expects open(3p) to return EISDIR if the  named file is a directory and
+ * Expects open(3p) to return EISDIR if the named file is a directory and
  * oflag includes O_WRONLY or O_RDWR.
  */
 static void test_open_isdir(struct vt_env *vte)
@@ -136,24 +136,46 @@ static void test_open_isdir(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Expects open(2) to return valid file descriptor with O_TMPFILE, which must
- * not be associated by name with any directory.
+ * Expects open(3p) with O_TRUNC to reduce file-size to zero.
  */
-static void test_open_tmpfile(struct vt_env *vte)
+static void test_open_trunc_(struct vt_env *vte, loff_t off, size_t bsz)
 {
 	int fd = -1;
-	const int flags = O_RDWR | O_TMPFILE | O_EXCL;
-	const char *path1 = vt_new_path_unique(vte);
-	const char *path2 = vt_new_path_under(vte, path1);
+	int fd2 = -1;
+	struct stat st;
+	void *buf = vt_new_buf_zeros(vte, bsz);
+	const char *path = vt_new_path_unique(vte);
 
-	vt_mkdir(path1, 0700);
-	vt_open_err(path2, flags, 0600, -ENOENT);
-	vt_open(path1, flags, 0600, &fd);
-	vt_access_err(path2, R_OK, -ENOENT);
-	vt_rmdir(path1);
-	vt_access_err(path1, R_OK, -ENOENT);
-	vt_access_err(path2, R_OK, -ENOENT);
+	vt_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	vt_pwriten(fd, buf, bsz, off);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off + (long)bsz);
+	vt_expect_gt(st.st_blocks, 0);
 	vt_close(fd);
+	vt_open(path, O_RDWR | O_TRUNC, 0, &fd);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, 0);
+	vt_expect_eq(st.st_blocks, 0);
+	vt_pwriten(fd, buf, bsz, off);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, off + (long)bsz);
+	vt_expect_gt(st.st_blocks, 0);
+	vt_open(path, O_RDWR | O_TRUNC, 0, &fd2);
+	vt_fstat(fd, &st);
+	vt_expect_eq(st.st_size, 0);
+	vt_expect_eq(st.st_blocks, 0);
+	vt_close(fd);
+	vt_close(fd2);
+	vt_unlink(path);
+}
+
+static void test_open_trunc(struct vt_env *vte)
+{
+	test_open_trunc_(vte, 0, VT_1K);
+	test_open_trunc_(vte, VT_1K, VT_4K);
+	test_open_trunc_(vte, VT_MEGA, VT_64K);
+	test_open_trunc_(vte, VT_GIGA - 7, 7 * VT_1K);
+	test_open_trunc_(vte, VT_TERA - 11, VT_MEGA + 111);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -163,7 +185,7 @@ static const struct vt_tdef vt_local_tests[] = {
 	VT_DEFTEST(test_open_mctime),
 	VT_DEFTEST(test_open_loop),
 	VT_DEFTEST(test_open_isdir),
-	VT_DEFTESTF(test_open_tmpfile, VT_POSIX_EXTRA),
+	VT_DEFTEST(test_open_trunc),
 };
 
 const struct vt_tests vt_test_open = VT_DEFTESTS(vt_local_tests);

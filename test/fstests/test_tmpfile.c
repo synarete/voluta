@@ -23,6 +23,7 @@
 #include <string.h>
 #include "fstests.h"
 
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
  * Expects read-write data-consistency, sequential writes of single block.
@@ -116,12 +117,12 @@ static void test_tmpfile_rdwr_32m(struct vt_env *vte)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct vt_tdef vt_local_tests[] = {
-	VT_DEFTESTF(test_tmpfile_simple, VT_IO_TMPFILE),
-	VT_DEFTESTF(test_tmpfile_rdwr_1k, VT_IO_TMPFILE),
-	VT_DEFTESTF(test_tmpfile_rdwr_8k, VT_IO_TMPFILE),
-	VT_DEFTESTF(test_tmpfile_rdwr_1m, VT_IO_TMPFILE),
-	VT_DEFTESTF(test_tmpfile_rdwr_8m, VT_IO_TMPFILE),
-	VT_DEFTESTF(test_tmpfile_rdwr_32m, VT_IO_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_simple, VT_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_rdwr_1k, VT_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_rdwr_8k, VT_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_rdwr_1m, VT_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_rdwr_8m, VT_TMPFILE),
+	VT_DEFTESTF(test_tmpfile_rdwr_32m, VT_TMPFILE),
 };
 
 const struct vt_tests vt_test_tmpfile = VT_DEFTESTS(vt_local_tests);

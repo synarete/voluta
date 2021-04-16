@@ -81,14 +81,12 @@ static int mask_of(const struct vt_env *vte)
 	return vte->params.testsmask;
 }
 
-static void statvfs_of(const struct vt_env *vte,
-                       struct statvfs *stvfs)
+static void statvfs_of(const struct vt_env *vte, struct statvfs *stvfs)
 {
 	vt_statvfs(vte->params.workdir, stvfs);
 }
 
-static void list_test(struct vt_env *vte,
-                      const struct vt_tdef *tdef)
+static void list_test(struct vt_env *vte, const struct vt_tdef *tdef)
 {
 	FILE *fp = stdout;
 
@@ -97,8 +95,7 @@ static void list_test(struct vt_env *vte,
 	fflush(fp);
 }
 
-static void start_test(struct vt_env *vte,
-                       const struct vt_tdef *tdef)
+static void start_test(struct vt_env *vte, const struct vt_tdef *tdef)
 {
 	FILE *fp = stdout;
 

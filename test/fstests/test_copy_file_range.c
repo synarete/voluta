@@ -225,7 +225,6 @@ static void test_copy_file_range_self(struct vt_env *vte)
 		test_copy_file_range_self_(vte,
 		                           args[i].off_dst, args[i].len_dst,
 		                           args[i].off_src, args[i].len_src);
-
 	}
 }
 

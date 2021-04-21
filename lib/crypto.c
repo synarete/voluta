@@ -551,16 +551,13 @@ static uint8_t octet_of(uint64_t r, int oct)
 	return (uint8_t)((r >> (8 * oct)) & 0xFF);
 }
 
-static void iv_xor_with(struct voluta_iv *iv,
-                        uint8_t vt, uint64_t r1, uint64_t r2)
+static void iv_xor_with(struct voluta_iv *iv, uint64_t seed)
 {
 	STATICASSERT_EQ(ARRAY_SIZE(iv->iv), 16);
 
 	for (int i = 0; i < 8; ++i) {
-		iv->iv[i] ^= octet_of(r1, i);
-		iv->iv[i + 8] ^= octet_of(r2, i);
+		iv->iv[i] ^= octet_of(seed, i);
 	}
-	iv->iv[0] ^= vt;
 }
 
 static void key_rand(struct voluta_key *key)
@@ -612,11 +609,7 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 	memcpy(other, kivam, sizeof(*other));
 }
 
-void voluta_kivam_xor_iv(struct voluta_kivam *kivam,
-                         const struct voluta_vaddr *vaddr, uint64_t seed)
+void voluta_kivam_xor_iv(struct voluta_kivam *kivam, uint64_t seed)
 {
-	const uint8_t vt = vaddr->vtype;
-	const uint64_t uoff = (uint64_t)(vaddr->off);
-
-	iv_xor_with(&kivam->iv, vt, uoff, seed);
+	iv_xor_with(&kivam->iv, seed);
 }

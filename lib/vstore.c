@@ -519,7 +519,7 @@ static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 
 	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
-		err = voluta_verify_uspace_map(&view->u.hsm);
+		err = voluta_verify_hspace_map(&view->u.hsm);
 		break;
 	case VOLUTA_VTYPE_AGMAP:
 		err = voluta_verify_agroup_map(&view->u.agm);

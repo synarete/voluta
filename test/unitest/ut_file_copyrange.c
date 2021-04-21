@@ -240,7 +240,6 @@ static void ut_file_copy_range_self(struct ut_env *ute)
 		                         args[i].off_dst, args[i].len_dst);
 		ut_file_copy_range_self_(ute, args[i].off_dst, args[i].len_dst,
 		                         args[i].off_src, args[i].len_src);
-
 	}
 }
 

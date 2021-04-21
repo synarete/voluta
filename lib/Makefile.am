@@ -36,6 +36,7 @@ libvoluta_la_SOURCES += pipe.c
 libvoluta_la_SOURCES += pstore.c
 libvoluta_la_SOURCES += qalloc.c
 libvoluta_la_SOURCES += socket.c
+libvoluta_la_SOURCES += spmaps.c
 libvoluta_la_SOURCES += strings.c
 libvoluta_la_SOURCES += super.c
 libvoluta_la_SOURCES += symlink.c

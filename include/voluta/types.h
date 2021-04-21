@@ -585,6 +585,14 @@ struct voluta_rwiter_ctx {
 };
 
 
+struct voluta_ag_range {
+	size_t beg; /* start ag-index */
+	size_t tip; /* heuristic of current tip ag-index */
+	size_t fin; /* one past last ag-index of current span */
+	size_t end; /* end of hyper-range */
+	/* beg <= tip <= fin <= end */
+};
+
 /* archiving */
 struct voluta_ar_args {
 	const char *passwd;
@@ -606,5 +614,14 @@ struct voluta_archiver {
 	size_t ar_spec_nents_max;
 	int try_clone;
 };
+
+struct voluta_balloc_info {
+	loff_t lba;
+	size_t bn;
+	size_t kbn[VOLUTA_NKB_IN_BK];
+	size_t cnt;
+	enum voluta_vtype vtype;
+};
+
 
 #endif /* VOLUTA_TYPES_H_ */

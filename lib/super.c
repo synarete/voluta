@@ -1034,6 +1034,22 @@ static void agm_clear_unwritten_at(struct voluta_agroup_map *agm,
 	bkr_clear_unwritten_at(bkr, kbn_of(vaddr), nkb_of(vaddr));
 }
 
+static size_t agm_refcnt_at(const struct voluta_agroup_map *agm,
+                            const struct voluta_vaddr *vaddr)
+{
+	const struct voluta_bk_rec *bkr = agm_bkr_by_vaddr(agm, vaddr);
+
+	return bkr_refcnt(bkr);
+}
+
+static void agm_decref_at(struct voluta_agroup_map *agm,
+                          const struct voluta_vaddr *vaddr)
+{
+	struct voluta_bk_rec *bkr = agm_bkr_by_vaddr(agm, vaddr);
+
+	bkr_dec_refcnt(bkr);
+}
+
 static void agm_set_allocated_at(struct voluta_agroup_map *agm,
                                  const struct voluta_vaddr *vaddr)
 {
@@ -3782,11 +3798,10 @@ int voluta_remove_vnode(struct voluta_sb_info *sbi,
 {
 	int err;
 
-	err = deallocate_vnode_space(sbi, vi_vaddr(vi));
+	err = free_vspace_at(sbi, vi_vaddr(vi));
 	if (err) {
 		return err;
 	}
-	voluta_mark_opaque(vi);
 	forget_cached_vi(vi);
 	return 0;
 }
@@ -3851,6 +3866,34 @@ int voluta_mark_unwritten(struct voluta_sb_info *sbi,
 		mark_unwritten_at(agm_vi, vaddr);
 		vi_dirtify(agm_vi);
 	}
+	return 0;
+}
+
+int voluta_refcnt_at(struct voluta_sb_info *sbi,
+                     const struct voluta_vaddr *vaddr, size_t *out_refcnt)
+{
+	int err;
+	struct voluta_vnode_info *agm_vi = NULL;
+
+	err = stage_agmap_of(sbi, vaddr, &agm_vi);
+	if (err) {
+		return err;
+	}
+	*out_refcnt = agm_refcnt_at(agm_vi->vu.agm, vaddr);
+	return 0;
+}
+
+int voluta_decref_at(struct voluta_sb_info *sbi,
+                     const struct voluta_vaddr *vaddr)
+{
+	int err;
+	struct voluta_vnode_info *agm_vi = NULL;
+
+	err = stage_agmap_of(sbi, vaddr, &agm_vi);
+	if (err) {
+		return err;
+	}
+	agm_decref_at(agm_vi->vu.agm, vaddr);
 	return 0;
 }
 

@@ -163,6 +163,11 @@ static void vaddr_of_databk_leaf(struct voluta_vaddr *vaddr, loff_t off)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_DATABK, off);
 }
 
+static bool vaddr_isdatabk(const struct voluta_vaddr *vaddr)
+{
+	return vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_DATABK);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void *nil_bk_buf_of(const struct voluta_file_ctx *f_ctx)
@@ -1917,11 +1922,44 @@ static int new_data_vspace(const struct voluta_file_ctx *f_ctx,
 	return voluta_create_vspace(f_ctx->sbi, vtype, out);
 }
 
+static int
+probe_last_or_decref(const struct voluta_file_ctx *f_ctx,
+                     const struct voluta_vaddr *vaddr, bool *out_last)
+{
+	int err;
+	size_t refcnt = 0;
+
+	if (!vaddr_isdatabk(vaddr)) {
+		*out_last = true;
+		return 0;
+	}
+	err = voluta_refcnt_at(f_ctx->sbi, vaddr, &refcnt);
+	if (err) {
+		return err;
+	}
+	voluta_assert_gt(refcnt, 0);
+	if (refcnt == 1) {
+		*out_last = true;
+		return 0;
+	}
+	err = voluta_decref_at(f_ctx->sbi, vaddr);
+	if (err) {
+		return err;
+	}
+	*out_last = true;
+	return 0;
+}
+
 static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
                            const struct voluta_vaddr *vaddr)
 {
 	int err;
+	bool last = false;
 
+	err = probe_last_or_decref(f_ctx, vaddr, &last);
+	if (err || !last) {
+		return err;
+	}
 	err = clear_unwritten_at(f_ctx, vaddr);
 	if (err) {
 		return err;

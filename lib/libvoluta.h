@@ -490,6 +490,12 @@ int voluta_clear_unwritten(struct voluta_sb_info *sbi,
 int voluta_mark_unwritten(struct voluta_sb_info *sbi,
                           const struct voluta_vaddr *vaddr);
 
+int voluta_refcnt_at(struct voluta_sb_info *sbi,
+                     const struct voluta_vaddr *vaddr, size_t *out_refcnt);
+
+int voluta_decref_at(struct voluta_sb_info *sbi,
+                     const struct voluta_vaddr *vaddr);
+
 int voluta_verify_uspace_map(const struct voluta_hspace_map *hsm);
 
 int voluta_verify_agroup_map(const struct voluta_agroup_map *agm);
@@ -1025,8 +1031,6 @@ void voluta_mark_visible(const struct voluta_vnode_info *vi);
 
 void voluta_mark_opaque_at(struct voluta_bk_info *bki,
                            const struct voluta_vaddr *vaddr);
-
-void voluta_mark_opaque(const struct voluta_vnode_info *vi);
 
 bool voluta_is_visible(const struct voluta_vnode_info *vi);
 

@@ -2114,11 +2114,6 @@ void voluta_mark_opaque_at(struct voluta_bk_info *bki,
 	bki_mark_opaque(bki, vaddr);
 }
 
-void voluta_mark_opaque(const struct voluta_vnode_info *vi)
-{
-	voluta_mark_opaque_at(vi->v_bki, vi_vaddr(vi));
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void dset_add_dirty_vi(struct voluta_dset *dset,

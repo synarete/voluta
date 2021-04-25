@@ -132,7 +132,7 @@ static void umount_probe_statvfs(void)
 			break;
 		}
 		fstype = stfs.f_type;
-		if (fstype && (fstype != voluta_fuse_super_magic())) {
+		if (fstype && !voluta_is_fuse_fstype(fstype)) {
 			break;
 		}
 		/*

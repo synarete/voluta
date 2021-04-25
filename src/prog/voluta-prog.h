@@ -33,9 +33,9 @@
 #include <stdint.h>
 #include <errno.h>
 #include <getopt.h>
-#include <voluta/syscall.h>
-#include <voluta/voluta.h>
-
+#include <voluta/infra.h>
+#include <voluta/fs.h>
+#include <voluta/ioctls.h>
 
 
 typedef void (*voluta_exec_fn)(void);
@@ -349,7 +349,7 @@ void voluta_show_version_and_exit(const char *prog);
 void voluta_pretty_size(size_t n, char *buf, size_t bsz);
 
 
-void *voluta_malloc_safe(size_t n);
+void *voluta_zalloc_safe(size_t n);
 
 void voluta_pfree_string(char **pp);
 

@@ -78,7 +78,7 @@ static void *zalloc(size_t nbytes)
 {
 	void *ptr;
 
-	ptr = voluta_malloc_safe(nbytes);
+	ptr = voluta_zalloc_safe(nbytes);
 	memset(ptr, 0, nbytes);
 	return ptr;
 }
@@ -225,13 +225,13 @@ static void parse_mntconf_line(const struct voluta_fileline *fl,
                                struct voluta_mntrules *mrules)
 {
 	struct voluta_substr sline;
-	struct voluta_substr_pair ss_pair;
+	struct voluta_substr_pair ssp;
 
-	ss_split_by(line, '#', &ss_pair);
-	ss_strip_ws(&ss_pair.first, &sline);
+	ss_split_by(line, '#', &ssp);
+	ss_strip_ws(&ssp.first, &sline);
 	if (!ss_isempty(&sline)) {
-		ss_split_by_ws(&sline, &ss_pair);
-		parse_mntconf_rule(fl, &ss_pair.first, &ss_pair.second, mrules);
+		ss_split_by_ws(&sline, &ssp);
+		parse_mntconf_rule(fl, &ssp.first, &ssp.second, mrules);
 	}
 }
 

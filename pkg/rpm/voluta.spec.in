@@ -58,6 +58,8 @@ Development files for voluta
 
 %files devel
 %defattr(-, root, root)
+%{_includedir}/%{name}/infra/*.h
+%{_includedir}/%{name}/fs/*.h
 %{_includedir}/%{name}/*.h
 %{_libdir}/lib%{name}*.so*
 %{_libdir}/lib%{name}*.a

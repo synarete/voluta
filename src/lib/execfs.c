@@ -1019,7 +1019,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	fse_calc_pass_hash(fse, &pass_hash);
 
 	vol_size = (size_t)fse->args.vsize;
-	ag_count = voluta_size_to_ag_count(vol_size);
+	ag_count = size_to_ag_count(vol_size);
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
 	voluta_sb_setup_keys(sb);

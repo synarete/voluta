@@ -330,10 +330,7 @@ voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
 
-size_t voluta_size_to_ag_count(size_t nbytes);
-
 loff_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
-
 
 
 const struct voluta_vaddr *voluta_vaddr_none(void);

@@ -88,7 +88,7 @@ static void spi_setup(struct voluta_space_info *spi, loff_t space_size)
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
 	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
 
-	ag_count = voluta_size_to_ag_count((size_t)space_size);
+	ag_count = size_to_ag_count((size_t)space_size);
 	hs_count = div_round_up(ag_count - nag_prefix, nag_in_hs);
 
 	spi->sp_size = space_size;
@@ -1101,11 +1101,9 @@ static int stamp_itable_at(struct voluta_sb_info *sbi,
                            const struct voluta_vaddr *vaddr)
 {
 	int err;
-	voluta_index_t ag_index;
 	struct voluta_vnode_info *agm_vi = NULL;
 
-	ag_index = vaddr_ag_index(vaddr);
-	err = stage_agmap(sbi, ag_index, &agm_vi);
+	err = stage_agmap(sbi, vaddr->ag_index, &agm_vi);
 	if (err) {
 		return err;
 	}
@@ -1767,7 +1765,7 @@ static int stage_agmap_of(struct voluta_sb_info *sbi,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_vnode_info **out_vi)
 {
-	return stage_agmap(sbi, vaddr_ag_index(vaddr), out_vi);
+	return stage_agmap(sbi, vaddr->ag_index, out_vi);
 }
 
 static int fetch_agmap_of(struct voluta_super_ctx *s_ctx,
@@ -2524,11 +2522,9 @@ static void kivam_of_hsmap(const struct voluta_vnode_info *vi,
 static void kivam_of_agmap(const struct voluta_vnode_info *agm_vi,
                            struct voluta_kivam *out_kivam)
 {
-	voluta_index_t ag_index;
 	const struct voluta_vaddr *vaddr = vi_vaddr(agm_vi);
 
-	ag_index = vaddr_ag_index(vaddr);
-	voluta_kivam_of_agmap(agm_vi->v_pvi, ag_index, out_kivam);
+	voluta_kivam_of_agmap(agm_vi->v_pvi, vaddr->ag_index, out_kivam);
 }
 
 static void kivam_of_vnode(const struct voluta_vnode_info *vi,

@@ -237,8 +237,9 @@ struct voluta_iattr {
 
 /* logical-address within underlying volume space */
 struct voluta_vaddr {
-	loff_t          off;
+	voluta_index_t  ag_index;
 	loff_t          lba;
+	loff_t          off;
 	uint32_t        len;
 	enum voluta_vtype vtype;
 };

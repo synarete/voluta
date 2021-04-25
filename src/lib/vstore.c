@@ -135,18 +135,22 @@ bool voluta_vtype_ismeta(enum voluta_vtype vtype)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static loff_t lba_kbn_to_off(loff_t lba, size_t kbn)
+{
+	return lba_to_off(lba) + (loff_t)(kbn * VOLUTA_KB_SIZE);
+}
+
+static loff_t ag_index_to_lba(voluta_index_t ag_index)
+{
+	return (loff_t)(ag_index * VOLUTA_NBK_IN_AG);
+}
 
 static voluta_index_t lba_to_ag_index(loff_t lba)
 {
 	return (voluta_index_t)(lba / VOLUTA_NBK_IN_AG);
 }
 
-static loff_t lba_kbn_to_off(loff_t lba, size_t kbn)
-{
-	return lba_to_off(lba) + (loff_t)(kbn * VOLUTA_KB_SIZE);
-}
-
-static loff_t lba_by_ag(voluta_index_t ag_index, size_t bn)
+static loff_t lba_mapped_by_ag(voluta_index_t ag_index, size_t bn)
 {
 	const loff_t nbk_in_ag = VOLUTA_NBK_IN_AG;
 
@@ -157,10 +161,10 @@ static loff_t lba_by_ag(voluta_index_t ag_index, size_t bn)
 
 loff_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 {
-	return lba_by_ag(ag_index, bn);
+	return lba_mapped_by_ag(ag_index, bn);
 }
 
-static loff_t hsmap_lba_by_index(voluta_index_t hs_index)
+static loff_t hsm_lba_by_index(voluta_index_t hs_index)
 {
 	const loff_t hsm_lba = (loff_t)(VOLUTA_LBA_SB + hs_index);
 
@@ -168,6 +172,16 @@ static loff_t hsmap_lba_by_index(voluta_index_t hs_index)
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_AG);
 
 	return hsm_lba;
+}
+
+static loff_t agm_lba_by_index(voluta_index_t ag_index)
+{
+	const loff_t agm_lba =  ag_index_to_lba(ag_index);
+
+	voluta_assert_gt(ag_index, 0);
+	voluta_assert_ge(agm_lba, VOLUTA_NBK_IN_AG);
+
+	return agm_lba;
 }
 
 voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index)
@@ -197,14 +211,10 @@ size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index)
 	return (ag_index - nag_prefix) % nag_in_hs;
 }
 
-size_t voluta_size_to_ag_count(size_t nbytes)
-{
-	return nbytes / VOLUTA_AG_SIZE;
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_vaddr s_vaddr_none = {
+	.ag_index = VOLUTA_AG_INDEX_NULL,
 	.off = VOLUTA_OFF_NULL,
 	.lba = VOLUTA_LBA_NULL,
 	.vtype = VOLUTA_VTYPE_NONE,
@@ -218,12 +228,12 @@ const struct voluta_vaddr *voluta_vaddr_none(void)
 
 voluta_index_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
 {
-	return lba_to_ag_index(vaddr->lba);
+	return vaddr->ag_index;
 }
 
 voluta_index_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
 {
-	return voluta_hs_index_of_ag(vaddr_ag_index(vaddr));
+	return voluta_hs_index_of_ag(vaddr->ag_index);
 }
 
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
@@ -232,17 +242,20 @@ void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
 	vaddr->vtype = vtype;
 	vaddr->len = (uint32_t)vtype_size(vtype);
 	if (!off_isnull(off)) {
-		vaddr->lba = off_to_lba(off);
 		vaddr->off = off;
+		vaddr->lba = off_to_lba(off);
+		vaddr->ag_index = lba_to_ag_index(vaddr->lba);
 	} else {
-		vaddr->lba = VOLUTA_LBA_NULL;
 		vaddr->off = VOLUTA_OFF_NULL;
+		vaddr->lba = VOLUTA_LBA_NULL;
+		vaddr->ag_index = VOLUTA_AG_INDEX_NULL;
 	}
 }
 
 void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
                          struct voluta_vaddr *other)
 {
+	other->ag_index = vaddr->ag_index;
 	other->off = vaddr->off;
 	other->lba = vaddr->lba;
 	other->vtype = vaddr->vtype;
@@ -251,6 +264,7 @@ void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
 
 void voluta_vaddr_reset(struct voluta_vaddr *vaddr)
 {
+	vaddr->ag_index = VOLUTA_AG_INDEX_NULL;
 	vaddr->off = VOLUTA_OFF_NULL;
 	vaddr->lba = VOLUTA_LBA_NULL;
 	vaddr->vtype = VOLUTA_VTYPE_NONE;
@@ -271,17 +285,16 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr)
 
 void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
-	const loff_t lba = hsmap_lba_by_index(hs_index);
-	const loff_t off = lba_to_off(lba);
+	const loff_t lba = hsm_lba_by_index(hs_index);
 
-	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, off);
+	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, lba_to_off(lba));
 }
 
 void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
-	const loff_t off = ag_index_to_off(ag_index);
+	const loff_t lba = agm_lba_by_index(ag_index);
 
-	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, off);
+	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }
 
 void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
@@ -292,7 +305,7 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
                         voluta_index_t ag_index, size_t bn, size_t kbn)
 {
-	const loff_t lba = lba_by_ag(ag_index, bn);
+	const loff_t lba = lba_mapped_by_ag(ag_index, bn);
 	const loff_t off = lba_kbn_to_off(lba, kbn);
 
 	vaddr_setup(vaddr, vtype, off);

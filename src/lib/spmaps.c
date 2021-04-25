@@ -1516,7 +1516,7 @@ void voluta_deallocate_space_at(struct voluta_vnode_info *agm_vi,
 {
 	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 
-	voluta_assert_eq(agm_index(agm), vaddr_ag_index(vaddr));
+	voluta_assert_eq(agm_index(agm), vaddr->ag_index);
 
 	agm_clear_allocated_at(agm, vaddr);
 	agm_renew_if_unused(agm, vaddr);

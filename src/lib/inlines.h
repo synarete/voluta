@@ -150,6 +150,11 @@ static inline loff_t ag_index_to_off(voluta_index_t ag_index)
 	return (loff_t)(ag_index * VOLUTA_AG_SIZE);
 }
 
+static inline size_t size_to_ag_count(size_t nbytes)
+{
+	return nbytes / VOLUTA_AG_SIZE;
+}
+
 
 static inline bool uid_eq(uid_t uid1, uid_t uid2)
 {

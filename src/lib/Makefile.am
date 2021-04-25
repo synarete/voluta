@@ -4,7 +4,7 @@ libvolutadir = $(libdir)
 libvoluta_LTLIBRARIES = libvoluta.la
 libvoluta_la_LDFLAGS = $(NULL)
 libvoluta_la_LDFLAGS += $(PTHREAD_CFLAGS) $(PTHREAD_DEF)
-libvoluta_la_LDFLAGS += -L$(top_builddir)/lib -version-info 0
+libvoluta_la_LDFLAGS += -version-info 0
 libvoluta_la_CPPFLAGS = $(NULL)
 libvoluta_la_CPPFLAGS += -I$(top_srcdir)/include
 libvoluta_la_CPPFLAGS += -DVOLUTA_LIBPRIVATE=1

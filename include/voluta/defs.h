@@ -583,10 +583,10 @@ struct voluta_ag_rec {
 
 struct voluta_hspace_map {
 	struct voluta_header    hs_hdr;
-	uint32_t                hs_index;
+	uint64_t                hs_index;
 	uint32_t                hs_flags;
+	uint32_t                hs_reserved1;
 	uint64_t                hs_nused;
-	uint64_t                hs_reserved1;
 	uint32_t                hs_nags_span;
 	uint32_t                hs_nags_form;
 	uint8_t                 hs_reserved2[4048];

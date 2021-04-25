@@ -145,7 +145,7 @@ static inline loff_t lba_to_off(loff_t lba)
 }
 
 
-static inline loff_t ag_index_to_off(size_t ag_index)
+static inline loff_t ag_index_to_off(voluta_index_t ag_index)
 {
 	return (loff_t)(ag_index * VOLUTA_AG_SIZE);
 }

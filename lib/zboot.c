@@ -383,7 +383,8 @@ void voluta_sb_setup_keys(struct voluta_super_block *sb)
 }
 
 const struct voluta_kivam *
-voluta_sb_kivam_of(const struct voluta_super_block *sb, size_t hs_index)
+voluta_sb_kivam_of(const struct voluta_super_block *sb,
+                   voluta_index_t hs_index)
 {
 	const struct voluta_keys_block8 *ivks = &sb->s_keys;
 	const size_t slot = (hs_index - 1) % ARRAY_SIZE(ivks->k);

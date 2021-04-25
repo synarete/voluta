@@ -136,9 +136,9 @@ bool voluta_vtype_ismeta(enum voluta_vtype vtype)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 
-static size_t lba_to_ag_index(loff_t lba)
+static voluta_index_t lba_to_ag_index(loff_t lba)
 {
-	return (size_t)(lba / VOLUTA_NBK_IN_AG);
+	return (voluta_index_t)(lba / VOLUTA_NBK_IN_AG);
 }
 
 static loff_t lba_kbn_to_off(loff_t lba, size_t kbn)
@@ -146,7 +146,7 @@ static loff_t lba_kbn_to_off(loff_t lba, size_t kbn)
 	return lba_to_off(lba) + (loff_t)(kbn * VOLUTA_KB_SIZE);
 }
 
-static loff_t lba_by_ag(size_t ag_index, size_t bn)
+static loff_t lba_by_ag(voluta_index_t ag_index, size_t bn)
 {
 	const loff_t nbk_in_ag = VOLUTA_NBK_IN_AG;
 
@@ -155,12 +155,12 @@ static loff_t lba_by_ag(size_t ag_index, size_t bn)
 	return nbk_in_ag * (loff_t)ag_index + (loff_t)bn;
 }
 
-loff_t voluta_lba_by_ag(size_t ag_index, size_t bn)
+loff_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 {
 	return lba_by_ag(ag_index, bn);
 }
 
-static loff_t hsmap_lba_by_index(size_t hs_index)
+static loff_t hsmap_lba_by_index(voluta_index_t hs_index)
 {
 	const loff_t hsm_lba = (loff_t)(VOLUTA_LBA_SB + hs_index);
 
@@ -170,7 +170,7 @@ static loff_t hsmap_lba_by_index(size_t hs_index)
 	return hsm_lba;
 }
 
-size_t voluta_hs_index_of_ag(size_t ag_index)
+voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index)
 {
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
 	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
@@ -178,7 +178,7 @@ size_t voluta_hs_index_of_ag(size_t ag_index)
 	return (ag_index / (nag_prefix + nag_in_hs)) + 1;
 }
 
-size_t voluta_ag_index_by_hs(size_t hs_index, size_t ag_slot)
+voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot)
 {
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
 	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
@@ -188,7 +188,7 @@ size_t voluta_ag_index_by_hs(size_t hs_index, size_t ag_slot)
 	return nag_prefix + ((hs_index - 1) * nag_in_hs) + ag_slot;
 }
 
-size_t voluta_ag_index_to_hs_slot(size_t ag_index)
+size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index)
 {
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
 	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
@@ -216,12 +216,12 @@ const struct voluta_vaddr *voluta_vaddr_none(void)
 	return &s_vaddr_none;
 }
 
-size_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
+voluta_index_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
 {
 	return lba_to_ag_index(vaddr->lba);
 }
 
-size_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
+voluta_index_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
 {
 	return voluta_hs_index_of_ag(vaddr_ag_index(vaddr));
 }
@@ -269,7 +269,7 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, size_t hs_index)
+void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
 	const loff_t lba = hsmap_lba_by_index(hs_index);
 	const loff_t off = lba_to_off(lba);
@@ -277,7 +277,7 @@ void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, size_t hs_index)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, off);
 }
 
-void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, size_t ag_index)
+void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
 	const loff_t off = ag_index_to_off(ag_index);
 
@@ -290,7 +290,7 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
 }
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
-                        size_t ag_index, size_t bn, size_t kbn)
+                        voluta_index_t ag_index, size_t bn, size_t kbn)
 {
 	const loff_t lba = lba_by_ag(ag_index, bn);
 	const loff_t off = lba_kbn_to_off(lba, kbn);

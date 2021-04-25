@@ -25,7 +25,19 @@
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool ag_index_isnull(size_t ag_index)
+static voluta_index_t index_to_cpu(uint64_t index)
+{
+	return le64_to_cpu(index);
+}
+
+static uint64_t cpu_to_index(voluta_index_t index)
+{
+	return cpu_to_le64(index);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static bool ag_index_isnull(voluta_index_t ag_index)
 {
 	return (ag_index == VOLUTA_AG_INDEX_NULL);
 }
@@ -274,14 +286,15 @@ static bool agr_may_alloc_vtype(const struct voluta_ag_rec *agr,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static size_t hsm_index(const struct voluta_hspace_map *hsm)
+static voluta_index_t hsm_index(const struct voluta_hspace_map *hsm)
 {
-	return le32_to_cpu(hsm->hs_index);
+	return index_to_cpu(hsm->hs_index);
 }
 
-static void hsm_set_index(struct voluta_hspace_map *hsm, size_t hs_index)
+static void hsm_set_index(struct voluta_hspace_map *hsm,
+                          voluta_index_t hs_index)
 {
-	hsm->hs_index = cpu_to_le32((uint32_t)hs_index);
+	hsm->hs_index = cpu_to_index(hs_index);
 }
 
 static enum voluta_hsf hsm_flags(const struct voluta_hspace_map *hsm)
@@ -352,17 +365,17 @@ static void hsm_set_nused(struct voluta_hspace_map *hsm, size_t nused)
 	hsm->hs_nused = cpu_to_le64(nused);
 }
 
-static size_t hsm_ag_index_beg(const struct voluta_hspace_map *hsm)
+static voluta_index_t hsm_ag_index_beg(const struct voluta_hspace_map *hsm)
 {
 	return voluta_ag_index_by_hs(hsm_index(hsm), 0);
 }
 
-static size_t hsm_ag_index_fin(const struct voluta_hspace_map *hsm)
+static voluta_index_t hsm_ag_index_fin(const struct voluta_hspace_map *hsm)
 {
 	return hsm_ag_index_beg(hsm) + hsm_nags_form(hsm);
 }
 
-static size_t hsm_ag_index_end(const struct voluta_hspace_map *hsm)
+static voluta_index_t hsm_ag_index_end(const struct voluta_hspace_map *hsm)
 {
 	return hsm_ag_index_beg(hsm) + hsm_nags_span(hsm);
 }
@@ -373,7 +386,7 @@ static void hsm_setup_keys(struct voluta_hspace_map *hsm)
 }
 
 static void hsm_init(struct voluta_hspace_map *hsm,
-                     size_t hs_index, size_t nags_span)
+                     voluta_index_t hs_index, size_t nags_span)
 {
 	hsm_set_index(hsm, hs_index);
 	hsm_set_flags(hsm, 0);
@@ -394,18 +407,19 @@ hsm_record_at(const struct voluta_hspace_map *hsm, size_t slot)
 }
 
 static struct voluta_ag_rec *
-hsm_record_of(const struct voluta_hspace_map *hsm, size_t ag_index)
+hsm_record_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
 	const size_t slot = voluta_ag_index_to_hs_slot(ag_index);
 
 	return hsm_record_at(hsm, slot);
 }
 
-static size_t hsm_resolve_ag_index(const struct voluta_hspace_map *hsm,
-                                   const struct voluta_ag_rec *agr)
+static voluta_index_t
+hsm_resolve_ag_index(const struct voluta_hspace_map *hsm,
+                     const struct voluta_ag_rec *agr)
 {
 	const size_t ag_slot = (size_t)(agr - hsm->hs_agr);
-	const size_t hs_index = hsm_index(hsm);
+	const voluta_index_t hs_index = hsm_index(hsm);
 
 	voluta_assert(agr >= hsm->hs_agr);
 	voluta_assert_lt(ag_slot, ARRAY_SIZE(hsm->hs_agr));
@@ -426,8 +440,9 @@ static void hsm_update_stats_of(struct voluta_hspace_map *hsm,
 	voluta_assert_le(agr_used_space(agr), VOLUTA_AG_SIZE);
 }
 
-static void hsm_update_stats(struct voluta_hspace_map *hsm, size_t ag_index,
-                             const struct voluta_space_stat *sp_st)
+static void  hsm_update_stats(struct voluta_hspace_map *hsm,
+                              voluta_index_t ag_index,
+                              const struct voluta_space_stat *sp_st)
 {
 	struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
@@ -435,7 +450,8 @@ static void hsm_update_stats(struct voluta_hspace_map *hsm, size_t ag_index,
 }
 
 static void hsm_space_stat_of(const struct voluta_hspace_map *hsm,
-                              size_t ag_index, struct voluta_space_stat *sp_st)
+                              voluta_index_t ag_index,
+                              struct voluta_space_stat *sp_st)
 {
 	const struct voluta_ag_rec *agr;
 
@@ -457,7 +473,8 @@ static void hsm_space_stat(const struct voluta_hspace_map *hsm,
 	}
 }
 
-static void hsm_set_formatted(struct voluta_hspace_map *hsm, size_t ag_index)
+static void hsm_set_formatted(struct voluta_hspace_map *hsm,
+                              voluta_index_t ag_index)
 {
 	struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
@@ -465,14 +482,15 @@ static void hsm_set_formatted(struct voluta_hspace_map *hsm, size_t ag_index)
 }
 
 static bool hsm_is_formatted(const struct voluta_hspace_map *hsm,
-                             size_t ag_index)
+                             voluta_index_t ag_index)
 {
 	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
 	return agr_is_formatted(agr);
 }
 
-static bool hsm_is_fragmented(struct voluta_hspace_map *hsm, size_t ag_index)
+static bool hsm_is_fragmented(struct voluta_hspace_map *hsm,
+                              voluta_index_t ag_index)
 {
 	return agr_is_fragmented(hsm_record_of(hsm, ag_index));
 }
@@ -487,19 +505,20 @@ static bool hsm_may_alloc(const struct voluta_hspace_map *hsm, size_t nbytes)
 	return ((nbytes_cur + nbytes) <= nbytes_max);
 }
 
-static void hsm_mark_fragmented(struct voluta_hspace_map *hsm, size_t ag_index)
+static void hsm_mark_fragmented(struct voluta_hspace_map *hsm,
+                                voluta_index_t ag_index)
 {
 	agr_set_fragmented(hsm_record_of(hsm, ag_index));
 }
 
 static void hsm_clear_fragmented(struct voluta_hspace_map *hsm,
-                                 size_t ag_index)
+                                 voluta_index_t ag_index)
 {
 	agr_unset_fragmented(hsm_record_of(hsm, ag_index));
 }
 
 static void hsm_bind_to_vtype(struct voluta_hspace_map *hsm,
-                              size_t ag_index, enum voluta_vtype vtype)
+                              voluta_index_t ag_index, enum voluta_vtype vtype)
 {
 	agr_bind_to_kind(hsm_record_of(hsm, ag_index), vtype);
 }
@@ -516,13 +535,13 @@ static size_t hsm_ag_index_tip(const struct voluta_hspace_map *hsm)
 {
 	const size_t ag_size = VOLUTA_AG_SIZE;
 	const size_t nused = hsm_nused(hsm);
-	const size_t ag_index_beg = hsm_ag_index_beg(hsm);
+	const voluta_index_t ag_index_beg = hsm_ag_index_beg(hsm);
 
 	return ag_index_beg + (nused / ag_size);
 }
 
 static void
-hsm_update_formatted_ag(struct voluta_hspace_map *hsm, size_t ag_index)
+hsm_update_formatted_ag(struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
 	struct voluta_space_stat sp_st = {
 		.nmeta = vtype_ssize(VOLUTA_VTYPE_AGMAP)
@@ -533,7 +552,7 @@ hsm_update_formatted_ag(struct voluta_hspace_map *hsm, size_t ag_index)
 }
 
 static size_t
-hsm_used_space_of(const struct voluta_hspace_map *hsm, size_t ag_index)
+hsm_used_space_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
 	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
@@ -541,7 +560,7 @@ hsm_used_space_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 }
 
 static const struct voluta_kivam *
-hsm_kivam_of(const struct voluta_hspace_map *hsm, size_t ag_index)
+hsm_kivam_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
 	const size_t k_slot = ag_index % ARRAY_SIZE(hsm->hs_keys.k);
 
@@ -549,14 +568,15 @@ hsm_kivam_of(const struct voluta_hspace_map *hsm, size_t ag_index)
 }
 
 static uint64_t
-hsm_seed_of(const struct voluta_hspace_map *hsm, size_t ag_index)
+hsm_seed_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
 	const struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
 	return agr_seed(agr);
 }
 
-static void hsm_mark_itroot_at(struct voluta_hspace_map *hsm, size_t ag_index)
+static void hsm_mark_itroot_at(struct voluta_hspace_map *hsm,
+                               voluta_index_t ag_index)
 {
 	struct voluta_ag_rec *agr = hsm_record_of(hsm, ag_index);
 
@@ -565,7 +585,7 @@ static void hsm_mark_itroot_at(struct voluta_hspace_map *hsm, size_t ag_index)
 
 static size_t hsm_find_itroot_ag(const struct voluta_hspace_map *hsm)
 {
-	size_t ag_index;
+	voluta_index_t ag_index;
 	const struct voluta_ag_rec *agr = NULL;
 	const size_t nags = hsm_nags_span(hsm);
 
@@ -581,7 +601,8 @@ static size_t hsm_find_itroot_ag(const struct voluta_hspace_map *hsm)
 }
 
 static size_t hsm_find_avail(const struct voluta_hspace_map *hsm,
-                             size_t ag_index_from, size_t ag_index_last,
+                             voluta_index_t ag_index_from,
+                             voluta_index_t ag_index_last,
                              enum voluta_vtype vtype)
 {
 	size_t beg;
@@ -861,14 +882,15 @@ static void bkr_alloc_info(const struct voluta_bk_rec *bkr,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static size_t agm_index(const struct voluta_agroup_map *agm)
+static voluta_index_t agm_index(const struct voluta_agroup_map *agm)
 {
-	return le64_to_cpu(agm->ag_index);
+	return index_to_cpu(agm->ag_index);
 }
 
-static void agm_set_index(struct voluta_agroup_map *agm, size_t ag_index)
+static void agm_set_index(struct voluta_agroup_map *agm,
+                          voluta_index_t ag_index)
 {
-	agm->ag_index = cpu_to_le64(ag_index);
+	agm->ag_index = cpu_to_index(ag_index);
 }
 
 static void agm_it_root(const struct voluta_agroup_map *agm,
@@ -888,7 +910,7 @@ static void agm_setup_keys(struct voluta_agroup_map *agm)
 	voluta_kivam_setup_n(agm->ag_keys.k, ARRAY_SIZE(agm->ag_keys.k));
 }
 
-static void agm_init(struct voluta_agroup_map *agm, size_t ag_index)
+static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 {
 	agm_set_index(agm, ag_index);
 	agm_set_it_root(agm, vaddr_none());
@@ -908,7 +930,7 @@ agm_bkr_at(const struct voluta_agroup_map *agm, size_t slot)
 static void agm_balloc_info_at(const struct voluta_agroup_map *agm,
                                size_t slot, struct voluta_balloc_info *bai)
 {
-	const size_t ag_index = agm_index(agm);
+	const voluta_index_t ag_index = agm_index(agm);
 	const struct voluta_bk_rec *bkr = agm_bkr_at(agm, slot);
 
 	bkr_alloc_info(bkr, bai);
@@ -1079,7 +1101,7 @@ static int agm_find_free_space(const struct voluta_agroup_map *agm,
 	int err;
 	size_t bn;
 	size_t kbn;
-	size_t ag_index;
+	voluta_index_t ag_index;
 
 	err = agm_find_free(agm, vtype, start_bn, &bn, &kbn);
 	if (err) {
@@ -1149,14 +1171,14 @@ hspace_map_of(const struct voluta_vnode_info *hsm_vi)
 }
 
 void voluta_setup_hsmap(struct voluta_vnode_info *hsm_vi,
-                        size_t hs_index, size_t nags_span)
+                        voluta_index_t hs_index, size_t nags_span)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
 	hsm_init(hsm, hs_index, nags_span);
 }
 
-size_t voluta_hs_index_of(const struct voluta_vnode_info *hsm_vi)
+voluta_index_t voluta_hs_index_of(const struct voluta_vnode_info *hsm_vi)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1164,7 +1186,7 @@ size_t voluta_hs_index_of(const struct voluta_vnode_info *hsm_vi)
 }
 
 static size_t
-nused_bytes_at(const struct voluta_vnode_info *hsm_vi, size_t ag_index)
+nused_bytes_at(const struct voluta_vnode_info *hsm_vi, voluta_index_t ag_index)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1172,8 +1194,10 @@ nused_bytes_at(const struct voluta_vnode_info *hsm_vi, size_t ag_index)
 }
 
 int voluta_find_free_vspace(const struct voluta_vnode_info *hsm_vi,
-                            size_t ag_index_first, size_t ag_index_last,
-                            enum voluta_vtype vtype, size_t *out_ag_index)
+                            voluta_index_t ag_index_first,
+                            voluta_index_t ag_index_last,
+                            enum voluta_vtype vtype,
+                            voluta_index_t *out_ag_index)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1185,7 +1209,7 @@ int voluta_find_free_vspace(const struct voluta_vnode_info *hsm_vi,
 
 
 int voluta_find_itroot_ag(const struct voluta_vnode_info *hsm_vi,
-                          size_t *out_ag_index)
+                          voluta_index_t *out_ag_index)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1193,7 +1217,8 @@ int voluta_find_itroot_ag(const struct voluta_vnode_info *hsm_vi,
 	return ag_index_isnull(*out_ag_index) ? -ENOENT : 0;
 }
 
-void voluta_mark_itroot_at(struct voluta_vnode_info *hsm_vi, size_t ag_index)
+void voluta_mark_itroot_at(struct voluta_vnode_info *hsm_vi,
+                           voluta_index_t ag_index)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1218,7 +1243,8 @@ bool voluta_has_next_hspace(const struct voluta_vnode_info *hsm_vi)
 	return hsm_test_hasnext(hsm);
 }
 
-void voluta_update_space(struct voluta_vnode_info *hsm_vi, size_t ag_index,
+void voluta_update_space(struct voluta_vnode_info *hsm_vi,
+                         voluta_index_t ag_index,
                          const struct voluta_space_stat *sp_st)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
@@ -1228,7 +1254,8 @@ void voluta_update_space(struct voluta_vnode_info *hsm_vi, size_t ag_index,
 }
 
 void voluta_space_stat_at(const struct voluta_vnode_info *hsm_vi,
-                          size_t ag_index, struct voluta_space_stat *sp_st)
+                          voluta_index_t ag_index,
+                          struct voluta_space_stat *sp_st)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1243,7 +1270,8 @@ void voluta_space_stat_of(const struct voluta_vnode_info *hsm_vi,
 	hsm_space_stat(hsm, sp_st);
 }
 
-void voluta_set_formatted_ag(struct voluta_vnode_info *hsm_vi, size_t ag_index)
+void voluta_set_formatted_ag(struct voluta_vnode_info *hsm_vi,
+                             voluta_index_t ag_index)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1253,7 +1281,7 @@ void voluta_set_formatted_ag(struct voluta_vnode_info *hsm_vi, size_t ag_index)
 }
 
 bool voluta_has_formatted_ag(const struct voluta_vnode_info *hsm_vi,
-                             size_t ag_index)
+                             voluta_index_t ag_index)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1271,7 +1299,8 @@ void voluta_ag_range_of(const struct voluta_vnode_info *hsm_vi,
 	ag_range->end = hsm_ag_index_end(hsm);
 }
 
-void voluta_mark_fragmented(struct voluta_vnode_info *hsm_vi, size_t ag_index)
+void voluta_mark_fragmented(struct voluta_vnode_info *hsm_vi,
+                            voluta_index_t ag_index)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1279,7 +1308,8 @@ void voluta_mark_fragmented(struct voluta_vnode_info *hsm_vi, size_t ag_index)
 	vi_dirtify(hsm_vi);
 }
 
-void voluta_clear_fragmented(struct voluta_vnode_info *hsm_vi, size_t ag_index)
+void voluta_clear_fragmented(struct voluta_vnode_info *hsm_vi,
+                             voluta_index_t ag_index)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1291,7 +1321,7 @@ void voluta_clear_fragmented(struct voluta_vnode_info *hsm_vi, size_t ag_index)
 
 
 void voluta_bind_to_vtype(struct voluta_vnode_info *hsm_vi,
-                          size_t ag_index, enum voluta_vtype vtype)
+                          voluta_index_t ag_index, enum voluta_vtype vtype)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1309,7 +1339,8 @@ int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
 }
 
 void voluta_kivam_of_agmap(const struct voluta_vnode_info *hsm_vi,
-                           size_t ag_index, struct voluta_kivam *out_kivam)
+                           voluta_index_t ag_index,
+                           struct voluta_kivam *out_kivam)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1328,7 +1359,8 @@ agroup_map_of(const struct voluta_vnode_info *agm_vi)
 	return agm_vi->vu.agm;
 }
 
-void voluta_setup_agmap(struct voluta_vnode_info *agm_vi, size_t ag_index)
+void voluta_setup_agmap(struct voluta_vnode_info *agm_vi,
+                        voluta_index_t ag_index)
 {
 	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 
@@ -1343,7 +1375,7 @@ size_t voluta_ag_index_of(const struct voluta_vnode_info *agm_vi)
 	return agm_index(agm);
 }
 
-static size_t ag_index_of(const struct voluta_vnode_info *agm_vi)
+static voluta_index_t ag_index_of(const struct voluta_vnode_info *agm_vi)
 {
 	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 
@@ -1352,7 +1384,7 @@ static size_t ag_index_of(const struct voluta_vnode_info *agm_vi)
 
 static size_t nused_bks_at(const struct voluta_vnode_info *agm_vi)
 {
-	const size_t ag_index = ag_index_of(agm_vi);
+	const voluta_index_t ag_index = ag_index_of(agm_vi);
 	const size_t nused_bytes = nused_bytes_at(agm_vi->v_pvi, ag_index);
 
 	return nused_bytes / VOLUTA_BK_SIZE;
@@ -1606,11 +1638,10 @@ int voluta_verify_agroup_map(const struct voluta_agroup_map *agm)
 
 int voluta_verify_hspace_map(const struct voluta_hspace_map *hsm)
 {
-	size_t hs_index;
 	const size_t hs_size = VOLUTA_HS_SIZE;
 	const size_t vol_size_max = VOLUTA_VOLUME_SIZE_MAX;
+	const voluta_index_t hs_index = hsm_index(hsm);
 
-	hs_index = hsm_index(hsm);
 	if ((hs_index * hs_size) >= vol_size_max) {
 		return -EFSCORRUPTED;
 	}

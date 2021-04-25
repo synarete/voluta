@@ -209,6 +209,9 @@ struct voluta_ucred {
 	mode_t umask;
 };
 
+/* space-allocations */
+typedef uint64_t voluta_index_t;
+
 /* inode's attributes */
 struct voluta_itimes {
 	struct timespec btime;
@@ -355,7 +358,7 @@ struct voluta_space_info {
 	loff_t  sp_size;
 	size_t  sp_hs_count;
 	size_t  sp_hs_active;
-	size_t  sp_hs_index_lo;
+	voluta_index_t  sp_hs_index_lo;
 	size_t  sp_ag_count;
 	ssize_t sp_used_meta;
 	ssize_t sp_used_data;
@@ -584,15 +587,6 @@ struct voluta_rwiter_ctx {
 	size_t len;
 };
 
-
-struct voluta_ag_range {
-	size_t beg; /* start ag-index */
-	size_t tip; /* heuristic of current tip ag-index */
-	size_t fin; /* one past last ag-index of current span */
-	size_t end; /* end of hyper-range */
-	/* beg <= tip <= fin <= end */
-};
-
 /* archiving */
 struct voluta_ar_args {
 	const char *passwd;
@@ -614,14 +608,5 @@ struct voluta_archiver {
 	size_t ar_spec_nents_max;
 	int try_clone;
 };
-
-struct voluta_balloc_info {
-	loff_t lba;
-	size_t bn;
-	size_t kbn[VOLUTA_NKB_IN_BK];
-	size_t cnt;
-	enum voluta_vtype vtype;
-};
-
 
 #endif /* VOLUTA_TYPES_H_ */

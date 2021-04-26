@@ -47,7 +47,7 @@ struct voluta_ag_range {
 };
 
 struct voluta_balloc_info {
-	loff_t lba;
+	voluta_lba_t lba;
 	size_t bn;
 	size_t kbn[VOLUTA_NKB_IN_BK];
 	size_t cnt;
@@ -330,7 +330,7 @@ voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
 
-loff_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
+voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
 
 
 const struct voluta_vaddr *voluta_vaddr_none(void);
@@ -406,7 +406,7 @@ int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
 int voluta_vstore_flush(struct voluta_vstore *vstore,
                         const struct voluta_cache *cache, long ds_key);
 
-int voluta_vstore_clear_bk(struct voluta_vstore *vstore, loff_t lba);
+int voluta_vstore_clear_bk(struct voluta_vstore *vstore, voluta_lba_t lba);
 
 /* super */
 int voluta_sbi_init(struct voluta_sb_info *sbi,
@@ -1100,10 +1100,10 @@ void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
                                struct voluta_dset *dset);
 
 struct voluta_bk_info *
-voluta_cache_lookup_bki(struct voluta_cache *cache, loff_t lba);
+voluta_cache_lookup_bki(struct voluta_cache *cache, voluta_lba_t lba);
 
 struct voluta_bk_info *
-voluta_cache_spawn_bki(struct voluta_cache *cache, loff_t lba);
+voluta_cache_spawn_bki(struct voluta_cache *cache, voluta_lba_t lba);
 
 void voluta_cache_forget_bki(struct voluta_cache *cache,
                              struct voluta_bk_info *bki);

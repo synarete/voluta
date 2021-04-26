@@ -209,8 +209,9 @@ struct voluta_ucred {
 	mode_t umask;
 };
 
-/* space-allocations */
-typedef uint64_t voluta_index_t;
+/* space-addressing */
+typedef loff_t          voluta_lba_t;
+typedef uint64_t        voluta_index_t;
 
 /* inode's attributes */
 struct voluta_itimes {
@@ -238,7 +239,7 @@ struct voluta_iattr {
 /* logical-address within underlying volume space */
 struct voluta_vaddr {
 	voluta_index_t  ag_index;
-	loff_t          lba;
+	voluta_lba_t    lba;
 	loff_t          off;
 	uint32_t        len;
 	enum voluta_vtype vtype;
@@ -265,9 +266,9 @@ struct voluta_cache_elem {
 /* block caching info */
 struct voluta_bk_info {
 	struct voluta_cache_elem bki_ce;
-	struct voluta_block *bk;
-	loff_t   bk_lba;
-	uint64_t bk_mask;
+	struct voluta_block     *bk;
+	voluta_lba_t    bk_lba;
+	uint64_t        bk_mask;
 };
 
 /* vnode */

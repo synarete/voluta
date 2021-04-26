@@ -129,19 +129,19 @@ static inline size_t off_ulen(loff_t beg, loff_t end)
 }
 
 
-static inline bool lba_isequal(loff_t lba1, loff_t lba2)
+static inline bool lba_isequal(voluta_lba_t lba1, voluta_lba_t lba2)
 {
 	return (lba1 == lba2);
 }
 
-static inline bool lba_isnull(loff_t lba)
+static inline bool lba_isnull(voluta_lba_t lba)
 {
 	return lba_isequal(lba, VOLUTA_LBA_NULL);
 }
 
-static inline loff_t lba_to_off(loff_t lba)
+static inline voluta_lba_t lba_to_off(voluta_lba_t lba)
 {
-	return lba * (loff_t)VOLUTA_BK_SIZE;
+	return lba * (voluta_lba_t)VOLUTA_BK_SIZE;
 }
 
 

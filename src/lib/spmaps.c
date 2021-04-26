@@ -943,13 +943,14 @@ static size_t agm_nslots(const struct voluta_agroup_map *agm)
 	return ARRAY_SIZE(agm->ag_bkr);
 }
 
-static size_t agm_lba_slot(const struct voluta_agroup_map *agm, loff_t lba)
+static size_t agm_lba_slot(const struct voluta_agroup_map *agm,
+                           voluta_lba_t lba)
 {
 	return (size_t)lba % agm_nslots(agm);
 }
 
 static struct voluta_bk_rec *
-agm_bkr_by_lba(const struct voluta_agroup_map *agm, loff_t lba)
+agm_bkr_by_lba(const struct voluta_agroup_map *agm, voluta_lba_t lba)
 {
 	return agm_bkr_at(agm, agm_lba_slot(agm, lba));
 }
@@ -1143,14 +1144,15 @@ static void agm_calc_space_stat(const struct voluta_agroup_map *agm,
 }
 
 static const struct voluta_kivam *
-agm_kivam_of(const struct voluta_agroup_map *agm, loff_t lba)
+agm_kivam_of(const struct voluta_agroup_map *agm, voluta_lba_t lba)
 {
 	const size_t k_slot = (size_t)lba % ARRAY_SIZE(agm->ag_keys.k);
 
 	return &agm->ag_keys.k[k_slot];
 }
 
-static uint64_t agm_seed_of(const struct voluta_agroup_map *agm, loff_t lba)
+static uint64_t agm_seed_of(const struct voluta_agroup_map *agm,
+                            voluta_lba_t lba)
 {
 	const struct voluta_bk_rec *bkr = agm_bkr_by_lba(agm, lba);
 
@@ -1552,7 +1554,7 @@ void voluta_kivam_of_vnode_at(const struct voluta_vnode_info *agm_vi,
                               struct voluta_kivam *out_kivam)
 {
 	uint64_t seed;
-	const loff_t lba = vaddr->lba;
+	const voluta_lba_t lba = vaddr->lba;
 	const struct voluta_kivam *kivam = NULL;
 	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 

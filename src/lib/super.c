@@ -319,7 +319,7 @@ static void resolve_bk_xiovec(const struct voluta_sb_info *sbi,
 	out_xiov->fd = sbi->sb_vstore->vs_pstore.ps_vfd;
 }
 
-static int find_cached_bki(struct voluta_sb_info *sbi, loff_t lba,
+static int find_cached_bki(struct voluta_sb_info *sbi, voluta_lba_t lba,
                            struct voluta_bk_info **out_bki)
 {
 	*out_bki = voluta_cache_lookup_bki(sbi->sb_cache, lba);
@@ -353,7 +353,7 @@ static int spawn_bki_of(struct voluta_super_ctx *s_ctx,
                         const struct voluta_vaddr *vaddr)
 {
 	int err;
-	const loff_t lba = vaddr->lba;
+	const voluta_lba_t lba = vaddr->lba;
 	struct voluta_cache *cache = s_ctx->sbi->sb_cache;
 
 	for (size_t retry = 0; retry < 4; ++retry) {
@@ -1292,13 +1292,12 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 	int err;
 	voluta_index_t hs_index;
 	const size_t hs_count = 1; /* TODO: format more then one? */
-	const size_t ag_count = VOLUTA_VOLUME_NAG_MIN - 1;
 
 	voluta_assert_gt(hs_count, 0);
 	voluta_assert_gt(sbi->sb_spi.sp_ag_count, VOLUTA_NAG_IN_HS_PREFIX);
 
 	for (hs_index = 1; hs_index <= hs_count; ++hs_index) {
-		err = format_spmaps_at(sbi, hs_index, ag_count);
+		err = format_spmaps_at(sbi, hs_index, 1);
 		if (err) {
 			return err;
 		}

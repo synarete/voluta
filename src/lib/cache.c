@@ -305,7 +305,7 @@ static struct voluta_cache_elem *bki_ce(const struct voluta_bk_info *bki)
 	return unconst(ce);
 }
 
-static void bki_set_lba(struct voluta_bk_info *bki, loff_t lba)
+static void bki_set_lba(struct voluta_bk_info *bki, voluta_lba_t lba)
 {
 	bki->bk_lba = lba;
 }
@@ -1024,7 +1024,7 @@ static void cache_fini_blm(struct voluta_cache *cache)
 }
 
 static struct voluta_bk_info *
-cache_find_bki(const struct voluta_cache *cache, loff_t lba)
+cache_find_bki(const struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_cache_elem *ce;
 
@@ -1033,7 +1033,7 @@ cache_find_bki(const struct voluta_cache *cache, loff_t lba)
 }
 
 static void cache_store_bki(struct voluta_cache *cache,
-                            struct voluta_bk_info *bki, loff_t lba)
+                            struct voluta_bk_info *bki, voluta_lba_t lba)
 {
 	bki_set_lba(bki, lba);
 	lrumap_store(&cache->c_blm, &bki->bki_ce, lba);
@@ -1066,7 +1066,7 @@ void voluta_cache_forget_bki(struct voluta_cache *cache,
 }
 
 static struct voluta_bk_info *
-cache_spawn_bki(struct voluta_cache *cache, loff_t lba)
+cache_spawn_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_bk_info *bki;
 
@@ -1079,7 +1079,7 @@ cache_spawn_bki(struct voluta_cache *cache, loff_t lba)
 }
 
 static struct voluta_bk_info *
-cache_find_relru_bki(struct voluta_cache *cache, loff_t lba)
+cache_find_relru_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_bk_info *bki;
 
@@ -1091,7 +1091,7 @@ cache_find_relru_bki(struct voluta_cache *cache, loff_t lba)
 }
 
 struct voluta_bk_info *
-voluta_cache_lookup_bki(struct voluta_cache *cache, loff_t lba)
+voluta_cache_lookup_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_bk_info *bki = NULL;
 
@@ -1102,7 +1102,7 @@ voluta_cache_lookup_bki(struct voluta_cache *cache, loff_t lba)
 }
 
 static struct voluta_bk_info *
-cache_find_or_spawn_bki(struct voluta_cache *cache, loff_t lba)
+cache_find_or_spawn_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_bk_info *bki;
 
@@ -1151,7 +1151,7 @@ cache_find_evictable_bki(struct voluta_cache *cache)
 }
 
 static struct voluta_bk_info *
-cache_require_bki(struct voluta_cache *cache, loff_t lba)
+cache_require_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	struct voluta_bk_info *bki = NULL;
 
@@ -1164,7 +1164,7 @@ cache_require_bki(struct voluta_cache *cache, loff_t lba)
 }
 
 struct voluta_bk_info *
-voluta_cache_spawn_bki(struct voluta_cache *cache, loff_t lba)
+voluta_cache_spawn_bki(struct voluta_cache *cache, voluta_lba_t lba)
 {
 	return cache_require_bki(cache, lba);
 }

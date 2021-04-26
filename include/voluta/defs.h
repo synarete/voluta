@@ -107,7 +107,7 @@
 
 
 /* minimal number of allocation-groups in volume */
-#define VOLUTA_VOLUME_NAG_MIN           (2)
+#define VOLUTA_VOLUME_NAG_MIN           (2048L)
 
 /* maximal number of allocation-groups in volume */
 #define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_MAX)

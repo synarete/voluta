@@ -11,6 +11,7 @@ libvoluta_la_CPPFLAGS += -DVOLUTA_LIBPRIVATE=1
 libvoluta_la_LIBADD = @LIBS@
 libvoluta_la_LIBADD += $(PTHREAD_LIBS)
 libvoluta_la_SOURCES = $(NULL)
+libvoluta_la_SOURCES += address.c
 libvoluta_la_SOURCES += aliases.h
 libvoluta_la_SOURCES += archive.c
 libvoluta_la_SOURCES += avl.c

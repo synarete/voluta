@@ -296,34 +296,7 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op,
                     ino_t ino, char *str, size_t lim);
 
-/* vstore */
-int voluta_verify_ino(ino_t ino);
-
-int voluta_verify_off(loff_t off);
-
-int voluta_verify_meta(const struct voluta_vnode_info *vi);
-
-void voluta_stamp_view(struct voluta_view *view,
-                       const struct voluta_vaddr *vaddr);
-
-bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
-
-void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
-
-
-bool voluta_vtype_isubermap(enum voluta_vtype vtype);
-
-bool voluta_vtype_isdata(enum voluta_vtype vtype);
-
-size_t voluta_vtype_size(enum voluta_vtype vtype);
-
-ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
-
-size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
-
-bool voluta_vtype_ismeta(enum voluta_vtype vtype);
-
-
+/* address */
 voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
@@ -351,6 +324,33 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off);
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
                         voluta_index_t ag_index, size_t bn, size_t kbn);
+
+/* vstore */
+int voluta_verify_ino(ino_t ino);
+
+int voluta_verify_off(loff_t off);
+
+int voluta_verify_meta(const struct voluta_vnode_info *vi);
+
+void voluta_stamp_view(struct voluta_view *view,
+                       const struct voluta_vaddr *vaddr);
+
+bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
+
+void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
+
+
+bool voluta_vtype_isumap(enum voluta_vtype vtype);
+
+bool voluta_vtype_isdata(enum voluta_vtype vtype);
+
+size_t voluta_vtype_size(enum voluta_vtype vtype);
+
+ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
+
+size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
+
+bool voluta_vtype_ismeta(enum voluta_vtype vtype);
 
 
 void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off);

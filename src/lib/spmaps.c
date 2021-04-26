@@ -35,6 +35,12 @@ static uint64_t cpu_to_index(voluta_index_t index)
 	return cpu_to_le64(index);
 }
 
+static bool vtype_ismeta(enum voluta_vtype vtype)
+{
+	return !vtype_isdata(vtype) && !vtype_isnone(vtype);
+}
+
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static bool ag_index_isnull(voluta_index_t ag_index)

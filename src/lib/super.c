@@ -1523,7 +1523,7 @@ static int do_traverse_by_agmap(struct voluta_super_ctx *s_ctx)
 
 	for (size_t bk_idx = 0; bk_idx < VOLUTA_NBK_IN_AG; ++bk_idx) {
 		voluta_balloc_info_at(agm_vi, bk_idx, &bai);
-		if (vtype_isumap(bai.vtype)) {
+		if (voluta_vtype_isumap(bai.vtype)) {
 			continue;
 		}
 		err = traverse_by_balloc_info(s_ctx, &bai);
@@ -1788,7 +1788,7 @@ static int fetch_parents_of(struct voluta_super_ctx *s_ctx,
 	if (err) {
 		return err;
 	}
-	if (vtype_isumap(vaddr->vtype)) {
+	if (voluta_vtype_isumap(vaddr->vtype)) {
 		return 0;
 	}
 	err = fetch_agmap_of(s_ctx, vaddr);

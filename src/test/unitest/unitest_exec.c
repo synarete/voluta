@@ -18,7 +18,7 @@
 #include <error.h>
 #include "unitest.h"
 
-#define UT_VOLUME_SIZE (2L * VOLUTA_GIGA)
+#define UT_VOLUME_SIZE (128L * VOLUTA_GIGA)
 
 #define UT_DEFTGRP(t_) \
 	{ .tests = &(t_), .name = VOLUTA_STR(t_) }

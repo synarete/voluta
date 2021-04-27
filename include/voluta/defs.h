@@ -98,6 +98,10 @@
 /* number of leading allocation-groups for super/hyper-space meta-blocks */
 #define VOLUTA_NAG_IN_HS_PREFIX         (1)
 
+/* number of logical blocks within hyper-space */
+#define VOLUTA_NBK_IN_HS \
+	(VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG)
+
 /* size of single hyper-space (64G) */
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)

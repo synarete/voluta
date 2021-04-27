@@ -17,15 +17,14 @@
 #define _GNU_SOURCE 1
 #include "libvoluta.h"
 
+static voluta_lba_t lba_plus(voluta_lba_t lba, size_t nbk)
+{
+	return lba + (voluta_lba_t)nbk;
+}
 
 static voluta_lba_t lba_kbn_to_off(voluta_lba_t lba, size_t kbn)
 {
 	return lba_to_off(lba) + (voluta_lba_t)(kbn * VOLUTA_KB_SIZE);
-}
-
-static voluta_lba_t ag_index_to_lba(voluta_index_t ag_index)
-{
-	return (voluta_lba_t)(ag_index * VOLUTA_NBK_IN_AG);
 }
 
 static voluta_index_t lba_to_ag_index(voluta_lba_t lba)
@@ -33,12 +32,61 @@ static voluta_index_t lba_to_ag_index(voluta_lba_t lba)
 	return (voluta_index_t)(lba / VOLUTA_NBK_IN_AG);
 }
 
-static voluta_lba_t lba_within_ag(voluta_index_t ag_index, size_t bn)
+static voluta_lba_t ag_index_to_lba(voluta_index_t ag_index)
 {
-	voluta_assert_lt(bn, VOLUTA_NBK_IN_AG);
-
-	return ag_index_to_lba(ag_index) + (voluta_lba_t)bn;
+	return (voluta_lba_t)(ag_index * VOLUTA_NBK_IN_AG);
 }
+
+static voluta_lba_t lba_within_ag(voluta_index_t ag_index, size_t slot)
+{
+	voluta_assert_lt(slot, VOLUTA_NBK_IN_AG);
+
+	return lba_plus(ag_index_to_lba(ag_index), slot);
+}
+
+static voluta_index_t ag_to_hs_index(voluta_index_t ag_index)
+{
+	return ag_index / VOLUTA_NAG_IN_HS;
+}
+
+static voluta_index_t hs_to_ag_index(voluta_index_t hs_index)
+{
+	return hs_index * VOLUTA_NAG_IN_HS;
+}
+
+static size_t ag_index_mapping_slot(voluta_index_t ag_index)
+{
+	return ag_index % VOLUTA_NAG_IN_HS;
+}
+
+static inline size_t bk_lba_mapping_slot(voluta_lba_t bk_lba)
+{
+	return (size_t)bk_lba % VOLUTA_NBK_IN_AG;
+}
+
+static voluta_index_t ag_index_to_agm_ag_index(voluta_index_t ag_index)
+{
+	const voluta_index_t hs_index = ag_to_hs_index(ag_index);
+	const voluta_index_t agm_ag_ingex = hs_to_ag_index(hs_index);
+
+	voluta_assert_gt(ag_index, agm_ag_ingex);
+
+	return agm_ag_ingex;
+}
+
+static voluta_lba_t ag_index_to_agm_lba(voluta_index_t ag_index)
+{
+	const size_t ag_index_slot = ag_index_mapping_slot(ag_index);
+	const voluta_index_t agm_ag_ingex = ag_index_to_agm_ag_index(ag_index);
+
+	return lba_within_ag(agm_ag_ingex, ag_index_slot);
+}
+
+static inline voluta_lba_t bk_lba_to_agm_lba(voluta_lba_t bk_lba)
+{
+	return ag_index_to_agm_lba(lba_to_ag_index(bk_lba));
+}
+
 
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 {

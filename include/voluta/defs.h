@@ -95,9 +95,6 @@
 /* number of allocation-groups per hyper-space */
 #define VOLUTA_NAG_IN_HS                (1024L)
 
-/* number of leading allocation-groups for super/hyper-space meta-blocks */
-#define VOLUTA_NAG_IN_HS_PREFIX         (1)
-
 /* number of logical blocks within hyper-space */
 #define VOLUTA_NBK_IN_HS \
 	(VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG)
@@ -111,12 +108,12 @@
 
 
 /* minimal number of allocation-groups in volume */
-#define VOLUTA_VOLUME_NAG_MIN           (2048L)
+#define VOLUTA_VOLUME_NAG_MIN           (32L)
 
 /* maximal number of allocation-groups in volume */
 #define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_MAX)
 
-/* minimal bytes-size of underlying volume */
+/* minimal bytes-size of underlying volume (2G) */
 #define VOLUTA_VOLUME_SIZE_MIN \
 	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
@@ -329,10 +326,11 @@ enum voluta_hsf {
 /* allocation-groups flags */
 enum voluta_agf {
 	VOLUTA_AGF_FORMATTED    = (1 << 0),
-	VOLUTA_AGF_FRAGMENTED   = (1 << 1),
-	VOLUTA_AGF_USERDATA     = (1 << 2),
-	VOLUTA_AGF_METADATA     = (1 << 3),
-	VOLUTA_AGF_ITABLEROOT   = (1 << 4),
+	VOLUTA_AGF_MAPPING      = (1 << 1),
+	VOLUTA_AGF_FRAGMENTED   = (1 << 2),
+	VOLUTA_AGF_USERDATA     = (1 << 3),
+	VOLUTA_AGF_METADATA     = (1 << 4),
+	VOLUTA_AGF_ITABLEROOT   = (1 << 5),
 };
 
 

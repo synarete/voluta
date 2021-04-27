@@ -55,7 +55,7 @@ static void ut_statfs_empty(struct ut_env *ute)
 	ut_expect_eq(fs_size, vol_size);
 
 	used_bytes = (stv.f_blocks - stv.f_bfree) * stv.f_frsize;
-	ut_expect_gt(used_bytes, 2 * ag_size);
+	ut_expect_gt(used_bytes, ag_size);
 	ut_expect_lt(used_bytes, vol_size);
 
 	used_files = stv.f_files - stv.f_ffree;

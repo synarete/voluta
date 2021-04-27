@@ -473,14 +473,12 @@ static void fse_relax_cache(struct voluta_fs_env *fse)
 static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 {
 	int err;
-	loff_t sp_size;
 
-	err = voluta_resolve_volume_size(fse->args.volume, size, &sp_size);
+	err = voluta_sbi_setspace(fse->sbi, size);
 	if (err) {
-		log_err("illegal volume size: %s", fse->args.volume);
+		log_err("illegal volume size: %ld %s", size, fse->args.volume);
 		return err;
 	}
-	voluta_sbi_setspace(fse->sbi, sp_size);
 	return 0;
 }
 
@@ -493,20 +491,23 @@ static int fse_reload_space(struct voluta_fs_env *fse)
 {
 	int err;
 	loff_t zsize;
-	loff_t vsize;
-	loff_t psize;
+	loff_t persistent_size;
+	loff_t capacity_size;
+	loff_t address_space;
 
 	zsize = (loff_t)voluta_zb_size(&fse->sb->s_zero);
-	err = voluta_calc_vsize(zsize, 0, &vsize);
+	err = voluta_calc_volume_space(zsize, &capacity_size, &address_space);
 	if (err) {
+		log_err("illegal volume zsize: %ld ", zsize);
 		return err;
 	}
-	psize = fse_vstore_size(fse);
-	if (psize > vsize) {
-		log_err("illegal volume: vsize=%lu psize=%ld", vsize, psize);
+	persistent_size = fse_vstore_size(fse);
+	if (persistent_size > address_space) {
+		log_err("illegal volume: address_space=%ld "
+		        "persistent_size=%ld", address_space, persistent_size);
 		return -EINVAL;
 	}
-	err = fse_preset_space(fse, vsize);
+	err = fse_preset_space(fse, zsize);
 	if (err) {
 		return err;
 	}
@@ -563,8 +564,13 @@ static int fse_create_vstore(struct voluta_fs_env *fse)
 {
 	int err;
 	const char *path = fse->args.volume;
+	const loff_t address_space = fse->sbi->sb_spi.sp_address_space;
 
-	err = voluta_vstore_create(fse->vstore, path, 0);
+	err = voluta_vstore_create(fse->vstore, path, address_space);
+	if (err) {
+		return err;
+	}
+	err = voluta_vstore_expand(fse->vstore, address_space);
 	if (err) {
 		return err;
 	}
@@ -1011,25 +1017,19 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 static int fse_setup_sb(struct voluta_fs_env *fse,
                         const struct voluta_oper *op)
 {
-	size_t vol_size;
-	size_t ag_count;
-	struct voluta_super_block *sb = fse->sb;
 	struct voluta_hash512 pass_hash;
+	struct voluta_super_block *sb = fse->sb;
 
 	fse_calc_pass_hash(fse, &pass_hash);
-
-	vol_size = (size_t)fse->args.vsize;
-	ag_count = size_to_ag_count(vol_size);
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
 	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
-	voluta_sb_set_ag_count(sb, ag_count);
-	voluta_zb_set_size(&sb->s_zero, vol_size);
+	voluta_zb_set_size(&sb->s_zero, (size_t)fse->args.vsize);
 	return 0;
 }
 
-static int fse_prepare_volume(struct voluta_fs_env *fse)
+static int fse_preformat_volume(struct voluta_fs_env *fse)
 {
 	int err;
 
@@ -1071,7 +1071,7 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_prepare_volume(fse);
+	err = fse_preformat_volume(fse);
 	if (err) {
 		return err;
 	}

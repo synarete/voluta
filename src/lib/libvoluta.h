@@ -301,7 +301,11 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
+voluta_index_t voluta_agm_index_of_ag(voluta_index_t ag_index);
+
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
+
+bool voluta_ag_index_isumap(voluta_index_t ag_index);
 
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
 
@@ -324,6 +328,14 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off);
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
                         voluta_index_t ag_index, size_t bn, size_t kbn);
+
+int voluta_check_volume_size(loff_t size);
+
+int voluta_check_address_space(loff_t size);
+
+int voluta_calc_volume_space(loff_t volume_capacity,
+                             loff_t *out_capacity_size,
+                             loff_t *out_address_space);
 
 /* vstore */
 int voluta_verify_ino(ino_t ino);
@@ -418,7 +430,7 @@ void voluta_sbi_fini(struct voluta_sb_info *sbi);
 void voluta_sbi_setowner(struct voluta_sb_info *sbi,
                          const struct voluta_ucred *cred);
 
-void voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t sp_size);
+int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity);
 
 void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 
@@ -521,6 +533,9 @@ void voluta_kivam_of(const struct voluta_vnode_info *vi,
                      struct voluta_kivam *out_kivam);
 
 /* spmaps */
+void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
+                             const struct voluta_space_stat *other);
+
 void voluta_setup_hsmap(struct voluta_vnode_info *hsm_vi,
                         voluta_index_t hs_index, size_t nags_span);
 

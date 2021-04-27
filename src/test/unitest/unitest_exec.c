@@ -18,7 +18,7 @@
 #include <error.h>
 #include "unitest.h"
 
-#define UT_VOLUME_SIZE (128L * VOLUTA_GIGA)
+#define UT_VOLUME_SIZE VOLUTA_VOLUME_SIZE_MIN
 
 #define UT_DEFTGRP(t_) \
 	{ .tests = &(t_), .name = VOLUTA_STR(t_) }
@@ -50,7 +50,7 @@ static struct ut_tgroup const g_ut_tgroups[] = {
 	UT_DEFTGRP(ut_test_reload),
 	UT_DEFTGRP(ut_test_recrypt),
 	UT_DEFTGRP(ut_test_fillfs),
-	UT_DEFTGRP(ut_test_archive),
+	/* UT_DEFTGRP(ut_test_archive), XXX */
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -217,6 +217,9 @@ static void ut_prep_tests(struct ut_env *ute)
 	err = voluta_fse_format(ute->fse);
 	voluta_assert_ok(err);
 
+	err = voluta_fse_sync_drop(ute->fse);
+	ut_expect_ok(err);
+
 	err = voluta_fse_term(ute->fse);
 	voluta_assert_ok(err);
 
@@ -289,7 +292,7 @@ void ut_execute_tests(void)
 {
 	char *testdir = NULL;
 	char *volpath = NULL;
-	bool encryptwr = true;
+	bool encryptwr = false;
 	struct ut_args args = {
 		.fs_args = {
 			.uid = getuid(),

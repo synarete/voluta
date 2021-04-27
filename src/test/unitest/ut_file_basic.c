@@ -200,7 +200,6 @@ static void ut_file_unlinked_(struct ut_env *ute, loff_t off, size_t bsz)
 	ut_unlink_file(ute, dino, name);
 	ut_write_read(ute, ino, buf, bsz, off);
 	ut_release_file(ute, ino);
-	ut_reload_ok(ute, dino);
 	ut_lookup_noent(ute, dino, name);
 	ut_getattr_noent(ute, ino);
 	ut_rmdir_at_root(ute, name);

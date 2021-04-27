@@ -357,9 +357,9 @@ void ut_statfs_ok(struct ut_env *ute, ino_t ino, struct statvfs *st)
 	ut_expect_ok(err);
 }
 
-void ut_statfs_rootd(struct ut_env *ute, struct statvfs *st)
+void ut_statfs_rootd(struct ut_env *ute, struct statvfs *stv)
 {
-	ut_statfs_ok(ute, VOLUTA_INO_ROOT, st);
+	ut_statfs_ok(ute, VOLUTA_INO_ROOT, stv);
 }
 
 static void ut_expect_sane_statx(const struct statx *stx)

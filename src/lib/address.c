@@ -59,34 +59,21 @@ static size_t ag_index_mapping_slot(voluta_index_t ag_index)
 	return ag_index % VOLUTA_NAG_IN_HS;
 }
 
-static inline size_t bk_lba_mapping_slot(voluta_lba_t bk_lba)
-{
-	return (size_t)bk_lba % VOLUTA_NBK_IN_AG;
-}
-
 static voluta_index_t ag_index_to_agm_ag_index(voluta_index_t ag_index)
 {
 	const voluta_index_t hs_index = ag_to_hs_index(ag_index);
-	const voluta_index_t agm_ag_ingex = hs_to_ag_index(hs_index);
+	const voluta_index_t agm_ag_index = hs_to_ag_index(hs_index);
 
-	voluta_assert_gt(ag_index, agm_ag_ingex);
-
-	return agm_ag_ingex;
+	return agm_ag_index;
 }
 
 static voluta_lba_t ag_index_to_agm_lba(voluta_index_t ag_index)
 {
 	const size_t ag_index_slot = ag_index_mapping_slot(ag_index);
-	const voluta_index_t agm_ag_ingex = ag_index_to_agm_ag_index(ag_index);
+	const voluta_index_t agm_ag_index = ag_index_to_agm_ag_index(ag_index);
 
-	return lba_within_ag(agm_ag_ingex, ag_index_slot);
+	return lba_within_ag(agm_ag_index, ag_index_slot);
 }
-
-static inline voluta_lba_t bk_lba_to_agm_lba(voluta_lba_t bk_lba)
-{
-	return ag_index_to_agm_lba(lba_to_ag_index(bk_lba));
-}
-
 
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 {
@@ -98,46 +85,45 @@ static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 	const voluta_lba_t hsm_lba = (voluta_lba_t)(VOLUTA_LBA_SB + hs_index);
 
 	voluta_assert_gt(hs_index, 0);
-	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_AG);
+	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
 	return hsm_lba;
 }
 
-static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
-{
-	const voluta_lba_t agm_lba =  ag_index_to_lba(ag_index);
-
-	voluta_assert_gt(ag_index, 0);
-	voluta_assert_ge(agm_lba, VOLUTA_NBK_IN_AG);
-
-	return agm_lba;
-}
-
 voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index)
 {
-	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
-
-	return (ag_index / (nag_prefix + nag_in_hs)) + 1;
+	return ag_to_hs_index(ag_index);
 }
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot)
 {
-	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
-
-	voluta_assert_gt(hs_index, 0);
-
-	return nag_prefix + ((hs_index - 1) * nag_in_hs) + ag_slot;
+	return hs_to_ag_index(hs_index) + ag_slot;
 }
 
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index)
 {
-	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
+	return ag_index_mapping_slot(ag_index);
+}
 
-	voluta_assert_ge(ag_index, nag_prefix);
-	return (ag_index - nag_prefix) % nag_in_hs;
+voluta_index_t voluta_agm_index_of_ag(voluta_index_t ag_index)
+{
+	return ag_index_to_agm_ag_index(ag_index);
+}
+
+bool voluta_ag_index_isumap(voluta_index_t ag_index)
+{
+	voluta_index_t hs_index;
+	voluta_index_t agm_ag_index;
+
+	hs_index = ag_to_hs_index(ag_index);
+	if (hs_index < 1) {
+		return true;
+	}
+	agm_ag_index = hs_to_ag_index(hs_index);
+	if (ag_index == agm_ag_index) {
+		return true;
+	}
+	return false;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -216,12 +202,17 @@ void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
 	const voluta_lba_t lba = hsm_lba_by_index(hs_index);
 
+	voluta_assert_gt(hs_index, 0);
+
 	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, lba_to_off(lba));
 }
 
 void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
-	const voluta_lba_t lba = agm_lba_by_index(ag_index);
+	const voluta_lba_t lba = ag_index_to_agm_lba(ag_index);
+
+	voluta_assert_gt(ag_index, VOLUTA_NAG_IN_HS);
+	voluta_assert_ne(ag_index % VOLUTA_NAG_IN_HS, 0);
 
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }
@@ -239,3 +230,59 @@ void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
 
 	vaddr_setup(vaddr, vtype, off);
 }
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static bool value_within(long value, long lower_bound, long upper_bound)
+{
+	return (value >= lower_bound) && (value <= upper_bound) ;
+}
+
+static long nbytes_to_nags(long nbytes)
+{
+	return (long)nbytes_to_ag_count(nbytes);
+}
+
+static long nags_to_nbytes(long nags)
+{
+	return ag_count_to_nbytes((size_t)nags);
+}
+
+int voluta_check_volume_size(loff_t size)
+{
+	const long nags = nbytes_to_nags(size);
+	const long nag_min = VOLUTA_VOLUME_NAG_MIN;
+	const long nag_max = VOLUTA_VOLUME_NAG_MAX;
+
+	return value_within(nags, nag_min, nag_max) ? 0 : -EINVAL;
+}
+
+int voluta_check_address_space(loff_t size)
+{
+	const long nags = nbytes_to_nags(size);
+	const long nag_min = VOLUTA_NAG_IN_HS;
+	const long nag_max = VOLUTA_VOLUME_NAG_MAX;
+
+	return value_within(nags, nag_min, nag_max) ? 0 : -EINVAL;
+}
+
+int voluta_calc_volume_space(loff_t volume_capacity,
+                             loff_t *out_capacity_size,
+                             loff_t *out_address_space)
+{
+	int err;
+	long nags;
+
+	err = voluta_check_volume_size(volume_capacity);
+	if (err) {
+		return err;
+	}
+	nags = nbytes_to_nags(volume_capacity);
+
+	*out_address_space = nags_to_nbytes(nags + VOLUTA_NAG_IN_HS);
+	*out_capacity_size = nags_to_nbytes(nags);
+
+	return 0;
+}
+
+

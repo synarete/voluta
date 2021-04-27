@@ -625,13 +625,8 @@ int voluta_vstore_create(struct voluta_vstore *vstore,
                          const char *path, loff_t size)
 {
 	int err;
-	const loff_t vol_size_min = VOLUTA_VOLUME_SIZE_MIN;
 
 	err = voluta_pstore_create(&vstore->vs_pstore, path, size);
-	if (err) {
-		return err;
-	}
-	err = voluta_vstore_expand(vstore, vol_size_min);
 	if (err) {
 		return err;
 	}

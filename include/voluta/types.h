@@ -291,14 +291,15 @@ struct voluta_vnode_info {
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
+	struct voluta_sb_info          *v_sbi;
+	struct voluta_bk_info          *v_bki;
+	struct voluta_vnode_info       *v_pvi;
 	struct voluta_cache_elem        v_ce;
 	struct voluta_list_head         v_dq_mlh;
 	struct voluta_list_head         v_dq_blh;
 	struct voluta_avl_node          v_ds_an;
-	struct voluta_sb_info          *v_sbi;
-	struct voluta_bk_info          *v_bki;
-	struct voluta_vnode_info       *v_pvi;
 	struct voluta_vnode_info       *v_ds_next;
+
 	long v_ds_key;
 	int v_dirty;
 	int v_verify;
@@ -350,21 +351,20 @@ struct voluta_cache {
 
 /* space accounting */
 struct voluta_space_stat {
-	ssize_t ndata;
-	ssize_t nmeta;
-	ssize_t nfiles;
-	ssize_t zero;
+	ssize_t         ndata;
+	ssize_t         nmeta;
+	ssize_t         nfiles;
+	ssize_t         zero;
 };
 
 struct voluta_space_info {
-	loff_t  sp_size;
-	size_t  sp_hs_count;
-	size_t  sp_hs_active;
+	struct voluta_space_stat sp_used;
+	loff_t          sp_capcity_size;
+	loff_t          sp_address_space;
+	size_t          sp_hs_count;
+	voluta_index_t  sp_hs_active;
 	voluta_index_t  sp_hs_index_lo;
-	size_t  sp_ag_count;
-	ssize_t sp_used_meta;
-	ssize_t sp_used_data;
-	ssize_t sp_nfiles;
+	size_t          sp_ag_count;
 };
 
 /* encrypted output buffer */

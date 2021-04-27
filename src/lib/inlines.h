@@ -150,9 +150,14 @@ static inline loff_t ag_index_to_off(voluta_index_t ag_index)
 	return (loff_t)(ag_index * VOLUTA_AG_SIZE);
 }
 
-static inline size_t size_to_ag_count(size_t nbytes)
+static inline size_t nbytes_to_ag_count(loff_t nbytes)
 {
-	return nbytes / VOLUTA_AG_SIZE;
+	return (size_t)nbytes / VOLUTA_AG_SIZE;
+}
+
+static inline loff_t ag_count_to_nbytes(size_t nags)
+{
+	return (loff_t)nags * VOLUTA_AG_SIZE;
 }
 
 

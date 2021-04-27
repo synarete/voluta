@@ -161,13 +161,6 @@ static loff_t vol_size_fixup(loff_t size)
 	return (loff_t)(vol_size_to_nags(size) * VOLUTA_AG_SIZE);
 }
 
-static int vol_size_check(loff_t size)
-{
-	const loff_t size_min = VOLUTA_VOLUME_SIZE_MIN;
-	const loff_t size_max = VOLUTA_VOLUME_SIZE_MAX;
-
-	return ((size < size_min) || (size > size_max)) ? -EINVAL : 0;
-}
 
 int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size)
 {
@@ -176,7 +169,7 @@ int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size)
 	if (size_want == 0) {
 		size_want = size_cur;
 	}
-	err = vol_size_check(size_want);
+	err = voluta_check_volume_size(size_want);
 	if (err) {
 		return err;
 	}
@@ -282,7 +275,7 @@ static int pstore_create_mem(struct voluta_pstore *pstore, loff_t size)
 	int dfd = -1;
 	int vfd = -1;
 
-	err = vol_size_check(size);
+	err = voluta_check_volume_size(size);
 	if (err) {
 		return err;
 	}
@@ -324,6 +317,11 @@ static int pstore_create_reg(struct voluta_pstore *pstore,
 		close_fd(&dfd);
 		return err;
 	}
+	err = voluta_sys_ftruncate(vfd, size_max);
+	if (err) {
+		close_fds(&vfd, &dfd);
+		return err;
+	}
 	pstore_setup(pstore, dfd, vfd, 0, size_max, 0, o_flags);
 	return 0;
 }
@@ -347,7 +345,7 @@ static int pstore_create_blk(struct voluta_pstore *pstore,
 		close_fd(&vfd);
 		return err;
 	}
-	err = vol_size_check(sz);
+	err = voluta_check_volume_size(sz);
 	if (err) {
 		close_fd(&vfd);
 		return err;
@@ -422,7 +420,7 @@ int voluta_pstore_expand(struct voluta_pstore *pstore, loff_t cap)
 	int err;
 
 	voluta_assert_ge(pstore->ps_capacity, pstore->ps_size);
-	if (pstore->ps_capacity >= cap) {
+	if (pstore->ps_capacity > cap) {
 		return 0;
 	}
 	if (pstore->ps_ctl_flags & VOLUTA_F_BLKDEV) {
@@ -495,18 +493,14 @@ int voluta_pstore_read(const struct voluta_pstore *pstore,
                        loff_t off, size_t bsz, void *buf)
 {
 	int err;
-	size_t nrd = 0;
 
 	err = voluta_pstore_check_io(pstore, false, off, bsz);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_pread(pstore->ps_vfd, buf, bsz, off, &nrd);
+	err = voluta_sys_preadn(pstore->ps_vfd, buf, bsz, off);
 	if (err) {
 		return err;
-	}
-	if (nrd != bsz) {
-		return -EIO;
 	}
 	return 0;
 }

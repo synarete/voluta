@@ -40,13 +40,12 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
                        struct voluta_vnode_info **out_vi);
 static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
                        struct voluta_vnode_info **out_vi);
-static int format_spmaps_at(struct voluta_sb_info *sbi,
-                            voluta_index_t hs_index, size_t nags);
 static int fetch_parents_of(struct voluta_super_ctx *s_ctx,
                             const struct voluta_vaddr *vaddr);
-static int format_next_agmaps(struct voluta_sb_info *sbi,
-                              struct voluta_vnode_info *hsm_vi,
-                              size_t nags_want, size_t *out_nags_fmt);
+static int format_head_spmaps_of(struct voluta_sb_info *sbi,
+                                 voluta_index_t hs_index);
+static int format_next_agmap(struct voluta_sb_info *sbi,
+                             struct voluta_vnode_info *hsm_vi);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -59,39 +58,44 @@ static struct voluta_cache *cache_of(const struct voluta_super_ctx *s_ctx)
 
 static void spi_init(struct voluta_space_info *spi)
 {
-	spi->sp_size = -1;
+	spi->sp_capcity_size = -1;
+	spi->sp_address_space = -1;
 	spi->sp_hs_count = 0;
 	spi->sp_hs_active = 0;
 	spi->sp_hs_index_lo = 0;
 	spi->sp_ag_count = 0;
-	spi->sp_used_meta = 0;
-	spi->sp_used_data = 0;
-	spi->sp_nfiles = 0;
+	spi->sp_used.nmeta = 0;
+	spi->sp_used.ndata = 0;
+	spi->sp_used.nfiles = 0;
 }
 
 static void spi_fini(struct voluta_space_info *spi)
 {
-	spi->sp_size = -1;
+	spi->sp_capcity_size = -1;
+	spi->sp_address_space = -1;
 	spi->sp_hs_count = 0;
 	spi->sp_hs_active = 0;
 	spi->sp_hs_index_lo = 0;
 	spi->sp_ag_count = 0;
-	spi->sp_used_meta = INT_MIN;
-	spi->sp_used_data = INT_MIN;
-	spi->sp_nfiles = INT_MIN;
+	spi->sp_used.nmeta = INT_MIN;
+	spi->sp_used.ndata = INT_MIN;
+	spi->sp_used.nfiles = INT_MIN;
 }
 
-static void spi_setup(struct voluta_space_info *spi, loff_t space_size)
+static void spi_setup(struct voluta_space_info *spi,
+                      loff_t capacity_size, loff_t address_space)
 {
 	size_t ag_count;
 	size_t hs_count;
 	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-	const size_t nag_prefix = VOLUTA_NAG_IN_HS_PREFIX;
 
-	ag_count = size_to_ag_count((size_t)space_size);
-	hs_count = div_round_up(ag_count - nag_prefix, nag_in_hs);
+	voluta_assert_ge(address_space, capacity_size);
 
-	spi->sp_size = space_size;
+	ag_count = nbytes_to_ag_count(address_space);
+	hs_count = div_round_up(ag_count, nag_in_hs);
+
+	spi->sp_capcity_size = capacity_size;
+	spi->sp_address_space = address_space;
 	spi->sp_ag_count = ag_count;
 	spi->sp_hs_count = hs_count;
 	spi->sp_hs_active = 0;
@@ -107,34 +111,28 @@ static void spi_mark_hs_active(struct voluta_space_info *spi,
 static void spi_accum_stat(struct voluta_space_info *spi,
                            const struct voluta_space_stat *sp_st)
 {
-	spi->sp_used_data += sp_st->ndata;
-	spi->sp_used_meta += sp_st->nmeta;
-	spi->sp_nfiles += sp_st->nfiles;
+	voluta_accum_space_stat(&spi->sp_used, sp_st);
 
-	voluta_assert_ge(spi->sp_used_data, 0);
-	voluta_assert_ge(spi->sp_used_meta, 0);
-	voluta_assert_ge(spi->sp_nfiles, 0);
+	voluta_assert_ge(spi->sp_used.ndata, 0);
+	voluta_assert_ge(spi->sp_used.nmeta, 0);
+	voluta_assert_ge(spi->sp_used.nfiles, 0);
 }
 
 static ssize_t spi_used_bytes(const struct voluta_space_info *spi)
 {
-	return spi->sp_used_meta + spi->sp_used_data;
+	return spi->sp_used.nmeta + spi->sp_used.ndata;
 }
 
 static ssize_t spi_space_limit(const struct voluta_space_info *spi)
 {
-	const size_t ag_size = VOLUTA_AG_SIZE;
-
-	return (ssize_t)(ag_size * spi->sp_ag_count);
+	return spi->sp_capcity_size;
 }
 
-static ssize_t spi_calc_inodes_limit(const struct voluta_space_info *spi)
+static ssize_t spi_inodes_limit(const struct voluta_space_info *spi)
 {
 	const ssize_t inode_size = VOLUTA_INODE_SIZE;
-	const ssize_t bytes_limit = spi_space_limit(spi);
-	const ssize_t inodes_limit = (bytes_limit / inode_size) >> 2;
 
-	return inodes_limit;
+	return (spi_space_limit(spi) / inode_size) >> 2;
 }
 
 static bool spi_may_alloc_data(const struct voluta_space_info *spi, size_t nb)
@@ -156,8 +154,8 @@ static bool spi_may_alloc_meta(const struct voluta_space_info *spi,
 	if ((unsed + (ssize_t)nb) > limit) {
 		ret = false;
 	} else if (new_file) {
-		files_max = spi_calc_inodes_limit(spi);
-		ret = (spi->sp_nfiles < files_max);
+		files_max = spi_inodes_limit(spi);
+		ret = (spi->sp_used.nfiles < files_max);
 	}
 	return ret;
 }
@@ -170,10 +168,7 @@ static void spi_update_stats(struct voluta_space_info *spi,
 	ssize_t nbytes_max;
 	ssize_t nbytes_use;
 
-	spi->sp_used_data += sp_st->ndata;
-	spi->sp_used_meta += sp_st->nmeta;
-	spi->sp_nfiles += sp_st->nfiles;
-
+	voluta_accum_space_stat(&spi->sp_used, sp_st);
 	nbytes_max = spi_space_limit(spi);
 	nbytes_use = spi_used_bytes(spi);
 	nbytes_dif = nbytes_max - nbytes_use;
@@ -190,12 +185,13 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 	spi_update_stats(spi, spi->sp_hs_index_lo, &sp_st);
 }
 
-static void spi_mark_used_prefix_ags(struct voluta_space_info *spi)
+static void spi_mark_used_super(struct voluta_space_info *spi)
 {
-	const loff_t off = ag_index_to_off(VOLUTA_NAG_IN_HS_PREFIX);
+	/* FIXME bad logic XXX */
+	const loff_t off = VOLUTA_AG_SIZE;
 
-	if (off > spi->sp_used_meta) {
-		spi->sp_used_meta = off;
+	if (off > spi->sp_used.nmeta) {
+		spi->sp_used.nmeta = off;
 	}
 }
 
@@ -289,10 +285,10 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 	const struct voluta_space_info *spi = &sbi->sb_spi;
 	const ssize_t nbytes_max = spi_space_limit(spi);
 	const ssize_t nbytes_use = spi_used_bytes(spi);
-	const ssize_t nfiles_max = spi_calc_inodes_limit(spi);
+	const ssize_t nfiles_max = spi_inodes_limit(spi);
 
 	voluta_assert_ge(nbytes_max, nbytes_use);
-	voluta_assert_ge(nfiles_max, spi->sp_nfiles);
+	voluta_assert_ge(nfiles_max, spi->sp_used.nfiles);
 
 	voluta_memzero(out_stvfs, sizeof(*out_stvfs));
 	out_stvfs->f_bsize = VOLUTA_BK_SIZE;
@@ -301,7 +297,7 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 	out_stvfs->f_bfree = bytes_to_fsblkcnt(nbytes_max - nbytes_use);
 	out_stvfs->f_bavail = out_stvfs->f_bfree;
 	out_stvfs->f_files = (fsfilcnt_t)nfiles_max;
-	out_stvfs->f_ffree = (fsfilcnt_t)(nfiles_max - spi->sp_nfiles);
+	out_stvfs->f_ffree = (fsfilcnt_t)(nfiles_max - spi->sp_used.nfiles);
 	out_stvfs->f_favail = out_stvfs->f_ffree;
 	out_stvfs->f_namemax = VOLUTA_NAME_MAX;
 	out_stvfs->f_fsid = VOLUTA_SUPER_MAGIC;
@@ -542,7 +538,7 @@ static int try_allocate_by_vtype(struct voluta_vnode_info *hsm_vi,
                                  struct voluta_vaddr *out_vaddr)
 {
 	int err;
-	struct voluta_ag_range ag_range;
+	struct voluta_ag_range ag_range = { .beg = 0, .end = 0 };
 
 	voluta_ag_range_of(hsm_vi, &ag_range);
 
@@ -583,18 +579,14 @@ static int do_allocate_from(struct voluta_vnode_info *hsm_vi,
                             struct voluta_vaddr *out_vaddr)
 {
 	int err;
-	size_t nags_fmt = 0;
 
 	err = voluta_allocate_space_at(hsm_vi, vtype, out_vaddr);
 	if (err != -ENOSPC) {
 		return err;
 	}
-	err = format_next_agmaps(hsm_vi->v_sbi, hsm_vi, 1, &nags_fmt);
+	err = format_next_agmap(hsm_vi->v_sbi, hsm_vi);
 	if (err) {
 		return err;
-	}
-	if (nags_fmt == 0) {
-		return -ENOSPC;
 	}
 	err = voluta_allocate_space_at(hsm_vi, vtype, out_vaddr);
 	if (err != -ENOSPC) {
@@ -649,8 +641,8 @@ static int expand_space(struct voluta_sb_info *sbi)
 	int err = -ENOSPC;
 	const struct voluta_space_info *spi = &sbi->sb_spi;
 
-	if (spi->sp_hs_active < spi->sp_hs_count) {
-		err = format_spmaps_at(sbi, spi->sp_hs_active + 1, 1);
+	if ((spi->sp_hs_active + 1) < spi->sp_hs_count) {
+		err = format_head_spmaps_of(sbi, spi->sp_hs_active + 1);
 	}
 	if (err) {
 		log_dbg("can not expand space: "\
@@ -1085,7 +1077,7 @@ int voluta_reload_itable(struct voluta_sb_info *sbi)
 
 int voluta_adjust_super(struct voluta_sb_info *sbi)
 {
-	spi_mark_used_prefix_ags(&sbi->sb_spi);
+	spi_mark_used_super(&sbi->sb_spi);
 	return 0;
 }
 
@@ -1165,9 +1157,9 @@ static void update_spi_by_hsm(struct voluta_sb_info *sbi,
 	spi_mark_hs_active(spi, hs_index);
 }
 
-static void update_spi_on_hsp(struct voluta_sb_info *sbi)
+static void update_spi_on_hsm(struct voluta_sb_info *sbi)
 {
-	spi_update_meta(&sbi->sb_spi, VOLUTA_AG_SIZE);
+	spi_update_meta(&sbi->sb_spi, vtype_ssize(VOLUTA_VTYPE_HSMAP));
 }
 
 static void update_spi_on_agm(struct voluta_sb_info *sbi)
@@ -1175,11 +1167,11 @@ static void update_spi_on_agm(struct voluta_sb_info *sbi)
 	STATICASSERT_EQ(sizeof(struct voluta_bk_rec), 56);
 	STATICASSERT_EQ(sizeof(struct voluta_agroup_map), VOLUTA_BK_SIZE);
 
-	spi_update_meta(&sbi->sb_spi, VOLUTA_BK_SIZE);
+	spi_update_meta(&sbi->sb_spi, vtype_ssize(VOLUTA_VTYPE_AGMAP));
 }
 
-static int spawn_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
-                       struct voluta_vnode_info **out_vi)
+static int spawn_hsmap_of(struct voluta_sb_info *sbi, voluta_index_t hs_index,
+                          struct voluta_vnode_info **out_vi)
 {
 	struct voluta_vaddr vaddr;
 	struct voluta_super_ctx s_ctx = { .sbi = sbi, };
@@ -1203,27 +1195,29 @@ static int format_hsmap(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vnode_info *hsm_vi;
 
-	err = spawn_hsmap(sbi, hs_index, &hsm_vi);
+	err = spawn_hsmap_of(sbi, hs_index, &hsm_vi);
 	if (err) {
 		return err;
 	}
 	setup_hsmap(hsm_vi, hs_index, nags_span);
-	update_spi_on_hsp(sbi);
+	update_spi_on_hsm(sbi);
 
 	*out_vi = hsm_vi;
 	return 0;
 }
 
 static int mark_prev_hsmap_with_next(struct voluta_sb_info *sbi,
-                                     voluta_index_t hs_index_prev)
+                                     voluta_index_t hs_index)
 {
 	int err;
+	voluta_index_t hs_index_prev;
 	struct voluta_vnode_info *hsm_vi = NULL;
 	const size_t hs_count = sbi->sb_spi.sp_hs_count;
 
-	if ((hs_index_prev < 1) || (hs_index_prev >= hs_count)) {
+	if ((hs_index <= 1) || (hs_index >= hs_count)) {
 		return 0;
 	}
+	hs_index_prev = hs_index - 1;
 	err = stage_hsmap(sbi, hs_index_prev, &hsm_vi);
 	if (err) {
 		return err;
@@ -1232,32 +1226,39 @@ static int mark_prev_hsmap_with_next(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static size_t nags_in_hs(const struct voluta_sb_info *sbi,
-                         voluta_index_t hs_index)
+static size_t
+nags_limit_of(const struct voluta_sb_info *sbi, voluta_index_t hs_index)
 {
 	size_t nags;
 	voluta_index_t ag_index_base;
 	voluta_index_t ag_index_next;
-	const size_t ag_count = sbi->sb_spi.sp_ag_count;
+	const struct voluta_space_info *spi = &sbi->sb_spi;
+
+	voluta_assert_gt(spi->sp_ag_count, VOLUTA_NAG_IN_HS);
 
 	ag_index_base = voluta_ag_index_by_hs(hs_index, 0);
 	ag_index_next = voluta_ag_index_by_hs(hs_index + 1, 0);
-	nags = min(ag_index_next - ag_index_base, ag_count - ag_index_base);
+	voluta_assert_ge(ag_index_base, VOLUTA_NAG_IN_HS);
+
+	nags = min(ag_index_next - ag_index_base,
+		   spi->sp_ag_count - ag_index_base);
+
+	voluta_assert_lt(nags, spi->sp_ag_count);
 
 	return nags;
 }
 
-static int format_hsmap_at(struct voluta_sb_info *sbi, voluta_index_t hs_index,
+static int format_hsmap_of(struct voluta_sb_info *sbi, voluta_index_t hs_index,
                            struct voluta_vnode_info **out_hsm_vi)
 {
 	int err;
-	const size_t nags_span = nags_in_hs(sbi, hs_index);
+	const size_t nags_span = nags_limit_of(sbi, hs_index);
 
 	err = format_hsmap(sbi, hs_index, nags_span, out_hsm_vi);
 	if (err) {
 		return err;
 	}
-	err = mark_prev_hsmap_with_next(sbi, hs_index - 1);
+	err = mark_prev_hsmap_with_next(sbi, hs_index);
 	if (err) {
 		return err;
 	}
@@ -1265,24 +1266,20 @@ static int format_hsmap_at(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 	return 0;
 }
 
-static int format_spmaps_at(struct voluta_sb_info *sbi,
-                            voluta_index_t hs_index, size_t nags)
+static int format_head_spmaps_of(struct voluta_sb_info *sbi,
+                                 voluta_index_t hs_index)
 {
 	int err;
-	size_t nags_fmt = 0;
 	struct voluta_vnode_info *hsm_vi = NULL;
 
-	err = format_hsmap_at(sbi, hs_index, &hsm_vi);
+	err = format_hsmap_of(sbi, hs_index, &hsm_vi);
 	if (err) {
 		return err;
 	}
-	err = format_next_agmaps(sbi, hsm_vi, nags, &nags_fmt);
+	err = format_next_agmap(sbi, hsm_vi);
 	if (err) {
+		log_err("failed to format next ags: hs_index=%lu", hs_index);
 		return err;
-	}
-	if (nags_fmt == 0) {
-		log_err("failed to format new ags: hs_index=%lu", hs_index);
-		return -EFSCORRUPTED;
 	}
 	return 0;
 }
@@ -1294,10 +1291,9 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 	const size_t hs_count = 1; /* TODO: format more then one? */
 
 	voluta_assert_gt(hs_count, 0);
-	voluta_assert_gt(sbi->sb_spi.sp_ag_count, VOLUTA_NAG_IN_HS_PREFIX);
 
 	for (hs_index = 1; hs_index <= hs_count; ++hs_index) {
-		err = format_spmaps_at(sbi, hs_index, 1);
+		err = format_head_spmaps_of(sbi, hs_index);
 		if (err) {
 			return err;
 		}
@@ -1311,9 +1307,9 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int spawn_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
-                       struct voluta_vnode_info *hsm_vi,
-                       struct voluta_vnode_info **out_vi)
+static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
+                          struct voluta_vnode_info *hsm_vi,
+                          struct voluta_vnode_info **out_vi)
 {
 	struct voluta_vaddr vaddr;
 	struct voluta_super_ctx s_ctx = {
@@ -1338,9 +1334,9 @@ static int unlimit_agmap_on_pstore(struct voluta_sb_info *sbi,
 	return voluta_vstore_expand(vstore, cap);
 }
 
-static int do_format_agmap(struct voluta_sb_info *sbi,
-                           struct voluta_vnode_info *hsm_vi,
-                           voluta_index_t ag_index)
+static int do_format_agmap_of(struct voluta_sb_info *sbi,
+                              struct voluta_vnode_info *hsm_vi,
+                              voluta_index_t ag_index)
 {
 	int err;
 	struct voluta_vnode_info *agm_vi;
@@ -1349,7 +1345,7 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_agmap(sbi, ag_index, hsm_vi, &agm_vi);
+	err = spawn_agmap_of(sbi, ag_index, hsm_vi, &agm_vi);
 	if (err) {
 		return err;
 	}
@@ -1360,36 +1356,55 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int format_nagmaps(struct voluta_sb_info *sbi,
-                          struct voluta_vnode_info *hsm_vi,
-                          voluta_index_t ag_index_start, size_t nags)
+static int format_agmap_of(struct voluta_sb_info *sbi,
+                           struct voluta_vnode_info *hsm_vi,
+                           voluta_index_t ag_index)
 {
-	int err = 0;
-	voluta_index_t ag_index = ag_index_start;
+	int err;
 
 	vi_incref(hsm_vi);
-	while (nags-- && !err) {
-		err = do_format_agmap(sbi, hsm_vi, ag_index++);
-	}
+	err = do_format_agmap_of(sbi, hsm_vi, ag_index);
 	vi_decref(hsm_vi);
 	return err;
 }
 
-static int format_next_agmaps(struct voluta_sb_info *sbi,
-                              struct voluta_vnode_info *hsm_vi,
-                              size_t nags_want, size_t *out_nags_fmt)
+static bool isumap_ag_index(voluta_index_t ag_index)
 {
-	int err;
-	size_t nags;
+	return voluta_ag_index_isumap(ag_index);
+}
+
+static int next_unformatted_ag(const struct voluta_vnode_info *hsm_vi,
+                               voluta_index_t *out_ag_index)
+{
+	voluta_index_t ag_index;
 	struct voluta_ag_range ag_range;
 
 	voluta_ag_range_of(hsm_vi, &ag_range);
-	nags = min(nags_want, ag_range.end - ag_range.fin);
-	err = format_nagmaps(sbi, hsm_vi, ag_range.fin, nags);
+	ag_index = ag_range.fin;
+	if (isumap_ag_index(ag_index)) {
+		ag_index++;
+	}
+	if (ag_index >= ag_range.end) {
+		return -ENOSPC;
+	}
+	*out_ag_index = ag_index;
+	return 0;
+}
+
+static int format_next_agmap(struct voluta_sb_info *sbi,
+                             struct voluta_vnode_info *hsm_vi)
+{
+	int err;
+	voluta_index_t ag_index;
+
+	err = next_unformatted_ag(hsm_vi, &ag_index);
 	if (err) {
 		return err;
 	}
-	*out_nags_fmt = nags;
+	err = format_agmap_of(sbi, hsm_vi, ag_index);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
@@ -1406,13 +1421,13 @@ static int load_hsmap_at(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 		return err;
 	}
 	update_spi_by_hsm(sbi, hsm_vi);
-	update_spi_on_hsp(sbi);
+	update_spi_on_hsm(sbi);
 
 	*out_hsm_vi = hsm_vi;
 	return 0;
 }
 
-static int load_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index)
+static int load_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index)
 {
 	int err;
 	struct voluta_vnode_info *agm_vi;
@@ -1437,10 +1452,10 @@ static int load_first_agmap_of(struct voluta_sb_info *sbi,
 {
 	int err;
 	const voluta_index_t hs_index = voluta_hs_index_of(hsm_vi);
-	const voluta_index_t ag_index = voluta_ag_index_by_hs(hs_index, 0);
+	const voluta_index_t ag_index = voluta_ag_index_by_hs(hs_index, 1);
 
 	vi_incref(hsm_vi);
-	err = load_agmap(sbi, ag_index);
+	err = load_agmap_of(sbi, ag_index);
 	vi_decref(hsm_vi);
 	return err;
 }
@@ -1564,6 +1579,9 @@ static int do_traverse_by_hsmap(struct voluta_super_ctx *s_ctx)
 
 	voluta_ag_range_of(hsm_vi, &ag_range);
 	for (ag_index = ag_range.beg; ag_index < ag_range.fin; ++ag_index) {
+		if (isumap_ag_index(ag_index)) {
+			continue;
+		}
 		err = stage_agmap(s_ctx->sbi, ag_index, &s_ctx->agm_vi);
 		if (err) {
 			return err;
@@ -1748,9 +1766,19 @@ void voluta_sbi_setowner(struct voluta_sb_info *sbi,
 	sbi->sb_owner.umask = cred->umask;
 }
 
-void voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t sp_size)
+int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity)
 {
-	spi_setup(&sbi->sb_spi, sp_size);
+	int err;
+	loff_t capacity_size = 0;
+	loff_t address_space = 0;
+
+	err = voluta_calc_volume_space(volume_capacity,
+	                               &capacity_size,
+	                               &address_space);
+	if (!err) {
+		spi_setup(&sbi->sb_spi, capacity_size, address_space);
+	}
+	return err;
 }
 
 void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f)

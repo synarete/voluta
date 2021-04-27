@@ -387,9 +387,8 @@ voluta_sb_kivam_of(const struct voluta_super_block *sb,
                    voluta_index_t hs_index)
 {
 	const struct voluta_keys_block8 *ivks = &sb->s_keys;
-	const size_t slot = (hs_index - 1) % ARRAY_SIZE(ivks->k);
+	const size_t slot = hs_index % ARRAY_SIZE(ivks->k);
 
-	voluta_assert_gt(hs_index, 0);
 	return &ivks->k[slot];
 }
 

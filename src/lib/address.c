@@ -129,6 +129,7 @@ bool voluta_ag_index_isumap(voluta_index_t ag_index)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_vaddr s_vaddr_none = {
+	.hs_index = VOLUTA_HS_INDEX_NULL,
 	.ag_index = VOLUTA_AG_INDEX_NULL,
 	.off = VOLUTA_OFF_NULL,
 	.lba = VOLUTA_LBA_NULL,
@@ -148,7 +149,7 @@ voluta_index_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
 
 voluta_index_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
 {
-	return voluta_hs_index_of_ag(vaddr->ag_index);
+	return vaddr->hs_index;
 }
 
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
@@ -160,16 +161,19 @@ void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
 		vaddr->off = off;
 		vaddr->lba = off_to_lba(off);
 		vaddr->ag_index = lba_to_ag_index(vaddr->lba);
+		vaddr->hs_index = ag_to_hs_index(vaddr->ag_index);
 	} else {
 		vaddr->off = VOLUTA_OFF_NULL;
 		vaddr->lba = VOLUTA_LBA_NULL;
 		vaddr->ag_index = VOLUTA_AG_INDEX_NULL;
+		vaddr->hs_index = VOLUTA_HS_INDEX_NULL;
 	}
 }
 
 void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
                          struct voluta_vaddr *other)
 {
+	other->hs_index = vaddr->hs_index;
 	other->ag_index = vaddr->ag_index;
 	other->off = vaddr->off;
 	other->lba = vaddr->lba;
@@ -179,6 +183,7 @@ void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
 
 void voluta_vaddr_reset(struct voluta_vaddr *vaddr)
 {
+	vaddr->hs_index = VOLUTA_HS_INDEX_NULL;
 	vaddr->ag_index = VOLUTA_AG_INDEX_NULL;
 	vaddr->off = VOLUTA_OFF_NULL;
 	vaddr->lba = VOLUTA_LBA_NULL;

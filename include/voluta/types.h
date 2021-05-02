@@ -238,6 +238,7 @@ struct voluta_iattr {
 
 /* logical-address within underlying volume space */
 struct voluta_vaddr {
+	voluta_index_t  hs_index;
 	voluta_index_t  ag_index;
 	voluta_lba_t    lba;
 	loff_t          off;
@@ -293,16 +294,14 @@ struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
 	struct voluta_sb_info          *v_sbi;
 	struct voluta_bk_info          *v_bki;
-	struct voluta_vnode_info       *v_pvi;
 	struct voluta_cache_elem        v_ce;
 	struct voluta_list_head         v_dq_mlh;
 	struct voluta_list_head         v_dq_blh;
 	struct voluta_avl_node          v_ds_an;
 	struct voluta_vnode_info       *v_ds_next;
-
 	long v_ds_key;
-	int v_dirty;
-	int v_verify;
+	int  v_verify;
+	int  v_dirty;
 };
 
 /* dirty-queues of cached-elements */

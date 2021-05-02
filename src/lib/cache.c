@@ -369,7 +369,6 @@ static void vi_init(struct voluta_vnode_info *vi)
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bki = NULL;
-	vi->v_pvi = NULL;
 	vi->v_ds_next = NULL;
 	vi->vu.p = NULL;
 	vi->v_ds_key = 0;
@@ -387,7 +386,6 @@ static void vi_fini(struct voluta_vnode_info *vi)
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bki = NULL;
-	vi->v_pvi = NULL;
 	vi->v_ds_next = NULL;
 	vi->vu.p = NULL;
 	vi->v_dirty = -11;
@@ -457,32 +455,6 @@ static void vi_detach_bk(struct voluta_vnode_info *vi)
 		vi->view = NULL;
 		vi->vu.p = NULL;
 	}
-}
-
-static void vi_attach_pvi(struct voluta_vnode_info *vi,
-                          struct voluta_vnode_info *pvi)
-{
-	voluta_assert_null(vi->v_pvi);
-
-	if (pvi != NULL) {
-		vi->v_pvi = pvi;
-		vi_incref(pvi);
-	}
-}
-
-static void vi_detach_pvi(struct voluta_vnode_info *vi)
-{
-
-	if (vi->v_pvi != NULL) {
-		vi_decref(vi->v_pvi);
-		vi->v_pvi = NULL;
-	}
-}
-
-static void vi_detach_all(struct voluta_vnode_info *vi)
-{
-	vi_detach_pvi(vi);
-	vi_detach_bk(vi);
 }
 
 static bool vi_is_evictable(const struct voluta_vnode_info *vi)
@@ -1308,7 +1280,7 @@ static void cache_evict_vi(struct voluta_cache *cache,
 	voluta_assert(!vi->v_dirty);
 
 	cache_remove_vi(cache, vi);
-	vi_detach_all(vi);
+	vi_detach_bk(vi);
 	cache_del_vi(cache, vi);
 }
 
@@ -1423,13 +1395,11 @@ void voulta_cache_forget_vi(struct voluta_cache *cache,
 }
 
 void voluta_vi_attach_to(struct voluta_vnode_info *vi,
-                         struct voluta_bk_info *bki,
-                         struct voluta_vnode_info *pvi)
+                         struct voluta_bk_info *bki)
 {
 	voluta_assert_null(vi->v_bki);
 
 	vi_attach_bk(vi, bki);
-	vi_attach_pvi(vi, pvi);
 }
 
 static struct voluta_vnode_info *cache_get_lru_vi(struct voluta_cache *cache)
@@ -1559,7 +1529,7 @@ static void cache_evict_ii(struct voluta_cache *cache,
 	struct voluta_vnode_info *vi = ii_vi(ii);
 
 	lrumap_remove(&cache->c_ilm, ii_ce(ii));
-	vi_detach_all(vi);
+	vi_detach_bk(vi);
 	cache_del_ii(cache, ii);
 }
 
@@ -1912,13 +1882,10 @@ static bool cache_evict_by_vi(struct voluta_cache *cache,
                               struct voluta_vnode_info *vi)
 {
 	struct voluta_bk_info *bki = NULL;
-	struct voluta_vnode_info *pvi = NULL;
 
 	if ((vi != NULL) && vi_is_evictable(vi)) {
-		pvi = vi->v_pvi;
 		bki = vi->v_bki;
 		cache_evict_vi(cache, vi);
-		cache_evict_by_vi(cache, pvi);
 	}
 	return cache_evict_by_bki(cache, bki);
 }
@@ -1927,13 +1894,10 @@ static bool cache_evict_by_ii(struct voluta_cache *cache,
                               struct voluta_inode_info *ii)
 {
 	struct voluta_bk_info *bki = NULL;
-	struct voluta_vnode_info *pvi = NULL;
 
 	if ((ii != NULL) && ii_isevictable(ii)) {
-		pvi = ii->i_vi.v_pvi;
 		bki = ii->i_vi.v_bki;
 		cache_evict_ii(cache, ii);
-		cache_evict_by_vi(cache, pvi);
 	}
 	return cache_evict_by_bki(cache, bki);
 }

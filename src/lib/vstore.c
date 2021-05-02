@@ -464,22 +464,37 @@ vi_cipher(const struct voluta_vnode_info *vi)
 static int encrypt_vnode(const struct voluta_vnode_info *vi,
                          const struct voluta_cipher *cipher, void *buf)
 {
+	int err;
 	struct voluta_kivam kivam = { .reserved = 0 };
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	voluta_kivam_of(vi, &kivam);
-	return voluta_encrypt_buf(cipher, &kivam,
-	                          vi->view, buf, vaddr->len);
+	err = voluta_kivam_of(vi, &kivam);
+	if (err) {
+		return err;
+	}
+	err = voluta_encrypt_buf(cipher, &kivam, vi->view, buf, vaddr->len);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf)
 {
+	int err;
 	struct voluta_kivam kivam;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+	const struct voluta_cipher *cipher = vi_cipher(vi);
 
-	voluta_kivam_of(vi, &kivam);
-	return voluta_decrypt_buf(vi_cipher(vi), &kivam,
-	                          buf, vi->view, vaddr->len);
+	err = voluta_kivam_of(vi, &kivam);
+	if (err) {
+		return err;
+	}
+	err = voluta_decrypt_buf(cipher, &kivam, buf, vi->view, vaddr->len);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -1203,15 +1203,12 @@ static int probe_unwritten(const struct voluta_fmap_ctx *fm_ctx, bool *out_res)
 static void dirtify_data_leaf(const struct voluta_file_ctx *f_ctx,
                               struct voluta_vnode_info *leaf_vi)
 {
-	struct voluta_vnode_info *agm_vi = leaf_vi->v_pvi;
-
-	voluta_assert_not_null(agm_vi);
-	voluta_assert_eq(agm_vi->vaddr.vtype, VOLUTA_VTYPE_AGMAP);
 	voluta_assert(vaddr_isdata(vi_vaddr(leaf_vi)));
 
 	vi_dirtify(leaf_vi);
 	if (!kcopy_mode(f_ctx)) {
-		vi_dirtify(agm_vi); /* for data checksum */
+		/* for data checksum, need to do:  */
+		/* vi_dirtify(agm_vi); */
 	}
 }
 

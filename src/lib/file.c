@@ -1916,7 +1916,7 @@ static int clear_unwritten_by(const struct voluta_fmap_ctx *fm_ctx)
 static int new_data_vspace(const struct voluta_file_ctx *f_ctx,
                            enum voluta_vtype vtype, struct voluta_vaddr *out)
 {
-	return voluta_create_vspace(f_ctx->sbi, vtype, out);
+	return voluta_allocate_vspace(f_ctx->sbi, vtype, out);
 }
 
 static int

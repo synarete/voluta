@@ -512,9 +512,9 @@ int voluta_create_vnode(struct voluta_sb_info *sbi,
                         enum voluta_vtype vtype,
                         struct voluta_vnode_info **out_vi);
 
-int voluta_create_vspace(struct voluta_sb_info *sbi,
-                         enum voluta_vtype vtype,
-                         struct voluta_vaddr *out_vaddr);
+int voluta_allocate_vspace(struct voluta_sb_info *sbi,
+                           enum voluta_vtype vtype,
+                           struct voluta_vaddr *out_vaddr);
 
 int voluta_remove_inode(struct voluta_sb_info *sbi,
                         struct voluta_inode_info *ii);

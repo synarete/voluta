@@ -270,7 +270,7 @@ const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 static inline
 struct voluta_vnode_info *ii_vi(const struct voluta_inode_info *ii)
 {
-	return unconst(&ii->i_vi);
+	return (ii != NULL) ? unconst(&ii->i_vi) : NULL;
 }
 
 static inline ino_t ii_ino(const struct voluta_inode_info *ii)

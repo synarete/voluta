@@ -546,7 +546,7 @@ static int stage_xanode(const struct voluta_xattr_ctx *xa_ctx,
 	struct voluta_vnode_info *vi = NULL;
 	const ino_t ino = ii_ino(xa_ctx->ii);
 
-	err = voluta_fetch_vnode(xa_ctx->sbi, vaddr, xa_ctx->ii, &vi);
+	err = voluta_stage_vnode(xa_ctx->sbi, vaddr, xa_ctx->ii, &vi);
 	if (err) {
 		return err;
 	}

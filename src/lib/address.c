@@ -201,6 +201,11 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr)
 	return vtype_isdata(vaddr->vtype);
 }
 
+bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr)
+{
+	return voluta_vtype_isumap(vaddr->vtype);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)

@@ -933,7 +933,7 @@ static int stage_htnode(const struct voluta_dir_ctx *d_ctx,
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = voluta_fetch_vnode(d_ctx->sbi, vaddr, d_ctx->dir_ii, &vi);
+	err = voluta_stage_vnode(d_ctx->sbi, vaddr, d_ctx->dir_ii, &vi);
 	if (err) {
 		return err;
 	}

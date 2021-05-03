@@ -1290,7 +1290,7 @@ static int stage_radix_tnode(const struct voluta_file_ctx *f_ctx,
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = voluta_fetch_vnode(f_ctx->sbi, vaddr, f_ctx->ii, out_vi);
+	err = voluta_stage_vnode(f_ctx->sbi, vaddr, f_ctx->ii, out_vi);
 	if (err) {
 		return err;
 	}

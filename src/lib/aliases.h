@@ -68,6 +68,7 @@
 #define vaddr_none()                    voluta_vaddr_none()
 #define vaddr_isnull(va)                voluta_vaddr_isnull(va)
 #define vaddr_isdata(va)                voluta_vaddr_isdata(va)
+#define vaddr_isspmap(va)               voluta_vaddr_isspmap(va)
 #define vaddr_reset(va)                 voluta_vaddr_reset(va)
 #define vaddr_copyto(va1, va2)          voluta_vaddr_copyto(va1, va2)
 #define vaddr_ag_index(va)              voluta_vaddr_ag_index(va)

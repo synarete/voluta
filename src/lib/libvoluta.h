@@ -320,6 +320,8 @@ bool voluta_vaddr_isnull(const struct voluta_vaddr *vaddr);
 
 bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr);
 
+bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr);
+
 void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr,
                            voluta_index_t hs_index);
 
@@ -491,14 +493,14 @@ int voluta_fetch_cached_inode(struct voluta_sb_info *sbi, ino_t xino,
 int voluta_stage_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 
-int voluta_fetch_vnode(struct voluta_sb_info *sbi,
+int voluta_stage_vnode(struct voluta_sb_info *sbi,
                        const struct voluta_vaddr *vaddr,
-                       struct voluta_inode_info *pii,
+                       const struct voluta_inode_info *pii,
                        struct voluta_vnode_info **out_vi);
 
 int voluta_stage_data(struct voluta_sb_info *sbi,
                       const struct voluta_vaddr *vaddr,
-                      struct voluta_inode_info *pii,
+                      const struct voluta_inode_info *pii,
                       struct voluta_vnode_info **out_vi);
 
 int voluta_create_inode(struct voluta_sb_info *sbi,

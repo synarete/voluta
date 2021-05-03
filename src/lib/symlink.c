@@ -225,7 +225,7 @@ static int stage_symval(const struct voluta_symlnk_ctx *sl_ctx,
                         const struct voluta_vaddr *vaddr,
                         struct voluta_vnode_info **out_vi)
 {
-	return voluta_fetch_vnode(sl_ctx->sbi, vaddr, sl_ctx->lnk_ii, out_vi);
+	return voluta_stage_vnode(sl_ctx->sbi, vaddr, sl_ctx->lnk_ii, out_vi);
 }
 
 static int extern_symval_head(const struct voluta_symlnk_ctx *sl_ctx,

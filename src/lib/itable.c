@@ -682,7 +682,7 @@ static int fetch_itnode_at(struct voluta_sb_info *sbi,
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = voluta_fetch_vnode(sbi, vaddr, NULL, &vi);
+	err = voluta_stage_vnode(sbi, vaddr, NULL, &vi);
 	if (err) {
 		return err;
 	}

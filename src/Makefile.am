@@ -1,1 +1,1 @@
-SUBDIRS = lib prog test
+SUBDIRS = lib prog

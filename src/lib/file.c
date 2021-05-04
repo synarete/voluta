@@ -163,11 +163,6 @@ static void vaddr_of_databk_leaf(struct voluta_vaddr *vaddr, loff_t off)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_DATABK, off);
 }
 
-static bool vaddr_isdatabk(const struct voluta_vaddr *vaddr)
-{
-	return vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_DATABK);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void *nil_bk_buf_of(const struct voluta_file_ctx *f_ctx)
@@ -1916,35 +1911,12 @@ static int clear_unwritten_by(const struct voluta_fmap_ctx *fm_ctx)
 static int new_data_vspace(const struct voluta_file_ctx *f_ctx,
                            enum voluta_vtype vtype, struct voluta_vaddr *out)
 {
-	return voluta_allocate_vspace(f_ctx->sbi, vtype, out);
+	return voluta_allocate_space(f_ctx->sbi, vtype, out);
 }
 
-static int
-probe_last_or_decref(const struct voluta_file_ctx *f_ctx,
-                     const struct voluta_vaddr *vaddr, bool *out_last)
+static bool vaddr_isdatabk(const struct voluta_vaddr *vaddr)
 {
-	int err;
-	size_t refcnt = 0;
-
-	if (!vaddr_isdatabk(vaddr)) {
-		*out_last = true;
-		return 0;
-	}
-	err = voluta_refcnt_at(f_ctx->sbi, vaddr, &refcnt);
-	if (err) {
-		return err;
-	}
-	voluta_assert_gt(refcnt, 0);
-	if (refcnt == 1) {
-		*out_last = true;
-		return 0;
-	}
-	err = voluta_decref_at(f_ctx->sbi, vaddr);
-	if (err) {
-		return err;
-	}
-	*out_last = true;
-	return 0;
+	return vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_DATABK);
 }
 
 static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
@@ -1953,13 +1925,17 @@ static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
 	int err;
 	bool last = false;
 
-	err = probe_last_or_decref(f_ctx, vaddr, &last);
-	if (err || !last) {
-		return err;
-	}
-	err = clear_unwritten_at(f_ctx, vaddr);
+	voluta_assert(vaddr_isdata(vaddr));
+
+	err = voluta_refcnt_islast_at(f_ctx->sbi, vaddr, &last);
 	if (err) {
 		return err;
+	}
+	if (last || !vaddr_isdatabk(vaddr)) {
+		err = clear_unwritten_at(f_ctx, vaddr);
+		if (err) {
+			return err;
+		}
 	}
 	err = voluta_remove_vnode_at(f_ctx->sbi, vaddr);
 	if (err) {
@@ -2895,7 +2871,7 @@ static int discard_entire(const struct voluta_fmap_ctx *fm_ctx)
 	return 0;
 }
 
-static int discard_mark_unwritten(const struct voluta_fmap_ctx *fm_ctx)
+static int discard_by_set_unwritten(const struct voluta_fmap_ctx *fm_ctx)
 {
 	return voluta_mark_unwritten(fm_ctx->f_ctx->sbi, &fm_ctx->vaddr);
 }
@@ -2913,7 +2889,7 @@ static int discard_data_at(const struct voluta_fmap_ctx *fm_ctx)
 		if (partial) {
 			err = discard_partial(fm_ctx);
 		} else if (fl_zero_range(fm_ctx->f_ctx)) {
-			err = discard_mark_unwritten(fm_ctx);
+			err = discard_by_set_unwritten(fm_ctx);
 		} else {
 			err = discard_entire(fm_ctx);
 		}

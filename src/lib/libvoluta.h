@@ -476,14 +476,6 @@ int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags);
 int voluta_shut_super(struct voluta_sb_info *sbi);
 
 
-int voluta_stage_hsmap_of(struct voluta_sb_info *sbi,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_vnode_info **out_hsm_vi);
-
-int voluta_stage_agmap_of(struct voluta_sb_info *sbi,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_vnode_info **out_agm_vi);
-
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 
@@ -514,9 +506,9 @@ int voluta_create_vnode(struct voluta_sb_info *sbi,
                         enum voluta_vtype vtype,
                         struct voluta_vnode_info **out_vi);
 
-int voluta_allocate_vspace(struct voluta_sb_info *sbi,
-                           enum voluta_vtype vtype,
-                           struct voluta_vaddr *out_vaddr);
+int voluta_allocate_space(struct voluta_sb_info *sbi,
+                          enum voluta_vtype vtype,
+                          struct voluta_vaddr *out_vaddr);
 
 int voluta_remove_inode(struct voluta_sb_info *sbi,
                         struct voluta_inode_info *ii);
@@ -536,11 +528,8 @@ int voluta_clear_unwritten(struct voluta_sb_info *sbi,
 int voluta_mark_unwritten(struct voluta_sb_info *sbi,
                           const struct voluta_vaddr *vaddr);
 
-int voluta_refcnt_at(struct voluta_sb_info *sbi,
-                     const struct voluta_vaddr *vaddr, size_t *out_refcnt);
-
-int voluta_decref_at(struct voluta_sb_info *sbi,
-                     const struct voluta_vaddr *vaddr);
+int voluta_refcnt_islast_at(struct voluta_sb_info *sbi,
+                            const struct voluta_vaddr *vaddr, bool *out_res);
 
 int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam);
@@ -553,11 +542,6 @@ void voluta_setup_hsmap(struct voluta_vnode_info *hsm_vi,
                         voluta_index_t hs_index, size_t nags_span);
 
 voluta_index_t voluta_hs_index_of(const struct voluta_vnode_info *hsm_vi);
-
-int voluta_find_free_vspace(const struct voluta_vnode_info *hsm_vi,
-                            voluta_index_t ag_index_first,
-                            voluta_index_t ag_index_last,
-                            enum voluta_vtype vtype, size_t *out_ag_index);
 
 int voluta_find_itroot_ag(const struct voluta_vnode_info *hsm_vi,
                           voluta_index_t *out_ag_index);
@@ -588,8 +572,8 @@ void voluta_ag_range_of(const struct voluta_vnode_info *hsm_vi,
 void voluta_mark_fragmented(struct voluta_vnode_info *hsm_vi,
                             voluta_index_t ag_index);
 
-void voluta_clear_fragmented(struct voluta_vnode_info *hsm_vi,
-                             voluta_index_t ag_index);
+void voluta_clear_fragmented_at(struct voluta_vnode_info *hsm_vi,
+                                const struct voluta_vaddr *vaddr);
 
 void voluta_mark_with_next(struct voluta_vnode_info *hsm_vi);
 
@@ -605,21 +589,29 @@ void voluta_kivam_of_agmap(const struct voluta_vnode_info *hsm_vi,
                            voluta_index_t ag_index,
                            struct voluta_kivam *out_kivam);
 
-
 void voluta_setup_agmap(struct voluta_vnode_info *agm_vi,
                         voluta_index_t ag_index);
 
 size_t voluta_ag_index_of(const struct voluta_vnode_info *agm_vi);
 
-int voluta_allocate_space(struct voluta_vnode_info *hsm_vi,
-                          struct voluta_vnode_info *agm_vi,
-                          enum voluta_vtype vtype,
-                          struct voluta_vaddr *out_vaddr);
 
-size_t voluta_refcnt_of_vnode(const struct voluta_vnode_info *agm_vi,
-                              const struct voluta_vaddr *vaddr);
+int voluta_search_avail_ag(const struct voluta_vnode_info *hsm_vi,
+                           voluta_index_t ag_index_first,
+                           voluta_index_t ag_index_last,
+                           enum voluta_vtype vtype, size_t *out_ag_index);
 
-void voluta_decref_of_vnode(struct voluta_vnode_info *agm_vi,
+int voluta_search_free_space(const struct voluta_vnode_info *hsm_vi,
+                             const struct voluta_vnode_info *agm_vi,
+                             enum voluta_vtype vtype,
+                             struct voluta_vaddr *out_vaddr);
+
+void voluta_mark_allocated_space(struct voluta_vnode_info *agm_vi,
+                                 const struct voluta_vaddr *vaddr);
+
+void voluta_clear_allocated_space(struct voluta_vnode_info *agm_vi,
+                                  const struct voluta_vaddr *vaddr);
+
+bool voluta_has_lone_refcnt(const struct voluta_vnode_info *agm_vi,
                             const struct voluta_vaddr *vaddr);
 
 void voluta_calc_space_stat_of(const struct voluta_vnode_info *agm_vi,
@@ -634,12 +626,8 @@ void voluta_clear_unwritten_at(struct voluta_vnode_info *agm_vi,
 void voluta_mark_unwritten_at(struct voluta_vnode_info *agm_vi,
                               const struct voluta_vaddr *vaddr);
 
-bool voluta_allocated_with(const struct voluta_vnode_info *agm_vi,
-                           const struct voluta_vaddr *vaddr);
-
-void voluta_deallocate_space_at(struct voluta_vnode_info *hsm_vi,
-                                struct voluta_vnode_info *agm_vi,
-                                const struct voluta_vaddr *vaddr);
+bool voluta_is_allocated_with(const struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr);
 
 void voluta_assign_itroot(struct voluta_vnode_info *hsm_vi,
                           struct voluta_vnode_info *agm_vi,
@@ -647,6 +635,7 @@ void voluta_assign_itroot(struct voluta_vnode_info *hsm_vi,
 
 void voluta_parse_itroot(const struct voluta_vnode_info *agm_vi,
                          struct voluta_vaddr *out_vaddr);
+
 
 void voluta_kivam_of_vnode_at(const struct voluta_vnode_info *agm_vi,
                               const struct voluta_vaddr *vaddr,

@@ -707,19 +707,21 @@ static size_t bkr_refcnt(const struct voluta_bk_rec *bkr)
 
 static void bkr_set_refcnt(struct voluta_bk_rec *bkr, size_t refcnt)
 {
+	voluta_assert_le(refcnt, VOLUTA_NKB_IN_BK);
+
 	bkr->bk_refcnt = cpu_to_le64(refcnt);
 }
 
-static void bkr_inc_refcnt(struct voluta_bk_rec *bkr)
+static void bkr_inc_refcnt(struct voluta_bk_rec *bkr, size_t n)
 {
-	bkr_set_refcnt(bkr, bkr_refcnt(bkr) + 1);
+	bkr_set_refcnt(bkr, bkr_refcnt(bkr) + n);
 }
 
-static void bkr_dec_refcnt(struct voluta_bk_rec *bkr)
+static void bkr_dec_refcnt(struct voluta_bk_rec *bkr, size_t n)
 {
-	voluta_assert_gt(bkr_refcnt(bkr), 0);
+	voluta_assert_ge(bkr_refcnt(bkr), n);
 
-	bkr_set_refcnt(bkr, bkr_refcnt(bkr) - 1);
+	bkr_set_refcnt(bkr, bkr_refcnt(bkr) - n);
 }
 
 static uint64_t bkr_allocated(const struct voluta_bk_rec *bkr)
@@ -1032,12 +1034,12 @@ static size_t agm_refcnt_at(const struct voluta_agroup_map *agm,
 	return bkr_refcnt(bkr);
 }
 
-static void agm_decref_at(struct voluta_agroup_map *agm,
-                          const struct voluta_vaddr *vaddr)
+static bool agm_last_refcnt_at(const struct voluta_agroup_map *agm,
+                               const struct voluta_vaddr *vaddr)
 {
-	struct voluta_bk_rec *bkr = agm_bkr_by_vaddr(agm, vaddr);
+	const size_t nkb = nkb_of(vaddr);
 
-	bkr_dec_refcnt(bkr);
+	return (nkb == agm_refcnt_at(agm, vaddr));
 }
 
 static void agm_set_allocated_at(struct voluta_agroup_map *agm,
@@ -1047,8 +1049,8 @@ static void agm_set_allocated_at(struct voluta_agroup_map *agm,
 	const size_t nkb = nkb_of(vaddr);
 	struct voluta_bk_rec *bkr = agm_bkr_by_vaddr(agm, vaddr);
 
+	bkr_inc_refcnt(bkr, nkb);
 	bkr_set_allocated_at(bkr, kbn, nkb);
-	bkr_inc_refcnt(bkr);
 	bkr_set_vtype(bkr, vaddr->vtype);
 }
 
@@ -1057,10 +1059,13 @@ static void agm_clear_allocated_at(struct voluta_agroup_map *agm,
 {
 	const size_t kbn = kbn_of(vaddr);
 	const size_t nkb = nkb_of(vaddr);
+	const size_t nkb_in_bk = VOLUTA_NKB_IN_BK;
 	struct voluta_bk_rec *bkr = agm_bkr_by_vaddr(agm, vaddr);
 
-	bkr_clear_allocated_at(bkr, kbn, nkb);
-	bkr_dec_refcnt(bkr);
+	bkr_dec_refcnt(bkr, nkb);
+	if (!bkr_refcnt(bkr) || (nkb < nkb_in_bk)) {
+		bkr_clear_allocated_at(bkr, kbn, nkb);
+	}
 	if (!bkr_allocated(bkr)) {
 		voluta_assert_eq(bkr_refcnt(bkr), 0);
 		bkr_set_vtype(bkr, VOLUTA_VTYPE_NONE);
@@ -1216,11 +1221,11 @@ nused_bks_at(const struct voluta_vnode_info *hsm_vi, size_t ag_index)
 	return nused_bytes / VOLUTA_BK_SIZE;
 }
 
-int voluta_find_free_vspace(const struct voluta_vnode_info *hsm_vi,
-                            voluta_index_t ag_index_first,
-                            voluta_index_t ag_index_last,
-                            enum voluta_vtype vtype,
-                            voluta_index_t *out_ag_index)
+int voluta_search_avail_ag(const struct voluta_vnode_info *hsm_vi,
+                           voluta_index_t ag_index_first,
+                           voluta_index_t ag_index_last,
+                           enum voluta_vtype vtype,
+                           voluta_index_t *out_ag_index)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
@@ -1357,17 +1362,17 @@ void voluta_mark_fragmented(struct voluta_vnode_info *hsm_vi,
 	vi_dirtify(hsm_vi);
 }
 
-void voluta_clear_fragmented(struct voluta_vnode_info *hsm_vi,
-                             voluta_index_t ag_index)
+void voluta_clear_fragmented_at(struct voluta_vnode_info *hsm_vi,
+                                const struct voluta_vaddr *vaddr)
 {
+	const voluta_index_t ag_index = vaddr->ag_index;
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
-	if (hsm_is_fragmented(hsm, ag_index)) {
+	if (hsm_is_fragmented(hsm, ag_index) && (nkb_of(vaddr) > 1)) {
 		hsm_clear_fragmented(hsm, ag_index);
 		vi_dirtify(hsm_vi);
 	}
 }
-
 
 void voluta_bind_to_vtype(struct voluta_vnode_info *hsm_vi,
                           voluta_index_t ag_index, enum voluta_vtype vtype)
@@ -1453,57 +1458,49 @@ static size_t start_bn_of(const struct voluta_vnode_info *hsm_vi,
 	return bn;
 }
 
-static int allocate_and_mark(struct voluta_vnode_info *agm_vi,
-                             enum voluta_vtype vtype, size_t start_bn,
+int voluta_search_free_space(const struct voluta_vnode_info *hsm_vi,
+                             const struct voluta_vnode_info *agm_vi,
+                             enum voluta_vtype vtype,
                              struct voluta_vaddr *out_vaddr)
 {
-	int err;
-	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
+	const size_t start_bn = start_bn_of(hsm_vi, agm_vi, vtype);
+	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 
 	voluta_assert_le(start_bn, VOLUTA_NBK_IN_AG);
 
-	err = agm_find_free_space(agm, vtype, start_bn, out_vaddr);
-	if (err) {
-		return err;
-	}
-	agm_set_allocated_at(agm, out_vaddr);
-	if (vaddr_isdata(out_vaddr)) {
-		agm_set_unwritten_at(agm, out_vaddr);
-	}
-	vi_dirtify(agm_vi);
-	return 0;
+	return agm_find_free_space(agm, vtype, start_bn, out_vaddr);
 }
 
-int voluta_allocate_space(struct voluta_vnode_info *hsm_vi,
-                          struct voluta_vnode_info *agm_vi,
-                          enum voluta_vtype vtype,
-                          struct voluta_vaddr *out_vaddr)
-{
-	int err;
-	const size_t start_bn = start_bn_of(hsm_vi, agm_vi, vtype);
-
-	err = allocate_and_mark(agm_vi, vtype, start_bn, out_vaddr);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
-
-size_t voluta_refcnt_of_vnode(const struct voluta_vnode_info *agm_vi,
-                              const struct voluta_vaddr *vaddr)
-{
-	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
-
-	return agm_refcnt_at(agm, vaddr);
-}
-
-void voluta_decref_of_vnode(struct voluta_vnode_info *agm_vi,
-                            const struct voluta_vaddr *vaddr)
+void voluta_mark_allocated_space(struct voluta_vnode_info *agm_vi,
+                                 const struct voluta_vaddr *vaddr)
 {
 	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
 
-	agm_decref_at(agm, vaddr);
+	agm_set_allocated_at(agm, vaddr);
+	if (vaddr_isdata(vaddr)) {
+		agm_set_unwritten_at(agm, vaddr);
+	}
+	vi_dirtify(agm_vi);
+}
+
+void voluta_clear_allocated_space(struct voluta_vnode_info *agm_vi,
+                                  const struct voluta_vaddr *vaddr)
+{
+	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
+
+	voluta_assert_eq(agm_index(agm), vaddr->ag_index);
+
+	agm_clear_allocated_at(agm, vaddr);
+	agm_renew_if_unused(agm, vaddr);
+	vi_dirtify(agm_vi);
+}
+
+bool voluta_has_lone_refcnt(const struct voluta_vnode_info *agm_vi,
+                            const struct voluta_vaddr *vaddr)
+{
+	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
+
+	return agm_last_refcnt_at(agm, vaddr);
 }
 
 void voluta_calc_space_stat_of(const struct voluta_vnode_info *agm_vi,
@@ -1514,8 +1511,8 @@ void voluta_calc_space_stat_of(const struct voluta_vnode_info *agm_vi,
 	agm_calc_space_stat(agm, out_sp_st);
 }
 
-bool voluta_allocated_with(const struct voluta_vnode_info *agm_vi,
-                           const struct voluta_vaddr *vaddr)
+bool voluta_is_allocated_with(const struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr)
 {
 	enum voluta_vtype vtype;
 	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
@@ -1551,23 +1548,6 @@ void voluta_mark_unwritten_at(struct voluta_vnode_info *agm_vi,
 	if (!agm_test_unwritten_at(agm, vaddr)) {
 		agm_set_unwritten_at(agm, vaddr);
 		vi_dirtify(agm_vi);
-	}
-}
-
-void voluta_deallocate_space_at(struct voluta_vnode_info *hsm_vi,
-                                struct voluta_vnode_info *agm_vi,
-                                const struct voluta_vaddr *vaddr)
-{
-	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
-
-	voluta_assert_eq(agm_index(agm), vaddr->ag_index);
-
-	agm_clear_allocated_at(agm, vaddr);
-	agm_renew_if_unused(agm, vaddr);
-	vi_dirtify(agm_vi);
-
-	if (nkb_of(vaddr) > 1) {
-		voluta_clear_fragmented(hsm_vi, agm_index(agm));
 	}
 }
 

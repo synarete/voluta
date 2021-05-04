@@ -75,6 +75,10 @@ static void ut_file_simple_(struct ut_env *ute, loff_t off)
 
 static void ut_file_simple(struct ut_env *ute)
 {
+	/* XXX */
+	ut_file_simple_(ute, UT_BK_SIZE);
+
+
 	ut_file_simple_(ute, 0);
 	ut_file_simple_(ute, 1);
 	ut_file_simple_(ute, UT_4K);

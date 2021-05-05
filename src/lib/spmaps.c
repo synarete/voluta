@@ -1495,6 +1495,14 @@ void voluta_clear_allocated_space(struct voluta_vnode_info *agm_vi,
 	vi_dirtify(agm_vi);
 }
 
+size_t voluta_block_refcnt_at(const struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr)
+{
+	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
+
+	return agm_refcnt_at(agm, vaddr);
+}
+
 bool voluta_has_lone_refcnt(const struct voluta_vnode_info *agm_vi,
                             const struct voluta_vaddr *vaddr)
 {

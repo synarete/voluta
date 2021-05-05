@@ -611,6 +611,9 @@ void voluta_mark_allocated_space(struct voluta_vnode_info *agm_vi,
 void voluta_clear_allocated_space(struct voluta_vnode_info *agm_vi,
                                   const struct voluta_vaddr *vaddr);
 
+size_t voluta_block_refcnt_at(const struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr);
+
 bool voluta_has_lone_refcnt(const struct voluta_vnode_info *agm_vi,
                             const struct voluta_vaddr *vaddr);
 

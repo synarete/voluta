@@ -24,6 +24,13 @@
 #include <limits.h>
 #include "libvoluta.h"
 
+struct voluta_spalloc_ctx {
+	struct voluta_vnode_info *hsm_vi;
+	struct voluta_vnode_info *agm_vi;
+	struct voluta_vaddr vaddr;
+	enum voluta_vtype vtype;
+	bool first_alloc;
+};
 
 static int format_head_spmaps_of(struct voluta_sb_info *sbi,
                                  voluta_index_t hs_index);
@@ -472,38 +479,46 @@ static int decrypt_vnode(const struct voluta_sb_info *sbi,
 	return 0;
 }
 
+static bool is_first_alloc(const struct voluta_vnode_info *agm_vi,
+                           const struct voluta_vaddr *vaddr)
+{
+	return (voluta_block_refcnt_at(agm_vi, vaddr) == 0);
+}
+
 static int search_free_space_at(struct voluta_sb_info *sbi,
-                                const struct voluta_vnode_info *hsm_vi,
-                                voluta_index_t ag_index,
-                                enum voluta_vtype vtype,
-                                struct voluta_vnode_info **out_agm_vi,
-                                struct voluta_vaddr *out_vaddr)
+                                struct voluta_spalloc_ctx *spa,
+                                voluta_index_t ag_index)
 {
 	int err;
+	struct voluta_vaddr vaddr;
+	struct voluta_vnode_info *agm_vi = NULL;
+	const enum voluta_vtype vtype = spa->vtype;
 
-	err = stage_agmap(sbi, ag_index, out_agm_vi);
+	err = stage_agmap(sbi, ag_index, &agm_vi);
 	if (err) {
 		return err;
 	}
-	err = voluta_search_free_space(hsm_vi, *out_agm_vi, vtype, out_vaddr);
+	err = voluta_search_free_space(spa->hsm_vi, agm_vi, vtype, &vaddr);
 	if (err) {
 		return err;
 	}
+	vaddr_copyto(&vaddr, &spa->vaddr);
+	spa->agm_vi = agm_vi;
+	spa->first_alloc = is_first_alloc(agm_vi, &vaddr);
+
 	return 0;
 }
 
-static void mark_allocated_at(struct voluta_vnode_info *hsm_vi,
-                              struct voluta_vnode_info *agm_vi,
-                              const struct voluta_vaddr *vaddr)
+static void mark_allocated_at(const struct voluta_spalloc_ctx *spa)
 {
 	struct voluta_space_stat sp_st = { .zero = 0 };
-	const voluta_index_t ag_index = voluta_ag_index_of(agm_vi);
+	const voluta_index_t ag_index = spa->vaddr.ag_index;
 
-	voluta_mark_allocated_space(agm_vi, vaddr);
-	voluta_bind_to_vtype(hsm_vi, ag_index, vaddr->vtype);
+	voluta_mark_allocated_space(spa->agm_vi, &spa->vaddr);
+	voluta_bind_to_vtype(spa->hsm_vi, ag_index, spa->vtype);
 
-	calc_stat_change(vaddr, 1, &sp_st);
-	voluta_update_space(hsm_vi, vaddr->ag_index, &sp_st);
+	calc_stat_change(&spa->vaddr, 1, &sp_st);
+	voluta_update_space(spa->hsm_vi, ag_index, &sp_st);
 }
 
 static bool is_sub_bk(enum voluta_vtype vtype)
@@ -512,30 +527,27 @@ static bool is_sub_bk(enum voluta_vtype vtype)
 }
 
 static int find_free_space_within(struct voluta_sb_info *sbi,
-                                  struct voluta_vnode_info *hsm_vi,
+                                  struct voluta_spalloc_ctx *spa,
                                   voluta_index_t ag_index_first,
-                                  voluta_index_t ag_index_last,
-                                  enum voluta_vtype vtype,
-                                  struct voluta_vnode_info **out_agm_vi,
-                                  struct voluta_vaddr *out_vaddr)
+                                  voluta_index_t ag_index_last)
 {
 	int err;
 	voluta_index_t ag_index;
 
 	ag_index = ag_index_first;
 	while (ag_index < ag_index_last) {
-		err = voluta_search_avail_ag(hsm_vi, ag_index,
-		                             ag_index_last, vtype, &ag_index);
+		err = voluta_search_avail_ag(spa->hsm_vi, ag_index,
+		                             ag_index_last, spa->vtype,
+		                             &ag_index);
 		if (err) {
 			return err;
 		}
-		err = search_free_space_at(sbi, hsm_vi, ag_index,
-		                           vtype, out_agm_vi, out_vaddr);
+		err = search_free_space_at(sbi, spa, ag_index);
 		if (err != -ENOSPC) {
 			return err;
 		}
-		if ((err == -ENOSPC) && is_sub_bk(vtype)) {
-			voluta_mark_fragmented(hsm_vi, ag_index);
+		if ((err == -ENOSPC) && is_sub_bk(spa->vtype)) {
+			voluta_mark_fragmented(spa->hsm_vi, ag_index);
 		}
 		ag_index++;
 	}
@@ -544,25 +556,20 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 
 
 static int find_free_space_for(struct voluta_sb_info *sbi,
-                               struct voluta_vnode_info *hsm_vi,
-                               enum voluta_vtype vtype,
-                               struct voluta_vnode_info **out_agm_vi,
-                               struct voluta_vaddr *out_vaddr)
+                               struct voluta_spalloc_ctx *spa)
 {
 	int err;
 	struct voluta_ag_range ag_range = { .beg = 0, .end = 0 };
 
-	voluta_ag_range_of(hsm_vi, &ag_range);
+	voluta_ag_range_of(spa->hsm_vi, &ag_range);
 
 	/* fast search */
-	err = find_free_space_within(sbi, hsm_vi, ag_range.tip, ag_range.fin,
-	                             vtype, out_agm_vi, out_vaddr);
+	err = find_free_space_within(sbi, spa, ag_range.tip, ag_range.fin);
 	if (err != -ENOSPC) {
 		return err;
 	}
 	/* slow search */
-	err = find_free_space_within(sbi, hsm_vi, ag_range.beg, ag_range.tip,
-	                             vtype, out_agm_vi, out_vaddr);
+	err = find_free_space_within(sbi, spa, ag_range.beg, ag_range.tip);
 	if (err != -ENOSPC) {
 		return err;
 	}
@@ -570,18 +577,15 @@ static int find_free_space_for(struct voluta_sb_info *sbi,
 }
 
 static int try_find_free_space(struct voluta_sb_info *sbi,
-                               struct voluta_vnode_info *hsm_vi,
-                               enum voluta_vtype vtype,
-                               struct voluta_vnode_info **out_agm_vi,
-                               struct voluta_vaddr *out_vaddr)
+                               struct voluta_spalloc_ctx *spa)
 {
 	int err;
 
-	err = voluta_check_cap_alloc(hsm_vi, vtype);
+	err = voluta_check_cap_alloc(spa->hsm_vi, spa->vtype);
 	if (err) {
 		return err;
 	}
-	err = find_free_space_for(sbi, hsm_vi, vtype, out_agm_vi, out_vaddr);
+	err = find_free_space_for(sbi, spa);
 	if (err) {
 		return err;
 	}
@@ -589,22 +593,19 @@ static int try_find_free_space(struct voluta_sb_info *sbi,
 }
 
 static int do_try_allocate_from(struct voluta_sb_info *sbi,
-                                struct voluta_vnode_info *hsm_vi,
-                                enum voluta_vtype vtype,
-                                struct voluta_vnode_info **out_agm_vi,
-                                struct voluta_vaddr *out_vaddr)
+                                struct voluta_spalloc_ctx *spa)
 {
 	int err;
 
-	err = try_find_free_space(sbi, hsm_vi, vtype, out_agm_vi, out_vaddr);
+	err = try_find_free_space(sbi, spa);
 	if (err != -ENOSPC) {
 		return err;
 	}
-	err = format_next_agmap(sbi, hsm_vi);
+	err = format_next_agmap(sbi, spa->hsm_vi);
 	if (err) {
 		return err;
 	}
-	err = try_find_free_space(sbi, hsm_vi, vtype, out_agm_vi, out_vaddr);
+	err = try_find_free_space(sbi, spa);
 	if (err != -ENOSPC) {
 		return err;
 	}
@@ -612,26 +613,22 @@ static int do_try_allocate_from(struct voluta_sb_info *sbi,
 }
 
 static int try_allocate_from(struct voluta_sb_info *sbi,
-                             struct voluta_vnode_info *hsm_vi,
-                             enum voluta_vtype vtype,
-                             struct voluta_vaddr *out_vaddr)
+                             struct voluta_spalloc_ctx *spa)
 {
 	int err;
-	struct voluta_vnode_info *agm_vi = NULL;
 
-	vi_incref(hsm_vi);
-	err = do_try_allocate_from(sbi, hsm_vi, vtype, &agm_vi, out_vaddr);
-	vi_decref(hsm_vi);
+	vi_incref(spa->hsm_vi);
+	err = do_try_allocate_from(sbi, spa);
+	vi_decref(spa->hsm_vi);
 
 	if (!err) {
-		mark_allocated_at(hsm_vi, agm_vi, out_vaddr);
+		mark_allocated_at(spa);
 	}
 	return err;
 }
 
 static int try_allocate_space(struct voluta_sb_info *sbi,
-                              enum voluta_vtype vtype,
-                              struct voluta_vaddr *out_vaddr)
+                              struct voluta_spalloc_ctx *spa)
 {
 	int err;
 	voluta_index_t hs_index;
@@ -645,10 +642,13 @@ static int try_allocate_space(struct voluta_sb_info *sbi,
 		if (err) {
 			return err;
 		}
-		err = try_allocate_from(sbi, hsm_vi, vtype, out_vaddr);
+		spa->hsm_vi = hsm_vi;
+		err = try_allocate_from(sbi, spa);
 		if (!err || (err != -ENOSPC)) {
 			return err;
 		}
+		spa->hsm_vi = NULL;
+
 		hs_index++;
 		err = voluta_check_cap_alloc(hsm_vi, 2 * bk_size);
 		if (err) {
@@ -674,15 +674,14 @@ static int expand_space(struct voluta_sb_info *sbi)
 	return err;
 }
 
-static int allocate_space(struct voluta_sb_info *sbi,
-                          enum voluta_vtype vtype,
-                          struct voluta_vaddr *out_vaddr)
+static int allocate_space_expand(struct voluta_sb_info *sbi,
+                                 struct voluta_spalloc_ctx *spa)
 {
 	int err = -ENOSPC;
 	size_t niter = 2;
 
 	while (niter--) {
-		err = try_allocate_space(sbi, vtype, out_vaddr);
+		err = try_allocate_space(sbi, spa);
 		if (!err || (err != -ENOSPC)) {
 			break;
 		}
@@ -2179,41 +2178,40 @@ static int check_avail_space(const struct voluta_sb_info *sbi,
 	return ok ? 0 : -ENOSPC;
 }
 
+static int allocate_space(struct voluta_sb_info *sbi,
+                          struct voluta_spalloc_ctx *spa)
+{
+	int err;
+
+	err = check_avail_space(sbi, spa->vtype);
+	if (err) {
+		return err;
+	}
+	err = allocate_space_expand(sbi, spa);
+	if (err) {
+		/* TODO: cleanup */
+		return err;
+	}
+	update_space_stat(sbi, 1, &spa->vaddr);
+	return 0;
+}
+
 int voluta_allocate_space(struct voluta_sb_info *sbi,
                           enum voluta_vtype vtype,
                           struct voluta_vaddr *out_vaddr)
 {
 	int err;
-	bool unwritten;
+	struct voluta_spalloc_ctx spa = {
+		.vtype = vtype,
+		.first_alloc = false
+	};
 
-	err = check_avail_space(sbi, vtype);
+	err = allocate_space(sbi, &spa);
 	if (err) {
 		return err;
 	}
-	err = allocate_space(sbi, vtype, out_vaddr);
-	if (err) {
-		/* TODO: cleanup */
-		return err;
-	}
-	update_space_stat(sbi, 1, out_vaddr);
-
-
-	/* XXX */
-	err = voluta_probe_unwritten(sbi, out_vaddr, &unwritten);
-	voluta_assert_ok(err);
-	if (vaddr_isdata(out_vaddr)) {
-		voluta_assert(unwritten);
-	} else {
-		voluta_assert(!unwritten);
-	}
-
+	vaddr_copyto(&spa.vaddr, out_vaddr);
 	return 0;
-}
-
-static int allocate_ispace(struct voluta_sb_info *sbi,
-                           struct voluta_vaddr *out_vaddr)
-{
-	return voluta_allocate_space(sbi, VOLUTA_VTYPE_INODE, out_vaddr);
 }
 
 static int require_supported_itype(mode_t mode)
@@ -2270,26 +2268,21 @@ static int create_inode(struct voluta_sb_info *sbi,
                         struct voluta_inode_info **out_ii)
 {
 	int err;
-	bool dont_reload;
-	struct voluta_vaddr vaddr;
 	struct voluta_iaddr iaddr;
-	struct voluta_vnode_info *agm_vi = NULL;
+	struct voluta_spalloc_ctx spa = {
+		.vtype = VOLUTA_VTYPE_INODE,
+		.first_alloc = false
+	};
 
-	vaddr_reset(&vaddr);
-	err = allocate_ispace(sbi, &vaddr);
+	err = allocate_space(sbi, &spa);
 	if (err) {
 		return err;
 	}
-	err = acquire_ino_at(sbi, &vaddr, &iaddr);
+	err = acquire_ino_at(sbi, &spa.vaddr, &iaddr);
 	if (err) {
 		return err;
 	}
-	err = stage_agmap_of(sbi, &vaddr, &agm_vi);
-	if (err) {
-		return err;
-	}
-	dont_reload = voluta_has_lone_refcnt(agm_vi, &vaddr);
-	err = spawn_bind_ii(sbi, &iaddr, dont_reload, out_ii);
+	err = spawn_bind_ii(sbi, &iaddr, spa.first_alloc, out_ii);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;
@@ -2324,21 +2317,16 @@ static int create_vnode(struct voluta_sb_info *sbi,
                         struct voluta_vnode_info **out_vi)
 {
 	int err;
-	bool dont_reload;
-	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *agm_vi = NULL;
+	struct voluta_spalloc_ctx spa = {
+		.vtype = vtype,
+		.first_alloc = false
+	};
 
-	vaddr_reset(&vaddr);
-	err = voluta_allocate_space(sbi, vtype, &vaddr);
+	err = allocate_space(sbi, &spa);
 	if (err) {
 		return err;
 	}
-	err = stage_agmap_of(sbi, &vaddr, &agm_vi);
-	if (err) {
-		return err;
-	}
-	dont_reload = voluta_has_lone_refcnt(agm_vi, &vaddr);
-	err = spawn_bind_vi(sbi, &vaddr, dont_reload, out_vi);
+	err = spawn_bind_vi(sbi, &spa.vaddr, spa.first_alloc, out_vi);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;

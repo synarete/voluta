@@ -579,8 +579,8 @@ void voluta_mark_with_next(struct voluta_vnode_info *hsm_vi);
 
 bool voluta_has_next_hspace(const struct voluta_vnode_info *hsm_vi);
 
-void voluta_bind_to_vtype(struct voluta_vnode_info *hsm_vi,
-                          voluta_index_t ag_index, enum voluta_vtype vtype);
+void voluta_bind_to_kindof(struct voluta_vnode_info *hsm_vi,
+                           const struct voluta_vaddr *vaddr);
 
 int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
                            const enum voluta_vtype vtype);

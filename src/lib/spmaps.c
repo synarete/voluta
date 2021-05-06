@@ -558,8 +558,8 @@ static void hsm_clear_fragmented(struct voluta_hspace_map *hsm,
 	agr_unset_fragmented(hsm_record_of(hsm, ag_index));
 }
 
-static void hsm_bind_to_vtype(struct voluta_hspace_map *hsm,
-                              voluta_index_t ag_index, enum voluta_vtype vtype)
+static void hsm_bind_to_kind(struct voluta_hspace_map *hsm,
+                             voluta_index_t ag_index, enum voluta_vtype vtype)
 {
 	agr_bind_to_kind(hsm_record_of(hsm, ag_index), vtype);
 }
@@ -1374,12 +1374,12 @@ void voluta_clear_fragmented_at(struct voluta_vnode_info *hsm_vi,
 	}
 }
 
-void voluta_bind_to_vtype(struct voluta_vnode_info *hsm_vi,
-                          voluta_index_t ag_index, enum voluta_vtype vtype)
+void voluta_bind_to_kindof(struct voluta_vnode_info *hsm_vi,
+                           const struct voluta_vaddr *vaddr)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
-	hsm_bind_to_vtype(hsm, ag_index, vtype);
+	hsm_bind_to_kind(hsm, vaddr->ag_index, vaddr->vtype);
 	vi_dirtify(hsm_vi);
 }
 

@@ -233,6 +233,37 @@ static void setup_agmap(struct voluta_vnode_info *agm_vi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static fsblkcnt_t bytes_to_fsblkcnt(ssize_t nbytes)
+{
+	return (fsblkcnt_t)nbytes / VOLUTA_KB_SIZE;
+}
+
+void voluta_statvfs_of(const struct voluta_sb_info *sbi,
+                       struct statvfs *out_stvfs)
+{
+	const struct voluta_space_info *spi = &sbi->sb_spi;
+	const ssize_t nbytes_max = spi_space_limit(spi);
+	const ssize_t nbytes_use = spi_used_bytes(spi);
+	const ssize_t nfiles_max = spi_inodes_limit(spi);
+
+	voluta_assert_ge(nbytes_max, nbytes_use);
+	voluta_assert_ge(nfiles_max, spi->sp_used.nfiles);
+
+	voluta_memzero(out_stvfs, sizeof(*out_stvfs));
+	out_stvfs->f_bsize = VOLUTA_BK_SIZE;
+	out_stvfs->f_frsize = VOLUTA_KB_SIZE;
+	out_stvfs->f_blocks = bytes_to_fsblkcnt(nbytes_max);
+	out_stvfs->f_bfree = bytes_to_fsblkcnt(nbytes_max - nbytes_use);
+	out_stvfs->f_bavail = out_stvfs->f_bfree;
+	out_stvfs->f_files = (fsfilcnt_t)nfiles_max;
+	out_stvfs->f_ffree = (fsfilcnt_t)(nfiles_max - spi->sp_used.nfiles);
+	out_stvfs->f_favail = out_stvfs->f_ffree;
+	out_stvfs->f_namemax = VOLUTA_NAME_MAX;
+	out_stvfs->f_fsid = VOLUTA_SUPER_MAGIC;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static void calc_stat_change(const struct voluta_vaddr *vaddr, int take,
                              struct voluta_space_stat *sp_st)
 {
@@ -263,46 +294,38 @@ static void calc_stat_change(const struct voluta_vaddr *vaddr, int take,
 	}
 }
 
-static void update_space_stat(struct voluta_sb_info *sbi, int take,
-                              const struct voluta_vaddr *vaddr)
+static void update_space_change(struct voluta_sb_info *sbi,
+                                struct voluta_vnode_info *hsm_vi, int take,
+                                const struct voluta_vaddr *vaddr)
 {
-	const voluta_index_t hs_index = vaddr_hs_index(vaddr);
-	const voluta_index_t ag_index = vaddr_ag_index(vaddr);
 	struct voluta_space_stat sp_st = { .zero = 0 };
 
-	if (hs_index && ag_index) {
-		calc_stat_change(vaddr, take, &sp_st);
-		spi_update_stats(&sbi->sb_spi, hs_index, &sp_st);
+	calc_stat_change(vaddr, take, &sp_st);
+	voluta_update_space(hsm_vi, vaddr->ag_index, &sp_st);
+
+	if (vaddr->hs_index && vaddr->ag_index) {
+		spi_update_stats(&sbi->sb_spi, vaddr->hs_index, &sp_st);
 	}
 }
 
-static fsblkcnt_t bytes_to_fsblkcnt(ssize_t nbytes)
+static void mark_allocated_at(struct voluta_sb_info *sbi,
+                              struct voluta_vnode_info *hsm_vi,
+                              struct voluta_vnode_info *agm_vi,
+                              const struct voluta_vaddr *vaddr)
 {
-	return (fsblkcnt_t)nbytes / VOLUTA_KB_SIZE;
+	voluta_mark_allocated_space(agm_vi, vaddr);
+	voluta_bind_to_kindof(hsm_vi, vaddr);
+	update_space_change(sbi, hsm_vi, 1, vaddr);
 }
 
-void voluta_statvfs_of(const struct voluta_sb_info *sbi,
-                       struct statvfs *out_stvfs)
+static void mark_unallocate_at(struct voluta_sb_info *sbi,
+                               struct voluta_vnode_info *hsm_vi,
+                               struct voluta_vnode_info *agm_vi,
+                               const struct voluta_vaddr *vaddr)
 {
-	const struct voluta_space_info *spi = &sbi->sb_spi;
-	const ssize_t nbytes_max = spi_space_limit(spi);
-	const ssize_t nbytes_use = spi_used_bytes(spi);
-	const ssize_t nfiles_max = spi_inodes_limit(spi);
-
-	voluta_assert_ge(nbytes_max, nbytes_use);
-	voluta_assert_ge(nfiles_max, spi->sp_used.nfiles);
-
-	voluta_memzero(out_stvfs, sizeof(*out_stvfs));
-	out_stvfs->f_bsize = VOLUTA_BK_SIZE;
-	out_stvfs->f_frsize = VOLUTA_KB_SIZE;
-	out_stvfs->f_blocks = bytes_to_fsblkcnt(nbytes_max);
-	out_stvfs->f_bfree = bytes_to_fsblkcnt(nbytes_max - nbytes_use);
-	out_stvfs->f_bavail = out_stvfs->f_bfree;
-	out_stvfs->f_files = (fsfilcnt_t)nfiles_max;
-	out_stvfs->f_ffree = (fsfilcnt_t)(nfiles_max - spi->sp_used.nfiles);
-	out_stvfs->f_favail = out_stvfs->f_ffree;
-	out_stvfs->f_namemax = VOLUTA_NAME_MAX;
-	out_stvfs->f_fsid = VOLUTA_SUPER_MAGIC;
+	voluta_clear_allocated_space(agm_vi, vaddr);
+	voluta_clear_fragmented_at(hsm_vi, vaddr);
+	update_space_change(sbi, hsm_vi, -1, vaddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -509,18 +532,6 @@ static int search_free_space_at(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static void mark_allocated_at(const struct voluta_spalloc_ctx *spa)
-{
-	struct voluta_space_stat sp_st = { .zero = 0 };
-	const voluta_index_t ag_index = spa->vaddr.ag_index;
-
-	voluta_mark_allocated_space(spa->agm_vi, &spa->vaddr);
-	voluta_bind_to_vtype(spa->hsm_vi, ag_index, spa->vtype);
-
-	calc_stat_change(&spa->vaddr, 1, &sp_st);
-	voluta_update_space(spa->hsm_vi, ag_index, &sp_st);
-}
-
 static bool is_sub_bk(enum voluta_vtype vtype)
 {
 	return (vtype_size(vtype) < VOLUTA_BK_SIZE);
@@ -592,8 +603,8 @@ static int try_find_free_space(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int do_try_allocate_from(struct voluta_sb_info *sbi,
-                                struct voluta_spalloc_ctx *spa)
+static int do_find_free_or_extend(struct voluta_sb_info *sbi,
+                                  struct voluta_spalloc_ctx *spa)
 {
 	int err;
 
@@ -612,23 +623,19 @@ static int do_try_allocate_from(struct voluta_sb_info *sbi,
 	return -ENOSPC;
 }
 
-static int try_allocate_from(struct voluta_sb_info *sbi,
-                             struct voluta_spalloc_ctx *spa)
+static int find_free_or_extend(struct voluta_sb_info *sbi,
+                               struct voluta_spalloc_ctx *spa)
 {
 	int err;
 
 	vi_incref(spa->hsm_vi);
-	err = do_try_allocate_from(sbi, spa);
+	err = do_find_free_or_extend(sbi, spa);
 	vi_decref(spa->hsm_vi);
-
-	if (!err) {
-		mark_allocated_at(spa);
-	}
 	return err;
 }
 
-static int try_allocate_space(struct voluta_sb_info *sbi,
-                              struct voluta_spalloc_ctx *spa)
+static int find_free_space(struct voluta_sb_info *sbi,
+                           struct voluta_spalloc_ctx *spa)
 {
 	int err;
 	voluta_index_t hs_index;
@@ -643,7 +650,7 @@ static int try_allocate_space(struct voluta_sb_info *sbi,
 			return err;
 		}
 		spa->hsm_vi = hsm_vi;
-		err = try_allocate_from(sbi, spa);
+		err = find_free_or_extend(sbi, spa);
 		if (!err || (err != -ENOSPC)) {
 			return err;
 		}
@@ -674,14 +681,14 @@ static int expand_space(struct voluta_sb_info *sbi)
 	return err;
 }
 
-static int allocate_space_expand(struct voluta_sb_info *sbi,
-                                 struct voluta_spalloc_ctx *spa)
+static int find_unallocated_space(struct voluta_sb_info *sbi,
+                                  struct voluta_spalloc_ctx *spa)
 {
 	int err = -ENOSPC;
 	size_t niter = 2;
 
 	while (niter--) {
-		err = try_allocate_space(sbi, spa);
+		err = find_free_space(sbi, spa);
 		if (!err || (err != -ENOSPC)) {
 			break;
 		}
@@ -691,34 +698,6 @@ static int allocate_space_expand(struct voluta_sb_info *sbi,
 		}
 	}
 	return err;
-}
-
-static int mark_unallocate_at(struct voluta_sb_info *sbi,
-                              const struct voluta_vaddr *vaddr)
-{
-	int err;
-	const voluta_index_t hs_index = vaddr_hs_index(vaddr);
-	const voluta_index_t ag_index = vaddr_ag_index(vaddr);
-	struct voluta_vnode_info *hsm_vi = NULL;
-	struct voluta_vnode_info *agm_vi = NULL;
-	struct voluta_space_stat sp_st = { .zero = 0 };
-
-	voluta_assert_gt(hs_index, 0);
-	err = stage_hsmap(sbi, hs_index, &hsm_vi);
-	if (err) {
-		return err;
-	}
-	err = stage_agmap(sbi, ag_index, &agm_vi);
-	if (err) {
-		return err;
-	}
-	voluta_clear_allocated_space(agm_vi, vaddr);
-	voluta_clear_fragmented_at(hsm_vi, vaddr);
-
-	calc_stat_change(vaddr, -1, &sp_st);
-	voluta_update_space(hsm_vi, ag_index, &sp_st);
-
-	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -2187,12 +2166,12 @@ static int allocate_space(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = allocate_space_expand(sbi, spa);
+	err = find_unallocated_space(sbi, spa);
 	if (err) {
 		/* TODO: cleanup */
 		return err;
 	}
-	update_space_stat(sbi, 1, &spa->vaddr);
+	mark_allocated_at(sbi, spa->hsm_vi, spa->agm_vi, &spa->vaddr);
 	return 0;
 }
 
@@ -2348,16 +2327,23 @@ int voluta_create_vnode(struct voluta_sb_info *sbi,
 	return err;
 }
 
-static int voluta_deallocate_space(struct voluta_sb_info *sbi,
-                                   const struct voluta_vaddr *vaddr)
+static int deallocate_space(struct voluta_sb_info *sbi,
+                            const struct voluta_vaddr *vaddr)
 {
 	int err;
+	struct voluta_vnode_info *hsm_vi = NULL;
+	struct voluta_vnode_info *agm_vi = NULL;
 
-	err = mark_unallocate_at(sbi, vaddr);
+	voluta_assert_gt(vaddr->hs_index, 0);
+	err = stage_hsmap(sbi, vaddr->hs_index, &hsm_vi);
 	if (err) {
 		return err;
 	}
-	update_space_stat(sbi, -1, vaddr);
+	err = stage_agmap(sbi, vaddr->ag_index, &agm_vi);
+	if (err) {
+		return err;
+	}
+	mark_unallocate_at(sbi, hsm_vi, agm_vi, vaddr);
 	return 0;
 }
 
@@ -2370,7 +2356,7 @@ static int discard_inode_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = voluta_deallocate_space(sbi, &iaddr->vaddr);
+	err = deallocate_space(sbi, &iaddr->vaddr);
 	if (err) {
 		return err;
 	}
@@ -2416,7 +2402,7 @@ static int free_vspace_at(struct voluta_sb_info *sbi,
 {
 	int err;
 
-	err = voluta_deallocate_space(sbi, vaddr);
+	err = deallocate_space(sbi, vaddr);
 	if (err) {
 		return err;
 	}

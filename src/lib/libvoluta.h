@@ -303,11 +303,7 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
-voluta_index_t voluta_agm_index_of_ag(voluta_index_t ag_index);
-
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
-
-bool voluta_ag_index_isumap(voluta_index_t ag_index);
 
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
 
@@ -443,10 +439,6 @@ void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
                          struct voluta_vaddr *other);
 
-voluta_index_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr);
-
-voluta_index_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr);
-
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
                         enum voluta_vtype vtype, loff_t off);
 
@@ -561,6 +553,7 @@ void voluta_space_stat_of(const struct voluta_vnode_info *hsm_vi,
                           struct voluta_space_stat *sp_st);
 
 void voluta_set_formatted_ag(struct voluta_vnode_info *hsm_vi,
+                             const struct voluta_vaddr *agm_vaddr,
                              voluta_index_t ag_index);
 
 bool voluta_has_formatted_ag(const struct voluta_vnode_info *hsm_vi,
@@ -588,6 +581,10 @@ int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
 void voluta_kivam_of_agmap(const struct voluta_vnode_info *hsm_vi,
                            voluta_index_t ag_index,
                            struct voluta_kivam *out_kivam);
+
+void voluta_resolve_agmap_vaddr(const struct voluta_vnode_info *hsm_vi,
+                                voluta_index_t ag_index,
+                                struct voluta_vaddr *out_vaddr);
 
 void voluta_setup_agmap(struct voluta_vnode_info *agm_vi,
                         voluta_index_t ag_index);

@@ -49,30 +49,15 @@ static voluta_index_t ag_to_hs_index(voluta_index_t ag_index)
 	return ag_index / VOLUTA_NAG_IN_HS;
 }
 
-static voluta_index_t hs_to_ag_index(voluta_index_t hs_index)
+static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
 {
-	return hs_index * VOLUTA_NAG_IN_HS;
-}
+	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
+	const voluta_lba_t agm_lba = (voluta_lba_t)(nbk_in_ag + ag_index);
 
-static size_t ag_index_mapping_slot(voluta_index_t ag_index)
-{
-	return ag_index % VOLUTA_NAG_IN_HS;
-}
+	voluta_assert_ge(ag_index, VOLUTA_NAG_IN_HS);
+	voluta_assert_lt(agm_lba, VOLUTA_NBK_IN_HS);
 
-static voluta_index_t ag_index_to_agm_ag_index(voluta_index_t ag_index)
-{
-	const voluta_index_t hs_index = ag_to_hs_index(ag_index);
-	const voluta_index_t agm_ag_index = hs_to_ag_index(hs_index);
-
-	return agm_ag_index;
-}
-
-static voluta_lba_t ag_index_to_agm_lba(voluta_index_t ag_index)
-{
-	const size_t ag_index_slot = ag_index_mapping_slot(ag_index);
-	const voluta_index_t agm_ag_index = ag_index_to_agm_ag_index(ag_index);
-
-	return lba_within_ag(agm_ag_index, ag_index_slot);
+	return agm_lba;
 }
 
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
@@ -84,7 +69,6 @@ static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
 	const voluta_lba_t hsm_lba = (voluta_lba_t)(VOLUTA_LBA_SB + hs_index);
 
-	voluta_assert_gt(hs_index, 0);
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
 	return hsm_lba;
@@ -97,33 +81,12 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index)
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot)
 {
-	return hs_to_ag_index(hs_index) + ag_slot;
+	return (hs_index * VOLUTA_NAG_IN_HS) + ag_slot;
 }
 
 size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index)
 {
-	return ag_index_mapping_slot(ag_index);
-}
-
-voluta_index_t voluta_agm_index_of_ag(voluta_index_t ag_index)
-{
-	return ag_index_to_agm_ag_index(ag_index);
-}
-
-bool voluta_ag_index_isumap(voluta_index_t ag_index)
-{
-	voluta_index_t hs_index;
-	voluta_index_t agm_ag_index;
-
-	hs_index = ag_to_hs_index(ag_index);
-	if (hs_index < 1) {
-		return true;
-	}
-	agm_ag_index = hs_to_ag_index(hs_index);
-	if (ag_index == agm_ag_index) {
-		return true;
-	}
-	return false;
+	return ag_index % VOLUTA_NAG_IN_HS;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -140,16 +103,6 @@ static const struct voluta_vaddr s_vaddr_none = {
 const struct voluta_vaddr *voluta_vaddr_none(void)
 {
 	return &s_vaddr_none;
-}
-
-voluta_index_t voluta_vaddr_ag_index(const struct voluta_vaddr *vaddr)
-{
-	return vaddr->ag_index;
-}
-
-voluta_index_t voluta_vaddr_hs_index(const struct voluta_vaddr *vaddr)
-{
-	return vaddr->hs_index;
 }
 
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
@@ -212,17 +165,12 @@ void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
 	const voluta_lba_t lba = hsm_lba_by_index(hs_index);
 
-	voluta_assert_gt(hs_index, 0);
-
 	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, lba_to_off(lba));
 }
 
 void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
-	const voluta_lba_t lba = ag_index_to_agm_lba(ag_index);
-
-	voluta_assert_gt(ag_index, VOLUTA_NAG_IN_HS);
-	voluta_assert_ne(ag_index % VOLUTA_NAG_IN_HS, 0);
+	const voluta_lba_t lba = agm_lba_by_index(ag_index);
 
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }

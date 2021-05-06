@@ -326,11 +326,10 @@ enum voluta_hsf {
 /* allocation-groups flags */
 enum voluta_agf {
 	VOLUTA_AGF_FORMATTED    = (1 << 0),
-	VOLUTA_AGF_MAPPING      = (1 << 1),
-	VOLUTA_AGF_FRAGMENTED   = (1 << 2),
-	VOLUTA_AGF_USERDATA     = (1 << 3),
-	VOLUTA_AGF_METADATA     = (1 << 4),
-	VOLUTA_AGF_ITABLEROOT   = (1 << 5),
+	VOLUTA_AGF_FRAGMENTED   = (1 << 1),
+	VOLUTA_AGF_USERDATA     = (1 << 2),
+	VOLUTA_AGF_METADATA     = (1 << 3),
+	VOLUTA_AGF_ITABLEROOT   = (1 << 4),
 };
 
 
@@ -574,11 +573,12 @@ struct voluta_header {
 
 
 struct voluta_ag_rec {
+	struct voluta_vaddr64   ag_spmap_vaddr;
 	uint32_t                ag_flags;
 	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint8_t                 ag_reserved[32];
+	uint8_t                 ag_reserved[24];
 	uint64_t                ag_seed;
 } voluta_packed_aligned8;
 

@@ -280,6 +280,9 @@
 /* size of archive blob spec entry */
 #define VOLUTA_AR_BLOBREF_SIZE          (64)
 
+/* size in bytes of blob identifier */
+#define VOLUTA_BLOBID_LEN               (32)
+
 
 
 /* zero-LBA meta-block types */
@@ -315,7 +318,6 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_SYMVAL     = 29,
 	VOLUTA_VTYPE_DATABK     = 64,
 };
-
 
 /* hyper-space flags */
 enum voluta_hsf {
@@ -438,9 +440,15 @@ struct voluta_vaddr56 {
 	uint8_t  hi;
 } voluta_packed;
 
+
 struct voluta_vaddr64 {
 	uint64_t off_vtype;
 } voluta_packed_aligned8;
+
+
+struct voluta_baddr256 {
+	uint8_t         id[VOLUTA_BLOBID_LEN];
+} voluta_packed_aligned32;
 
 
 struct voluta_timespec {
@@ -490,6 +498,15 @@ struct voluta_kivam {
 	uint32_t cipher_algo;
 	uint32_t cipher_mode;
 	uint64_t reserved;
+} voluta_packed_aligned32;
+
+
+struct voluta_bspec {
+	uint32_t        bsize;
+	uint32_t        csize;
+	uint32_t        flags;
+	uint8_t         reserved[52];
+	struct voluta_kivam kivam;
 } voluta_packed_aligned32;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

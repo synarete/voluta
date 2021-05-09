@@ -242,8 +242,15 @@ struct voluta_vaddr {
 	voluta_index_t  ag_index;
 	voluta_lba_t    lba;
 	loff_t          off;
-	uint32_t        len;
+	size_t          len;
 	enum voluta_vtype vtype;
+};
+
+/* object-address within underlying blobs space */
+struct voluta_baddr {
+	uint8_t         id[VOLUTA_BLOBID_LEN];
+	size_t          osize;
+	size_t          flags;
 };
 
 /* inode-address */

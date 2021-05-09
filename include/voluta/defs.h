@@ -93,13 +93,13 @@
 
 
 /* number of allocation-groups per hyper-space */
-#define VOLUTA_NAG_IN_HS                (1024L)
+#define VOLUTA_NAG_IN_HS                (512L)
 
 /* number of logical blocks within hyper-space */
 #define VOLUTA_NBK_IN_HS \
 	(VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG)
 
-/* size of single hyper-space (64G) */
+/* size of single hyper-space (32G) */
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
@@ -117,7 +117,7 @@
 #define VOLUTA_VOLUME_SIZE_MIN \
 	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
-/* maximal bytes-size of underlying volume (8T) */
+/* maximal bytes-size of underlying volume (4T) */
 #define VOLUTA_VOLUME_SIZE_MAX  \
 	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
@@ -317,6 +317,7 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_RTNODE     = 23,
 	VOLUTA_VTYPE_SYMVAL     = 29,
 	VOLUTA_VTYPE_DATABK     = 64,
+	VOLUTA_VTYPE_BLOB       = 127,
 };
 
 /* hyper-space flags */
@@ -434,22 +435,6 @@ enum voluta_kdf_algos {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-struct voluta_vaddr56 {
-	uint32_t lo;
-	uint16_t me;
-	uint8_t  hi;
-} voluta_packed;
-
-
-struct voluta_vaddr64 {
-	uint64_t off_vtype;
-} voluta_packed_aligned8;
-
-
-struct voluta_baddr256 {
-	uint8_t         id[VOLUTA_BLOBID_LEN];
-} voluta_packed_aligned32;
-
 
 struct voluta_timespec {
 	uint64_t t_sec;
@@ -492,21 +477,30 @@ struct voluta_iv {
 } voluta_packed_aligned8;
 
 
-struct voluta_kivam {
-	struct voluta_key key;
-	struct voluta_iv  iv;
-	uint32_t cipher_algo;
-	uint32_t cipher_mode;
-	uint64_t reserved;
+struct voluta_vaddr56 {
+	uint32_t lo;
+	uint16_t me;
+	uint8_t  hi;
+} voluta_packed;
+
+
+struct voluta_vaddr64 {
+	uint64_t off_vtype;
+} voluta_packed_aligned8;
+
+
+struct voluta_baddr256 {
+	uint8_t         id[VOLUTA_BLOBID_LEN];
 } voluta_packed_aligned32;
 
 
-struct voluta_bspec {
-	uint32_t        bsize;
-	uint32_t        csize;
-	uint32_t        flags;
-	uint8_t         reserved[52];
-	struct voluta_kivam kivam;
+struct voluta_blref512 {
+	struct voluta_vaddr64   vaddr;
+	uint32_t                bsize; /* blob's raw size */
+	uint32_t                csize; /* compressed size */
+	uint32_t                flags;
+	uint8_t                 reserved[12];
+	struct voluta_baddr256  baddr;
 } voluta_packed_aligned32;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -595,8 +589,7 @@ struct voluta_ag_rec {
 	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint8_t                 ag_reserved[24];
-	uint64_t                ag_seed;
+	uint8_t                 ag_reserved[32];
 } voluta_packed_aligned8;
 
 
@@ -609,8 +602,8 @@ struct voluta_hspace_map {
 	uint32_t                hs_nags_span;
 	uint32_t                hs_nags_form;
 	uint8_t                 hs_reserved2[4048];
-	uint8_t                 hs_reserved3[4096];
 	struct voluta_ag_rec    hs_agr[VOLUTA_NAG_IN_HS];
+	struct voluta_blref512   hs_bref[VOLUTA_NAG_IN_HS];
 } voluta_packed_aligned64;
 
 

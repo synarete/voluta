@@ -738,6 +738,7 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 		vi->vu.db4 = &view->u.db4;
 		break;
 	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_VTYPE_BLOB:
 		vi->vu.db = &view->u.db;
 		break;
 	case VOLUTA_VTYPE_NONE:
@@ -1532,7 +1533,7 @@ static int do_traverse_by_agmap(struct voluta_sb_info *sbi,
 
 	for (size_t bk_idx = 0; bk_idx < VOLUTA_NBK_IN_AG; ++bk_idx) {
 		voluta_balloc_info_at(agm_vi, bk_idx, &bai);
-		if (voluta_vtype_isumap(bai.vtype)) {
+		if (voluta_vtype_isspmap(bai.vtype)) {
 			continue;
 		}
 		err = traverse_by_balloc_info(sbi, agm_vi, &bai);

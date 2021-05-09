@@ -239,8 +239,8 @@ static void cipher_fini(struct voluta_cipher *ci)
 static int chiper_verify(const struct voluta_cipher *ci,
                          const struct voluta_kivam *kivam)
 {
-	const int algo = (int)(kivam->cipher_algo);
-	const int mode = (int)(kivam->cipher_mode);
+	const unsigned int algo = kivam->cipher_algo;
+	const unsigned int mode = kivam->cipher_mode;
 
 	voluta_unused(ci);
 	if ((algo != GCRY_CIPHER_AES256) || (mode != GCRY_CIPHER_MODE_GCM)) {
@@ -258,7 +258,7 @@ static int cipher_prepare(const struct voluta_cipher *ci,
 	const struct voluta_iv *iv = &kivam->iv;
 	const struct voluta_key *key = &kivam->key;
 
-	blklen = gcry_cipher_get_algo_blklen((int)(kivam->cipher_algo));
+	blklen = gcry_cipher_get_algo_blklen((int)kivam->cipher_algo);
 	if (blklen > sizeof(iv->iv)) {
 		log_warn("bad blklen: %lu", blklen);
 		return -EINVAL;
@@ -563,21 +563,11 @@ static void key_rand(struct voluta_key *key, size_t n)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void kivam_set_cipher_algo(struct voluta_kivam *kivam, uint32_t algo)
-{
-	kivam->cipher_algo = cpu_to_le32(algo);
-}
-
-static void kivam_set_cipher_mode(struct voluta_kivam *kivam, uint32_t mode)
-{
-	kivam->cipher_mode = cpu_to_le32(mode);
-}
-
 void voluta_kivam_init(struct voluta_kivam *kivam)
 {
 	memset(kivam, 0, sizeof(*kivam));
-	kivam_set_cipher_algo(kivam, VOLUTA_CIPHER_AES256);
-	kivam_set_cipher_mode(kivam, VOLUTA_CIPHER_MODE_GCM);
+	kivam->cipher_algo = VOLUTA_CIPHER_AES256;
+	kivam->cipher_mode = VOLUTA_CIPHER_MODE_GCM;
 }
 
 void voluta_kivam_fini(struct voluta_kivam *kivam)
@@ -586,15 +576,16 @@ void voluta_kivam_fini(struct voluta_kivam *kivam)
 }
 
 static void kivam_setup(struct voluta_kivam *kivam,
-                        uint32_t cipher_algo, uint32_t cipher_mode,
+                        uint32_t cipher_algo,
+                        uint32_t cipher_mode,
                         const struct voluta_key *key,
                         const struct voluta_iv *iv)
 {
 	voluta_kivam_init(kivam);
-	kivam_set_cipher_algo(kivam, cipher_algo);
-	kivam_set_cipher_mode(kivam, cipher_mode);
 	key_clone(key, &kivam->key);
 	iv_clone(iv, &kivam->iv);
+	kivam->cipher_algo = cipher_algo;
+	kivam->cipher_mode = cipher_mode;
 }
 
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,

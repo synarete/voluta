@@ -17,6 +17,7 @@
 #define _GNU_SOURCE 1
 #include "libvoluta.h"
 
+
 static voluta_lba_t lba_plus(voluta_lba_t lba, size_t nbk)
 {
 	return lba + (voluta_lba_t)nbk;
@@ -91,6 +92,121 @@ size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+bool voluta_vtype_isspmap(enum voluta_vtype vtype)
+{
+	bool ret;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_HSMAP:
+	case VOLUTA_VTYPE_AGMAP:
+		ret = true;
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_NONE:
+	default:
+		ret = false;
+		break;
+	}
+	return ret;
+}
+
+bool voluta_vtype_isdata(enum voluta_vtype vtype)
+{
+	bool ret;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_DATABK:
+		ret = true;
+		break;
+	case VOLUTA_VTYPE_HSMAP:
+	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_NONE:
+	default:
+		ret = false;
+		break;
+	}
+	return ret;
+}
+
+size_t voluta_vtype_size(enum voluta_vtype vtype)
+{
+	size_t sz;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_HSMAP:
+		sz = sizeof(struct voluta_hspace_map);
+		break;
+	case VOLUTA_VTYPE_AGMAP:
+		sz = sizeof(struct voluta_agroup_map);
+		break;
+	case VOLUTA_VTYPE_ITNODE:
+		sz = sizeof(struct voluta_itable_tnode);
+		break;
+	case VOLUTA_VTYPE_INODE:
+		sz = sizeof(struct voluta_inode);
+		break;
+	case VOLUTA_VTYPE_XANODE:
+		sz = sizeof(struct voluta_xattr_node);
+		break;
+	case VOLUTA_VTYPE_HTNODE:
+		sz = sizeof(struct voluta_dir_htnode);
+		break;
+	case VOLUTA_VTYPE_RTNODE:
+		sz = sizeof(struct voluta_radix_tnode);
+		break;
+	case VOLUTA_VTYPE_SYMVAL:
+		sz = sizeof(struct voluta_lnk_value);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+		sz = sizeof(struct voluta_data_block1);
+		break;
+	case VOLUTA_VTYPE_DATA4K:
+		sz = sizeof(struct voluta_data_block4);
+		break;
+	case VOLUTA_VTYPE_DATABK:
+		sz = sizeof(struct voluta_data_block);
+		break;
+	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_NONE:
+	default:
+		sz = 0;
+		break;
+	}
+	return sz;
+}
+
+ssize_t voluta_vtype_ssize(enum voluta_vtype vtype)
+{
+	return (ssize_t)voluta_vtype_size(vtype);
+}
+
+size_t voluta_vtype_nkbs(enum voluta_vtype vtype)
+{
+	const size_t size = voluta_vtype_size(vtype);
+
+	return div_round_up(size, VOLUTA_KB_SIZE);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static const struct voluta_vaddr s_vaddr_none = {
 	.hs_index = VOLUTA_HS_INDEX_NULL,
 	.ag_index = VOLUTA_AG_INDEX_NULL,
@@ -156,10 +272,9 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr)
 
 bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr)
 {
-	return voluta_vtype_isumap(vaddr->vtype);
+	return voluta_vtype_isspmap(vaddr->vtype);
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
@@ -187,6 +302,104 @@ void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
 	const loff_t off = lba_kbn_to_off(lba, kbn);
 
 	vaddr_setup(vaddr, vtype, off);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off)
+{
+	const uint64_t uoff = (uint64_t)off;
+
+	if (!off_isnull(off)) {
+		voluta_assert_eq(uoff & 0xFFL, 0);
+		va->lo = cpu_to_le32((uint32_t)(uoff >> 8));
+		va->me = cpu_to_le16((uint16_t)(uoff >> 40));
+		va->hi = (uint8_t)(uoff >> 56);
+	} else {
+		va->lo = cpu_to_le32(UINT32_MAX);
+		va->me = cpu_to_le16(UINT16_MAX);
+		va->hi = UINT8_MAX;
+	}
+}
+
+loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va)
+{
+	loff_t off;
+	const uint64_t lo = le32_to_cpu(va->lo);
+	const uint64_t me = le16_to_cpu(va->me);
+	const uint64_t hi = va->hi;
+
+	if ((lo == UINT32_MAX) && (me == UINT16_MAX) && (hi == UINT8_MAX)) {
+		off = VOLUTA_OFF_NULL;
+	} else {
+		off = (loff_t)((lo << 8) | (me << 40) | (hi << 56));
+	}
+	return off;
+}
+
+void voluta_vaddr64_set(struct voluta_vaddr64 *va,
+                        const struct voluta_vaddr *vaddr)
+{
+	const uint64_t off = (uint64_t)vaddr->off;
+	const uint64_t vtype = (uint64_t)vaddr->vtype;
+
+	if (!vaddr_isnull(vaddr)) {
+		va->off_vtype = cpu_to_le64((off << 8) | (vtype & 0xFF));
+	} else {
+		va->off_vtype = 0;
+	}
+}
+
+void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
+                          struct voluta_vaddr *vaddr)
+{
+	const uint64_t off_vtype = le64_to_cpu(va->off_vtype);
+
+	if (off_vtype != 0) {
+		vaddr_setup(vaddr, off_vtype & 0xFF, (loff_t)(off_vtype >> 8));
+	} else {
+		vaddr_reset(vaddr);
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static const struct voluta_baddr s_baddr_none = {
+	.id[0] = 0,
+};
+
+const struct voluta_baddr *voluta_baddr_none(void)
+{
+	return &s_baddr_none;
+}
+
+void voluta_baddr_create(struct voluta_baddr *baddr)
+{
+	voluta_getentropy(baddr->id, sizeof(baddr->id));
+}
+
+void voluta_baddr_copyto(const struct voluta_baddr *baddr,
+                         struct voluta_baddr *other)
+{
+	memcpy(other->id, baddr->id, sizeof(other->id));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_baddr256_set(struct voluta_baddr256 *ba,
+                         const struct voluta_baddr *baddr)
+{
+	STATICASSERT_EQ(sizeof(ba->id), sizeof(baddr->id));
+
+	memcpy(ba->id, baddr->id, sizeof(ba->id));
+}
+
+void voluta_baddr256_parse(const struct voluta_baddr256 *ba,
+                           struct voluta_baddr *baddr)
+{
+	STATICASSERT_EQ(sizeof(ba->id), sizeof(baddr->id));
+
+	memcpy(baddr->id, ba->id, sizeof(baddr->id));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

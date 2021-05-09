@@ -308,6 +308,19 @@ size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
 
 
+bool voluta_vtype_isspmap(enum voluta_vtype vtype);
+
+bool voluta_vtype_isdata(enum voluta_vtype vtype);
+
+bool voluta_vtype_ismeta(enum voluta_vtype vtype);
+
+size_t voluta_vtype_size(enum voluta_vtype vtype);
+
+ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
+
+size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
+
+
 const struct voluta_vaddr *voluta_vaddr_none(void);
 
 void voluta_vaddr_reset(struct voluta_vaddr *vaddr);
@@ -328,6 +341,32 @@ void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off);
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
                         voluta_index_t ag_index, size_t bn, size_t kbn);
+
+
+void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off);
+
+loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va);
+
+void voluta_vaddr64_set(struct voluta_vaddr64 *va,
+                        const struct voluta_vaddr *vaddr);
+
+void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
+                          struct voluta_vaddr *vaddr);
+
+
+const struct voluta_baddr *voluta_baddr_none(void);
+
+void voluta_baddr_create(struct voluta_baddr *baddr);
+
+void voluta_baddr_copyto(const struct voluta_baddr *baddr,
+                         struct voluta_baddr *other);
+
+void voluta_baddr256_set(struct voluta_baddr256 *ba,
+                         const struct voluta_baddr *baddr);
+
+void voluta_baddr256_parse(const struct voluta_baddr256 *ba,
+                           struct voluta_baddr *baddr);
+
 
 int voluta_check_volume_size(loff_t size);
 
@@ -351,29 +390,6 @@ bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
 
 void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
 
-
-bool voluta_vtype_isumap(enum voluta_vtype vtype);
-
-bool voluta_vtype_isdata(enum voluta_vtype vtype);
-
-size_t voluta_vtype_size(enum voluta_vtype vtype);
-
-ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
-
-size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
-
-bool voluta_vtype_ismeta(enum voluta_vtype vtype);
-
-
-void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off);
-
-loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va);
-
-void voluta_vaddr64_set(struct voluta_vaddr64 *va,
-                        const struct voluta_vaddr *vaddr);
-
-void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
-                          struct voluta_vaddr *vaddr);
 
 int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf);
 

@@ -111,11 +111,6 @@ static void agr_set_spmap_vaddr(struct voluta_ag_rec *agr,
 	voluta_vaddr64_set(&agr->ag_spmap_vaddr, vaddr);
 }
 
-static void agr_set_seed(struct voluta_ag_rec *agr, uint64_t s)
-{
-	agr->ag_seed = cpu_to_le64(s);
-}
-
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
 {
 	return le32_to_cpu(agr->ag_used_meta);
@@ -239,7 +234,6 @@ static void agr_init(struct voluta_ag_rec *agr)
 	agr_set_used_data(agr, 0);
 	agr_set_nfiles(agr, 0);
 	agr_set_flags(agr, 0);
-	agr_set_seed(agr, voluta_getentropy64());
 }
 
 static void agr_initn(struct voluta_ag_rec *agr, size_t n)
@@ -1529,6 +1523,7 @@ static int verify_vtype(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_VTYPE_BLOB:
 		return 0;
 	default:
 		break;

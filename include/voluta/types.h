@@ -213,7 +213,7 @@ struct voluta_ucred {
 typedef loff_t          voluta_lba_t;
 typedef uint64_t        voluta_index_t;
 
-/* inode's attributes */
+/* inode's time-stamps (birth, access, modify, change) */
 struct voluta_itimes {
 	struct timespec btime;
 	struct timespec atime;
@@ -221,6 +221,7 @@ struct voluta_itimes {
 	struct timespec ctime;
 };
 
+/* inode's attributes */
 struct voluta_iattr {
 	enum voluta_iattr_flags ia_flags;
 	mode_t          ia_mode;
@@ -234,6 +235,14 @@ struct voluta_iattr {
 	loff_t          ia_span;
 	blkcnt_t        ia_blocks;
 	struct voluta_itimes ia_t;
+};
+
+/* encryption tuple (key, iv, algo, mode) */
+struct voluta_kivam {
+	struct voluta_key key;
+	struct voluta_iv  iv;
+	unsigned int cipher_algo;
+	unsigned int cipher_mode;
 };
 
 /* logical-address within underlying volume space */
@@ -251,10 +260,12 @@ struct voluta_baddr {
 	uint8_t         id[VOLUTA_BLOBID_LEN];
 };
 
-struct voluta_reference {
-	struct voluta_vaddr vaddr;
-	struct voluta_baddr baddr;
-};
+/* blob reference mapping */
+struct voluta_blref {
+	struct voluta_vaddr   vaddr;
+	struct voluta_baddr   baddr;
+	size_t                bsize;
+} voluta_packed_aligned32;
 
 /* inode-address */
 struct voluta_iaddr {

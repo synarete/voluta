@@ -2531,78 +2531,12 @@ int voluta_refcnt_islast_at(struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int kivam_of_hsmap(const struct voluta_vnode_info *vi,
-                          struct voluta_kivam *out_kivam)
-{
-	const struct voluta_kivam *kivam;
-	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-	const struct voluta_super_block *sb = vi->v_sbi->sb;
-
-	kivam = voluta_sb_kivam_of(sb, vaddr->hs_index);
-	voluta_kivam_copyto(kivam, out_kivam);
-
-	voluta_kivam_xor_iv(out_kivam, 0);
-	return 0;
-}
-
-static int kivam_of_agmap(const struct voluta_vnode_info *agm_vi,
-                          struct voluta_kivam *out_kivam)
-{
-	int err;
-	struct voluta_vnode_info *hsm_vi;
-	const struct voluta_vaddr *vaddr = vi_vaddr(agm_vi);
-
-	err = stage_hsmap_of(agm_vi->v_sbi, vaddr, &hsm_vi);
-	if (err) {
-		return err;
-	}
-	voluta_kivam_of_agmap(hsm_vi, vaddr->ag_index, out_kivam);
-	return 0;
-}
-
-static int kivam_of_vnode(const struct voluta_vnode_info *vi,
-                          struct voluta_kivam *out_kivam)
-{
-	int err;
-	struct voluta_vnode_info *agm_vi;
-	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-
-	err = stage_agmap_of(vi->v_sbi, vaddr, &agm_vi);
-	if (err) {
-		return err;
-	}
-	voluta_kivam_of_vnode_at(agm_vi, vi_vaddr(vi), out_kivam);
-	return 0;
-}
-
 int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam)
 {
-	int err = 0;
-	const enum voluta_vtype vtype = vi_vtype(vi);
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+	const struct voluta_super_block *sb = vi->v_sbi->sb;
 
-	switch (vtype) {
-	case VOLUTA_VTYPE_HSMAP:
-		err = kivam_of_hsmap(vi, out_kivam);
-		break;
-	case VOLUTA_VTYPE_AGMAP:
-		err = kivam_of_agmap(vi, out_kivam);
-		break;
-	case VOLUTA_VTYPE_ITNODE:
-	case VOLUTA_VTYPE_INODE:
-	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
-	case VOLUTA_VTYPE_RTNODE:
-	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_DATABK:
-		err = kivam_of_vnode(vi, out_kivam);
-		break;
-	case VOLUTA_VTYPE_NONE:
-	default:
-		voluta_kivam_setup(out_kivam);
-		break;
-	}
-	return err;
+	voluta_sb_kivam_of(sb, vaddr, out_kivam);
+	return 0;
 }

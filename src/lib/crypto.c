@@ -541,28 +541,24 @@ void voluta_crypto_fini(struct voluta_crypto *crypto)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void iv_rand(struct voluta_iv *iv)
+static void iv_clone(const struct voluta_iv *iv, struct voluta_iv *other)
 {
-	do_randomize(iv, sizeof(*iv), false);
+	memcpy(other, iv, sizeof(*other));
 }
 
-static uint8_t octet_of(uint64_t r, int oct)
+static void iv_rand(struct voluta_iv *iv, size_t n)
 {
-	return (uint8_t)((r >> (8 * oct)) & 0xFF);
+	do_randomize(iv, n * sizeof(*iv), false);
 }
 
-static void iv_xor_with(struct voluta_iv *iv, uint64_t seed)
+static void key_clone(const struct voluta_key *key, struct voluta_key *other)
 {
-	STATICASSERT_EQ(ARRAY_SIZE(iv->iv), 16);
-
-	for (int i = 0; i < 8; ++i) {
-		iv->iv[i] ^= octet_of(seed, i);
-	}
+	memcpy(other, key, sizeof(*other));
 }
 
-static void key_rand(struct voluta_key *key)
+static void key_rand(struct voluta_key *key, size_t n)
 {
-	do_randomize(key, sizeof(*key), true);
+	do_randomize(key, n * sizeof(*key), true);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -589,18 +585,16 @@ void voluta_kivam_fini(struct voluta_kivam *kivam)
 	memset(kivam, 0xC3, sizeof(*kivam));
 }
 
-void voluta_kivam_setup(struct voluta_kivam *kivam)
+static void kivam_setup(struct voluta_kivam *kivam,
+                        uint32_t cipher_algo, uint32_t cipher_mode,
+                        const struct voluta_key *key,
+                        const struct voluta_iv *iv)
 {
 	voluta_kivam_init(kivam);
-	key_rand(&kivam->key);
-	iv_rand(&kivam->iv);
-}
-
-void voluta_kivam_setup_n(struct voluta_kivam *kivam, size_t n)
-{
-	for (size_t i = 0; i < n; ++i) {
-		voluta_kivam_setup(&kivam[i]);
-	}
+	kivam_set_cipher_algo(kivam, cipher_algo);
+	kivam_set_cipher_mode(kivam, cipher_mode);
+	key_clone(key, &kivam->key);
+	iv_clone(iv, &kivam->iv);
 }
 
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
@@ -609,7 +603,67 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 	memcpy(other, kivam, sizeof(*other));
 }
 
-void voluta_kivam_xor_iv(struct voluta_kivam *kivam, uint64_t seed)
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static uint32_t keys_cipher_algo(const struct voluta_keys_block8 *keys)
 {
-	iv_xor_with(&kivam->iv, seed);
+	return le32_to_cpu(keys->k_cipher_algo);
+}
+
+static void
+keys_set_cipher_algo(struct voluta_keys_block8 *keys, uint32_t algo)
+{
+	keys->k_cipher_algo = cpu_to_le32(algo);
+}
+
+static uint32_t keys_cipher_mode(const struct voluta_keys_block8 *keys)
+{
+	return le32_to_cpu(keys->k_cipher_mode);
+}
+
+static void
+keys_set_cipher_mode(struct voluta_keys_block8 *keys, uint32_t mode)
+{
+	keys->k_cipher_mode = cpu_to_le32(mode);
+}
+
+void voluta_keys_setup(struct voluta_keys_block8 *keys)
+{
+	keys_set_cipher_algo(keys, VOLUTA_CIPHER_AES256);
+	keys_set_cipher_mode(keys, VOLUTA_CIPHER_MODE_GCM);
+	voluta_memzero(keys->k_reserved1, sizeof(keys->k_reserved1));
+	iv_rand(keys->k_iv, ARRAY_SIZE(keys->k_iv));
+	voluta_memzero(keys->k_reserved2, sizeof(keys->k_reserved2));
+	key_rand(keys->k_key, ARRAY_SIZE(keys->k_key));
+}
+
+static const struct voluta_key *
+keys_key_by_lba(const struct voluta_keys_block8 *keys, voluta_lba_t lba)
+{
+	size_t key_slot;
+
+	key_slot = (uint64_t)lba % ARRAY_SIZE(keys->k_key);
+	return &keys->k_key[key_slot];
+}
+
+static const struct voluta_iv *
+keys_iv_by_ag_index(const struct voluta_keys_block8 *keys,
+                    voluta_index_t ag_index)
+{
+	size_t iv_slot;
+
+	iv_slot = (uint64_t)ag_index % ARRAY_SIZE(keys->k_iv);
+	return &keys->k_iv[iv_slot];
+}
+
+void voluta_keys_kivam_of(const struct voluta_keys_block8 *keys,
+                          const struct voluta_vaddr *vaddr,
+                          struct voluta_kivam *out_kivam)
+{
+	kivam_setup(out_kivam,
+	            keys_cipher_algo(keys),
+	            keys_cipher_mode(keys),
+	            keys_key_by_lba(keys, vaddr->lba),
+	            keys_iv_by_ag_index(keys, vaddr->ag_index));
+
 }

@@ -379,17 +379,14 @@ void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count)
 
 void voluta_sb_setup_keys(struct voluta_super_block *sb)
 {
-	voluta_kivam_setup_n(sb->s_keys.k, ARRAY_SIZE(sb->s_keys.k));
+	voluta_keys_setup(&sb->s_keys);
 }
 
-const struct voluta_kivam *
-voluta_sb_kivam_of(const struct voluta_super_block *sb,
-                   voluta_index_t hs_index)
+void voluta_sb_kivam_of(const struct voluta_super_block *sb,
+                        const struct voluta_vaddr *vaddr,
+                        struct voluta_kivam *out_kivam)
 {
-	const struct voluta_keys_block8 *ivks = &sb->s_keys;
-	const size_t slot = hs_index % ARRAY_SIZE(ivks->k);
-
-	return &ivks->k[slot];
+	return voluta_keys_kivam_of(&sb->s_keys, vaddr, out_kivam);
 }
 
 void voluta_sb_setup_rand(struct voluta_super_block *sb,
@@ -564,3 +561,5 @@ out:
 	voluta_passphrase_reset(&passph);
 	return err;
 }
+
+

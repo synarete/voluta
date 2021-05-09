@@ -555,13 +555,13 @@ struct voluta_meta_block4 {
 } voluta_packed_aligned64;
 
 
-struct voluta_keys_block4 {
-	struct voluta_kivam     k[64];
-} voluta_packed_aligned64;
-
-
 struct voluta_keys_block8 {
-	struct voluta_kivam     k[128];
+	uint32_t                k_cipher_algo;
+	uint32_t                k_cipher_mode;
+	uint8_t                 k_reserved1[72];
+	struct voluta_iv        k_iv[251];
+	uint8_t                 k_reserved2[32];
+	struct voluta_key       k_key[127];
 } voluta_packed_aligned64;
 
 
@@ -609,7 +609,7 @@ struct voluta_hspace_map {
 	uint32_t                hs_nags_span;
 	uint32_t                hs_nags_form;
 	uint8_t                 hs_reserved2[4048];
-	struct voluta_keys_block4 hs_keys;
+	uint8_t                 hs_reserved3[4096];
 	struct voluta_ag_rec    hs_agr[VOLUTA_NAG_IN_HS];
 } voluta_packed_aligned64;
 
@@ -621,8 +621,7 @@ struct voluta_bk_rec {
 	uint64_t                bk_allocated;
 	uint64_t                bk_unwritten;
 	uint64_t                bk_refcnt;
-	uint32_t                bk_reserved2[4];
-	uint64_t                bk_seed;
+	uint32_t                bk_reserved2[6];
 } voluta_packed_aligned8;
 
 
@@ -631,7 +630,7 @@ struct voluta_agroup_map {
 	uint64_t                ag_index;
 	struct voluta_vaddr64   ag_it_root;
 	uint8_t                 ag_reserved[4064];
-	struct voluta_keys_block4 ag_keys;
+	uint8_t                 ag_reserved2[4096];
 	struct voluta_bk_rec    ag_bkr[VOLUTA_NBK_IN_AG];
 } voluta_packed_aligned64;
 

@@ -249,8 +249,11 @@ struct voluta_vaddr {
 /* object-address within underlying blobs space */
 struct voluta_baddr {
 	uint8_t         id[VOLUTA_BLOBID_LEN];
-	size_t          osize;
-	size_t          flags;
+};
+
+struct voluta_reference {
+	struct voluta_vaddr vaddr;
+	struct voluta_baddr baddr;
 };
 
 /* inode-address */
@@ -258,7 +261,6 @@ struct voluta_iaddr {
 	struct voluta_vaddr vaddr;
 	ino_t ino;
 };
-
 
 /* caching-elements */
 struct voluta_cache_elem {

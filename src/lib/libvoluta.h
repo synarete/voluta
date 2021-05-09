@@ -89,9 +89,9 @@ void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count);
 
 void voluta_sb_setup_keys(struct voluta_super_block *sb);
 
-const struct voluta_kivam *
-voluta_sb_kivam_of(const struct voluta_super_block *sb,
-                   voluta_index_t hs_index);
+void voluta_sb_kivam_of(const struct voluta_super_block *sb,
+                        const struct voluta_vaddr *vaddr,
+                        struct voluta_kivam *out_kivam);
 
 void voluta_sb_setup_rand(struct voluta_super_block *sb,
                           const struct voluta_mdigest *md);
@@ -578,10 +578,6 @@ void voluta_bind_to_kindof(struct voluta_vnode_info *hsm_vi,
 int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
                            const enum voluta_vtype vtype);
 
-void voluta_kivam_of_agmap(const struct voluta_vnode_info *hsm_vi,
-                           voluta_index_t ag_index,
-                           struct voluta_kivam *out_kivam);
-
 void voluta_resolve_agmap_vaddr(const struct voluta_vnode_info *hsm_vi,
                                 voluta_index_t ag_index,
                                 struct voluta_vaddr *out_vaddr);
@@ -635,11 +631,6 @@ void voluta_assign_itroot(struct voluta_vnode_info *hsm_vi,
 
 void voluta_parse_itroot(const struct voluta_vnode_info *agm_vi,
                          struct voluta_vaddr *out_vaddr);
-
-
-void voluta_kivam_of_vnode_at(const struct voluta_vnode_info *agm_vi,
-                              const struct voluta_vaddr *vaddr,
-                              struct voluta_kivam *out_kivam);
 
 void voluta_balloc_info_at(const struct voluta_vnode_info *agm_vi,
                            size_t slot, struct voluta_balloc_info *bai);
@@ -1091,14 +1082,16 @@ void voluta_kivam_init(struct voluta_kivam *kivam);
 
 void voluta_kivam_fini(struct voluta_kivam *kivam);
 
-void voluta_kivam_setup(struct voluta_kivam *kivam);
-
-void voluta_kivam_setup_n(struct voluta_kivam *kivam, size_t n);
-
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
-void voluta_kivam_xor_iv(struct voluta_kivam *kivam, uint64_t seed);
+
+void voluta_keys_setup(struct voluta_keys_block8 *keys);
+
+void voluta_keys_kivam_of(const struct voluta_keys_block8 *keys,
+                          const struct voluta_vaddr *vaddr,
+                          struct voluta_kivam *out_kivam);
+
 
 /* cache */
 int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool);

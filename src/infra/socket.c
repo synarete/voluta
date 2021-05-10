@@ -28,9 +28,11 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include "libvoluta.h"
+#include <voluta/syscall.h>
+#include <voluta/socket.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -79,14 +81,14 @@ static void sockaddr_reset(struct voluta_sockaddr *sa)
 {
 	struct sockaddr *sa_common = &sa->u.sa;
 
-	voluta_memzero(sa_common, sizeof(*sa_common));
+	memset(sa_common, 0, sizeof(*sa_common));
 }
 
 static void sockaddr_clear_un(struct voluta_sockaddr *sa)
 {
 	struct sockaddr_un *sa_un = &sa->u.sa_un;
 
-	voluta_memzero(sa_un, sizeof(*sa_un));
+	memset(sa_un, 0, sizeof(*sa_un));
 }
 
 static sa_family_t sockaddr_family(const struct voluta_sockaddr *sa)
@@ -222,6 +224,18 @@ int voluta_sockaddr_pton(struct voluta_sockaddr *sa, const char *str)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void *unconst(const void *p)
+{
+	union {
+		const void *p;
+		void *q;
+	} u = {
+		.p = p
+	};
+
+	return u.q;
+}
 
 void voluta_msghdr_setaddr(struct msghdr *mh, const struct voluta_sockaddr *sa)
 {

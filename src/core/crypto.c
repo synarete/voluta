@@ -656,5 +656,4 @@ void voluta_keys_kivam_of(const struct voluta_keys_block8 *keys,
 	            keys_cipher_mode(keys),
 	            keys_key_by_lba(keys, vaddr->lba),
 	            keys_iv_by_ag_index(keys, vaddr->ag_index));
-
 }

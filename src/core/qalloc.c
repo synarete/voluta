@@ -177,7 +177,7 @@ static size_t slab_size_to_nlz(size_t size)
 {
 	const size_t shift = MSLAB_SHIFT_MIN;
 
-	return voluta_clz(((unsigned int)size - 1) >> shift);
+	return voluta_clz32(((unsigned int)size - 1) >> shift);
 }
 
 static int slab_size_to_index(size_t size, size_t *out_index)

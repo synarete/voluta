@@ -182,6 +182,11 @@ static void ut_file_copy_range_between(struct ut_env *ute)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static long lmax(long x, long y)
+{
+	return (x > y) ? x : y;
+}
+
 static void ut_file_copy_range_self_(struct ut_env *ute,
                                      loff_t off_src, size_t len_src,
                                      loff_t off_dst, size_t len_dst)

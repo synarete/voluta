@@ -1,1 +1,1 @@
-SUBDIRS = lib prog
+SUBDIRS = infra core prog

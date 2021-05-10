@@ -3172,6 +3172,11 @@ static void fuseq_fini_worker(struct voluta_fuseq_worker *fqw)
 	fqw->op = NULL;
 }
 
+static int32_t min32(int32_t x, int32_t y)
+{
+	return (x < y) ? x : y;
+}
+
 static int fuseq_init_workers(struct voluta_fuseq *fq)
 {
 	int err;
@@ -3180,7 +3185,7 @@ static int fuseq_init_workers(struct voluta_fuseq *fq)
 	const int nworkers_max = (int)ARRAY_SIZE(fq->fq_worker);
 
 	nprocs = get_nprocs_conf();
-	nworkers = min_int(nprocs, nworkers_max);
+	nworkers = min32(nprocs, nworkers_max);
 
 	log_dbg("init fuseq workers: nprocs=%d nworkers=%d", nprocs, nworkers);
 

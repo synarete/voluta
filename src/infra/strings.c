@@ -20,8 +20,22 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#include "libvoluta.h"
+#include <voluta/macros.h>
+#include <voluta/errors.h>
+#include <voluta/minmax.h>
+#include <voluta/strings.h>
 
+
+static char *unconst_str(const char *s)
+{
+	union {
+		const void *p;
+		void *q;
+	} u = {
+		.p = s
+	};
+	return u.q;
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -283,8 +297,8 @@ void voluta_str_copy(char *t, const char *s, size_t n)
 {
 	const size_t d = (size_t)((t > s) ? t - s : s - t);
 
-	if (likely(n > 0) && likely(d > 0)) {
-		if (likely(n < d)) {
+	if (voluta_likely(n > 0) && voluta_likely(d > 0)) {
+		if (voluta_likely(n < d)) {
 			str_copy(t, s, n);
 		} else {
 			str_move(t, s, n); /* overlap */
@@ -342,7 +356,7 @@ str_insert_with_overlap(char *p, size_t sz, size_t n1,
 	q = s + voluta_min(n2, sz);
 	d = (size_t)(q - s);
 	while (d > 0) {
-		k = voluta_min(d, ARRAY_SIZE(buf));
+		k = voluta_min(d, VOLUTA_ARRAY_SIZE(buf));
 		voluta_str_copy(buf, q - k, k);
 		n = str_insert_no_overlap(p, sz, n, buf, k);
 		d -= k;
@@ -607,7 +621,7 @@ void voluta_substr_init(struct voluta_substr *ss, const char *s)
 
 void voluta_substr_init_rd(struct voluta_substr *ss, const char *s, size_t n)
 {
-	voluta_substr_init_rw(ss, unconst(s), n, 0UL);
+	voluta_substr_init_rw(ss, unconst_str(s), n, 0UL);
 }
 
 void voluta_substr_init_rwa(struct voluta_substr *ss, char *s)
@@ -654,7 +668,7 @@ static const char *substr_data(const struct voluta_substr *ss)
 
 static char *substr_mutable_data(const struct voluta_substr *ss)
 {
-	return unconst(ss->str);
+	return unconst_str(ss->str);
 }
 
 static size_t substr_size(const struct voluta_substr *ss)
@@ -1952,5 +1966,3 @@ void voluta_substr_capitalize(struct voluta_substr *ss)
 		chr_toupper(ss->str);
 	}
 }
-
-

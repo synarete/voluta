@@ -376,6 +376,12 @@ int voluta_calc_volume_space(loff_t volume_capacity,
                              loff_t *out_capacity_size,
                              loff_t *out_address_space);
 
+void voluta_uuid_generate(struct voluta_uuid *uu);
+
+void voluta_uuid_copyto(const struct voluta_uuid *u1, struct voluta_uuid *u2);
+
+void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb);
+
 /* vstore */
 int voluta_verify_ino(ino_t ino);
 
@@ -1277,17 +1283,7 @@ int voluta_nullfd_init(struct voluta_nullfd *nfd);
 void voluta_nullfd_fini(struct voluta_nullfd *nfd);
 
 /* utility */
-void voluta_uuid_generate(struct voluta_uuid *uu);
-
-void voluta_uuid_copyto(const struct voluta_uuid *u1, struct voluta_uuid *u2);
-
-void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb);
-
 void voluta_ts_now(struct timespec *ts);
-
-size_t voluta_hash_prime(size_t lim);
-
-const char *voluta_basename(const char *path);
 
 
 void voluta_buf_init(struct voluta_buf *buf, void *p, size_t n);

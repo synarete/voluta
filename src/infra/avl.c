@@ -17,7 +17,11 @@
 #define _GNU_SOURCE 1
 #include <stdlib.h>
 #include <stdbool.h>
-#include "libvoluta.h"
+
+#include <voluta/macros.h>
+#include <voluta/errors.h>
+#include <voluta/avl.h>
+
 
 #define AVL_MAGIC 0x6176
 
@@ -96,16 +100,22 @@ static void avl_node_swap_balance(struct voluta_avl_node *x,
 static struct voluta_avl_node *
 avl_node_unconst(const struct voluta_avl_node *x)
 {
-	return unconst(x);
+	union _avl_unconst {
+		void *p;
+		const struct voluta_avl_node *y;
+	} uu = {
+		.y = x
+	};
+	return uu.p;
 }
 
 static void avl_node_verify(const struct voluta_avl_node *x)
 {
-	if (unlikely(x->magic != AVL_MAGIC) ||
-	    unlikely(x->balance < -1) ||
-	    unlikely(x->balance > 1)) {
-		voluta_panic("illegal avl-node balance=%d magic=0x%x",
-		             (int)x->balance, (int)x->magic);
+	if (voluta_unlikely(x->magic != AVL_MAGIC) ||
+	    voluta_unlikely((x->balance) > 1) ||
+	    voluta_unlikely((x->balance) < -1)) {
+		voluta_panic("illegal avl-node: %p balance=%d magic=0x%x",
+		             x, (int)x->balance, (int)x->magic);
 	}
 }
 

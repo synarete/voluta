@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  */
-#ifndef VOLUTA_INFRA_H_
-#define VOLUTA_INFRA_H_
+#ifndef VOLUTA_UTILITY_H_
+#define VOLUTA_UTILITY_H_
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -25,23 +25,11 @@
 
 
 /* commons */
-size_t voluta_min(size_t x, size_t y);
-
-size_t voluta_min3(size_t x, size_t y, size_t z);
-
-size_t voluta_max(size_t x, size_t y);
-
-size_t voluta_clamp(size_t v, size_t lo, size_t hi);
-
-size_t voluta_clz(uint32_t n);
-
-size_t voluta_popcount(uint32_t n);
-
-size_t voluta_popcount64(uint64_t n);
 
 void voluta_burnstack(void);
 
 void *voluta_unconst(const void *p);
+
 
 /* memory utilities */
 int voluta_mmap_memory(size_t, void **);
@@ -85,4 +73,4 @@ uint32_t voluta_getentropy32(void);
 
 uint64_t voluta_getentropy64(void);
 
-#endif /* VOLUTA_INFRA_H_ */
+#endif /* VOLUTA_UTILITY_H_ */

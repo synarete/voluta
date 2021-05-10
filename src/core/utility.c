@@ -28,7 +28,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
 #include <time.h>
 #include <uuid/uuid.h>
 #include "libvoluta.h"
@@ -45,21 +44,6 @@ void *voluta_unconst(const void *p)
 	};
 
 	return u.q;
-}
-
-size_t voluta_min(size_t x, size_t y)
-{
-	return min(x, y);
-}
-
-size_t voluta_max(size_t x, size_t y)
-{
-	return max(x, y);
-}
-
-size_t voluta_clamp(size_t v, size_t lo, size_t hi)
-{
-	return clamp(v, lo, hi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -80,20 +64,6 @@ void voluta_burnstack(void)
 	do_burnstack_n(0, 2 * voluta_sc_page_size());
 }
 
-size_t voluta_clz(uint32_t n)
-{
-	return n ? (size_t)__builtin_clz(n) : 32;
-}
-
-size_t voluta_popcount(uint32_t n)
-{
-	return n ? (size_t)__builtin_popcount(n) : 0;
-}
-
-size_t voluta_popcount64(uint64_t n)
-{
-	return n ? (size_t)__builtin_popcountl(n) : 0;
-}
 
 size_t voluta_sc_l1_dcache_linesize(void)
 {
@@ -115,34 +85,6 @@ size_t voluta_sc_avphys_pages(void)
 	return (size_t)sysconf(_SC_AVPHYS_PAGES);
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* UUID */
-void voluta_uuid_generate(struct voluta_uuid *uu)
-{
-	uuid_generate_random(uu->uu);
-}
-
-void voluta_uuid_copyto(const struct voluta_uuid *uu1, struct voluta_uuid *uu2)
-{
-	uuid_copy(uu2->uu, uu1->uu);
-}
-
-void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
-{
-	char buf[40] = "";
-	const char *s = buf;
-	char *t = nb->name;
-
-	uuid_unparse_lower(uu->uu, buf);
-	while (*s != '\0') {
-		if (isxdigit(*s)) {
-			*t = *s;
-		}
-		t++;
-		s++;
-	}
-	*t = '\0';
-}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* time */
@@ -340,110 +282,6 @@ int voluta_zalloc_aligned(size_t sz, void **out_mem)
 	memset(*out_mem, 0, sz);
 	return 0;
 }
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* logging */
-#define VOLUTA_LOG_DEFAULT \
-	(VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
-
-static const int *voluta_g_logmaskp = NULL;
-
-static int log_mask_now(void)
-{
-	const int *log_mask = voluta_g_logmaskp;
-
-	return (log_mask != NULL) ? *log_mask : VOLUTA_LOG_DEFAULT;
-}
-
-void voluta_set_logmaskp(const int *log_maskp)
-{
-	voluta_g_logmaskp = log_maskp;
-}
-
-static void log_to_stdout(const char *msg, const char *file, int line)
-{
-	FILE *fp = stdout;
-	const char *prog = program_invocation_short_name;
-
-	flockfile(fp);
-	if (file && line) {
-		fprintf(fp, "%s: [%s:%d] \t%s\n", prog, file, line, msg);
-	} else {
-		fprintf(fp, "%s: %s\n", prog, msg);
-	}
-	funlockfile(fp);
-}
-
-static int syslog_level(int log_mask)
-{
-	int sl_level;
-
-	if (log_mask & VOLUTA_LOG_CRIT) {
-		sl_level = LOG_CRIT;
-	} else if (log_mask & VOLUTA_LOG_ERROR) {
-		sl_level = LOG_ERR;
-	} else if (log_mask & VOLUTA_LOG_WARN) {
-		sl_level = LOG_WARNING;
-	} else if (log_mask & VOLUTA_LOG_INFO) {
-		sl_level = LOG_INFO;
-	} else if (log_mask & VOLUTA_LOG_DEBUG) {
-		sl_level = LOG_DEBUG;
-	} else {
-		sl_level = 0;
-	}
-	return sl_level;
-}
-
-static void log_to_syslog(int log_mask, const char *msg,
-                          const char *file, int line)
-{
-	const int level = syslog_level(log_mask);
-
-	if (file && line) {
-		syslog(level, "[%s:%d] \t%s", file, line, msg);
-	} else {
-		syslog(level, "%s", msg);
-	}
-}
-
-static void log_msg(int log_mask, const char *msg, const char *file, int line)
-{
-	if (log_mask & VOLUTA_LOG_STDOUT) {
-		log_to_stdout(msg, file, line);
-	}
-	if (log_mask & VOLUTA_LOG_SYSLOG) {
-		log_to_syslog(log_mask, msg, file, line);
-	}
-}
-
-void voluta_logf(int flags, const char *file, int line, const char *fmt, ...)
-{
-	va_list ap;
-	size_t len;
-	int saved_errno;
-	int log_mask;
-	char msg[512];
-
-	log_mask = log_mask_now();
-	if ((log_mask & VOLUTA_LOG_FILINE) && file && line) {
-		file = voluta_basename(file);
-	} else {
-		file = NULL;
-		line = 0;
-	}
-
-	if (flags & log_mask) {
-		saved_errno = errno;
-		va_start(ap, fmt);
-		len = (size_t)vsnprintf(msg, sizeof(msg), fmt, ap);
-		va_end(ap);
-		len = min(len, sizeof(msg) - 1);
-		msg[len] = '\0';
-		log_msg(flags | log_mask, msg, file, line);
-		errno = saved_errno;
-	}
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* buffer */
 void voluta_buf_init(struct voluta_buf *buf, void *p, size_t n)
@@ -481,62 +319,4 @@ void voluta_buf_seteos(struct voluta_buf *buf)
 	if (buf->len < buf->bsz) {
 		s[buf->len] = '\0';
 	}
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* miscellaneous */
-const char *voluta_basename(const char *path)
-{
-	const char *name = strrchr(path, '/');
-
-	return (name == NULL) ? path : (name + 1);
-}
-
-/* prime-value for hash-table of n-elements */
-static const size_t voluta_primes[] = {
-	13UL,
-	53UL,
-	97UL,
-	193UL,
-	389UL,
-	769UL,
-	1543UL,
-	3079UL,
-	6151UL,
-	12289UL,
-	24593UL,
-	49157UL,
-	98317UL,
-	147377UL,
-	196613UL,
-	294979UL,
-	393241UL,
-	589933UL,
-	786433UL,
-	1572869UL,
-	3145739UL,
-	6291469UL,
-	12582917UL,
-	25165843UL,
-	50331653UL,
-	100663319UL,
-	201326611UL,
-	402653189UL,
-	805306457UL,
-	1610612741UL,
-	3221225473UL,
-	4294967291UL
-};
-
-size_t voluta_hash_prime(size_t lim)
-{
-	size_t p = 3;
-
-	for (size_t i = 0; i < ARRAY_SIZE(voluta_primes); ++i) {
-		if (voluta_primes[i] > lim) {
-			break;
-		}
-		p = voluta_primes[i];
-	}
-	return p;
 }

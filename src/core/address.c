@@ -15,6 +15,7 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <ctype.h>
 #include "libvoluta.h"
 
 
@@ -456,4 +457,32 @@ int voluta_calc_volume_space(loff_t volume_capacity,
 	return 0;
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_uuid_generate(struct voluta_uuid *uu)
+{
+	uuid_generate_random(uu->uu);
+}
+
+void voluta_uuid_copyto(const struct voluta_uuid *uu1, struct voluta_uuid *uu2)
+{
+	uuid_copy(uu2->uu, uu1->uu);
+}
+
+void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
+{
+	char buf[40] = "";
+	const char *s = buf;
+	char *t = nb->name;
+
+	uuid_unparse_lower(uu->uu, buf);
+	while (*s != '\0') {
+		if (isxdigit(*s)) {
+			*t = *s;
+		}
+		t++;
+		s++;
+	}
+	*t = '\0';
+}
 

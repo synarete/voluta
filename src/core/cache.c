@@ -38,6 +38,57 @@ struct voluta_cache_ctx {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+/* prime-value for hash-table of n-elements */
+static const size_t voluta_primes[] = {
+	13UL,
+	53UL,
+	97UL,
+	193UL,
+	389UL,
+	769UL,
+	1543UL,
+	3079UL,
+	6151UL,
+	12289UL,
+	24593UL,
+	49157UL,
+	98317UL,
+	147377UL,
+	196613UL,
+	294979UL,
+	393241UL,
+	589933UL,
+	786433UL,
+	1572869UL,
+	3145739UL,
+	6291469UL,
+	12582917UL,
+	25165843UL,
+	50331653UL,
+	100663319UL,
+	201326611UL,
+	402653189UL,
+	805306457UL,
+	1610612741UL,
+	3221225473UL,
+	4294967291UL
+};
+
+static size_t htbl_prime_size(size_t lim)
+{
+	size_t p = 11;
+
+	for (size_t i = 0; i < ARRAY_SIZE(voluta_primes); ++i) {
+		if (voluta_primes[i] > lim) {
+			break;
+		}
+		p = voluta_primes[i];
+	}
+	return p;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static void lh_init(struct voluta_list_head *lh)
 {
 	voluta_list_head_init(lh);
@@ -1954,7 +2005,7 @@ static size_t cache_htbl_size(const struct voluta_cache *cache, size_t div)
 	const size_t hwant = qal->st.memsz_data / div;
 	const size_t limit = clamp(hwant, 1U << 14, 1U << 20);
 
-	return voluta_hash_prime(limit);
+	return htbl_prime_size(limit);
 }
 
 static void cache_fini_lrumaps(struct voluta_cache *cache)

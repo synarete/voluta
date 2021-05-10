@@ -16,7 +16,8 @@
  */
 #define _GNU_SOURCE 1
 #include <stdlib.h>
-#include "libvoluta.h"
+
+#include <voluta/list.h>
 
 
 static void list_head_set(struct voluta_list_head *lnk,

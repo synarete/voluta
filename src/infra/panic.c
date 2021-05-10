@@ -26,8 +26,11 @@
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
 
-#include "libvoluta.h"
-
+#include <voluta/macros.h>
+#include <voluta/logging.h>
+#include <voluta/errors.h>
+#include <voluta/minmax.h>
+#include <voluta/utility.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -96,7 +99,8 @@ static bool voluta_enable_backtrace = true;
 
 static int log_err_bt(const struct voluta_bt_info *bti)
 {
-	log_err("[<%p>] 0x%lx %s+0x%lx", bti->ip, bti->sp, bti->sym, bti->off);
+	voluta_log_error("[<%p>] 0x%lx %s+0x%lx",
+	                 bti->ip, bti->sp, bti->sym, bti->off);
 	return 0;
 }
 
@@ -131,15 +135,15 @@ static void voluta_dump_addr2line(void)
 	int bt_len;
 	void *bt_arr[128];
 	char bt_addrs[1024];
-	const int bt_cnt = (int)(ARRAY_SIZE(bt_arr));
+	const int bt_cnt = (int)(VOLUTA_ARRAY_SIZE(bt_arr));
 
 	voluta_memzero(bt_arr, sizeof(bt_arr));
 	voluta_memzero(bt_addrs, sizeof(bt_addrs));
 
 	bt_len = unw_backtrace(bt_arr, bt_cnt);
 	bt_addrs_to_str(bt_addrs, sizeof(bt_addrs) - 1, bt_arr, bt_len);
-	log_err("addr2line -a -C -e %s -f -p -s %s",
-	        program_invocation_name, bt_addrs);
+	voluta_log_error("addr2line -a -C -e %s -f -p -s %s",
+	                 program_invocation_name, bt_addrs);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -192,7 +196,7 @@ void voluta_expect_true_(int cond, const char *fl, int ln)
 {
 	struct voluta_fatal_msg fm;
 
-	if (unlikely(!cond)) {
+	if (voluta_unlikely(!cond)) {
 		fmtmsg(&fm, "not-true: %d", cond);
 		voluta_fatal_at(fm.str, fl, ln);
 	}
@@ -200,49 +204,49 @@ void voluta_expect_true_(int cond, const char *fl, int ln)
 
 void voluta_expect_cond_(int cond, const char *str, const char *fl, int ln)
 {
-	if (unlikely(!cond)) {
+	if (voluta_unlikely(!cond)) {
 		voluta_fatal_at(str, fl, ln);
 	}
 }
 
 void voluta_expect_eq_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a != b)) {
+	if (voluta_unlikely(a != b)) {
 		voluta_fatal_op(a, "!=", b, fl, ln);
 	}
 }
 
 void voluta_expect_ne_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a == b)) {
+	if (voluta_unlikely(a == b)) {
 		voluta_fatal_op(a, "==", b, fl, ln);
 	}
 }
 
 void voluta_expect_lt_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a >= b)) {
+	if (voluta_unlikely(a >= b)) {
 		voluta_fatal_op(a, ">=", b, fl, ln);
 	}
 }
 
 void voluta_expect_le_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a > b)) {
+	if (voluta_unlikely(a > b)) {
 		voluta_fatal_op(a, ">", b, fl, ln);
 	}
 }
 
 void voluta_expect_gt_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a <= b)) {
+	if (voluta_unlikely(a <= b)) {
 		voluta_fatal_op(a, "<=", b, fl, ln);
 	}
 }
 
 void voluta_expect_ge_(long a, long b, const char *fl, int ln)
 {
-	if (unlikely(a < b)) {
+	if (voluta_unlikely(a < b)) {
 		voluta_fatal_op(a, "<", b, fl, ln);
 	}
 }
@@ -251,7 +255,7 @@ void voluta_expect_ok_(int err, const char *fl, int ln)
 {
 	struct voluta_fatal_msg fm;
 
-	if (unlikely(err != 0)) {
+	if (voluta_unlikely(err != 0)) {
 		fmtmsg(&fm, "err=%d", err);
 		voluta_fatal_at(fm.str, fl, ln);
 	}
@@ -261,7 +265,7 @@ void voluta_expect_err_(int err, int exp, const char *fl, int ln)
 {
 	struct voluta_fatal_msg fm;
 
-	if (unlikely(err != exp)) {
+	if (voluta_unlikely(err != exp)) {
 		fmtmsg(&fm, "err=%d exp=%d", err, exp);
 		voluta_fatal_at(fm.str, fl, ln);
 	}
@@ -269,7 +273,7 @@ void voluta_expect_err_(int err, int exp, const char *fl, int ln)
 
 void voluta_expect_not_null_(const void *ptr, const char *fl, int ln)
 {
-	if (unlikely(ptr == NULL)) {
+	if (voluta_unlikely(ptr == NULL)) {
 		voluta_fatal_at("NULL pointer", fl, ln);
 	}
 }
@@ -278,7 +282,7 @@ void voluta_expect_null_(const void *ptr, const char *fl, int ln)
 {
 	struct voluta_fatal_msg fm;
 
-	if (unlikely(ptr != NULL)) {
+	if (voluta_unlikely(ptr != NULL)) {
 		fmtmsg(&fm, "not NULL ptr=%p", ptr);
 		voluta_fatal_at(fm.str, fl, ln);
 	}
@@ -289,7 +293,7 @@ void voluta_expect_eqs_(const char *s, const char *z, const char *fl, int ln)
 	struct voluta_fatal_msg msg;
 	const int cmp = strcmp(s, z);
 
-	if (unlikely(cmp != 0)) {
+	if (voluta_unlikely(cmp != 0)) {
 		fmtmsg(&msg, "str-not-equal: %s != %s", s, z);
 		voluta_fatal_at(msg.str, fl, ln);
 	}
@@ -360,19 +364,26 @@ void voluta_expect_eqm_(const void *p, const void *q,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static const char *basename_of(const char *path)
+{
+	const char *name = strrchr(path, '/');
+
+	return (name == NULL) ? path : (name + 1);
+}
+
 static void voluta_dump_panic_msg(const char *file, int line,
                                   const char *msg, int errnum)
 {
 	const char *es = " ";
-	const char *name = voluta_basename(file);
+	const char *name = basename_of(file);
 
-	log_crit("%s", es);
+	voluta_log_crit("%s", es);
 	if (errnum) {
-		log_crit("%s:%d: %s %d", name, line, msg, errnum);
+		voluta_log_crit("%s:%d: %s %d", name, line, msg, errnum);
 	} else {
-		log_crit("%s:%d: %s", name, line, msg);
+		voluta_log_crit("%s:%d: %s", name, line, msg);
 	}
-	log_crit("%s", es);
+	voluta_log_crit("%s", es);
 }
 
 __attribute__((__noreturn__))

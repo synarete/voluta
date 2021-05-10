@@ -18,6 +18,7 @@
 #define VOLUTA_SYSCALL_H_
 
 struct stat;
+struct statx;
 struct statvfs;
 struct statfs;
 struct dirent64;

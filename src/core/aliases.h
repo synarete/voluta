@@ -54,6 +54,12 @@
 #define unconst(p)                      voluta_unconst(p)
 #define unused(x)                       voluta_unused(x)
 
+#define min(x, y)                       voluta_min(x, y)
+#define min3(x, y, z)                   voluta_min3(x, y, z)
+#define max(x, y)                       voluta_max(x, y)
+#define clamp(x, y, z)                  voluta_clamp(x, y, z)
+#define div_round_up(n, d)              voluta_div_round_up(n, d)
+
 #define log_dbg(fmt, ...)               voluta_log_debug(fmt, __VA_ARGS__)
 #define log_info(fmt, ...)              voluta_log_info(fmt, __VA_ARGS__)
 #define log_warn(fmt, ...)              voluta_log_warn(fmt, __VA_ARGS__)

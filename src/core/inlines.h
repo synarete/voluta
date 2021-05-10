@@ -27,45 +27,8 @@
 #include <endian.h>
 #include <errno.h>
 #include <voluta/defs.h>
-#include <voluta/infra.h>
+#include <voluta/utility.h>
 #include <voluta/types.h>
-
-
-static inline int min_int(int x, int y)
-{
-	return (x < y) ? x : y;
-}
-
-static inline size_t min(size_t x, size_t y)
-{
-	return (x < y) ? x : y;
-}
-
-static inline size_t min3(size_t x, size_t y, size_t z)
-{
-	return min(min(x, y), z);
-}
-
-static inline size_t max(size_t x, size_t y)
-{
-	return (x > y) ? x : y;
-}
-
-static inline long lmax(long x, long y)
-{
-	return (x > y) ? x : y;
-}
-
-static inline size_t clamp(size_t v, size_t lo, size_t hi)
-{
-	return min(max(v, lo), hi);
-}
-
-static inline size_t div_round_up(size_t n, size_t d)
-{
-	return (n + d - 1) / d;
-}
-
 
 static inline bool ino_isnull(ino_t ino)
 {

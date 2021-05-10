@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
 /*
  * This file is part of libvoluta
  *
@@ -12,29 +13,27 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
- *
  */
-#ifndef VOLUTA_VOLUTA_H_
-#define VOLUTA_VOLUTA_H_
+#ifndef VOLUTA_MINMAX_H_
+#define VOLUTA_MINMAX_H_
 
-#include <stddef.h>
+#include <stdlib.h>
 #include <stdint.h>
-#include <voluta/version.h>
-#include <voluta/logging.h>
-#include <voluta/errors.h>
-#include <voluta/minmax.h>
-#include <voluta/defs.h>
-#include <voluta/list.h>
-#include <voluta/avl.h>
-#include <voluta/utility.h>
-#include <voluta/macros.h>
-#include <voluta/socket.h>
-#include <voluta/strings.h>
-#include <voluta/qalloc.h>
-#include <voluta/types.h>
-#include <voluta/extern.h>
-#include <voluta/ioctls.h>
 
-#endif /* VOLUTA_VOLUTA_H_ */
+uint64_t voluta_min(uint64_t x, uint64_t y);
 
+uint64_t voluta_min3(uint64_t x, uint64_t y, uint64_t z);
 
+uint64_t voluta_max(uint64_t x, uint64_t y);
+
+uint64_t voluta_clamp(uint64_t v, uint64_t lo, uint64_t hi);
+
+size_t voluta_clz32(uint32_t n);
+
+size_t voluta_popcount32(uint32_t n);
+
+size_t voluta_popcount64(uint64_t n);
+
+uint64_t voluta_div_round_up(uint64_t n, uint64_t d);
+
+#endif /* VOLUTA_MINMAX_H_ */

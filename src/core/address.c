@@ -307,28 +307,28 @@ void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off)
+void voluta_vaddr56_set(struct voluta_vaddr56 *vadr, loff_t off)
 {
 	const uint64_t uoff = (uint64_t)off;
 
 	if (!off_isnull(off)) {
 		voluta_assert_eq(uoff & 0xFFL, 0);
-		va->lo = cpu_to_le32((uint32_t)(uoff >> 8));
-		va->me = cpu_to_le16((uint16_t)(uoff >> 40));
-		va->hi = (uint8_t)(uoff >> 56);
+		vadr->lo = cpu_to_le32((uint32_t)(uoff >> 8));
+		vadr->me = cpu_to_le16((uint16_t)(uoff >> 40));
+		vadr->hi = (uint8_t)(uoff >> 56);
 	} else {
-		va->lo = cpu_to_le32(UINT32_MAX);
-		va->me = cpu_to_le16(UINT16_MAX);
-		va->hi = UINT8_MAX;
+		vadr->lo = cpu_to_le32(UINT32_MAX);
+		vadr->me = cpu_to_le16(UINT16_MAX);
+		vadr->hi = UINT8_MAX;
 	}
 }
 
-loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va)
+loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *vadr)
 {
 	loff_t off;
-	const uint64_t lo = le32_to_cpu(va->lo);
-	const uint64_t me = le16_to_cpu(va->me);
-	const uint64_t hi = va->hi;
+	const uint64_t lo = le32_to_cpu(vadr->lo);
+	const uint64_t me = le16_to_cpu(vadr->me);
+	const uint64_t hi = vadr->hi;
 
 	if ((lo == UINT32_MAX) && (me == UINT16_MAX) && (hi == UINT8_MAX)) {
 		off = VOLUTA_OFF_NULL;
@@ -338,23 +338,23 @@ loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va)
 	return off;
 }
 
-void voluta_vaddr64_set(struct voluta_vaddr64 *va,
+void voluta_vaddr64_set(struct voluta_vaddr64 *vadr,
                         const struct voluta_vaddr *vaddr)
 {
 	const uint64_t off = (uint64_t)vaddr->off;
 	const uint64_t vtype = (uint64_t)vaddr->vtype;
 
 	if (!vaddr_isnull(vaddr)) {
-		va->off_vtype = cpu_to_le64((off << 8) | (vtype & 0xFF));
+		vadr->off_vtype = cpu_to_le64((off << 8) | (vtype & 0xFF));
 	} else {
-		va->off_vtype = 0;
+		vadr->off_vtype = 0;
 	}
 }
 
-void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
+void voluta_vaddr64_parse(const struct voluta_vaddr64 *vadr,
                           struct voluta_vaddr *vaddr)
 {
-	const uint64_t off_vtype = le64_to_cpu(va->off_vtype);
+	const uint64_t off_vtype = le64_to_cpu(vadr->off_vtype);
 
 	if (off_vtype != 0) {
 		vaddr_setup(vaddr, off_vtype & 0xFF, (loff_t)(off_vtype >> 8));
@@ -365,42 +365,53 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static const struct voluta_baddr s_baddr_none = {
+static const struct voluta_oaddr s_oaddr_none = {
 	.id[0] = 0,
 };
 
-const struct voluta_baddr *voluta_baddr_none(void)
+const struct voluta_oaddr *voluta_oaddr_none(void)
 {
-	return &s_baddr_none;
+	return &s_oaddr_none;
 }
 
-void voluta_baddr_create(struct voluta_baddr *baddr)
+void voluta_oaddr_create(struct voluta_oaddr *oaddr)
 {
-	voluta_getentropy(baddr->id, sizeof(baddr->id));
+	voluta_getentropy(oaddr->id, sizeof(oaddr->id));
 }
 
-void voluta_baddr_copyto(const struct voluta_baddr *baddr,
-                         struct voluta_baddr *other)
+void voluta_oaddr_copyto(const struct voluta_oaddr *oaddr,
+                         struct voluta_oaddr *other)
 {
-	memcpy(other->id, baddr->id, sizeof(other->id));
+	memcpy(other->id, oaddr->id, sizeof(other->id));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_baddr256_set(struct voluta_baddr256 *ba,
-                         const struct voluta_baddr *baddr)
+void voluta_oaddr256_set(struct voluta_oaddr256 *oadr,
+                         const struct voluta_oaddr *oaddr)
 {
-	STATICASSERT_EQ(sizeof(ba->id), sizeof(baddr->id));
+	STATICASSERT_EQ(sizeof(oadr->oid), sizeof(oaddr->id));
 
-	memcpy(ba->id, baddr->id, sizeof(ba->id));
+	memcpy(oadr->oid, oaddr->id, sizeof(oadr->oid));
 }
 
-void voluta_baddr256_parse(const struct voluta_baddr256 *ba,
-                           struct voluta_baddr *baddr)
+void voluta_oaddr256_parse(const struct voluta_oaddr256 *oadr,
+                           struct voluta_oaddr *oaddr)
 {
-	STATICASSERT_EQ(sizeof(ba->id), sizeof(baddr->id));
+	STATICASSERT_EQ(sizeof(oadr->oid), sizeof(oaddr->id));
 
-	memcpy(baddr->id, ba->id, sizeof(baddr->id));
+	memcpy(oaddr->id, oadr->oid, sizeof(oaddr->id));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_objref_setup(struct voluta_objref *oref,
+                         const struct voluta_vaddr *vaddr,
+                         const struct voluta_oaddr *oaddr, size_t osize)
+{
+	voluta_vaddr_copyto(vaddr, &oref->vaddr);
+	voluta_oaddr_copyto(oaddr, &oref->oaddr);
+	oref->osize = osize;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

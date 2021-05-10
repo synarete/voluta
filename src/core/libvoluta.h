@@ -57,21 +57,21 @@ struct voluta_balloc_info {
 };
 
 
-/* zboot */
-void voluta_zb_init(struct voluta_zero_block4 *zb,
+/* broot */
+void voluta_br_init(struct voluta_boot_record *br,
                     enum voluta_ztype ztype, size_t size);
 
-void voluta_zb_fini(struct voluta_zero_block4 *zb);
+void voluta_br_fini(struct voluta_boot_record *br);
 
-void voluta_zb_set_size(struct voluta_zero_block4 *zb, size_t size);
+void voluta_br_set_size(struct voluta_boot_record *br, size_t size);
 
-void voluta_zb_set_encrypted(struct voluta_zero_block4 *zb, bool enc);
+void voluta_br_set_encrypted(struct voluta_boot_record *br, bool enc);
 
-bool voluta_zb_is_encrypted(const struct voluta_zero_block4 *zb);
+bool voluta_br_is_encrypted(const struct voluta_boot_record *br);
 
-size_t voluta_zb_size(const struct voluta_zero_block4 *zb);
+size_t voluta_br_size(const struct voluta_boot_record *br);
 
-void voluta_zb_crypt_params(const struct voluta_zero_block4 *zb,
+void voluta_br_crypt_params(const struct voluta_boot_record *br,
                             struct voluta_zcrypt_params *zcp);
 
 struct voluta_super_block *
@@ -120,11 +120,11 @@ int voluta_sb_decrypt(struct voluta_super_block *sb,
                       const struct voluta_crypto *crypto,
                       const struct voluta_passphrase *passph);
 
-void voluta_rb_setup(struct voluta_rand_block4 *rb,
-                     const struct voluta_mdigest *md);
+void voluta_hrec_setup(struct voluta_hash_record *hr,
+                       const struct voluta_mdigest *md);
 
-int voluta_rb_check(const struct voluta_rand_block4 *rb,
-                    const struct voluta_mdigest *md);
+int voluta_hrec_check(const struct voluta_hash_record *hr,
+                      const struct voluta_mdigest *md);
 
 /* opers */
 int voluta_fs_forget(struct voluta_sb_info *sbi,
@@ -354,19 +354,22 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
                           struct voluta_vaddr *vaddr);
 
 
-const struct voluta_baddr *voluta_baddr_none(void);
+const struct voluta_oaddr *voluta_oaddr_none(void);
 
-void voluta_baddr_create(struct voluta_baddr *baddr);
+void voluta_oaddr_create(struct voluta_oaddr *oaddr);
 
-void voluta_baddr_copyto(const struct voluta_baddr *baddr,
-                         struct voluta_baddr *other);
+void voluta_oaddr_copyto(const struct voluta_oaddr *oaddr,
+                         struct voluta_oaddr *other);
 
-void voluta_baddr256_set(struct voluta_baddr256 *ba,
-                         const struct voluta_baddr *baddr);
+void voluta_oaddr256_set(struct voluta_oaddr256 *ba,
+                         const struct voluta_oaddr *oaddr);
 
-void voluta_baddr256_parse(const struct voluta_baddr256 *ba,
-                           struct voluta_baddr *baddr);
+void voluta_oaddr256_parse(const struct voluta_oaddr256 *ba,
+                           struct voluta_oaddr *oaddr);
 
+void voluta_objref_setup(struct voluta_objref *oref,
+                         const struct voluta_vaddr *vaddr,
+                         const struct voluta_oaddr *oaddr, size_t osize);
 
 int voluta_check_volume_size(loff_t size);
 
@@ -1108,9 +1111,9 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
 
-void voluta_keys_setup(struct voluta_keys_block8 *keys);
+void voluta_krec_setup(struct voluta_keys_record *kr);
 
-void voluta_keys_kivam_of(const struct voluta_keys_block8 *keys,
+void voluta_krec_kivam_of(const struct voluta_keys_record *keys,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_kivam *out_kivam);
 

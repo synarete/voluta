@@ -596,64 +596,62 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static uint32_t keys_cipher_algo(const struct voluta_keys_block8 *keys)
+static uint32_t kr_cipher_algo(const struct voluta_keys_record *kr)
 {
-	return le32_to_cpu(keys->k_cipher_algo);
+	return le32_to_cpu(kr->kr_cipher_algo);
 }
 
 static void
-keys_set_cipher_algo(struct voluta_keys_block8 *keys, uint32_t algo)
+kr_set_cipher_algo(struct voluta_keys_record *kr, uint32_t algo)
 {
-	keys->k_cipher_algo = cpu_to_le32(algo);
+	kr->kr_cipher_algo = cpu_to_le32(algo);
 }
 
-static uint32_t keys_cipher_mode(const struct voluta_keys_block8 *keys)
+static uint32_t kr_cipher_mode(const struct voluta_keys_record *kr)
 {
-	return le32_to_cpu(keys->k_cipher_mode);
+	return le32_to_cpu(kr->kr_cipher_mode);
 }
 
-static void
-keys_set_cipher_mode(struct voluta_keys_block8 *keys, uint32_t mode)
+static void kr_set_cipher_mode(struct voluta_keys_record *kr, uint32_t mode)
 {
-	keys->k_cipher_mode = cpu_to_le32(mode);
+	kr->kr_cipher_mode = cpu_to_le32(mode);
 }
 
-void voluta_keys_setup(struct voluta_keys_block8 *keys)
+void voluta_krec_setup(struct voluta_keys_record *kr)
 {
-	keys_set_cipher_algo(keys, VOLUTA_CIPHER_AES256);
-	keys_set_cipher_mode(keys, VOLUTA_CIPHER_MODE_GCM);
-	voluta_memzero(keys->k_reserved1, sizeof(keys->k_reserved1));
-	iv_rand(keys->k_iv, ARRAY_SIZE(keys->k_iv));
-	voluta_memzero(keys->k_reserved2, sizeof(keys->k_reserved2));
-	key_rand(keys->k_key, ARRAY_SIZE(keys->k_key));
+	kr_set_cipher_algo(kr, VOLUTA_CIPHER_AES256);
+	kr_set_cipher_mode(kr, VOLUTA_CIPHER_MODE_GCM);
+	voluta_memzero(kr->kr_reserved1, sizeof(kr->kr_reserved1));
+	iv_rand(kr->kr_iv, ARRAY_SIZE(kr->kr_iv));
+	voluta_memzero(kr->kr_reserved2, sizeof(kr->kr_reserved2));
+	key_rand(kr->kr_key, ARRAY_SIZE(kr->kr_key));
 }
 
 static const struct voluta_key *
-keys_key_by_lba(const struct voluta_keys_block8 *keys, voluta_lba_t lba)
+kr_key_by_lba(const struct voluta_keys_record *kr, voluta_lba_t lba)
 {
 	size_t key_slot;
 
-	key_slot = (uint64_t)lba % ARRAY_SIZE(keys->k_key);
-	return &keys->k_key[key_slot];
+	key_slot = (uint64_t)lba % ARRAY_SIZE(kr->kr_key);
+	return &kr->kr_key[key_slot];
 }
 
 static const struct voluta_iv *
-keys_iv_by_ag_index(const struct voluta_keys_block8 *keys,
-                    voluta_index_t ag_index)
+kr_iv_by_ag_index(const struct voluta_keys_record *kr, voluta_index_t ag_index)
 {
 	size_t iv_slot;
 
-	iv_slot = (uint64_t)ag_index % ARRAY_SIZE(keys->k_iv);
-	return &keys->k_iv[iv_slot];
+	iv_slot = (uint64_t)ag_index % ARRAY_SIZE(kr->kr_iv);
+	return &kr->kr_iv[iv_slot];
 }
 
-void voluta_keys_kivam_of(const struct voluta_keys_block8 *keys,
+void voluta_krec_kivam_of(const struct voluta_keys_record *kr,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_kivam *out_kivam)
 {
-	kivam_setup(out_kivam,
-	            keys_cipher_algo(keys),
-	            keys_cipher_mode(keys),
-	            keys_key_by_lba(keys, vaddr->lba),
-	            keys_iv_by_ag_index(keys, vaddr->ag_index));
+	const struct voluta_iv *iv = kr_iv_by_ag_index(kr, vaddr->ag_index);
+	const struct voluta_key *key = kr_key_by_lba(kr, vaddr->lba);
+
+	kivam_setup(out_kivam, kr_cipher_algo(kr),
+	            kr_cipher_mode(kr), key, iv);
 }

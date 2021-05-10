@@ -495,7 +495,7 @@ static int fse_reload_space(struct voluta_fs_env *fse)
 	loff_t capacity_size;
 	loff_t address_space;
 
-	zsize = (loff_t)voluta_zb_size(&fse->sb->s_zero);
+	zsize = (loff_t)voluta_br_size(&fse->sb->sb_boot_rec);
 	err = voluta_calc_volume_space(zsize, &capacity_size, &address_space);
 	if (err) {
 		log_err("illegal volume zsize: %ld ", zsize);
@@ -726,18 +726,18 @@ static int fse_load_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_check_zb_mode(const struct voluta_fs_env *fse)
+static int fse_check_br_mode(const struct voluta_fs_env *fse)
 {
 	const enum voluta_flags ctl_flags = fse->sbi->sb_ctl_flags;
-	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
-	const bool zb_enc = voluta_zb_is_encrypted(zb);
+	const struct voluta_boot_record *br = &fse->sb->sb_boot_rec;
+	const bool br_enc = voluta_br_is_encrypted(br);
 
-	if (zb_enc && !(ctl_flags & VOLUTA_F_ENCRYPTED)) {
-		log_err("encrypted zb: %s", fse->args.volume);
+	if (br_enc && !(ctl_flags & VOLUTA_F_ENCRYPTED)) {
+		log_err("encrypted br: %s", fse->args.volume);
 		return -ENOKEY;
 	}
-	if (!zb_enc && (ctl_flags & VOLUTA_F_ENCRYPTED)) {
-		log_err("non encrypted zb: %s", fse->args.volume);
+	if (!br_enc && (ctl_flags & VOLUTA_F_ENCRYPTED)) {
+		log_err("non encrypted br: %s", fse->args.volume);
 		return -EKEYREJECTED;
 	}
 	return 0;
@@ -784,7 +784,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_zcrypt_params *zcp = &fse->zcryp;
 	const struct voluta_passphrase *pp = &fse->passph;
-	const struct voluta_zero_block4 *zb = &fse->sb->s_zero;
+	const struct voluta_boot_record *br = &fse->sb->sb_boot_rec;
 
 	if (fse_encrypt_mode(fse) && !fse->passph.passlen) {
 		log_err("missing passphrase of: %s", fse->args.volume);
@@ -793,7 +793,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	if (!fse->passph.passlen) {
 		return 0;
 	}
-	voluta_zb_crypt_params(zb, zcp);
+	voluta_br_crypt_params(br, zcp);
 	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
@@ -807,14 +807,14 @@ static int fse_decrypt_sb(struct voluta_fs_env *fse)
 {
 	int err;
 
-	if (!voluta_zb_is_encrypted(&fse->sb->s_zero)) {
+	if (!voluta_br_is_encrypted(&fse->sb->sb_boot_rec)) {
 		return 0;
 	}
 	err = voluta_sb_decrypt_tail(fse->sb, fse_cipher(fse), &fse->kivam);
 	if (err) {
 		return err;
 	}
-	voluta_zb_set_encrypted(&fse->sb->s_zero, false);
+	voluta_br_set_encrypted(&fse->sb->sb_boot_rec, false);
 	return 0;
 }
 
@@ -857,7 +857,7 @@ static int fse_stage_sb(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_check_zb_mode(fse);
+	err = fse_check_br_mode(fse);
 	if (err) {
 		return err;
 	}
@@ -888,7 +888,7 @@ static int fse_encrypt_sb(struct voluta_fs_env *fse)
 {
 	int err;
 	const bool want_enc = fse_want_encryptwr(fse);
-	const bool curr_enc = voluta_zb_is_encrypted(&fse->sb->s_zero);
+	const bool curr_enc = voluta_br_is_encrypted(&fse->sb->sb_boot_rec);
 
 	if (want_enc == curr_enc) {
 		return 0;
@@ -897,7 +897,7 @@ static int fse_encrypt_sb(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	voluta_zb_set_encrypted(&fse->sb->s_zero, true);
+	voluta_br_set_encrypted(&fse->sb->sb_boot_rec, true);
 	return 0;
 }
 
@@ -1025,7 +1025,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
 	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
-	voluta_zb_set_size(&sb->s_zero, (size_t)fse->args.vsize);
+	voluta_br_set_size(&sb->sb_boot_rec, (size_t)fse->args.vsize);
 	return 0;
 }
 

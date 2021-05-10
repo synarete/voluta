@@ -432,12 +432,12 @@ struct voluta_ar_blob_info {
 
 static size_t arm_nents(const struct voluta_meta_block4 *arm)
 {
-	return le64_to_cpu(arm->m_ar_nents);
+	return le64_to_cpu(arm->sb_ar_nents);
 }
 
 static void arm_set_nents(struct voluta_meta_block4 *arm, size_t nents)
 {
-	arm->m_ar_nents = cpu_to_le64(nents);
+	arm->sb_ar_nents = cpu_to_le64(nents);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -882,7 +882,7 @@ static void arc_setup_rands(const struct voluta_archiver *arc)
 	struct voluta_ar_spec *spec = arc->ar_spec;
 
 	for (size_t i = 0; i < ARRAY_SIZE(spec->ar_rand); ++i) {
-		voluta_rb_setup(&spec->ar_rand[i], arc_mdigest(arc));
+		voluta_hrec_setup(&spec->ar_rand[i], arc_mdigest(arc));
 	}
 }
 
@@ -901,7 +901,7 @@ static int arc_init_spec(struct voluta_archiver *arc, size_t nents)
 	arc->ar_spec = spec;
 
 	size = spec_size_of(nents);
-	voluta_zb_init(&spec->ar_zero, VOLUTA_ZTYPE_ARCHIVE, size);
+	voluta_br_init(&spec->ar_zero, VOLUTA_ZTYPE_ARCHIVE, size);
 	arm_set_nents(&spec->ar_meta, nents);
 	arc_setup_rands(arc);
 	return 0;
@@ -1068,7 +1068,7 @@ static int arc_setup_keys(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	voluta_zb_crypt_params(&arc->ar_spec->ar_zero, &zcp);
+	voluta_br_crypt_params(&arc->ar_spec->ar_zero, &zcp);
 	err = voluta_derive_kivam(&zcp, &passph, md, &arc->ar_kivam);
 	if (err) {
 		return err;
@@ -1224,7 +1224,7 @@ static int arc_export_spec(const struct voluta_archiver *arc, loff_t vsize)
 	const char *name = arc->ar_args.arcname;
 	struct voluta_ar_spec *spec = arc->ar_spec;
 
-	voluta_zb_set_size(&spec->ar_zero, (size_t)vsize);
+	voluta_br_set_size(&spec->ar_zero, (size_t)vsize);
 	arm_set_nents(&spec->ar_meta, arc->ar_spec_nents);
 	arc_setup_rands(arc);
 
@@ -1414,7 +1414,7 @@ static int arc_check_rands(const struct voluta_archiver *arc)
 	const struct voluta_ar_spec *spec = arc->ar_spec;
 
 	for (size_t i = 0; i < ARRAY_SIZE(spec->ar_rand); ++i) {
-		err = voluta_rb_check(&spec->ar_rand[i], arc_mdigest(arc));
+		err = voluta_hrec_check(&spec->ar_rand[i], arc_mdigest(arc));
 		if (err) {
 			return err;
 		}
@@ -1446,11 +1446,11 @@ static int arc_import_spec(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	err = voluta_zb_check(&spec->ar_zero);
+	err = voluta_br_check(&spec->ar_zero);
 	if (err) {
 		return err;
 	}
-	if (voluta_zb_type(&spec->ar_zero) != VOLUTA_ZTYPE_ARCHIVE) {
+	if (voluta_br_type(&spec->ar_zero) != VOLUTA_ZTYPE_ARCHIVE) {
 		return -EINVAL;
 	}
 	err = arc_check_rands(arc);

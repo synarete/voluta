@@ -256,15 +256,15 @@ struct voluta_vaddr {
 };
 
 /* object-address within underlying blobs space */
-struct voluta_baddr {
-	uint8_t         id[VOLUTA_BLOBID_LEN];
+struct voluta_oaddr {
+	uint8_t         id[VOLUTA_OID_LEN];
 };
 
-/* blob reference mapping */
-struct voluta_blref {
+/* object reference mapping */
+struct voluta_objref {
 	struct voluta_vaddr   vaddr;
-	struct voluta_baddr   baddr;
-	size_t                bsize;
+	struct voluta_oaddr   oaddr;
+	size_t                osize;
 } voluta_packed_aligned32;
 
 /* inode-address */

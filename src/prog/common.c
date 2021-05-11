@@ -181,64 +181,66 @@ void voluta_die_if_exists(const char *path)
 	}
 }
 
-static struct voluta_boot_record *br_new(void)
+static struct voluta_super_block *new_super_block(void)
 {
-	struct voluta_boot_record *br = NULL;
+	struct voluta_super_block *sb = NULL;
 
-	br = voluta_malloc_safe(sizeof(*br));
-	memset(br, 0, sizeof(*br));
-	return br;
+	sb = voluta_malloc_safe(sizeof(*sb));
+	memset(sb, 0, sizeof(*sb));
+	return sb;
 }
 
-static void br_del(struct voluta_boot_record *br)
+static void del_super_block(struct voluta_super_block *sb)
 {
-	memset(br, 0xFE, sizeof(*br));
-	free(br);
+	memset(sb, 0xFE, sizeof(*sb));
+	free(sb);
 }
 
-static struct voluta_boot_record *read_br_or_die(const char *path)
+static struct voluta_super_block *read_super_block(const char *path)
 {
 	int fd = -1;
 	int err;
 	loff_t size = 0;
 	struct stat st = { .st_size = 0 };
-	struct voluta_boot_record *br = br_new();
+	struct voluta_super_block *sb = NULL;
+	const loff_t sb_off = VOLUTA_LBA_SB * VOLUTA_BK_SIZE;
 
 	voluta_stat_reg_or_blk(path, &st, &size);
 	if (size == 0) {
 		voluta_die(0, "empty volume: %s", path);
 	}
-	if (size < (int)sizeof(*br)) {
+	if (size < (int)sizeof(*sb)) {
 		voluta_die(0, "no zero-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
 	if (err) {
 		voluta_die(err, "open failed: %s", path);
 	}
-	err = voluta_sys_readn(fd, br, sizeof(*br));
+	sb = new_super_block();
+	err = voluta_sys_preadn(fd, sb, sizeof(*sb), sb_off);
 	if (err) {
-		voluta_die(err, "read error: %s", path);
+		voluta_die(err, "pread error: %s", path);
 	}
 	voluta_sys_close(fd);
-	return br;
+	return sb;
 }
 
-static void voluta_die_if_bad_br(const char *path,
-                                 enum voluta_ztype *out_ztype,
-                                 enum voluta_brf *out_brf)
+static void die_if_bad_boot_record(const char *path,
+                                   enum voluta_ztype *out_ztype,
+                                   enum voluta_brf *out_brf)
 {
 	int err;
-	struct voluta_boot_record *br = NULL;
+	struct voluta_super_block *sb = NULL;
 
-	br = read_br_or_die(path);
-	err = voluta_br_check(br);
+	sb = read_super_block(path);
+	err = voluta_check_boot_record(sb);
 	if (err) {
 		goto out;
 	}
-	*out_ztype = voluta_br_type(br);
-	*out_brf = voluta_br_flags(br);
+	*out_ztype = voluta_br_type(&sb->sb_boot_rec);
+	*out_brf = voluta_br_flags(&sb->sb_boot_rec);
 out:
-	br_del(br);
+	del_super_block(sb);
 	if (err == -EAGAIN) {
 		voluta_die(err, "already in use: %s", path);
 	} else if (err == -EUCLEAN) {
@@ -250,48 +252,6 @@ out:
 	}
 }
 
-static struct voluta_super_block *sb_new(void)
-{
-	struct voluta_super_block *sb = NULL;
-
-	sb = voluta_malloc_safe(sizeof(*sb));
-	memset(sb, 0, sizeof(*sb));
-	return sb;
-}
-
-static void sb_del(struct voluta_super_block *sb)
-{
-	memset(sb, 0xEF, sizeof(*sb));
-	free(sb);
-}
-
-static struct voluta_super_block *read_sb_or_die(const char *path)
-{
-	int fd = -1;
-	int err;
-	loff_t size = 0;
-	struct stat st = { .st_size = 0 };
-	struct voluta_super_block *sb = sb_new();
-
-	voluta_stat_reg_or_blk(path, &st, &size);
-	if (size == 0) {
-		voluta_die(0, "empty file: %s", path);
-	}
-	if (size < (int)sizeof(*sb)) {
-		voluta_die(0, "no super-block in: %s", path);
-	}
-	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
-	if (err) {
-		voluta_die(err, "open failed: %s", path);
-	}
-	err = voluta_sys_readn(fd, sb, sizeof(*sb));
-	if (err) {
-		voluta_die(err, "read error: %s", path);
-	}
-	voluta_sys_close(fd);
-	return sb;
-}
-
 void voluta_die_if_bad_sb(const char *path, const char *pass)
 {
 	int err;
@@ -299,8 +259,8 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 	enum voluta_ztype ztype;
 	struct voluta_super_block *sb = NULL;
 
-	sb = read_sb_or_die(path);
-	err = voluta_br_check(&sb->sb_boot_rec);
+	sb = read_super_block(path);
+	err = voluta_check_boot_record(sb);
 	if (err) {
 		goto out;
 	}
@@ -318,9 +278,9 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 		err = -ENOKEY;
 		goto out;
 	}
-	err = voluta_decipher_sb(sb, pass);
+	err = voluta_decipher_super_block(sb, pass);
 out:
-	sb_del(sb);
+	del_super_block(sb);
 	if (err == -EAGAIN) {
 		voluta_die(err, "already in use: %s", path);
 	} else if (err == -EUCLEAN) {
@@ -349,7 +309,7 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	} else if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}
-	voluta_die_if_bad_br(path, &ztype, &brf);
+	die_if_bad_boot_record(path, &ztype, &brf);
 	if (ztype != VOLUTA_ZTYPE_VOLUME) {
 		voluta_die(0, "not a volume: %s", path);
 	}
@@ -379,7 +339,7 @@ void voluta_die_if_not_archive(const char *path)
 	enum voluta_brf brf;
 
 	voluta_die_if_not_reg(path, false); /* TODO: Check size  */
-	voluta_die_if_bad_br(path, &ztype, &brf);
+	die_if_bad_boot_record(path, &ztype, &brf);
 	if (ztype != VOLUTA_ZTYPE_ARCHIVE) {
 		voluta_die(0, "not an archive: %s", path);
 	}
@@ -1052,12 +1012,14 @@ loff_t voluta_blkgetsize_ok(const char *path)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void *voluta_malloc_safe(size_t n)
+void *voluta_malloc_safe(size_t nbytes)
 {
-	void *p = malloc(n);
+	int err;
+	void *p = NULL;
 
-	if (p == NULL) {
-		voluta_die(-errno, "malloc %lu failed", n);
+	err = posix_memalign(&p, 64, nbytes);
+	if (err) {
+		voluta_die(-err, "posix_memalign failed: nbytes=%lu", nbytes);
 	}
 	return p;
 }

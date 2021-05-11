@@ -259,10 +259,11 @@ static int ztype_check(enum voluta_ztype ztype)
 	return err;
 }
 
-int voluta_br_check(const struct voluta_boot_record *br)
+int voluta_check_boot_record(const struct voluta_super_block *sb)
 {
 	int err;
 	enum voluta_ztype ztype;
+	const struct voluta_boot_record *br = &sb->sb_boot_rec;
 
 	if (br_marker(br) != VOLUTA_BOOT_MARK) {
 		return -EINVAL;
@@ -413,7 +414,7 @@ int voluta_sb_check_volume(const struct voluta_super_block *sb)
 	int err;
 	enum voluta_ztype ztype;
 
-	err = voluta_br_check(&sb->sb_boot_rec);
+	err = voluta_check_boot_record(sb);
 	if (err) {
 		return err;
 	}
@@ -531,7 +532,8 @@ out:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass)
+int voluta_decipher_super_block(struct voluta_super_block *sb,
+                                const char *password)
 {
 	int err;
 	struct voluta_crypto crypto;
@@ -542,7 +544,7 @@ int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass)
 	if (err) {
 		return err;
 	}
-	err = voluta_passphrase_setup(&passph, pass);
+	err = voluta_passphrase_setup(&passph, password);
 	if (err) {
 		goto out;
 	}

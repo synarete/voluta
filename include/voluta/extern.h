@@ -63,14 +63,15 @@ int voluta_check_mntdir_fstype(long vfstype);
 
 int voluta_check_name(const char *name);
 
-/* zero-block */
-int voluta_br_check(const struct voluta_boot_record *br);
+/* boot */
+int voluta_check_boot_record(const struct voluta_super_block *sb);
+
+int voluta_decipher_super_block(struct voluta_super_block *sb,
+                                const char *password);
 
 enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br);
 
 enum voluta_brf voluta_br_flags(const struct voluta_boot_record *br);
-
-int voluta_decipher_sb(struct voluta_super_block *sb, const char *pass);
 
 /* file-system */
 int voluta_fse_new(const struct voluta_fs_args *args,

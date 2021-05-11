@@ -132,7 +132,7 @@
 #define VOLUTA_LBA_NULL                 ((1L << 56) - 1)
 
 /* well-known LBA of super-block */
-#define VOLUTA_LBA_SB                   (0)
+#define VOLUTA_LBA_SB                   (1)
 
 /* "nil" inode number */
 #define VOLUTA_INO_NULL                 (0)
@@ -149,9 +149,6 @@
 
 /* on-disk size of super-block */
 #define VOLUTA_SB_SIZE                  VOLUTA_BK_SIZE
-
-/* maximal number of file-system layers within super-block */
-#define VOLUTA_SB_LAYERS_MAX            (64)
 
 
 /* on-disk size of inode's head */

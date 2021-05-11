@@ -1446,7 +1446,8 @@ static int arc_import_spec(struct voluta_archiver *arc)
 	if (err) {
 		return err;
 	}
-	err = voluta_br_check(&spec->ar_zero);
+	err = -1; /* XXX voluta_br_check(&spec->ar_zero); */
+	voluta_assert_ok(err);
 	if (err) {
 		return err;
 	}

@@ -63,6 +63,13 @@ static struct voluta_fs_env_obj *fse_obj_of(struct voluta_fs_env *fse)
 	return container_of(fse, struct voluta_fs_env_obj, fs_env);
 }
 
+static void vaddr_of_super(struct voluta_vaddr *out_vaddr)
+{
+	const loff_t off = lba_to_off(VOLUTA_LBA_SB);
+
+	vaddr_setup(out_vaddr, VOLUTA_VTYPE_SUPER, off);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fse_init_commons(struct voluta_fs_env *fse)
@@ -1017,12 +1024,17 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 static int fse_setup_sb(struct voluta_fs_env *fse,
                         const struct voluta_oper *op)
 {
+	struct voluta_vaddr vaddr;
 	struct voluta_hash512 pass_hash;
 	struct voluta_super_block *sb = fse->sb;
+
+	vaddr_of_super(&vaddr);
 
 	fse_calc_pass_hash(fse, &pass_hash);
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 	voluta_sb_set_birth_time(sb, op->xtime.tv_sec);
+	voluta_sb_set_self_vaddr(sb, &vaddr);
+	voluta_sb_set_itable_root(sb, vaddr_none());
 	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
 	voluta_br_set_size(&sb->sb_boot_rec, (size_t)fse->args.vsize);

@@ -104,7 +104,7 @@
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
 /* maximal number of hyper-spaces */
-#define VOLUTA_NHS_MAX                  (512)
+#define VOLUTA_NHS_MAX                  (512L)
 
 
 /* minimal number of allocation-groups in volume */
@@ -117,7 +117,7 @@
 #define VOLUTA_VOLUME_SIZE_MIN \
 	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
-/* maximal bytes-size of underlying volume (4T) */
+/* maximal bytes-size of underlying volume (16T) */
 #define VOLUTA_VOLUME_SIZE_MAX  \
 	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
@@ -305,6 +305,7 @@ enum voluta_endianness {
 enum voluta_vtype {
 	VOLUTA_VTYPE_NONE       = 0,
 	VOLUTA_VTYPE_DATA1K     = 1,
+	VOLUTA_VTYPE_SUPER      = 3,
 	VOLUTA_VTYPE_DATA4K     = 4,
 	VOLUTA_VTYPE_HSMAP      = 5,
 	VOLUTA_VTYPE_AGMAP      = 7,
@@ -503,6 +504,16 @@ struct voluta_obj_ref {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+struct voluta_header {
+	uint32_t                h_magic;
+	uint8_t                 h_vtype;
+	uint8_t                 h_flags;
+	uint16_t                h_reserved;
+	uint32_t                h_size;
+	uint32_t                h_csum;
+} voluta_packed_aligned8;
+
+
 struct voluta_kdf_desc {
 	uint32_t kd_iterations;
 	uint32_t kd_algo;
@@ -519,13 +530,14 @@ struct voluta_kdf_pair {
 
 
 struct voluta_boot_record {
-	uint64_t                br_marker;
+	struct voluta_header    br_hdr;
+	uint64_t                br_magic;
 	uint64_t                br_version;
 	uint64_t                br_size;
 	uint32_t                br_type;
 	uint32_t                br_flags;
 	uint8_t                 br_endianness;
-	uint8_t                 br_reserved1[31];
+	uint8_t                 br_reserved1[15];
 	uint8_t                 br_sw_version[64];
 	struct voluta_uuid      br_uuid;
 	uint8_t                 br_reserved2[368];
@@ -548,33 +560,25 @@ struct voluta_hash_record {
 struct voluta_keys_record {
 	uint32_t                kr_cipher_algo;
 	uint32_t                kr_cipher_mode;
-	uint8_t                 kr_reserved1[72];
-	struct voluta_iv        kr_iv[251];
-	uint8_t                 kr_reserved2[32];
-	struct voluta_key       kr_key[127];
+	uint8_t                 kr_reserved1[104];
+	struct voluta_iv        kr_iv[503];
+	struct voluta_key       kr_key[257];
 } voluta_packed_aligned64;
 
 
 struct voluta_super_block {
 	struct voluta_boot_record sb_boot_rec;
 	struct voluta_hash_record sb_hash_rec;
-	struct voluta_keys_record sb_keys_rec;
-	struct voluta_name        sb_name;
 	uint64_t                  sb_birth_time;
 	uint64_t                  sb_ag_count;
-	uint8_t                   sb_reserved[16112];
+	struct voluta_vaddr64     sb_self_vaddr;
+	struct voluta_vaddr64     sb_itable_root;
+	uint8_t                   sb_reserved1[224];
+	struct voluta_name        sb_name;
+	uint8_t                   sb_reserved2[7680];
+	struct voluta_keys_record sb_keys_rec;
 	struct voluta_obj_ref     sb_hsm_obr[VOLUTA_NHS_MAX];
 } voluta_packed_aligned64;
-
-
-struct voluta_header {
-	uint32_t                h_magic;
-	uint8_t                 h_vtype;
-	uint8_t                 h_flags;
-	uint16_t                h_reserved;
-	uint32_t                h_size;
-	uint32_t                h_csum;
-} voluta_packed_aligned8;
 
 
 struct voluta_ag_rec {
@@ -614,8 +618,7 @@ struct voluta_bk_rec {
 struct voluta_agroup_map {
 	struct voluta_header    ag_hdr;
 	uint64_t                ag_index;
-	struct voluta_vaddr64   ag_it_root;
-	uint8_t                 ag_reserved[4064];
+	uint8_t                 ag_reserved[4072];
 	uint8_t                 ag_reserved2[4096];
 	struct voluta_bk_rec    ag_bkr[VOLUTA_NBK_IN_AG];
 } voluta_packed_aligned64;
@@ -810,6 +813,7 @@ struct voluta_block {
 /* semantic "view" into meta elements */
 union voluta_view_u {
 	struct voluta_header            hdr;
+	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_inode             inode;

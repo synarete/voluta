@@ -98,6 +98,7 @@ bool voluta_vtype_isspmap(enum voluta_vtype vtype)
 	bool ret;
 
 	switch (vtype) {
+	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 		ret = true;
@@ -130,6 +131,7 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATABK:
 		ret = true;
 		break;
+	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 	case VOLUTA_VTYPE_ITNODE:
@@ -152,6 +154,9 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 	size_t sz;
 
 	switch (vtype) {
+	case VOLUTA_VTYPE_SUPER:
+		sz = sizeof(struct voluta_super_block);
+		break;
 	case VOLUTA_VTYPE_HSMAP:
 		sz = sizeof(struct voluta_hspace_map);
 		break;

@@ -87,6 +87,18 @@ void voluta_sb_set_birth_time(struct voluta_super_block *sb, time_t btime);
 
 void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count);
 
+void voluta_sb_self_vaddr(const struct voluta_super_block *sb,
+                          struct voluta_vaddr *out_vaddr);
+
+void voluta_sb_set_self_vaddr(struct voluta_super_block *sb,
+                              const struct voluta_vaddr *vaddr);
+
+void voluta_sb_itable_root(const struct voluta_super_block *sb,
+                           struct voluta_vaddr *out_vaddr);
+
+void voluta_sb_set_itable_root(struct voluta_super_block *sb,
+                               const struct voluta_vaddr *vaddr);
+
 void voluta_sb_setup_keys(struct voluta_super_block *sb);
 
 void voluta_sb_kivam_of(const struct voluta_super_block *sb,
@@ -471,13 +483,9 @@ int voluta_adjust_super(struct voluta_sb_info *sbi);
 
 int voluta_format_spmaps(struct voluta_sb_info *sbi);
 
-int voluta_format_itable(struct voluta_sb_info *sbi);
-
 int voluta_reload_super(struct voluta_sb_info *sbi);
 
 int voluta_reload_spmaps(struct voluta_sb_info *sbi);
-
-int voluta_reload_itable(struct voluta_sb_info *sbi);
 
 int voluta_traverse_space(struct voluta_sb_info *sbi);
 
@@ -650,13 +658,6 @@ void voluta_mark_unwritten_at(struct voluta_vnode_info *agm_vi,
 bool voluta_is_allocated_with(const struct voluta_vnode_info *agm_vi,
                               const struct voluta_vaddr *vaddr);
 
-void voluta_assign_itroot(struct voluta_vnode_info *hsm_vi,
-                          struct voluta_vnode_info *agm_vi,
-                          const struct voluta_vaddr *vaddr);
-
-void voluta_parse_itroot(const struct voluta_vnode_info *agm_vi,
-                         struct voluta_vaddr *out_vaddr);
-
 void voluta_balloc_info_at(const struct voluta_vnode_info *agm_vi,
                            size_t slot, struct voluta_balloc_info *bai);
 
@@ -685,8 +686,6 @@ int voluta_discard_ino(struct voluta_sb_info *sbi, ino_t ino);
 int voluta_resolve_ino(struct voluta_sb_info *sbi,
                        ino_t xino, struct voluta_iaddr *out_iaddr);
 
-int voluta_create_itable(struct voluta_sb_info *sbi);
-
 int voluta_real_ino(const struct voluta_sb_info *sbi,
                     ino_t ino, ino_t *out_ino);
 
@@ -696,8 +695,9 @@ voluta_root_of_itable(const struct voluta_sb_info *sbi);
 int voluta_bind_rootdir(struct voluta_sb_info *sbi,
                         const struct voluta_inode_info *ii);
 
-int voluta_reload_itable_at(struct voluta_sb_info *sbi,
-                            const struct voluta_vaddr *vaddr);
+int voluta_format_itable(struct voluta_sb_info *sbi);
+
+int voluta_reload_itable(struct voluta_sb_info *sbi);
 
 int voluta_verify_itnode(const struct voluta_itable_tnode *itn);
 

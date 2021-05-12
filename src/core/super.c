@@ -741,6 +741,7 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 	case VOLUTA_VTYPE_BLOB:
 		vi->vu.db = &view->u.db;
 		break;
+	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		break;
@@ -1003,76 +1004,6 @@ out_err:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool vaddr_isitnode(const struct voluta_vaddr *vaddr)
-{
-	return !vaddr_isnull(vaddr) &&
-	       vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_ITNODE);
-}
-
-
-static int sbi_resolve_itroot_ag(struct voluta_sb_info *sbi,
-                                 size_t *out_ag_index)
-{
-	int err;
-	voluta_index_t hs_index;
-	struct voluta_vnode_info *hsm_vi = NULL;
-	const size_t hs_count = sbi->sb_spi.sp_hs_count;
-
-	for (hs_index = 1; (hs_index <= hs_count); ++hs_index) {
-		err = stage_hsmap(sbi, hs_index, &hsm_vi);
-		if (err) {
-			return err;
-		}
-		err = voluta_find_itroot_ag(hsm_vi, out_ag_index);
-		if (!err) {
-			return 0;
-		}
-	}
-	log_err("failed to find it-root ag: hs_count=%lu", hs_count);
-	return -EFSCORRUPTED;
-}
-
-static int sbi_resolve_itroot(struct voluta_sb_info *sbi,
-                              struct voluta_vaddr *out_vaddr)
-{
-	int err;
-	voluta_index_t ag_index;
-	struct voluta_vnode_info *agm_vi = NULL;
-
-	err = sbi_resolve_itroot_ag(sbi, &ag_index);
-	if (err) {
-		return err;
-	}
-	err = stage_agmap(sbi, ag_index, &agm_vi);
-	if (err) {
-		return err;
-	}
-	voluta_parse_itroot(agm_vi, out_vaddr);
-	if (!vaddr_isitnode(out_vaddr)) {
-		log_err("non valid it-root vaddr: off=0x%lx vtype=%d",
-		        out_vaddr->off, out_vaddr->vtype);
-		return -EFSCORRUPTED;
-	}
-	return 0;
-}
-
-int voluta_reload_itable(struct voluta_sb_info *sbi)
-{
-	int err;
-	struct voluta_vaddr vaddr;
-
-	vaddr_reset(&vaddr);
-	err = sbi_resolve_itroot(sbi, &vaddr);
-	if (err) {
-		return err;
-	}
-	err = voluta_reload_itable_at(sbi, &vaddr);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
 int voluta_adjust_super(struct voluta_sb_info *sbi)
 {
 	spi_mark_used_super(&sbi->sb_spi);
@@ -1084,42 +1015,6 @@ int voluta_shut_super(struct voluta_sb_info *sbi)
 	log_dbg("shut-super: op_count=%lu", sbi->sb_ops.op_count);
 	spi_init(&sbi->sb_spi);
 	voluta_iti_reinit(&sbi->sb_iti);
-	return 0;
-}
-
-static int stamp_itable_at(struct voluta_sb_info *sbi,
-                           const struct voluta_vaddr *vaddr)
-{
-	int err;
-	struct voluta_vnode_info *hsm_vi = NULL;
-	struct voluta_vnode_info *agm_vi = NULL;
-
-	err = stage_hsmap(sbi, vaddr->hs_index, &hsm_vi);
-	if (err) {
-		return err;
-	}
-	err = stage_agmap(sbi, vaddr->ag_index, &agm_vi);
-	if (err) {
-		return err;
-	}
-	voluta_assign_itroot(hsm_vi, agm_vi, vaddr);
-	return 0;
-}
-
-int voluta_format_itable(struct voluta_sb_info *sbi)
-{
-	int err;
-	const struct voluta_vaddr *vaddr = NULL;
-
-	err = voluta_create_itable(sbi);
-	if (err) {
-		return err;
-	}
-	vaddr = voluta_root_of_itable(sbi);
-	err = stamp_itable_at(sbi, vaddr);
-	if (err) {
-		return err;
-	}
 	return 0;
 }
 

@@ -132,7 +132,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF_KB(struct voluta_inode);
 	REQUIRE_SIZEOF_KB(struct voluta_lnk_value);
 	REQUIRE_SIZEOF_4K(struct voluta_meta_block4);
-	REQUIRE_SIZEOF_8K(struct voluta_keys_record);
+	REQUIRE_SIZEOF_16K(struct voluta_keys_record);
 	REQUIRE_SIZEOF_BK(struct voluta_super_block);
 	REQUIRE_SIZEOF(struct voluta_super_block, VOLUTA_SB_SIZE);
 	REQUIRE_SIZEOF_BK(struct voluta_hspace_map);
@@ -192,15 +192,16 @@ static void guarantee_persistent_types_members(void)
 
 static void guarantee_persistent_types_alignment(void)
 {
-	REQUIRE_AOFFSET64(struct voluta_boot_record, br_marker, 0);
-	REQUIRE_AOFFSET64(struct voluta_boot_record, br_version, 8);
-	REQUIRE_AOFFSET64(struct voluta_boot_record, br_size, 16);
+	REQUIRE_AOFFSET64(struct voluta_boot_record, br_magic, 16);
+	REQUIRE_AOFFSET64(struct voluta_boot_record, br_version, 24);
+	REQUIRE_AOFFSET64(struct voluta_boot_record, br_size, 32);
 	REQUIRE_AOFFSET64(struct voluta_boot_record, br_sw_version, 64);
 	REQUIRE_AOFFSET64(struct voluta_boot_record, br_kdf_pair, 512);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_boot_rec, 0);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hash_rec, 4096);
-	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys_rec, 8192);
-	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 16384);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 8448);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys_rec, 16384);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hsm_obr, 32768);
 	REQUIRE_AOFFSET(struct voluta_hspace_map, hs_hdr, 0);
 	REQUIRE_AOFFSET64(struct voluta_hspace_map, hs_agr, 4096);

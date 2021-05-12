@@ -29,7 +29,7 @@ static const struct voluta_zcrypt_params voluta_default_zcrypt = {
 			.kd_salt_md = VOLUTA_MD_SHA3_256,
 		},
 		.kdf_key = {
-			.kd_iterations = 1024,
+			.kd_iterations = 256,
 			.kd_algo = VOLUTA_KDF_SCRYPT,
 			.kd_subalgo = 8,
 			.kd_salt_md = VOLUTA_MD_SHA3_512,
@@ -75,14 +75,14 @@ static void cpu_to_kdf(const struct voluta_kdf_desc *kd,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static uint64_t br_marker(const struct voluta_boot_record *br)
+static uint64_t br_magic(const struct voluta_boot_record *br)
 {
-	return le64_to_cpu(br->br_marker);
+	return le64_to_cpu(br->br_magic);
 }
 
-static void br_set_marker(struct voluta_boot_record *br, uint64_t mark)
+static void br_set_magic(struct voluta_boot_record *br, uint64_t magic)
 {
-	br->br_marker = cpu_to_le64(mark);
+	br->br_magic = cpu_to_le64(magic);
 }
 
 static long br_version(const struct voluta_boot_record *br)
@@ -222,7 +222,7 @@ void voluta_br_init(struct voluta_boot_record *br,
                     enum voluta_ztype ztype, size_t size)
 {
 	memset(br, 0, sizeof(*br));
-	br_set_marker(br, VOLUTA_BOOT_MARK);
+	br_set_magic(br, VOLUTA_BOOT_MARK);
 	br_set_version(br, VOLUTA_FMT_VERSION);
 	br_set_type(br, ztype);
 	br_set_flags(br, VOLUTA_ZBF_NONE);
@@ -238,7 +238,7 @@ void voluta_br_init(struct voluta_boot_record *br,
 void voluta_br_fini(struct voluta_boot_record *br)
 {
 	memset(br, 0xFF, sizeof(*br));
-	br_set_marker(br, 0);
+	br_set_magic(br, 0);
 	voluta_br_set_size(br, 0);
 }
 
@@ -265,7 +265,7 @@ int voluta_check_boot_record(const struct voluta_super_block *sb)
 	enum voluta_ztype ztype;
 	const struct voluta_boot_record *br = &sb->sb_boot_rec;
 
-	if (br_marker(br) != VOLUTA_BOOT_MARK) {
+	if (br_magic(br) != VOLUTA_BOOT_MARK) {
 		return -EINVAL;
 	}
 	if (br_version(br) != VOLUTA_FMT_VERSION) {
@@ -389,6 +389,30 @@ void voluta_sb_set_birth_time(struct voluta_super_block *sb, time_t btime)
 void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count)
 {
 	sb->sb_ag_count = cpu_to_le64(ag_count);
+}
+
+void voluta_sb_self_vaddr(const struct voluta_super_block *sb,
+                          struct voluta_vaddr *out_vaddr)
+{
+	voluta_vaddr64_parse(&sb->sb_self_vaddr, out_vaddr);
+}
+
+void voluta_sb_set_self_vaddr(struct voluta_super_block *sb,
+                              const struct voluta_vaddr *vaddr)
+{
+	voluta_vaddr64_set(&sb->sb_self_vaddr, vaddr);
+}
+
+void voluta_sb_itable_root(const struct voluta_super_block *sb,
+                           struct voluta_vaddr *out_vaddr)
+{
+	voluta_vaddr64_parse(&sb->sb_itable_root, out_vaddr);
+}
+
+void voluta_sb_set_itable_root(struct voluta_super_block *sb,
+                               const struct voluta_vaddr *vaddr)
+{
+	voluta_vaddr64_set(&sb->sb_itable_root, vaddr);
 }
 
 void voluta_sb_setup_keys(struct voluta_super_block *sb)

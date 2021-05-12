@@ -487,9 +487,15 @@ iti_root(const struct voluta_itable_info *iti)
 	return &iti->it_treeroot;
 }
 
+static void iti_set_root(struct voluta_itable_info *iti,
+                         const struct voluta_vaddr *vaddr)
+{
+	vaddr_copyto(vaddr, &iti->it_treeroot);
+}
+
 static void iti_init_common(struct voluta_itable_info *iti)
 {
-	vaddr_reset(&iti->it_treeroot);
+	iti_set_root(iti, vaddr_none());
 	iaddr_reset(&iti->it_rootdir);
 	iti->it_apex_ino = VOLUTA_INO_ROOT + VOLUTA_INO_PSEUDO_MAX;
 	iti->it_ninodes_max = ULONG_MAX / 2;
@@ -1209,17 +1215,20 @@ static void ino_set_append(struct voluta_ino_set *ino_set, ino_t ino)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_create_itable(struct voluta_sb_info *sbi)
+int voluta_format_itable(struct voluta_sb_info *sbi)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_vnode_info *vi = NULL;
+	const struct voluta_vaddr *vaddr = NULL;
 	struct voluta_itable_info *iti = iti_of(sbi);
 
 	err = create_itroot(sbi, &vi);
 	if (err) {
 		return err;
 	}
-	vaddr_copyto(vi_vaddr(vi), &iti->it_treeroot);
+	vaddr = vi_vaddr(vi);
+	iti_set_root(iti, vaddr);
+	voluta_sb_set_itable_root(sbi->sb, vaddr);
 	return 0;
 }
 
@@ -1332,6 +1341,8 @@ static int parse_itable_top(struct voluta_sb_info *sbi,
 	return 0;
 }
 
+
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int scan_stage_root(struct voluta_sb_info *sbi,
@@ -1387,8 +1398,8 @@ static int scan_root_inode(struct voluta_sb_info *sbi,
 	return err;
 }
 
-static int reload_and_scan_itable(struct voluta_sb_info *sbi,
-                                  const struct voluta_vaddr *vaddr)
+static int reload_scan_itable(struct voluta_sb_info *sbi,
+                              const struct voluta_vaddr *vaddr)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -1408,13 +1419,35 @@ static int reload_and_scan_itable(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-int voluta_reload_itable_at(struct voluta_sb_info *sbi,
-                            const struct voluta_vaddr *vaddr)
+static bool vaddr_isitnode(const struct voluta_vaddr *vaddr)
+{
+	return !vaddr_isnull(vaddr) &&
+	       vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_ITNODE);
+}
+
+static int resolve_itroot(struct voluta_sb_info *sbi,
+                          struct voluta_vaddr *out_vaddr)
+{
+	voluta_sb_itable_root(sbi->sb, out_vaddr);
+	if (!vaddr_isitnode(out_vaddr)) {
+		log_err("non valid itable-root: off=0x%lx vtype=%d",
+		        out_vaddr->off, out_vaddr->vtype);
+		return -EFSCORRUPTED;
+	}
+	return 0;
+}
+
+int voluta_reload_itable(struct voluta_sb_info *sbi)
 {
 	int err;
+	struct voluta_vaddr vaddr;
 	struct voluta_inode_info *root_ii;
 
-	err = reload_and_scan_itable(sbi, vaddr);
+	err = resolve_itroot(sbi, &vaddr);
+	if (err) {
+		return err;
+	}
+	err = reload_scan_itable(sbi, &vaddr);
 	if (err) {
 		return err;
 	}

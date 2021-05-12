@@ -905,25 +905,12 @@ static void agm_set_index(struct voluta_agroup_map *agm,
 	agm->ag_index = cpu_to_index(ag_index);
 }
 
-static void agm_it_root(const struct voluta_agroup_map *agm,
-                        struct voluta_vaddr *out_vaddr)
-{
-	voluta_vaddr64_parse(&agm->ag_it_root, out_vaddr);
-}
-
-static void agm_set_it_root(struct voluta_agroup_map *agm,
-                            const struct voluta_vaddr *vaddr)
-{
-	voluta_vaddr64_set(&agm->ag_it_root, vaddr);
-}
-
 static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 {
 	STATICASSERT_EQ(sizeof(agm->ag_bkr[0]), 56);
 	STATICASSERT_EQ(sizeof(*agm), VOLUTA_BK_SIZE);
 
 	agm_set_index(agm, ag_index);
-	agm_set_it_root(agm, vaddr_none());
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }
 
@@ -1501,28 +1488,6 @@ void voluta_mark_unwritten_at(struct voluta_vnode_info *agm_vi,
 	}
 }
 
-void voluta_assign_itroot(struct voluta_vnode_info *hsm_vi,
-                          struct voluta_vnode_info *agm_vi,
-                          const struct voluta_vaddr *vaddr)
-{
-	struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
-
-	voluta_assert_eq(agm_index(agm), vaddr->ag_index);
-
-	agm_set_it_root(agm, vaddr);
-	vi_dirtify(agm_vi);
-
-	voluta_mark_itroot_at(hsm_vi, agm_index(agm));
-}
-
-void voluta_parse_itroot(const struct voluta_vnode_info *agm_vi,
-                         struct voluta_vaddr *out_vaddr)
-{
-	const struct voluta_agroup_map *agm = agroup_map_of(agm_vi);
-
-	agm_it_root(agm, out_vaddr);
-}
-
 void voluta_balloc_info_at(const struct voluta_vnode_info *agm_vi,
                            size_t slot, struct voluta_balloc_info *bai)
 {
@@ -1538,6 +1503,7 @@ static int verify_vtype(enum voluta_vtype vtype)
 {
 	switch (vtype) {
 	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_HSMAP:
 	case VOLUTA_VTYPE_AGMAP:
 	case VOLUTA_VTYPE_ITNODE:

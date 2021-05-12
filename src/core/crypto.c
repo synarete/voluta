@@ -623,7 +623,6 @@ void voluta_krec_setup(struct voluta_keys_record *kr)
 	kr_set_cipher_mode(kr, VOLUTA_CIPHER_MODE_GCM);
 	voluta_memzero(kr->kr_reserved1, sizeof(kr->kr_reserved1));
 	iv_rand(kr->kr_iv, ARRAY_SIZE(kr->kr_iv));
-	voluta_memzero(kr->kr_reserved2, sizeof(kr->kr_reserved2));
 	key_rand(kr->kr_key, ARRAY_SIZE(kr->kr_key));
 }
 

@@ -76,6 +76,17 @@ static struct voluta_header *hdr_of(const struct voluta_view *view)
 	return unconst(hdr);
 }
 
+static void hdr_stamp(struct voluta_header *hdr,
+                      enum voluta_vtype vtype, size_t size)
+{
+	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
+	hdr_set_size(hdr, size);
+	hdr_set_vtype(hdr, vtype);
+	hdr_set_csum(hdr, 0);
+	hdr->h_flags = 0;
+	hdr->h_reserved = 0;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_header *
@@ -203,6 +214,7 @@ static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_SYMVAL:
 		err = voluta_verify_lnk_value(&view->u.lnv);
 		break;
+	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
@@ -250,16 +262,6 @@ int voluta_verify_meta(const struct voluta_vnode_info *vi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void stamp_hdr(struct voluta_header *hdr,
-                      enum voluta_vtype vtype, size_t size)
-{
-	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
-	hdr_set_size(hdr, size);
-	hdr_set_vtype(hdr, vtype);
-	hdr_set_csum(hdr, 0);
-	hdr->h_flags = 0;
-	hdr->h_reserved = 0;
-}
 
 void voluta_stamp_view(struct voluta_view *view,
                        const struct voluta_vaddr *vaddr)
@@ -267,7 +269,7 @@ void voluta_stamp_view(struct voluta_view *view,
 	struct voluta_header *hdr = hdr_of(view);
 
 	voluta_memzero(view, vaddr->len);
-	stamp_hdr(hdr, vaddr->vtype, vaddr->len);
+	hdr_stamp(hdr, vaddr->vtype, vaddr->len);
 }
 
 static void seal_meta_vnode(const struct voluta_vnode_info *vi)

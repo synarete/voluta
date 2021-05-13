@@ -560,6 +560,8 @@ int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam);
 
 /* spmaps */
+void voluta_usm_init(struct voluta_uspace_map *usm);
+
 void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
 
@@ -611,10 +613,10 @@ void voluta_bind_to_kindof(struct voluta_vnode_info *hsm_vi,
 int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
                            const enum voluta_vtype vtype);
 
-void voluta_resolve_ag_vaddrs(const struct voluta_vnode_info *hsm_vi,
-                              voluta_index_t ag_index,
-                              struct voluta_vaddr *out_agm_vaddr,
-                              struct voluta_vaddr *out_bks_vaddr);
+void voluta_resolve_vaddrs_of_ag(const struct voluta_vnode_info *hsm_vi,
+                                 voluta_index_t ag_index,
+                                 struct voluta_vaddr *out_agm_vaddr,
+                                 struct voluta_vaddr *out_bks_vaddr);
 
 void voluta_setup_agmap(struct voluta_vnode_info *agm_vi,
                         voluta_index_t ag_index);

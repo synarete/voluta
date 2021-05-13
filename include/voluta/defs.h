@@ -566,6 +566,11 @@ struct voluta_keys_record {
 } voluta_packed_aligned64;
 
 
+struct voluta_uspace_map {
+	struct voluta_blobspec  us_hsm_bls[VOLUTA_NHS_MAX];
+} voluta_packed_aligned64;
+
+
 struct voluta_super_block {
 	struct voluta_boot_record sb_boot_rec;
 	struct voluta_hash_record sb_hash_rec;
@@ -576,8 +581,8 @@ struct voluta_super_block {
 	uint8_t                   sb_reserved1[224];
 	struct voluta_name        sb_name;
 	uint8_t                   sb_reserved2[7680];
-	struct voluta_keys_record sb_keys_rec;
-	struct voluta_blobspec    sb_hsm_bls[VOLUTA_NHS_MAX];
+	struct voluta_keys_record sb_keys;
+	struct voluta_uspace_map  sb_usm;
 } voluta_packed_aligned64;
 
 

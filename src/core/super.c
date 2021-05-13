@@ -1843,7 +1843,7 @@ static int resolve_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (err) {
 		return err;
 	}
-	voluta_resolve_ag_vaddrs(hsm_vi, ag_index, &agm_vaddr, &bks_vaddr);
+	voluta_resolve_vaddrs_of_ag(hsm_vi, ag_index, &agm_vaddr, &bks_vaddr);
 	if (vaddr_isnull(&agm_vaddr)) {
 		return -ENOENT;
 	}

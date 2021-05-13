@@ -1038,6 +1038,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	voluta_sb_setup_keys(sb);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
 	voluta_br_set_size(&sb->sb_boot_rec, (size_t)fse->args.vsize);
+	voluta_usm_init(&sb->sb_usm);
 	return 0;
 }
 

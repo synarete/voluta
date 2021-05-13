@@ -72,6 +72,9 @@
 #define REQUIRE_SIZEOF_16K(type) \
 	REQUIRE_SIZEOF_NK(type, 16)
 
+#define REQUIRE_SIZEOF_32K(type) \
+	REQUIRE_SIZEOF_NK(type, 32)
+
 #define REQUIRE_MEMBER_SIZE(type, f, size) \
 	REQUIRE_EQ(MEMBER_SIZE(type, f), size)
 
@@ -133,6 +136,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF_KB(struct voluta_lnk_value);
 	REQUIRE_SIZEOF_4K(struct voluta_meta_block4);
 	REQUIRE_SIZEOF_16K(struct voluta_keys_record);
+	REQUIRE_SIZEOF_32K(struct voluta_uspace_map);
 	REQUIRE_SIZEOF_BK(struct voluta_super_block);
 	REQUIRE_SIZEOF(struct voluta_super_block, VOLUTA_SB_SIZE);
 	REQUIRE_SIZEOF_BK(struct voluta_hspace_map);
@@ -201,8 +205,8 @@ static void guarantee_persistent_types_alignment(void)
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hash_rec, 4096);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 8448);
-	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys_rec, 16384);
-	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hsm_bls, 32768);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys, 16384);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_usm, 32768);
 	REQUIRE_AOFFSET(struct voluta_hspace_map, hs_hdr, 0);
 	REQUIRE_AOFFSET64(struct voluta_hspace_map, hs_agr, 4096);
 	REQUIRE_AOFFSET(struct voluta_agroup_map, ag_hdr, 0);

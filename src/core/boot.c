@@ -281,7 +281,6 @@ int voluta_check_boot_record(const struct voluta_super_block *sb)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-
 static void hr_set_pass_hash(struct voluta_hash_record *hr,
                              const struct voluta_hash512 *hash)
 {
@@ -417,14 +416,14 @@ void voluta_sb_set_itable_root(struct voluta_super_block *sb,
 
 void voluta_sb_setup_keys(struct voluta_super_block *sb)
 {
-	voluta_krec_setup(&sb->sb_keys_rec);
+	voluta_krec_setup(&sb->sb_keys);
 }
 
 void voluta_sb_kivam_of(const struct voluta_super_block *sb,
                         const struct voluta_vaddr *vaddr,
                         struct voluta_kivam *out_kivam)
 {
-	return voluta_krec_kivam_of(&sb->sb_keys_rec, vaddr, out_kivam);
+	return voluta_krec_kivam_of(&sb->sb_keys, vaddr, out_kivam);
 }
 
 void voluta_sb_setup_rand(struct voluta_super_block *sb,

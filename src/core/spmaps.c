@@ -104,6 +104,11 @@ static void bls_init(struct voluta_blobspec *bls)
 	memset(bls, 0, sizeof(*bls));
 }
 
+static void bls_initn(struct voluta_blobspec *bls, size_t n)
+{
+	memset(bls, 0, n * sizeof(*bls));
+}
+
 static void bls_vaddr(const struct voluta_blobspec *bls,
                       struct voluta_vaddr *out_vaddr)
 {
@@ -114,6 +119,13 @@ static void bls_set_vaddr(struct voluta_blobspec *bls,
                           const struct voluta_vaddr *vaddr)
 {
 	voluta_vaddr64_set(&bls->vaddr, vaddr);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_usm_init(struct voluta_uspace_map *usm)
+{
+	bls_initn(usm->us_hsm_bls, ARRAY_SIZE(usm->us_hsm_bls));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1130,8 +1142,6 @@ static void agm_calc_space_stat(const struct voluta_agroup_map *agm,
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-/* spmaps */
-
 static struct voluta_hspace_map *
 hspace_map_of(const struct voluta_vnode_info *hsm_vi)
 {
@@ -1323,10 +1333,10 @@ int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
 	return hsm_may_alloc(hsm, nbytes) ? 0 : -ENOSPC;
 }
 
-void voluta_resolve_ag_vaddrs(const struct voluta_vnode_info *hsm_vi,
-                              voluta_index_t ag_index,
-                              struct voluta_vaddr *out_agm_vaddr,
-                              struct voluta_vaddr *out_bks_vaddr)
+void voluta_resolve_vaddrs_of_ag(const struct voluta_vnode_info *hsm_vi,
+                                 voluta_index_t ag_index,
+                                 struct voluta_vaddr *out_agm_vaddr,
+                                 struct voluta_vaddr *out_bks_vaddr)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 

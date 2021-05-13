@@ -296,9 +296,11 @@ void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }
 
-void voluta_vaddr_of_itnode(struct voluta_vaddr *vaddr, loff_t off)
+void voluta_vaddr_of_blob(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
-	vaddr_setup(vaddr, VOLUTA_VTYPE_ITNODE, off);
+	const loff_t off = ag_index_to_off(ag_index);
+
+	vaddr_setup(vaddr, VOLUTA_VTYPE_BLOB, off);
 }
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,

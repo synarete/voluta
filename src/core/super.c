@@ -1240,6 +1240,7 @@ static int do_format_agmap_of(struct voluta_sb_info *sbi,
 {
 	int err;
 	struct voluta_vnode_info *agm_vi;
+	struct voluta_vaddr bks_vaddr;
 
 	err = unlimit_agmap_on_pstore(sbi, ag_index);
 	if (err) {
@@ -1251,7 +1252,8 @@ static int do_format_agmap_of(struct voluta_sb_info *sbi,
 	}
 	setup_agmap(agm_vi, ag_index);
 
-	voluta_set_formatted_ag(hsm_vi, vi_vaddr(agm_vi), ag_index);
+	voluta_vaddr_of_blob(&bks_vaddr, ag_index);
+	voluta_set_formatted_ag(hsm_vi, vi_vaddr(agm_vi), &bks_vaddr);
 	update_spi_on_agm(sbi);
 	return 0;
 }
@@ -1832,7 +1834,8 @@ static int resolve_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 {
 	int err;
 	voluta_index_t hs_index;
-	struct voluta_vaddr vaddr = { .off = -1 };
+	struct voluta_vaddr agm_vaddr = { .off = -1 };
+	struct voluta_vaddr bks_vaddr = { .off = -1 };
 	struct voluta_vnode_info *hsm_vi = NULL;
 
 	hs_index = voluta_hs_index_of_ag(ag_index);
@@ -1840,11 +1843,11 @@ static int resolve_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (err) {
 		return err;
 	}
-	voluta_resolve_agmap_vaddr(hsm_vi, ag_index, &vaddr);
-	if (vaddr_isnull(&vaddr)) {
+	voluta_resolve_ag_vaddrs(hsm_vi, ag_index, &agm_vaddr, &bks_vaddr);
+	if (vaddr_isnull(&agm_vaddr)) {
 		return -ENOENT;
 	}
-	vaddr_copyto(&vaddr, out_agm_vaddr);
+	vaddr_copyto(&agm_vaddr, out_agm_vaddr);
 	return 0;
 }
 

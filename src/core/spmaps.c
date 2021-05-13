@@ -99,6 +99,25 @@ static size_t safe_sum(size_t cur, ssize_t dif)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static void bls_init(struct voluta_blobspec *bls)
+{
+	memset(bls, 0, sizeof(*bls));
+}
+
+static void bls_vaddr(const struct voluta_blobspec *bls,
+                      struct voluta_vaddr *out_vaddr)
+{
+	voluta_vaddr64_parse(&bls->vaddr, out_vaddr);
+}
+
+static void bls_set_vaddr(struct voluta_blobspec *bls,
+                          const struct voluta_vaddr *vaddr)
+{
+	voluta_vaddr64_set(&bls->vaddr, vaddr);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
 {
 	return le32_to_cpu(agr->ag_used_meta);
@@ -221,6 +240,8 @@ static void agr_init(struct voluta_ag_rec *agr)
 	agr_set_used_data(agr, 0);
 	agr_set_nfiles(agr, 0);
 	agr_set_flags(agr, 0);
+	bls_init(&agr->ag_map_bls);
+	bls_init(&agr->ag_bks_bls);
 	memset(agr->ag_reserved, 0, sizeof(agr->ag_reserved));
 }
 
@@ -286,26 +307,21 @@ static bool agr_may_alloc_vtype(const struct voluta_ag_rec *agr,
 	return agr_kind_fits_vtype(agr, vtype) && agr_may_alloc(agr, vtype);
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void obr_initn(struct voluta_obj_ref *obr, size_t n)
+static void agr_vaddrs(const struct voluta_ag_rec *agr,
+                       struct voluta_vaddr *out_agm_vaddr,
+                       struct voluta_vaddr *out_bks_vaddr)
 {
-	memset(obr, 0, n * sizeof(*obr));
+	bls_vaddr(&agr->ag_map_bls, out_agm_vaddr);
+	bls_vaddr(&agr->ag_bks_bls, out_bks_vaddr);
 }
 
-static inline void obr_vaddr(const struct voluta_obj_ref *obr,
-                             struct voluta_vaddr *out_vaddr)
+static void agr_set_vaddrs(struct voluta_ag_rec *agr,
+                           const struct voluta_vaddr *agm_vaddr,
+                           const struct voluta_vaddr *bks_vaddr)
 {
-	voluta_vaddr64_parse(&obr->vaddr, out_vaddr);
+	bls_set_vaddr(&agr->ag_map_bls, agm_vaddr);
+	bls_set_vaddr(&agr->ag_bks_bls, bks_vaddr);
 }
-
-static inline void obr_set_vaddr(struct voluta_obj_ref *obr,
-                                 const struct voluta_vaddr *vaddr)
-{
-	voluta_vaddr64_set(&obr->vaddr, vaddr);
-}
-
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -412,7 +428,6 @@ static void hsm_init(struct voluta_hspace_map *hsm,
 	hsm_set_nags_form(hsm, 0);
 	hsm_set_nused(hsm, 0);
 	agr_initn(hsm->hs_agr, ARRAY_SIZE(hsm->hs_agr));
-	obr_initn(hsm->hs_agm, ARRAY_SIZE(hsm->hs_agm));
 }
 
 static struct voluta_ag_rec *
@@ -432,39 +447,24 @@ hsm_ag_rec_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 	return hsm_ag_rec_at(hsm, slot);
 }
 
-static struct voluta_obj_ref *
-hsm_agm_obr_at(const struct voluta_hspace_map *hsm, size_t slot)
+static void hsm_vaddrs_of(const struct voluta_hspace_map *hsm,
+                          voluta_index_t ag_index,
+                          struct voluta_vaddr *out_agm_vaddr,
+                          struct voluta_vaddr *out_bks_vaddr)
 {
-	const struct voluta_obj_ref *obr = &hsm->hs_agm[slot];
+	const struct voluta_ag_rec *agr = hsm_ag_rec_of(hsm, ag_index);
 
-	voluta_assert_lt(slot, ARRAY_SIZE(hsm->hs_agm));
-	return unconst(obr);
+	agr_vaddrs(agr, out_agm_vaddr, out_bks_vaddr);
 }
 
-static struct voluta_obj_ref *
-hsm_agm_obr_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
+static void hsm_set_vaddrs_of(struct voluta_hspace_map *hsm,
+                              voluta_index_t ag_index,
+                              const struct voluta_vaddr *agm_vaddr,
+                              const struct voluta_vaddr *bks_vaddr)
 {
-	const size_t slot = voluta_ag_index_to_hs_slot(ag_index);
+	struct voluta_ag_rec *agr = hsm_ag_rec_of(hsm, ag_index);
 
-	return hsm_agm_obr_at(hsm, slot);
-}
-
-static void hsm_agm_vaddr_of(const struct voluta_hspace_map *hsm,
-                             voluta_index_t ag_index,
-                             struct voluta_vaddr *out_vaddr)
-{
-	const struct voluta_obj_ref *obr = hsm_agm_obr_of(hsm, ag_index);
-
-	obr_vaddr(obr, out_vaddr);
-}
-
-static void hsm_set_agm_vaddr_of(struct voluta_hspace_map *hsm,
-                                 voluta_index_t ag_index,
-                                 const struct voluta_vaddr *vaddr)
-{
-	struct voluta_obj_ref *obr = hsm_agm_obr_of(hsm, ag_index);
-
-	obr_set_vaddr(obr, vaddr);
+	agr_set_vaddrs(agr, agm_vaddr, bks_vaddr);
 }
 
 static voluta_index_t
@@ -1251,13 +1251,15 @@ void voluta_space_stat_of(const struct voluta_vnode_info *hsm_vi,
 
 void voluta_set_formatted_ag(struct voluta_vnode_info *hsm_vi,
                              const struct voluta_vaddr *agm_vaddr,
-                             voluta_index_t ag_index)
+                             const struct voluta_vaddr *bks_vaddr)
 {
+	const voluta_index_t ag_index = bks_vaddr->ag_index;
 	struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
+	voluta_assert_lt(agm_vaddr->ag_index, ag_index);
 	voluta_assert(!hsm_is_formatted(hsm, ag_index));
 
-	hsm_set_agm_vaddr_of(hsm, ag_index, agm_vaddr);
+	hsm_set_vaddrs_of(hsm, ag_index, agm_vaddr, bks_vaddr);
 	hsm_set_formatted(hsm, ag_index);
 	hsm_inc_nags_form(hsm);
 	vi_dirtify(hsm_vi);
@@ -1321,13 +1323,14 @@ int voluta_check_cap_alloc(const struct voluta_vnode_info *hsm_vi,
 	return hsm_may_alloc(hsm, nbytes) ? 0 : -ENOSPC;
 }
 
-void voluta_resolve_agmap_vaddr(const struct voluta_vnode_info *hsm_vi,
-                                voluta_index_t ag_index,
-                                struct voluta_vaddr *out_vaddr)
+void voluta_resolve_ag_vaddrs(const struct voluta_vnode_info *hsm_vi,
+                              voluta_index_t ag_index,
+                              struct voluta_vaddr *out_agm_vaddr,
+                              struct voluta_vaddr *out_bks_vaddr)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsm_vi);
 
-	hsm_agm_vaddr_of(hsm, ag_index, out_vaddr);
+	hsm_vaddrs_of(hsm, ag_index, out_agm_vaddr, out_bks_vaddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -126,7 +126,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_kdf_pair, 32);
 	REQUIRE_SIZEOF(struct voluta_iv, VOLUTA_IV_SIZE);
 	REQUIRE_SIZEOF(struct voluta_key, VOLUTA_KEY_SIZE);
-	REQUIRE_SIZEOF(struct voluta_obj_ref, 64);
+	REQUIRE_SIZEOF(struct voluta_blobspec, 64);
 	REQUIRE_SIZEOF_4K(struct voluta_data_block4);
 	REQUIRE_SIZEOF(struct voluta_data_block4, VOLUTA_FILE_HEAD2_LEAF_SIZE);
 	REQUIRE_SIZEOF_KB(struct voluta_inode);
@@ -148,7 +148,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_header, VOLUTA_HEADER_SIZE);
 	REQUIRE_SIZEOF(struct voluta_uuid, VOLUTA_UUID_SIZE);
 	REQUIRE_SIZEOF(struct voluta_name, VOLUTA_NAME_MAX + 1);
-	REQUIRE_SIZEOF(struct voluta_ag_rec, 56);
+	REQUIRE_SIZEOF(struct voluta_ag_rec, 240);
 	REQUIRE_SIZEOF(struct voluta_bk_rec, 56);
 	REQUIRE_SIZEOF(struct voluta_itable_entry, 16);
 	REQUIRE_SIZEOF(struct voluta_dir_entry, 16);
@@ -202,10 +202,9 @@ static void guarantee_persistent_types_alignment(void)
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 8448);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys_rec, 16384);
-	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hsm_obr, 32768);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hsm_bls, 32768);
 	REQUIRE_AOFFSET(struct voluta_hspace_map, hs_hdr, 0);
 	REQUIRE_AOFFSET64(struct voluta_hspace_map, hs_agr, 4096);
-	REQUIRE_AOFFSET64(struct voluta_hspace_map, hs_agm, 32768);
 	REQUIRE_AOFFSET(struct voluta_agroup_map, ag_hdr, 0);
 	REQUIRE_AOFFSET64(struct voluta_agroup_map, ag_bkr, 8192);
 	REQUIRE_AOFFSET64(struct voluta_itable_tnode, ite, 64);
@@ -252,9 +251,9 @@ static void guarantee_defs_consistency(void)
 	REQUIRE_LT(VOLUTA_XATTR_VALUE_MAX, VOLUTA_XATTR_NODE_SIZE);
 	REQUIRE_EQ(VOLUTA_FILE_SIZE_MAX, 64 * VOLUTA_TERA - 1);
 	REQUIRE_EQ(VOLUTA_AG_SIZE, 64 * VOLUTA_MEGA);
-	REQUIRE_EQ(VOLUTA_HS_SIZE, 32 * VOLUTA_GIGA);
+	REQUIRE_EQ(VOLUTA_HS_SIZE, 16 * VOLUTA_GIGA);
 	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MIN, 2 * VOLUTA_GIGA);
-	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MAX, 16 * VOLUTA_TERA);
+	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MAX, 8 * VOLUTA_TERA);
 	REQUIRE_EQ(VOLUTA_AR_BLOB_SIZE, 16 * VOLUTA_MEGA);
 
 	REQUIRE_EQ(VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES,

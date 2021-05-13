@@ -590,5 +590,3 @@ out:
 	voluta_passphrase_reset(&passph);
 	return err;
 }
-
-

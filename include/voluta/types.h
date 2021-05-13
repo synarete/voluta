@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <voluta/defs.h>
+#include <voluta/thread.h>
 
 
 /* standard types forward declarations */
@@ -103,24 +104,6 @@ enum voluta_iattr_flags {
 	                           VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME
 };
 
-/* threading */
-typedef int (*voluta_execute_fn)(struct voluta_thread *);
-
-/* wrapper of pthread_t */
-struct voluta_thread {
-	voluta_execute_fn exec;
-	pthread_t       pth;
-	char            name[32];
-	time_t          start_time;
-	time_t          finish_time;
-	int             status;
-};
-
-/* wrapper of pthread_mutex_t */
-struct voluta_mutex {
-	pthread_mutex_t mutex;
-	int alive;
-};
 
 struct voluta_pipe {
 	int     fd[2];

@@ -3457,8 +3457,18 @@ static int fuseq_start(struct voluta_thread *th)
 	struct voluta_fuseq_worker *fqw = thread_to_fuseq_worker(th);
 
 	log_info("exec fuseq-worker: %s", th->name);
+	err = voluta_thread_sigblock_common();
+	if (err) {
+		log_warn("unable to block signals: %s err=%d", th->name, err);
+		goto out;
+	}
 	err = fuseq_sub_exec_loop(fqw);
-	log_info("done fuseq-worker: %s err=%d", th->name, err);
+	if (err) {
+		log_info("exec-loop completed: %s err=%d", th->name, err);
+		goto out;
+	}
+out:
+	log_info("done fuseq-worker: %s", th->name);
 	return err;
 }
 

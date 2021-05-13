@@ -1229,24 +1229,6 @@ struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
 
 void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
 
-/* thread */
-int voluta_thread_create(struct voluta_thread *th,
-                         voluta_execute_fn exec, const char *name);
-
-int voluta_thread_join(struct voluta_thread *th);
-
-int voluta_mutex_init(struct voluta_mutex *mutex);
-
-void voluta_mutex_destroy(struct voluta_mutex *mutex);
-
-void voluta_mutex_lock(struct voluta_mutex *mutex);
-
-bool voluta_mutex_trylock(struct voluta_mutex *mutex);
-
-bool voluta_mutex_timedlock(struct voluta_mutex *mutex,
-                            const struct timespec *abstime);
-
-void voluta_mutex_unlock(struct voluta_mutex *mutex);
 
 /* pipe */
 void voluta_pipe_init(struct voluta_pipe *pipe);

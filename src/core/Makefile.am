@@ -37,7 +37,6 @@ libvoluta_core_la_SOURCES += qalloc.c
 libvoluta_core_la_SOURCES += spmaps.c
 libvoluta_core_la_SOURCES += super.c
 libvoluta_core_la_SOURCES += symlink.c
-libvoluta_core_la_SOURCES += thread.c
 libvoluta_core_la_SOURCES += utility.c
 libvoluta_core_la_SOURCES += vstore.c
 libvoluta_core_la_SOURCES += xattr.c

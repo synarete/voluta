@@ -14,6 +14,7 @@ nobase_include_HEADERS += voluta/qalloc.h
 nobase_include_HEADERS += voluta/socket.h
 nobase_include_HEADERS += voluta/strings.h
 nobase_include_HEADERS += voluta/syscall.h
+nobase_include_HEADERS += voluta/thread.h
 nobase_include_HEADERS += voluta/types.h
 nobase_include_HEADERS += voluta/utility.h
 nobase_include_HEADERS += voluta/version.h

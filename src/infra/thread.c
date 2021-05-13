@@ -19,10 +19,13 @@
 #include <signal.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include "libvoluta.h"
+#include <voluta/minmax.h>
+#include <voluta/errors.h>
+#include <voluta/thread.h>
 
 #if defined(NDEBUG)
 #define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_NORMAL
@@ -30,7 +33,7 @@
 #define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_ERRORCHECK
 #endif
 
-static int voluta_thread_sigblock_common(void)
+int voluta_thread_sigblock_common(void)
 {
 	sigset_t sigset_th;
 
@@ -55,7 +58,7 @@ static int voluta_thread_sigblock_common(void)
 
 static void voluta_thread_prepare(struct voluta_thread *th)
 {
-	th->start_time = voluta_time_now();
+	th->start_time = time(NULL);
 	th->finish_time = 0;
 	if (strlen(th->name)) {
 		pthread_setname_np(th->pth, th->name);
@@ -65,7 +68,7 @@ static void voluta_thread_prepare(struct voluta_thread *th)
 static void voluta_thread_complete(struct voluta_thread *th, int err)
 {
 	th->status = err;
-	th->finish_time = voluta_time_now();
+	th->finish_time = time(NULL);
 }
 
 static void *voluta_thread_start(void *arg)
@@ -74,10 +77,7 @@ static void *voluta_thread_start(void *arg)
 	struct voluta_thread *th = (struct voluta_thread *)arg;
 
 	voluta_thread_prepare(th);
-	err = voluta_thread_sigblock_common();
-	if (!err) {
-		err = th->exec(th);
-	}
+	err = th->exec(th);
 	voluta_thread_complete(th, err);
 	return th;
 }
@@ -101,8 +101,8 @@ int voluta_thread_create(struct voluta_thread *th,
 	memset(th, 0, sizeof(*th));
 	th->exec = exec;
 	if (name != NULL) {
-		nlen = strlen(name);
-		memcpy(th->name, name, min(nlen, sizeof(th->name) - 1));
+		nlen = voluta_min(strlen(name), sizeof(th->name) - 1);
+		memcpy(th->name, name, nlen);
 	}
 
 	err = pthread_create(&th->pth, &attr, start, th);

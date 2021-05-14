@@ -1203,7 +1203,7 @@ static void dirtify_data_leaf(const struct voluta_file_ctx *f_ctx,
 	vi_dirtify(leaf_vi);
 	if (!kcopy_mode(f_ctx)) {
 		/* for data checksum, need to do:  */
-		/* vi_dirtify(agm_vi); */
+		/* vi_dirtify(agi); */
 	}
 }
 

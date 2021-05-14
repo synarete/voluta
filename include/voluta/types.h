@@ -48,6 +48,8 @@ struct voluta_avl_node;
 struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
+struct voluta_cache;
+struct voluta_vnode_info;
 struct voluta_fuseq;
 struct voluta_fuseq_worker;
 struct voluta_fuseq_in;
@@ -291,6 +293,10 @@ union voluta_vnode_u {
 	void *p;
 };
 
+typedef void (*voluta_delete_vnode_fn)(const struct voluta_cache *cache,
+                                       struct voluta_vnode_info *vi);
+
+
 struct voluta_vnode_info {
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
@@ -302,9 +308,32 @@ struct voluta_vnode_info {
 	struct voluta_list_head         v_dq_blh;
 	struct voluta_avl_node          v_ds_an;
 	struct voluta_vnode_info       *v_ds_next;
+	voluta_delete_vnode_fn          v_del_hook;
 	long v_ds_key;
 	int  v_verify;
 	int  v_dirty;
+};
+
+/* space-maps */
+struct voluta_hspace_info {
+	struct voluta_vnode_info        hs_vi;
+	unsigned long hs_zzz;
+};
+
+struct voluta_agroup_info {
+	struct voluta_vnode_info        ag_vi;
+	unsigned long ag_zzz;
+};
+
+/* inode */
+struct voluta_inode_info {
+	struct voluta_inode            *inode;
+	struct voluta_vnode_info        i_vi;
+	struct timespec                 i_atime_lazy;
+	ino_t  i_ino;
+	long   i_nopen;
+	long   i_nlookup;
+	bool   i_pinned;
 };
 
 /* dirty-queues of cached-elements */
@@ -318,17 +347,6 @@ struct voluta_dirtyqs {
 	struct voluta_dirtyq           *dq_bins;
 	struct voluta_dirtyq            dq_main;
 	size_t dq_nbins;
-};
-
-/* inode */
-struct voluta_inode_info {
-	struct voluta_inode            *inode;
-	struct voluta_vnode_info        i_vi;
-	struct timespec                 i_atime_lazy;
-	ino_t  i_ino;
-	long   i_nopen;
-	long   i_nlookup;
-	bool   i_pinned;
 };
 
 /* caching */

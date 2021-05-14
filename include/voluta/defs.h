@@ -331,7 +331,6 @@ enum voluta_agf {
 	VOLUTA_AGF_FRAGMENTED   = (1 << 1),
 	VOLUTA_AGF_USERDATA     = (1 << 2),
 	VOLUTA_AGF_METADATA     = (1 << 3),
-	VOLUTA_AGF_ITABLEROOT   = (1 << 4),
 };
 
 

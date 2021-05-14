@@ -212,28 +212,41 @@ static inline loff_t vi_offset(const struct voluta_vnode_info *vi)
 	return vi_vaddr(vi)->off;
 }
 
-static inline
-struct voluta_sb_info *vi_sbi(const struct voluta_vnode_info *vi)
+static inline struct voluta_sb_info *
+vi_sbi(const struct voluta_vnode_info *vi)
 {
 	return vi->v_sbi;
 }
 
-static inline
-struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
+static inline struct voluta_cache *
+vi_cache(const struct voluta_vnode_info *vi)
 {
 	return vi_sbi(vi)->sb_cache;
 }
 
-static inline
-const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
+static inline const struct voluta_mdigest *
+vi_mdigest(const struct voluta_vnode_info *vi)
 {
 	return &vi->v_sbi->sb_vstore->vs_crypto.md;
 }
 
-static inline
-struct voluta_vnode_info *ii_vi(const struct voluta_inode_info *ii)
+
+static inline struct voluta_vnode_info *
+hsi_vi(const struct voluta_hspace_info *hsi)
 {
-	return (ii != NULL) ? unconst(&ii->i_vi) : NULL;
+	return voluta_likely(hsi != NULL) ? unconst(&hsi->hs_vi) : NULL;
+}
+
+static inline struct voluta_vnode_info *
+agi_vi(const struct voluta_agroup_info *agi)
+{
+	return voluta_likely(agi != NULL) ? unconst(&agi->ag_vi) : NULL;
+}
+
+static inline struct voluta_vnode_info *
+ii_vi(const struct voluta_inode_info *ii)
+{
+	return voluta_likely(ii != NULL) ? unconst(&ii->i_vi) : NULL;
 }
 
 static inline ino_t ii_ino(const struct voluta_inode_info *ii)
@@ -241,20 +254,20 @@ static inline ino_t ii_ino(const struct voluta_inode_info *ii)
 	return ii->i_ino;
 }
 
-static inline
-const struct voluta_vaddr *ii_vaddr(const struct voluta_inode_info *ii)
+static inline const struct voluta_vaddr *
+ii_vaddr(const struct voluta_inode_info *ii)
 {
 	return vi_vaddr(ii_vi(ii));
 }
 
-static inline
-struct voluta_bk_info *ii_bki(const struct voluta_inode_info *ii)
+static inline struct voluta_bk_info *
+ii_bki(const struct voluta_inode_info *ii)
 {
 	return ii_vi(ii)->v_bki;
 }
 
-static inline
-struct voluta_sb_info *ii_sbi(const struct voluta_inode_info *ii)
+static inline struct voluta_sb_info *
+ii_sbi(const struct voluta_inode_info *ii)
 {
 	return vi_sbi(ii_vi(ii));
 }

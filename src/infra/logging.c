@@ -15,21 +15,15 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
-#include <uuid/uuid.h>
 #include <voluta/logging.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

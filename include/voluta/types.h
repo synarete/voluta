@@ -234,16 +234,10 @@ struct voluta_vaddr {
 };
 
 /* object-address within underlying blobs space */
-struct voluta_oaddr {
-	uint8_t         id[VOLUTA_OID_LEN];
+struct voluta_baddr {
+	struct voluta_blobid bid;
+	loff_t size;
 };
-
-/* object reference mapping */
-struct voluta_objref {
-	struct voluta_vaddr   vaddr;
-	struct voluta_oaddr   oaddr;
-	size_t                osize;
-} voluta_packed_aligned32;
 
 /* inode-address */
 struct voluta_iaddr {
@@ -385,7 +379,7 @@ struct voluta_encbuf {
 	uint8_t b[VOLUTA_MEGA];
 };
 
-/* persistent-storage I/O-control */
+/* persistent-storage controller */
 struct voluta_pstore {
 	int     ps_dfd;
 	int     ps_vfd;
@@ -404,6 +398,23 @@ struct voluta_vstore {
 	struct voluta_encbuf           *vs_encbuf;
 	const char *vs_volpath;
 	unsigned long vs_ctl_flags;
+};
+
+/* blob cache-entry */
+struct voluta_blob_info {
+	struct voluta_baddr     bi_baddr;
+	struct voluta_list_head bi_htb_lh;
+	unsigned long           bi_hkey;
+	int                     bi_fd;
+};
+
+/* blobs storage controller */
+struct voluta_repo {
+	struct voluta_list_head re_htbl[1024];
+	struct voluta_qalloc   *re_qalloc;
+	size_t  re_nsubs;
+	size_t  re_hsize;
+	int     re_dfd;
 };
 
 /* inodes-table in-memory hash-map cache */

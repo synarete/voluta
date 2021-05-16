@@ -364,22 +364,26 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
                           struct voluta_vaddr *vaddr);
 
 
-const struct voluta_oaddr *voluta_oaddr_none(void);
+const struct voluta_baddr *voluta_baddr_none(void);
 
-void voluta_oaddr_create(struct voluta_oaddr *oaddr);
+void voluta_baddr_reset(struct voluta_baddr *baddr);
 
-void voluta_oaddr_copyto(const struct voluta_oaddr *oaddr,
-                         struct voluta_oaddr *other);
+void voluta_baddr_create(struct voluta_baddr *baddr, loff_t size);
 
-void voluta_oaddr256_set(struct voluta_oaddr256 *ba,
-                         const struct voluta_oaddr *oaddr);
+void voluta_baddr_copyto(const struct voluta_baddr *baddr,
+                         struct voluta_baddr *other);
 
-void voluta_oaddr256_parse(const struct voluta_oaddr256 *ba,
-                           struct voluta_oaddr *oaddr);
+bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
+                          const struct voluta_baddr *other);
 
-void voluta_objref_setup(struct voluta_objref *oref,
-                         const struct voluta_vaddr *vaddr,
-                         const struct voluta_oaddr *oaddr, size_t osize);
+uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr);
+
+void voluta_blobid_copyto(const struct voluta_blobid *blobid,
+                          struct voluta_blobid *other);
+
+bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
+                           const struct voluta_blobid *other);
+
 
 int voluta_check_volume_size(loff_t size);
 
@@ -1233,6 +1237,32 @@ struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
 
 void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
 
+/* repo */
+int voluta_repo_init(struct voluta_repo *repo,
+                     struct voluta_qalloc *qalloc);
+
+void voluta_repo_fini(struct voluta_repo *repo);
+
+int voluta_repo_open(struct voluta_repo *repo, const char *path);
+
+int voluta_repo_close(struct voluta_repo *repo);
+
+int voluta_repo_format(struct voluta_repo *repo);
+
+int voluta_repo_create_blob(struct voluta_repo *repo,
+                            const struct voluta_baddr *baddr,
+                            struct voluta_blob_info **out_bli);
+
+int voluta_repo_fetch_blob(struct voluta_repo *repo,
+                           const struct voluta_baddr *baddr,
+                           struct voluta_blob_info **out_bli);
+
+void voluta_repo_forget_blob(struct voluta_repo *repo,
+                             struct voluta_blob_info *bli);
+
+int voluta_resolve_xiovec_at(const struct voluta_blob_info *bli,
+                             loff_t off, size_t len,
+                             struct voluta_xiovec *xiov);
 
 
 /* utility */

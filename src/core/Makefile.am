@@ -32,6 +32,7 @@ libvoluta_core_la_SOURCES += mpool.c
 libvoluta_core_la_SOURCES += namei.c
 libvoluta_core_la_SOURCES += opers.c
 libvoluta_core_la_SOURCES += pstore.c
+libvoluta_core_la_SOURCES += repo.c
 libvoluta_core_la_SOURCES += spmaps.c
 libvoluta_core_la_SOURCES += super.c
 libvoluta_core_la_SOURCES += symlink.c

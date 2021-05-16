@@ -82,6 +82,9 @@
 #define vaddr_setup(va, t, o)           voluta_vaddr_setup(va, t, o)
 #define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
+#define baddr_reset(ba)                 voluta_baddr_reset(ba)
+#define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
+
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)
 #define vi_decref(vi)                   voluta_vi_decref(vi)

@@ -123,7 +123,7 @@ static void guarantee_persistent_types_size(void)
 {
 	REQUIRE_SIZEOF(struct voluta_vaddr56, 7);
 	REQUIRE_SIZEOF(struct voluta_vaddr64, 8);
-	REQUIRE_SIZEOF(struct voluta_oaddr256, 32);
+	REQUIRE_SIZEOF(struct voluta_blobid, 32);
 	REQUIRE_SIZEOF(struct voluta_timespec, 16);
 	REQUIRE_SIZEOF(struct voluta_kdf_desc, 16);
 	REQUIRE_SIZEOF(struct voluta_kdf_pair, 32);

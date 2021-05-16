@@ -299,7 +299,7 @@ void voluta_expect_eqs_(const char *s, const char *z, const char *fl, int ln)
 	}
 }
 
-static char nibble_to_ascii(unsigned int n)
+char voluta_nibble_to_ascii(unsigned int n)
 {
 	const char xdigits[] = "0123456789ABCDEF";
 
@@ -314,8 +314,8 @@ static void mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 
 	memset(str, 0, len);
 	while ((i < nn) && ((pos + 4) < len)) {
-		str[pos++] = nibble_to_ascii(ptr[i] >> 4);
-		str[pos++] = nibble_to_ascii(ptr[i]);
+		str[pos++] = voluta_nibble_to_ascii(ptr[i] >> 4);
+		str[pos++] = voluta_nibble_to_ascii(ptr[i]);
 		i += 1;
 	}
 	if (i < nn) {

@@ -467,8 +467,8 @@ struct voluta_vaddr64 {
 } voluta_packed_aligned8;
 
 
-struct voluta_oaddr256 {
-	uint8_t         oid[VOLUTA_OID_LEN];
+struct voluta_blobid {
+	uint8_t  oid[VOLUTA_OID_LEN];
 } voluta_packed_aligned8;
 
 
@@ -478,7 +478,7 @@ struct voluta_blobspec {
 	uint32_t                csize; /* compressed size */
 	uint32_t                flags;
 	uint8_t                 reserved[12];
-	struct voluta_oaddr256  oaddr;
+	struct voluta_blobid    blobid;
 } voluta_packed_aligned8;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

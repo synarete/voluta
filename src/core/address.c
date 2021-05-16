@@ -368,53 +368,74 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *vadr,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static const struct voluta_oaddr s_oaddr_none = {
-	.id[0] = 0,
+static uint64_t uint64_at(const void *p)
+{
+	return *(const uint64_t *)p;
+}
+
+void voluta_blobid_copyto(const struct voluta_blobid *blobid,
+                          struct voluta_blobid *other)
+{
+	memcpy(other->oid, blobid->oid, sizeof(other->oid));
+}
+
+bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
+                           const struct voluta_blobid *other)
+{
+	return memcmp(blobid->oid, other->oid, sizeof(blobid->oid)) == 0;
+}
+
+static uint64_t blobid_hkey(const struct voluta_blobid *blobid)
+{
+	const uint8_t *oid = blobid->oid;
+
+	STATICASSERT_SIZEOF(blobid->oid, 32);
+
+	return uint64_at(oid) ^ uint64_at(oid + 8) ^
+	       uint64_at(oid + 16) ^ uint64_at(oid + 24);
+}
+
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static const struct voluta_baddr s_baddr_none = {
+	.size = 0,
 };
 
-const struct voluta_oaddr *voluta_oaddr_none(void)
+const struct voluta_baddr *voluta_baddr_none(void)
 {
-	return &s_oaddr_none;
+	return &s_baddr_none;
 }
 
-void voluta_oaddr_create(struct voluta_oaddr *oaddr)
+void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
-	voluta_getentropy(oaddr->id, sizeof(oaddr->id));
+	memset(baddr->bid.oid, 0, sizeof(baddr->bid.oid));
+	baddr->size = 0;
 }
 
-void voluta_oaddr_copyto(const struct voluta_oaddr *oaddr,
-                         struct voluta_oaddr *other)
+void voluta_baddr_create(struct voluta_baddr *baddr, loff_t size)
 {
-	memcpy(other->id, oaddr->id, sizeof(other->id));
+	voluta_getentropy(baddr->bid.oid, sizeof(baddr->bid.oid));
+	baddr->size = size;
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void voluta_oaddr256_set(struct voluta_oaddr256 *oadr,
-                         const struct voluta_oaddr *oaddr)
+void voluta_baddr_copyto(const struct voluta_baddr *baddr,
+                         struct voluta_baddr *other)
 {
-	STATICASSERT_EQ(sizeof(oadr->oid), sizeof(oaddr->id));
-
-	memcpy(oadr->oid, oaddr->id, sizeof(oadr->oid));
+	voluta_blobid_copyto(&baddr->bid, &other->bid);
+	other->size = baddr->size;
 }
 
-void voluta_oaddr256_parse(const struct voluta_oaddr256 *oadr,
-                           struct voluta_oaddr *oaddr)
+bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
+                          const struct voluta_baddr *other)
 {
-	STATICASSERT_EQ(sizeof(oadr->oid), sizeof(oaddr->id));
-
-	memcpy(oaddr->id, oadr->oid, sizeof(oaddr->id));
+	return (baddr->size == other->size) &&
+	       voluta_blobid_isequal(&baddr->bid, &other->bid);
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void voluta_objref_setup(struct voluta_objref *oref,
-                         const struct voluta_vaddr *vaddr,
-                         const struct voluta_oaddr *oaddr, size_t osize)
+uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr)
 {
-	voluta_vaddr_copyto(vaddr, &oref->vaddr);
-	voluta_oaddr_copyto(oaddr, &oref->oaddr);
-	oref->osize = osize;
+	return (uint64_t)(baddr->size) ^ blobid_hkey(&baddr->bid);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

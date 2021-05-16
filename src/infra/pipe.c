@@ -82,7 +82,7 @@ int voluta_pipe_open(struct voluta_pipe *pipe)
 	}
 	if (pipesz < pagesz) {
 		voluta_log_warn("illegal pipe-size: pipesz=%d pagesz=%lu",
-				pipesz, pagesz);
+		                pipesz, pagesz);
 		voluta_pipe_close(pipe);
 		return -EINVAL;
 	}
@@ -100,7 +100,7 @@ int voluta_pipe_setsize(struct voluta_pipe *pipe, size_t size)
 	err = voluta_sys_fcntl_setpipesz(pipe->fd[0], (int)size);
 	if (err) {
 		voluta_log_warn("failed to set pipe size: size=%lu err=%d",
-				size, err);
+		                size, err);
 		return err;
 	}
 	pipe->size = size;

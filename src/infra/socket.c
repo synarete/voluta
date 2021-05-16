@@ -32,6 +32,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <voluta/syscall.h>
+#include <voluta/minmax.h>
 #include <voluta/socket.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -225,22 +226,10 @@ int voluta_sockaddr_pton(struct voluta_sockaddr *sa, const char *str)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void *unconst(const void *p)
-{
-	union {
-		const void *p;
-		void *q;
-	} u = {
-		.p = p
-	};
-
-	return u.q;
-}
-
 void voluta_msghdr_setaddr(struct msghdr *mh, const struct voluta_sockaddr *sa)
 {
 	mh->msg_namelen = sockaddr_length(sa);
-	mh->msg_name = unconst(sa);
+	mh->msg_name = voluta_unconst(sa);
 }
 
 struct cmsghdr *voluta_cmsg_firsthdr(struct msghdr *mh)
@@ -270,7 +259,7 @@ size_t voluta_cmsg_len(size_t length)
 
 static void *cmsg_data(const struct cmsghdr *cmh)
 {
-	return unconst(CMSG_DATA(cmh));
+	return voluta_unconst(CMSG_DATA(cmh));
 }
 
 void voluta_cmsg_pack_fd(struct cmsghdr *cmh, int fd)

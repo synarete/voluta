@@ -35,41 +35,20 @@
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void do_burnstack_n(int depth, size_t nbytes)
+static void do_burnstack_n(int depth, int nbytes)
 {
 	char buf[1024];
-	const size_t cnt = min(sizeof(buf), nbytes);
+	const int cnt = voluta_min32((int)sizeof(buf), nbytes);
 
 	if (cnt > 0) {
-		memset(buf, 0xF4 ^ depth, cnt);
+		memset(buf, 0xF4 ^ depth, (size_t)cnt);
 		do_burnstack_n(depth + 1, nbytes - cnt);
 	}
 }
 
 void voluta_burnstack(void)
 {
-	do_burnstack_n(0, 2 * voluta_sc_page_size());
-}
-
-
-size_t voluta_sc_l1_dcache_linesize(void)
-{
-	return (size_t)sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
-}
-
-size_t voluta_sc_page_size(void)
-{
-	return (size_t)sysconf(_SC_PAGE_SIZE);
-}
-
-size_t voluta_sc_phys_pages(void)
-{
-	return (size_t)sysconf(_SC_PHYS_PAGES);
-}
-
-size_t voluta_sc_avphys_pages(void)
-{
-	return (size_t)sysconf(_SC_AVPHYS_PAGES);
+	do_burnstack_n(0, 2 * (int)voluta_sc_page_size());
 }
 
 
@@ -186,7 +165,7 @@ uint64_t voluta_getentropy64(void)
 /* memory utilities */
 static size_t size_to_page_up(size_t sz)
 {
-	const size_t page_size = voluta_sc_page_size();
+	const size_t page_size = (size_t)voluta_sc_page_size();
 
 	return ((sz + page_size - 1) / page_size) * page_size;
 }
@@ -254,7 +233,7 @@ static size_t alignment_of(size_t sz)
 	} else if (sz <= 2048) {
 		al = 2048;
 	} else {
-		al = voluta_sc_page_size();
+		al = (size_t)voluta_sc_page_size();
 	}
 	return al;
 }
@@ -269,6 +248,7 @@ int voluta_zalloc_aligned(size_t sz, void **out_mem)
 	memset(*out_mem, 0, sz);
 	return 0;
 }
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* buffer */
 void voluta_buf_init(struct voluta_buf *buf, void *p, size_t n)

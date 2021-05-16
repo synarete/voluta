@@ -1234,45 +1234,6 @@ struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
 void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
 
 
-/* pipe */
-void voluta_pipe_init(struct voluta_pipe *pipe);
-
-int voluta_pipe_open(struct voluta_pipe *pipe);
-
-int voluta_pipe_setsize(struct voluta_pipe *pipe, size_t size);
-
-void voluta_pipe_close(struct voluta_pipe *pipe);
-
-void voluta_pipe_fini(struct voluta_pipe *pipe);
-
-int voluta_pipe_splice_from_fd(struct voluta_pipe *pipe,
-                               int fd, loff_t *off, size_t len);
-
-int voluta_pipe_vmsplice_from_iov(struct voluta_pipe *pipe,
-                                  const struct iovec *iov, size_t niov);
-
-int voluta_pipe_splice_to_fd(struct voluta_pipe *pipe,
-                             int fd, loff_t *off, size_t len);
-
-int voluta_pipe_vmsplice_to_iov(struct voluta_pipe *pipe,
-                                const struct iovec *iov, size_t niov);
-
-int voluta_pipe_copy_to_buf(struct voluta_pipe *pipe, void *buf, size_t len);
-
-int voluta_pipe_append_from_buf(struct voluta_pipe *pipe,
-                                const void *buf, size_t len);
-
-int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd);
-
-int voluta_pipe_purge(struct voluta_pipe *pipe,
-                      const struct voluta_nullfd *nfd);
-
-int voluta_pipe_kcopy(struct voluta_pipe *pipe, int fd_in, loff_t *off_in,
-                      int fd_out, loff_t *off_out, size_t len);
-
-int voluta_nullfd_init(struct voluta_nullfd *nfd);
-
-void voluta_nullfd_fini(struct voluta_nullfd *nfd);
 
 /* utility */
 void voluta_ts_now(struct timespec *ts);

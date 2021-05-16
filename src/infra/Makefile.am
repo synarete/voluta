@@ -15,6 +15,7 @@ libvoluta_infra_la_SOURCES += avl.c
 libvoluta_infra_la_SOURCES += list.c
 libvoluta_infra_la_SOURCES += logging.c
 libvoluta_infra_la_SOURCES += panic.c
+libvoluta_infra_la_SOURCES += pipe.c
 libvoluta_infra_la_SOURCES += qalloc.c
 libvoluta_infra_la_SOURCES += socket.c
 libvoluta_infra_la_SOURCES += strings.c

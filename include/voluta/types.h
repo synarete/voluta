@@ -30,9 +30,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
+
 #include <voluta/defs.h>
 #include <voluta/consts.h>
 #include <voluta/thread.h>
+#include <voluta/pipe.h>
 
 
 /* standard types forward declarations */
@@ -107,16 +109,6 @@ enum voluta_iattr_flags {
 	                           VOLUTA_IATTR_MTIME | VOLUTA_IATTR_CTIME
 };
 
-
-struct voluta_pipe {
-	int     fd[2];
-	size_t  size;
-	size_t  pend;
-};
-
-struct voluta_nullfd {
-	int     fd;
-};
 
 /* strings & buffer */
 struct voluta_str {

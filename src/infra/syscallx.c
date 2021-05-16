@@ -281,3 +281,26 @@ int voluta_proc_pipe_max_size(long *out_value)
 {
 	return sys_readproc_long("/proc/sys/fs", "pipe-max-size", out_value);
 }
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+long voluta_sc_l1_dcache_linesize(void)
+{
+	return sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+}
+
+long voluta_sc_page_size(void)
+{
+	return sysconf(_SC_PAGE_SIZE);
+}
+
+long voluta_sc_phys_pages(void)
+{
+	return sysconf(_SC_PHYS_PAGES);
+}
+
+long voluta_sc_avphys_pages(void)
+{
+	return sysconf(_SC_AVPHYS_PAGES);
+}
+

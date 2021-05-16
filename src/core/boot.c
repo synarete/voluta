@@ -626,8 +626,8 @@ static int resolve_memsize(size_t mem_want, size_t *out_mem_size)
 	size_t mem_total;
 	size_t mem_uget;
 
-	page_size = voluta_sc_page_size();
-	phys_pages = voluta_sc_phys_pages();
+	page_size = (size_t)voluta_sc_page_size();
+	phys_pages = (size_t)voluta_sc_phys_pages();
 	mem_total = (page_size * phys_pages);
 	mem_floor = VOLUTA_UGIGA / 8;
 	if (mem_total < mem_floor) {

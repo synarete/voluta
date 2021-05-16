@@ -185,8 +185,7 @@ static struct voluta_super_block *new_super_block(void)
 {
 	struct voluta_super_block *sb = NULL;
 
-	sb = voluta_malloc_safe(sizeof(*sb));
-	memset(sb, 0, sizeof(*sb));
+	sb = voluta_zalloc_safe(sizeof(*sb));
 	return sb;
 }
 
@@ -819,7 +818,7 @@ char *voluta_joinpath_safe(const char *path, const char *base)
 	const size_t plen = strlen(path);
 	const size_t blen = strlen(base);
 
-	rpath = voluta_malloc_safe(plen + blen + 2);
+	rpath = voluta_zalloc_safe(plen + blen + 2);
 	memcpy(rpath, path, plen);
 	memcpy(rpath + 1 + plen, base, blen);
 	rpath[plen] = '/';
@@ -1012,16 +1011,16 @@ loff_t voluta_blkgetsize_ok(const char *path)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void *voluta_malloc_safe(size_t nbytes)
+void *voluta_zalloc_safe(size_t nbytes)
 {
 	int err;
-	void *p = NULL;
+	void *mem = NULL;
 
-	err = posix_memalign(&p, 64, nbytes);
+	err = voluta_zalloc_aligned(nbytes, &mem);
 	if (err) {
-		voluta_die(-err, "posix_memalign failed: nbytes=%lu", nbytes);
+		voluta_die(-err, "alloc failed: nbytes=%lu", nbytes);
 	}
-	return p;
+	return mem;
 }
 
 void voluta_pfree_string(char **pp)
@@ -1057,7 +1056,7 @@ char *voluta_sprintf_path(const char *fmt, ...)
 	va_list ap;
 	int n;
 	size_t path_size = PATH_MAX;
-	char *path = voluta_malloc_safe(path_size);
+	char *path = voluta_zalloc_safe(path_size);
 	char *path_dup;
 
 	va_start(ap, fmt);

@@ -78,7 +78,7 @@ static void *zalloc(size_t nbytes)
 {
 	void *ptr;
 
-	ptr = voluta_malloc_safe(nbytes);
+	ptr = voluta_zalloc_safe(nbytes);
 	memset(ptr, 0, nbytes);
 	return ptr;
 }

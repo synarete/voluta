@@ -778,7 +778,7 @@ static int mntsvc_check_mount(const struct voluta_mntsvc *msvc,
 	    (mntp->group_id != peer_cred->gid)) {
 		return -EACCES;
 	}
-	page_size = voluta_sc_page_size();
+	page_size = (size_t)voluta_sc_page_size();
 	if (mntp->max_read < (2 * page_size)) {
 		return -EINVAL;
 	}

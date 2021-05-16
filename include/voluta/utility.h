@@ -43,14 +43,6 @@ void voluta_memzero(void *s, size_t n);
 
 int voluta_zalloc_aligned(size_t sz, void **out_mem);
 
-/* sysconf wrappers */
-size_t voluta_sc_page_size(void);
-
-size_t voluta_sc_phys_pages(void);
-
-size_t voluta_sc_avphys_pages(void);
-
-size_t voluta_sc_l1_dcache_linesize(void);
 
 /* time wrappers */
 void voluta_rclock_now(struct timespec *ts);

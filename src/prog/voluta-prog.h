@@ -349,7 +349,7 @@ void voluta_show_version_and_exit(const char *prog);
 void voluta_pretty_size(size_t n, char *buf, size_t bsz);
 
 
-void *voluta_malloc_safe(size_t n);
+void *voluta_zalloc_safe(size_t n);
 
 void voluta_pfree_string(char **pp);
 

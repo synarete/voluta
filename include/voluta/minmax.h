@@ -21,6 +21,11 @@
 #include <stdint.h>
 
 
+static inline int32_t voluta_min32(int32_t x, int32_t y)
+{
+	return x < y ? x : y;
+}
+
 static inline uint64_t voluta_min(uint64_t x, uint64_t y)
 {
 	return x < y ? x : y;

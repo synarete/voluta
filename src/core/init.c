@@ -69,7 +69,7 @@ static int check_sysconf(void)
 
 static int check_system_page_size(void)
 {
-	size_t page_size;
+	long page_size;
 	const size_t page_shift[] = { 12, 13, 14, 16 };
 
 	page_size = voluta_sc_page_size();
@@ -77,7 +77,7 @@ static int check_system_page_size(void)
 		return -EOPNOTSUPP;
 	}
 	for (size_t i = 0; i < ARRAY_SIZE(page_shift); ++i) {
-		if (page_size == (1UL << page_shift[i])) {
+		if (page_size == (1L << page_shift[i])) {
 			return 0;
 		}
 	}

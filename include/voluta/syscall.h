@@ -363,5 +363,14 @@ int voluta_proc_pipe_max_size(long *out_value);
 
 int voluta_sys_pselect_rfd(int fd, const struct timespec *ts);
 
+/* sysconf */
+long voluta_sc_page_size(void);
+
+long voluta_sc_phys_pages(void);
+
+long voluta_sc_avphys_pages(void);
+
+long voluta_sc_l1_dcache_linesize(void);
+
 #endif /* VOLUTA_SYSCALL_H_ */
 

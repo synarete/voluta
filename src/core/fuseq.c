@@ -3008,7 +3008,7 @@ static int fuseq_init_conn_info(struct voluta_fuseq *fq)
 	const size_t mega = VOLUTA_UMEGA;
 	const size_t fuse_min_bsz = FUSE_MIN_READ_BUFFER;
 	const size_t bufsize_max = fuseq_bufsize_max(fq);
-	const size_t page_size = voluta_sc_page_size();
+	const size_t page_size = (size_t)voluta_sc_page_size();
 
 	err = pipe_max_size(&pipe_maxsz);
 	if (err) {

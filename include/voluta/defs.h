@@ -19,18 +19,6 @@
 
 #include <stdint.h>
 
-/* common power-of-2 sizes */
-#define VOLUTA_KILO                     (1L << 10)
-#define VOLUTA_MEGA                     (1L << 20)
-#define VOLUTA_GIGA                     (1L << 30)
-#define VOLUTA_TERA                     (1L << 40)
-#define VOLUTA_PETA                     (1L << 50)
-#define VOLUTA_UKILO                    (1UL << 10)
-#define VOLUTA_UMEGA                    (1UL << 20)
-#define VOLUTA_UGIGA                    (1UL << 30)
-#define VOLUTA_UTERA                    (1UL << 40)
-#define VOLUTA_UPETA                    (1UL << 50)
-
 
 /* volume's boot-record marker (ASCII: "@voluta@") */
 #define VOLUTA_BOOT_MARK                (0x406174756C6F7640L)
@@ -103,8 +91,11 @@
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
+/* number of hyper-spaces in uber-space */
+#define VOLUTA_NHS_IN_US                (512L)
+
 /* maximal number of hyper-spaces */
-#define VOLUTA_NHS_MAX                  (512L)
+#define VOLUTA_NHS_MAX                  VOLUTA_NHS_IN_US
 
 
 /* minimal number of allocation-groups in volume */
@@ -397,17 +388,6 @@ enum voluta_kdf_algos {
 	VOLUTA_KDF_PBKDF2       = 34,
 	VOLUTA_KDF_SCRYPT       = 48
 };
-
-/* memory page size */
-#define VOLUTA_PAGE_SHIFT       (12)
-#define VOLUTA_PAGE_SIZE        (1U << VOLUTA_PAGE_SHIFT)
-
-#define VOLUTA_PAGE_SHIFT_MAX   (16)
-#define VOLUTA_PAGE_SIZE_MAX    (1U << VOLUTA_PAGE_SHIFT_MAX)
-
-/* minimal required size for system LEVELx_CACHE_LINESIZE */
-#define VOLUTA_CACHELINE_SHIFT  (6)
-#define VOLUTA_CACHELINE_SIZE   (1U << VOLUTA_CACHELINE_SHIFT)
 
 
 /* unix-domain socket for mount daemon */

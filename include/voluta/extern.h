@@ -73,6 +73,8 @@ enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br);
 
 enum voluta_brf voluta_br_flags(const struct voluta_boot_record *br);
 
+int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant);
+
 /* file-system */
 int voluta_fse_new(const struct voluta_fs_args *args,
                    struct voluta_fs_env **out_fse);

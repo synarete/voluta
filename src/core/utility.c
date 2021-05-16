@@ -32,19 +32,6 @@
 #include <uuid/uuid.h>
 #include "libvoluta.h"
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void *voluta_unconst(const void *p)
-{
-	union {
-		const void *p;
-		void *q;
-	} u = {
-		.p = p
-	};
-
-	return u.q;
-}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

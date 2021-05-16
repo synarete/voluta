@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <voluta/defs.h>
+#include <voluta/consts.h>
 #include <voluta/thread.h>
 
 
@@ -317,12 +318,12 @@ struct voluta_vnode_info {
 /* space-maps */
 struct voluta_hspace_info {
 	struct voluta_vnode_info        hs_vi;
-	unsigned long hs_zzz;
+	voluta_index_t                  hs_index;
 };
 
 struct voluta_agroup_info {
 	struct voluta_vnode_info        ag_vi;
-	unsigned long ag_zzz;
+	voluta_index_t                  ag_index;
 };
 
 /* inode */

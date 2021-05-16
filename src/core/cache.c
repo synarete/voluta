@@ -536,11 +536,13 @@ static void hsi_init(struct voluta_hspace_info *hsi,
                      voluta_delete_vnode_fn del_hook)
 {
 	vi_init(&hsi->hs_vi, del_hook);
+	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
 static void hsi_fini(struct voluta_hspace_info *hsi)
 {
 	vi_fini(&hsi->hs_vi);
+	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -560,11 +562,13 @@ static void agi_init(struct voluta_agroup_info *agi,
                      voluta_delete_vnode_fn del_hook)
 {
 	vi_init(&agi->ag_vi, del_hook);
+	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
 static void agi_fini(struct voluta_agroup_info *agi)
 {
 	vi_fini(&agi->ag_vi);
+	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

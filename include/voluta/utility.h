@@ -28,7 +28,6 @@
 
 void voluta_burnstack(void);
 
-void *voluta_unconst(const void *p);
 
 
 /* memory utilities */

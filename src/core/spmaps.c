@@ -128,6 +128,45 @@ void voluta_usm_init(struct voluta_uspace_map *usm)
 	bls_initn(usm->us_hsm_bls, ARRAY_SIZE(usm->us_hsm_bls));
 }
 
+static size_t hs_index_to_us_slot(voluta_index_t hs_index)
+{
+	return hs_index % VOLUTA_NHS_IN_US;
+}
+
+static struct voluta_blobspec *
+usm_blobspec_at(const struct voluta_uspace_map *usm, size_t slot)
+{
+	const struct voluta_blobspec *bls = &usm->us_hsm_bls[slot];
+
+	voluta_assert_lt(slot, ARRAY_SIZE(usm->us_hsm_bls));
+	return unconst(bls);
+}
+
+static struct voluta_blobspec *
+usm_blobspec_of(const struct voluta_uspace_map *usm, voluta_index_t hs_index)
+{
+	const size_t slot = hs_index_to_us_slot(hs_index);
+
+	return usm_blobspec_at(usm, slot);
+}
+
+void voluta_usm_vaddr(const struct voluta_uspace_map *usm,
+                      voluta_index_t hs_index, struct voluta_vaddr *out_vaddr)
+{
+	const struct voluta_blobspec *bls = usm_blobspec_of(usm, hs_index);
+
+	bls_vaddr(bls, out_vaddr);
+}
+
+void voluta_usm_set_vaddr(struct voluta_uspace_map *usm,
+                          voluta_index_t hs_index,
+                          const struct voluta_vaddr *vaddr)
+{
+	struct voluta_blobspec *bls = usm_blobspec_of(usm, hs_index);
+
+	bls_set_vaddr(bls, vaddr);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
@@ -451,10 +490,15 @@ hsm_ag_rec_at(const struct voluta_hspace_map *hsm, size_t slot)
 	return unconst(agr);
 }
 
+static size_t ag_index_to_hs_slot(voluta_index_t ag_index)
+{
+	return ag_index % VOLUTA_NAG_IN_HS;
+}
+
 static struct voluta_ag_rec *
 hsm_ag_rec_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 {
-	const size_t slot = voluta_ag_index_to_hs_slot(ag_index);
+	const size_t slot = ag_index_to_hs_slot(ag_index);
 
 	return hsm_ag_rec_at(hsm, slot);
 }

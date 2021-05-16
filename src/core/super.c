@@ -237,6 +237,12 @@ static void hsi_dirtify(struct voluta_hspace_info *hsi)
 	vi_dirtify(hsi_vi(hsi));
 }
 
+static const struct voluta_vaddr *
+hsi_vaddr(const struct voluta_hspace_info *hsi)
+{
+	return vi_vaddr(hsi_vi(hsi));
+}
+
 
 static void agi_incref(struct voluta_agroup_info *agi)
 {
@@ -1121,6 +1127,7 @@ static int spawn_hsmap_of(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 		return err;
 	}
 	*out_hsi = voluta_hsi_from_vi(vi);
+	(*out_hsi)->hs_index = hs_index;
 	return 0;
 }
 
@@ -1132,6 +1139,14 @@ static void setup_hsmap(struct voluta_hspace_info *hsi,
 	vi_stamp_view(vi);
 	voluta_setup_hsmap(hsi, hs_index, nags_span);
 	vi_dirtify(vi);
+}
+
+static void bind_hsmap(struct voluta_sb_info *sbi,
+                       struct voluta_hspace_info *hsi)
+{
+	struct voluta_super_block *sb = sbi->sb;
+
+	voluta_usm_set_vaddr(&sb->sb_usm, hsi->hs_index, hsi_vaddr(hsi));
 }
 
 static int format_hsmap(struct voluta_sb_info *sbi,
@@ -1146,6 +1161,7 @@ static int format_hsmap(struct voluta_sb_info *sbi,
 		return err;
 	}
 	setup_hsmap(hsi, hs_index, nags_span);
+	bind_hsmap(sbi, hsi);
 	update_spi_on_hsm(sbi);
 
 	*out_hsi = hsi;
@@ -1266,6 +1282,7 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 		return err;
 	}
 	*out_agi = voluta_agi_from_vi(vi);
+	(*out_agi)->ag_index = ag_index;
 	return 0;
 }
 
@@ -1829,6 +1846,16 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static int resolve_hsmap(const struct voluta_sb_info *sbi,
+                         voluta_index_t hs_index,
+                         struct voluta_vaddr *out_vaddr)
+{
+	struct voluta_super_block *sb = sbi->sb;
+
+	voluta_usm_vaddr(&sb->sb_usm, hs_index, out_vaddr);
+	return vaddr_isnull(out_vaddr) ? -ENOENT : 0;
+}
+
 static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
                        struct voluta_hspace_info **out_hsi)
 {
@@ -1836,7 +1863,10 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 	struct voluta_vaddr vaddr;
 	struct voluta_vnode_info *vi = NULL;
 
-	voluta_vaddr_of_hsmap(&vaddr, hs_index);
+	err = resolve_hsmap(sbi, hs_index, &vaddr);
+	if (err) {
+		return err;
+	}
 	err = stage_vnode(sbi, &vaddr, &vi);
 	if (err) {
 		return err;

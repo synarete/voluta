@@ -805,7 +805,7 @@ static int arc_init_qalloc(struct voluta_archiver *arc, size_t memwant)
 	struct voluta_qalloc *qalloc =
 	        &archive_obj_of(arc)->ar_core.c.qalloc;
 
-	err = voluta_qalloc_init2(qalloc, memwant);
+	err = voluta_setup_qalloc_with(qalloc, memwant);
 	if (!err) {
 		arc->ar_qalloc = qalloc;
 	}

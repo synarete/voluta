@@ -55,11 +55,7 @@ struct voluta_qalloc {
 } voluta_aligned64;
 
 
-int voluta_resolve_memsize(size_t mem_want, size_t *out_mem_size);
-
 int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize);
-
-int voluta_qalloc_init2(struct voluta_qalloc *qal, size_t memwant);
 
 int voluta_qalloc_fini(struct voluta_qalloc *qal);
 

@@ -2,6 +2,7 @@
 
 nobase_include_HEADERS = $(NULL)
 nobase_include_HEADERS += voluta/avl.h
+nobase_include_HEADERS += voluta/consts.h
 nobase_include_HEADERS += voluta/defs.h
 nobase_include_HEADERS += voluta/errors.h
 nobase_include_HEADERS += voluta/extern.h

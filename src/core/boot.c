@@ -15,6 +15,9 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <sys/types.h>
+#include <sys/resource.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include "libvoluta.h"
@@ -589,3 +592,75 @@ out:
 	voluta_passphrase_reset(&passph);
 	return err;
 }
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static size_t align_down(size_t sz, size_t align)
+{
+	return (sz / align) * align;
+}
+
+static int getmemlimit(size_t *out_lim)
+{
+	int err;
+	struct rlimit rlim = {
+		.rlim_cur = 0
+	};
+
+	err = voluta_sys_getrlimit(RLIMIT_AS, &rlim);
+	if (!err) {
+		*out_lim = rlim.rlim_cur;
+	}
+	return err;
+}
+
+static int resolve_memsize(size_t mem_want, size_t *out_mem_size)
+{
+	int err;
+	size_t mem_floor;
+	size_t mem_ceil;
+	size_t mem_rlim;
+	size_t mem_glim;
+	size_t page_size;
+	size_t phys_pages;
+	size_t mem_total;
+	size_t mem_uget;
+
+	page_size = voluta_sc_page_size();
+	phys_pages = voluta_sc_phys_pages();
+	mem_total = (page_size * phys_pages);
+	mem_floor = VOLUTA_UGIGA / 8;
+	if (mem_total < mem_floor) {
+		return -ENOMEM;
+	}
+	err = getmemlimit(&mem_rlim);
+	if (err) {
+		return err;
+	}
+	if (mem_rlim < mem_floor) {
+		return -ENOMEM;
+	}
+	mem_glim = 64 * VOLUTA_UGIGA;
+	mem_ceil = min3(mem_glim, mem_rlim, mem_total / 4);
+
+	if (mem_want == 0) {
+		mem_want = 2 * VOLUTA_GIGA;
+	}
+	mem_uget = clamp(mem_want, mem_floor, mem_ceil);
+
+	*out_mem_size = align_down(mem_uget, VOLUTA_UMEGA);
+	return 0;
+}
+
+int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant)
+{
+	int err;
+	size_t memsize = 0;
+
+	err = resolve_memsize(memwant, &memsize);
+	if (!err) {
+		err = voluta_qalloc_init(qal, memsize);
+	}
+	return err;
+}
+

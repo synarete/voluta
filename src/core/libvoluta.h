@@ -315,8 +315,6 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
-size_t voluta_ag_index_to_hs_slot(voluta_index_t ag_index);
-
 voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
 
 
@@ -561,6 +559,13 @@ int voluta_kivam_of(const struct voluta_vnode_info *vi,
 
 /* spmaps */
 void voluta_usm_init(struct voluta_uspace_map *usm);
+
+void voluta_usm_vaddr(const struct voluta_uspace_map *usm,
+                      voluta_index_t hs_index, struct voluta_vaddr *out_vaddr);
+
+void voluta_usm_set_vaddr(struct voluta_uspace_map *usm,
+                          voluta_index_t hs_index,
+                          const struct voluta_vaddr *vaddr);
 
 void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);

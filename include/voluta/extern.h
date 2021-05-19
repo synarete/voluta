@@ -50,7 +50,6 @@ struct voluta_fs_stats {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 
-int voluta_lib_init(void); /* TODO: have fini_lib */
 
 int voluta_resolve_volume_size(const char *path,
                                loff_t size_want, loff_t *out_size);
@@ -64,6 +63,8 @@ int voluta_check_mntdir_fstype(long vfstype);
 int voluta_check_name(const char *name);
 
 /* boot */
+int voluta_lib_init(void); /* TODO: have fini_lib */
+
 int voluta_check_boot_record(const struct voluta_super_block *sb);
 
 int voluta_decipher_super_block(struct voluta_super_block *sb,

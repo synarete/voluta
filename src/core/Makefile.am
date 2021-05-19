@@ -22,7 +22,6 @@ libvoluta_core_la_SOURCES += execfs.c
 libvoluta_core_la_SOURCES += file.c
 libvoluta_core_la_SOURCES += fuseq.c
 libvoluta_core_la_SOURCES += guarantee.c
-libvoluta_core_la_SOURCES += init.c
 libvoluta_core_la_SOURCES += inlines.h
 libvoluta_core_la_SOURCES += inode.c
 libvoluta_core_la_SOURCES += itable.c

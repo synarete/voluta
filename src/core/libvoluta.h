@@ -292,7 +292,7 @@ int voluta_fs_write_iter(struct voluta_sb_info *sbi,
 
 int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
                         const struct voluta_oper *op, ino_t ino,
-                        const struct voluta_xiovec *xiov, size_t cnt);
+                        const struct voluta_fiovec *fiov, size_t cnt);
 
 int voluta_fs_statx(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
@@ -451,8 +451,8 @@ int voluta_vstore_clone(const struct voluta_vstore *vstore,
 
 int voluta_vstore_sync(struct voluta_vstore *vstore);
 
-int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
-                         loff_t off, size_t len, struct voluta_xiovec *xiov);
+int voluta_vstore_fiovec(const struct voluta_vstore *vstore,
+                         loff_t off, size_t len, struct voluta_fiovec *fiov);
 
 int voluta_vstore_flush(struct voluta_vstore *vstore,
                         const struct voluta_cache *cache, long ds_key);
@@ -943,7 +943,7 @@ int voluta_do_write_iter(const struct voluta_oper *op,
 
 int voluta_do_rdwr_post(const struct voluta_oper *op,
                         const struct voluta_inode_info *ii,
-                        const struct voluta_xiovec *xiov, size_t cnt);
+                        const struct voluta_fiovec *fiov, size_t cnt);
 
 int voluta_do_read_iter(const struct voluta_oper *op,
                         struct voluta_inode_info *ii,
@@ -1260,9 +1260,9 @@ int voluta_repo_fetch_blob(struct voluta_repo *repo,
 void voluta_repo_forget_blob(struct voluta_repo *repo,
                              struct voluta_blob_info *bli);
 
-int voluta_resolve_xiovec_at(const struct voluta_blob_info *bli,
+int voluta_resolve_fiovec_at(const struct voluta_blob_info *bli,
                              loff_t off, size_t len,
-                             struct voluta_xiovec *xiov);
+                             struct voluta_fiovec *fiov);
 
 
 /* utility */

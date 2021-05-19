@@ -522,8 +522,8 @@ int voluta_vstore_sync(struct voluta_vstore *vstore)
 	return voluta_pstore_sync(&vstore->vs_pstore, false);
 }
 
-int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
-                         loff_t off, size_t len, struct voluta_xiovec *xiov)
+int voluta_vstore_fiovec(const struct voluta_vstore *vstore,
+                         loff_t off, size_t len, struct voluta_fiovec *fiov)
 {
 	int err;
 	const bool rw = false; /* TODO: propagate from top */
@@ -531,10 +531,10 @@ int voluta_vstore_xiovec(const struct voluta_vstore *vstore,
 
 	err = voluta_pstore_check_io(pstore, rw, off, len);
 	if (!err) {
-		xiov->off = off;
-		xiov->len = len;
-		xiov->base = NULL;
-		xiov->fd = pstore->ps_vfd;
+		fiov->fv_off = off;
+		fiov->fv_len = len;
+		fiov->fv_base = NULL;
+		fiov->fv_fd = pstore->ps_vfd;
 	}
 	return err;
 }

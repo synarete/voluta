@@ -475,9 +475,9 @@ static int bli_check_io_range(const struct voluta_blob_info *bli,
 	return ((off >= 0) && (end <= baddr->size)) ? 0 : -EINVAL;
 }
 
-int voluta_resolve_xiovec_at(const struct voluta_blob_info *bli,
+int voluta_resolve_fiovec_at(const struct voluta_blob_info *bli,
                              loff_t off, size_t len,
-                             struct voluta_xiovec *xiov)
+                             struct voluta_fiovec *fiov)
 {
 	int err;
 
@@ -485,10 +485,10 @@ int voluta_resolve_xiovec_at(const struct voluta_blob_info *bli,
 
 	err = bli_check_io_range(bli, off, len);
 	if (!err) {
-		xiov->off = off;
-		xiov->len = len;
-		xiov->base = NULL;
-		xiov->fd = bli->bi_fd;
+		fiov->fv_off = off;
+		fiov->fv_len = len;
+		fiov->fv_base = NULL;
+		fiov->fv_fd = bli->bi_fd;
 	}
 	return err;
 }

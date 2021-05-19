@@ -342,14 +342,14 @@ static struct voluta_bk_info *bki_from_ce(const struct voluta_cache_elem *ce)
 	const struct voluta_bk_info *bki = NULL;
 
 	if (ce != NULL) {
-		bki = container_of2(ce, struct voluta_bk_info, bki_ce);
+		bki = container_of2(ce, struct voluta_bk_info, bk_ce);
 	}
 	return unconst(bki);
 }
 
 static struct voluta_cache_elem *bki_ce(const struct voluta_bk_info *bki)
 {
-	const struct voluta_cache_elem *ce = &bki->bki_ce;
+	const struct voluta_cache_elem *ce = &bki->bk_ce;
 
 	return unconst(ce);
 }
@@ -361,7 +361,7 @@ static void bki_set_lba(struct voluta_bk_info *bki, voluta_lba_t lba)
 
 static void bki_init(struct voluta_bk_info *bki, struct voluta_block *bk)
 {
-	ce_init(&bki->bki_ce);
+	ce_init(&bki->bk_ce);
 	bki_set_lba(bki, VOLUTA_LBA_NULL);
 	bki->bk_mask = 0;
 	bki->bk = bk;
@@ -369,7 +369,7 @@ static void bki_init(struct voluta_bk_info *bki, struct voluta_block *bk)
 
 static void bki_fini(struct voluta_bk_info *bki)
 {
-	ce_fini(&bki->bki_ce);
+	ce_fini(&bki->bk_ce);
 	bki_set_lba(bki, VOLUTA_LBA_NULL);
 	bki->bk = NULL;
 }
@@ -656,20 +656,20 @@ static uint64_t view_mask_of(const struct voluta_vaddr *vaddr)
 	return mask;
 }
 
-static void bki_mark_visible(struct voluta_bk_info *bki,
-                             const struct voluta_vaddr *vaddr)
+static void bki_mark_visible_at(struct voluta_bk_info *bki,
+                                const struct voluta_vaddr *vaddr)
 {
 	bki->bk_mask |= view_mask_of(vaddr);
 }
 
-static void bki_mark_opaque(struct voluta_bk_info *bki,
-                            const struct voluta_vaddr *vaddr)
+static void bki_mark_opaque_at(struct voluta_bk_info *bki,
+                               const struct voluta_vaddr *vaddr)
 {
 	bki->bk_mask &= ~view_mask_of(vaddr);
 }
 
-static bool bki_is_visible(struct voluta_bk_info *bki,
-                           const struct voluta_vaddr *vaddr)
+static bool bki_is_visible_at(struct voluta_bk_info *bki,
+                              const struct voluta_vaddr *vaddr)
 {
 	const uint64_t mask = view_mask_of(vaddr);
 	const uint64_t bk_mask = bki->bk_mask;
@@ -1113,13 +1113,13 @@ static void cache_store_bki(struct voluta_cache *cache,
                             struct voluta_bk_info *bki, voluta_lba_t lba)
 {
 	bki_set_lba(bki, lba);
-	lrumap_store(&cache->c_blm, &bki->bki_ce, lba);
+	lrumap_store(&cache->c_blm, &bki->bk_ce, lba);
 }
 
 static void cache_promote_lru_bki(struct voluta_cache *cache,
                                   struct voluta_bk_info *bki)
 {
-	struct voluta_cache_elem *ce = &bki->bki_ce;
+	struct voluta_cache_elem *ce = &bki->bk_ce;
 
 	lrumap_promote_lru(&cache->c_blm, ce);
 	ce->ce_tick = cache->c_tick;
@@ -1130,14 +1130,14 @@ static void cache_evict_bki(struct voluta_cache *cache,
 {
 	voluta_assert(ce_is_evictable(bki_ce(bki)));
 
-	lrumap_remove(&cache->c_blm, &bki->bki_ce);
+	lrumap_remove(&cache->c_blm, &bki->bk_ce);
 	cache_del_bki(cache, bki);
 }
 
 void voluta_cache_forget_bki(struct voluta_cache *cache,
                              struct voluta_bk_info *bki)
 {
-	voluta_assert_eq(bki->bki_ce.ce_refcnt, 0);
+	voluta_assert_eq(bki->bk_ce.ce_refcnt, 0);
 
 	cache_evict_bki(cache, bki);
 }
@@ -2300,18 +2300,18 @@ bool voluta_ii_isrdonly(const struct voluta_inode_info *ii)
 
 bool voluta_is_visible(const struct voluta_vnode_info *vi)
 {
-	return bki_is_visible(vi->v_bki, vi_vaddr(vi));
+	return bki_is_visible_at(vi->v_bki, vi_vaddr(vi));
 }
 
 void voluta_mark_visible(const struct voluta_vnode_info *vi)
 {
-	bki_mark_visible(vi->v_bki, vi_vaddr(vi));
+	bki_mark_visible_at(vi->v_bki, vi_vaddr(vi));
 }
 
 void voluta_mark_opaque_at(struct voluta_bk_info *bki,
                            const struct voluta_vaddr *vaddr)
 {
-	bki_mark_opaque(bki, vaddr);
+	bki_mark_opaque_at(bki, vaddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

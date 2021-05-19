@@ -172,29 +172,29 @@ static void *nil_bk_buf_of(const struct voluta_file_ctx *f_ctx)
 	return nil_bk->u.bk;
 }
 
-static int xiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
+static int fiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
                             void *bk_start, loff_t off_in_bk, size_t len,
-                            struct voluta_xiovec *out_xiov)
+                            struct voluta_fiovec *out_fiov)
 {
 	uint8_t *qamem = (uint8_t *)bk_start + off_in_bk;
 	const struct voluta_qalloc *qalloc = f_ctx->sbi->sb_qalloc;
 
-	return voluta_qalloc_xiovec(qalloc, qamem, len, out_xiov);
+	return voluta_qalloc_fiovec(qalloc, qamem, len, out_fiov);
 }
 
-static int xiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
+static int fiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
                             loff_t bk_start, loff_t off_in_bk, size_t len,
-                            struct voluta_xiovec *out_xiov)
+                            struct voluta_fiovec *out_fiov)
 {
 	const loff_t ps_off = bk_start + off_in_bk;
 	const struct voluta_vstore *vstore = f_ctx->sbi->sb_vstore;
 
-	return voluta_vstore_xiovec(vstore, ps_off, len, out_xiov);
+	return voluta_vstore_fiovec(vstore, ps_off, len, out_fiov);
 }
 
-static int xiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
+static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
                            struct voluta_vnode_info *vi,
-                           struct voluta_xiovec *out_xiov)
+                           struct voluta_fiovec *out_fiov)
 {
 	int err;
 	void *dat = vi_dat_of(vi);
@@ -202,88 +202,90 @@ static int xiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 	const loff_t oib = off_in_data(f_ctx->off, vtype);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
-	err = xiovec_by_qalloc(f_ctx, dat, oib, len, out_xiov);
+	err = fiovec_by_qalloc(f_ctx, dat, oib, len, out_fiov);
 	if (!err && f_ctx->with_cookie) {
 		vi_incref(vi);
-		out_xiov->cookie = unconst(vi);
+		out_fiov->fv_cookie = unconst(vi);
 	}
 	return err;
 }
 
-static int xiovec_of_data(const struct voluta_file_ctx *f_ctx,
+static int fiovec_of_data(const struct voluta_file_ctx *f_ctx,
                           loff_t bk_start, loff_t off_in_bk, size_t len,
-                          struct voluta_xiovec *out_xiov)
+                          struct voluta_fiovec *out_fiov)
 {
-	return xiovec_by_vstore(f_ctx, bk_start, off_in_bk, len, out_xiov);
+	return fiovec_by_vstore(f_ctx, bk_start, off_in_bk, len, out_fiov);
 }
 
-static int xiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
+static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
                            const struct voluta_vaddr *vaddr,
-                           struct voluta_xiovec *out_xiov)
+                           struct voluta_fiovec *out_fiov)
 {
 	const enum voluta_vtype vtype = vaddr->vtype;
 	const loff_t oid = off_in_data(f_ctx->off, vtype);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
-	return xiovec_of_data(f_ctx, vaddr->off, oid, len, out_xiov);
+	return fiovec_of_data(f_ctx, vaddr->off, oid, len, out_fiov);
 }
 
-static int xiovec_of_zeros(const struct voluta_file_ctx *f_ctx,
+static int fiovec_of_zeros(const struct voluta_file_ctx *f_ctx,
                            const enum voluta_vtype vtype,
-                           struct voluta_xiovec *out_xiov)
+                           struct voluta_fiovec *out_fiov)
 {
 	void *buf = nil_bk_buf_of(f_ctx);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
 	voluta_assert_le(len, VOLUTA_BK_SIZE);
-	return xiovec_by_qalloc(f_ctx, buf, 0, len, out_xiov);
+	return fiovec_by_qalloc(f_ctx, buf, 0, len, out_fiov);
 }
 
-static int xiovec_copy_into(const struct voluta_xiovec *xiov, void *buf)
+static int fiovec_copy_into(const struct voluta_fiovec *fiov, void *buf)
 {
 	int err = 0;
 
-	if (xiov->base != NULL) {
-		memcpy(buf, xiov->base, xiov->len);
+	if (fiov->fv_base != NULL) {
+		memcpy(buf, fiov->fv_base, fiov->fv_len);
 	} else {
-		err = voluta_sys_preadn(xiov->fd, buf, xiov->len, xiov->off);
+		err = voluta_sys_preadn(fiov->fv_fd, buf,
+		                        fiov->fv_len, fiov->fv_off);
 	}
 	return err;
 }
 
-static int xiovec_copy_from(const struct voluta_xiovec *xiov, const void *buf)
+static int fiovec_copy_from(const struct voluta_fiovec *fiov, const void *buf)
 {
 	int err = 0;
 
-	voluta_assert_le(xiov->len, VOLUTA_BK_SIZE);
-	if (xiov->base != NULL) {
-		memcpy(xiov->base, buf, xiov->len);
+	voluta_assert_le(fiov->fv_len, VOLUTA_BK_SIZE);
+	if (fiov->fv_base != NULL) {
+		memcpy(fiov->fv_base, buf, fiov->fv_len);
 	} else {
-		err = voluta_sys_pwriten(xiov->fd, buf, xiov->len, xiov->off);
+		err = voluta_sys_pwriten(fiov->fv_fd, buf,
+		                         fiov->fv_len, fiov->fv_off);
 	}
 	return err;
 }
 
-static int xiovec_copy_mem(const struct voluta_xiovec *xiov_src,
-                           const struct voluta_xiovec *xiov_dst, size_t len)
+static int fiovec_copy_mem(const struct voluta_fiovec *fiov_src,
+                           const struct voluta_fiovec *fiov_dst, size_t len)
 {
-	voluta_assert_ge(xiov_src->len, len);
-	voluta_assert_ge(xiov_dst->len, len);
-	voluta_assert_not_null(xiov_src->base);
-	voluta_assert_not_null(xiov_dst->base);
+	voluta_assert_ge(fiov_src->fv_len, len);
+	voluta_assert_ge(fiov_dst->fv_len, len);
+	voluta_assert_not_null(fiov_src->fv_base);
+	voluta_assert_not_null(fiov_dst->fv_base);
 
-	memcpy(xiov_dst->base, xiov_src->base, len);
+	memcpy(fiov_dst->fv_base, fiov_src->fv_base, len);
 	return 0;
 }
 
-static int xiovec_copy_splice(const struct voluta_xiovec *xiov_src,
-                              const struct voluta_xiovec *xiov_dst,
+static int fiovec_copy_splice(const struct voluta_fiovec *fiov_src,
+                              const struct voluta_fiovec *fiov_dst,
                               struct voluta_pipe *pipe, size_t len)
 {
-	loff_t off_src = xiov_src->off;
-	loff_t off_dst = xiov_dst->off;
-	const int fd_src = xiov_src->fd;
-	const int fd_dst = xiov_dst->fd;
+	loff_t off_src = fiov_src->fv_off;
+	loff_t off_dst = fiov_dst->fv_off;
+	const int fd_src = fiov_src->fv_fd;
+	const int fd_dst = fiov_dst->fv_fd;
 
 	return voluta_pipe_kcopy(pipe, fd_src, &off_src,
 	                         fd_dst, &off_dst, len);
@@ -1227,14 +1229,14 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi;
-	struct voluta_xiovec xiov = { .base = NULL };
+	struct voluta_fiovec fiov = { .fv_base = NULL };
 
 	if (kcopy_mode(f_ctx)) {
-		err = xiovec_of_data(f_ctx, vaddr->off, off_in_bk, len, &xiov);
+		err = fiovec_of_data(f_ctx, vaddr->off, off_in_bk, len, &fiov);
 		if (err) {
 			return err;
 		}
-		err = xiovec_copy_from(&xiov, nil_bk_buf_of(f_ctx));
+		err = fiovec_copy_from(&fiov, nil_bk_buf_of(f_ctx));
 		if (err) {
 			return err;
 		}
@@ -1464,21 +1466,21 @@ static int seek_hole_by_head_leaves(struct voluta_file_ctx *f_ctx,
 	return -ENOENT;
 }
 
-static int resolve_xiovec(const struct voluta_file_ctx *f_ctx,
+static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
                           struct voluta_vnode_info *vi,
                           const struct voluta_vaddr *vaddr,
-                          struct voluta_xiovec *out_xiov)
+                          struct voluta_fiovec *out_fiov)
 {
 	int err;
 	enum voluta_vtype vtype;
 
 	if (vi != NULL) {
-		err = xiovec_of_vnode(f_ctx, vi, out_xiov);
+		err = fiovec_of_vnode(f_ctx, vi, out_fiov);
 	} else if ((vaddr != NULL) && !vaddr_isnull(vaddr)) {
-		err = xiovec_of_vaddr(f_ctx, vaddr, out_xiov);
+		err = fiovec_of_vaddr(f_ctx, vaddr, out_fiov);
 	} else {
 		vtype = off_to_data_vtype(f_ctx->off);
-		err = xiovec_of_zeros(f_ctx, vtype, out_xiov);
+		err = fiovec_of_zeros(f_ctx, vtype, out_fiov);
 	}
 	return err;
 }
@@ -1489,23 +1491,23 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
                          size_t *out_len)
 {
 	int err;
-	struct voluta_xiovec xiov = {
-		.off = -1,
-		.len = 0,
-		.base = NULL,
-		.fd = -1,
-		.cookie = NULL
+	struct voluta_fiovec fiov = {
+		.fv_cookie = NULL,
+		.fv_base = NULL,
+		.fv_off = -1,
+		.fv_len = 0,
+		.fv_fd = -1,
 	};
 
-	err = resolve_xiovec(f_ctx, vi, vaddr, &xiov);
+	err = resolve_fiovec(f_ctx, vi, vaddr, &fiov);
 	if (err) {
 		return err;
 	}
-	err = f_ctx->rwi_ctx->actor(f_ctx->rwi_ctx, &xiov);
+	err = f_ctx->rwi_ctx->actor(f_ctx->rwi_ctx, &fiov);
 	if (err) {
 		return err;
 	}
-	*out_len = xiov.len;
+	*out_len = fiov.fv_len;
 	return 0;
 }
 
@@ -1772,22 +1774,22 @@ read_iter_of(const struct voluta_rwiter_ctx *rwi)
 }
 
 static int read_iter_actor(struct voluta_rwiter_ctx *rwi,
-                           const struct voluta_xiovec *xiov)
+                           const struct voluta_fiovec *fiov)
 {
 	int err;
 	struct voluta_read_iter *rdi = read_iter_of(rwi);
 
-	if ((xiov->fd > 0) && (xiov->off < 0)) {
+	if ((fiov->fv_fd > 0) && (fiov->fv_off < 0)) {
 		return -EINVAL;
 	}
-	if ((rdi->dat_len + xiov->len) > rdi->dat_max) {
+	if ((rdi->dat_len + fiov->fv_len) > rdi->dat_max) {
 		return -EINVAL;
 	}
-	err = xiovec_copy_into(xiov, rdi->dat + rdi->dat_len);
+	err = fiovec_copy_into(fiov, rdi->dat + rdi->dat_len);
 	if (err) {
 		return err;
 	}
-	rdi->dat_len += xiov->len;
+	rdi->dat_len += fiov->fv_len;
 	return 0;
 }
 
@@ -2473,22 +2475,22 @@ write_iter_of(const struct voluta_rwiter_ctx *rwi)
 }
 
 static int write_iter_actor(struct voluta_rwiter_ctx *rwi,
-                            const struct voluta_xiovec *xiov)
+                            const struct voluta_fiovec *fiov)
 {
 	int err;
 	struct voluta_write_iter *wri = write_iter_of(rwi);
 
-	if ((xiov->fd > 0) && (xiov->off < 0)) {
+	if ((fiov->fv_fd > 0) && (fiov->fv_off < 0)) {
 		return -EINVAL;
 	}
-	if ((wri->dat_len + xiov->len) > wri->dat_max) {
+	if ((wri->dat_len + fiov->fv_len) > wri->dat_max) {
 		return -EINVAL;
 	}
-	err = xiovec_copy_from(xiov, wri->dat + wri->dat_len);
+	err = fiovec_copy_from(fiov, wri->dat + wri->dat_len);
 	if (err) {
 		return err;
 	}
-	wri->dat_len += xiov->len;
+	wri->dat_len += fiov->fv_len;
 	return 0;
 }
 
@@ -2561,13 +2563,13 @@ int voluta_do_write(const struct voluta_oper *op,
 
 int voluta_do_rdwr_post(const struct voluta_oper *op,
                         const struct voluta_inode_info *ii,
-                        const struct voluta_xiovec *xiov, size_t cnt)
+                        const struct voluta_fiovec *fiov, size_t cnt)
 {
 	struct voluta_vnode_info *vi;
 
 	ii_incref(ii);
 	for (size_t i = 0; i < cnt; ++i) {
-		vi = xiov[i].cookie;
+		vi = fiov[i].fv_cookie;
 		vi_decref(vi);
 	}
 	ii_decref(ii);
@@ -3778,7 +3780,7 @@ static size_t copy_range_length(const struct voluta_fmap_ctx *fm_ctx_src,
 
 static int resolve_leaf_vnode(const struct voluta_fmap_ctx *fm_ctx,
                               struct voluta_vnode_info **out_vi,
-                              struct voluta_xiovec *out_xiov)
+                              struct voluta_fiovec *out_fiov)
 {
 	int err;
 
@@ -3786,7 +3788,7 @@ static int resolve_leaf_vnode(const struct voluta_fmap_ctx *fm_ctx,
 	if (err) {
 		return err;
 	}
-	err = xiovec_of_vnode(fm_ctx->f_ctx, *out_vi, out_xiov);
+	err = fiovec_of_vnode(fm_ctx->f_ctx, *out_vi, out_fiov);
 	if (err) {
 		return err;
 	}
@@ -3794,11 +3796,11 @@ static int resolve_leaf_vnode(const struct voluta_fmap_ctx *fm_ctx,
 }
 
 static int resolve_leaf_vaddr(const struct voluta_fmap_ctx *fm_ctx,
-                              struct voluta_xiovec *out_xiov)
+                              struct voluta_fiovec *out_fiov)
 {
 	voluta_assert(!vaddr_isnull(&fm_ctx->vaddr));
 
-	return xiovec_of_vaddr(fm_ctx->f_ctx, &fm_ctx->vaddr, out_xiov);
+	return fiovec_of_vaddr(fm_ctx->f_ctx, &fm_ctx->vaddr, out_fiov);
 }
 
 static struct voluta_pipe *pipe_of(const struct voluta_fmap_ctx *fm_ctx)
@@ -3812,8 +3814,8 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 	int err;
 	struct voluta_vnode_info *vi_src = NULL;
 	struct voluta_vnode_info *vi_dst = NULL;
-	struct voluta_xiovec xiov_src = { .off = -1, .fd = -1 };
-	struct voluta_xiovec xiov_dst = { .off = -1, .fd = -1 };
+	struct voluta_fiovec fiov_src = { .fv_off = -1, .fv_fd = -1 };
+	struct voluta_fiovec fiov_dst = { .fv_off = -1, .fv_fd = -1 };
 
 	err = prepare_unwritten_leaf(fm_ctx_dst);
 	if (err) {
@@ -3824,15 +3826,15 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 		return err;
 	}
 	if (kcopy_mode(fm_ctx_dst->f_ctx)) {
-		err = resolve_leaf_vaddr(fm_ctx_src, &xiov_src);
+		err = resolve_leaf_vaddr(fm_ctx_src, &fiov_src);
 		if (err) {
 			return err;
 		}
-		err = resolve_leaf_vaddr(fm_ctx_dst, &xiov_dst);
+		err = resolve_leaf_vaddr(fm_ctx_dst, &fiov_dst);
 		if (err) {
 			return err;
 		}
-		err = xiovec_copy_splice(&xiov_src, &xiov_dst,
+		err = fiovec_copy_splice(&fiov_src, &fiov_dst,
 		                         pipe_of(fm_ctx_dst), len);
 		if (err) {
 			return err;
@@ -3842,15 +3844,15 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 			return err;
 		}
 	} else {
-		err = resolve_leaf_vnode(fm_ctx_src, &vi_src, &xiov_src);
+		err = resolve_leaf_vnode(fm_ctx_src, &vi_src, &fiov_src);
 		if (err) {
 			return err;
 		}
-		err = resolve_leaf_vnode(fm_ctx_dst, &vi_dst, &xiov_dst);
+		err = resolve_leaf_vnode(fm_ctx_dst, &vi_dst, &fiov_dst);
 		if (err) {
 			return err;
 		}
-		err = xiovec_copy_mem(&xiov_src, &xiov_dst, len);
+		err = fiovec_copy_mem(&fiov_src, &fiov_dst, len);
 		if (err) {
 			return err;
 		}

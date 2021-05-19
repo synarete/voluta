@@ -34,6 +34,7 @@
 #include <voluta/list.h>
 #include <voluta/minmax.h>
 #include <voluta/syscall.h>
+#include <voluta/fiovec.h>
 #include <voluta/qalloc.h>
 
 
@@ -1151,8 +1152,8 @@ int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
 	return err;
 }
 
-int voluta_qalloc_xiovec(const struct voluta_qalloc *qal,
-                         void *ptr, size_t len, struct voluta_xiovec *xiov)
+int voluta_qalloc_fiovec(const struct voluta_qalloc *qal,
+                         void *ptr, size_t len, struct voluta_fiovec *fiov)
 {
 	const void *base;
 
@@ -1160,11 +1161,11 @@ int voluta_qalloc_xiovec(const struct voluta_qalloc *qal,
 	if ((base == NULL) || (base > ptr)) {
 		return -ERANGE;
 	}
-	xiov->off = qalloc_ptr_to_off(qal, ptr);
-	xiov->len = len;
-	xiov->base = ptr;
-	xiov->fd = qal->memfd_data;
-	xiov->cookie = NULL;
+	fiov->fv_off = qalloc_ptr_to_off(qal, ptr);
+	fiov->fv_len = len;
+	fiov->fv_base = ptr;
+	fiov->fv_fd = qal->memfd_data;
+	fiov->fv_cookie = NULL;
 	return 0;
 }
 

@@ -358,14 +358,14 @@ static void mark_unallocate_at(struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void resolve_bk_xiovec(const struct voluta_sb_info *sbi,
+static void resolve_bk_fiovec(const struct voluta_sb_info *sbi,
                               const struct voluta_bk_info *bki,
-                              struct voluta_xiovec *out_xiov)
+                              struct voluta_fiovec *out_fiov)
 {
-	out_xiov->base = NULL;
-	out_xiov->off = lba_to_off(bki->bk_lba);
-	out_xiov->len = sizeof(*bki->bk);
-	out_xiov->fd = sbi->sb_vstore->vs_pstore.ps_vfd;
+	out_fiov->fv_base = NULL;
+	out_fiov->fv_off = lba_to_off(bki->bk_lba);
+	out_fiov->fv_len = sizeof(*bki->bk);
+	out_fiov->fv_fd = sbi->sb_vstore->vs_pstore.ps_vfd;
 }
 
 static int find_cached_bk(struct voluta_sb_info *sbi, voluta_lba_t lba,
@@ -423,11 +423,11 @@ static void zero_bk(struct voluta_bk_info *bki)
 static int load_bk(const struct voluta_sb_info *sbi,
                    struct voluta_bk_info *bki)
 {
-	struct voluta_xiovec xiov;
+	struct voluta_fiovec fiov;
 	const struct voluta_vstore *vstore = vstore_of(sbi);
 
-	resolve_bk_xiovec(sbi, bki, &xiov);
-	return voluta_vstore_read(vstore, xiov.off, xiov.len, bki->bk);
+	resolve_bk_fiovec(sbi, bki, &fiov);
+	return voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bki->bk);
 }
 
 static void forget_bk(const struct voluta_sb_info *sbi,

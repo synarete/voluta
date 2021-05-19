@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
 /*
  * This file is part of libvoluta
  *
@@ -12,30 +13,18 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
- *
  */
-#ifndef VOLUTA_VOLUTA_H_
-#define VOLUTA_VOLUTA_H_
+#ifndef VOLUTA_FIOVEC_H_
+#define VOLUTA_FIOVEC_H_
 
-#include <stddef.h>
-#include <stdint.h>
-#include <voluta/version.h>
-#include <voluta/logging.h>
-#include <voluta/errors.h>
-#include <voluta/minmax.h>
-#include <voluta/defs.h>
-#include <voluta/list.h>
-#include <voluta/avl.h>
-#include <voluta/utility.h>
-#include <voluta/macros.h>
-#include <voluta/socket.h>
-#include <voluta/strings.h>
-#include <voluta/fiovec.h>
-#include <voluta/qalloc.h>
-#include <voluta/types.h>
-#include <voluta/extern.h>
-#include <voluta/ioctls.h>
+#include <stdlib.h>
 
-#endif /* VOLUTA_VOLUTA_H_ */
+struct voluta_fiovec {
+	void  *fv_cookie;
+	void  *fv_base;
+	size_t fv_len;
+	loff_t fv_off;
+	int    fv_fd;
+};
 
-
+#endif /* VOLUTA_FIOVEC_H_ */

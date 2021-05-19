@@ -875,7 +875,7 @@ out:
 
 int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
                         const struct voluta_oper *op, ino_t ino,
-                        const struct voluta_xiovec *xiov, size_t cnt)
+                        const struct voluta_fiovec *fiov, size_t cnt)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -883,7 +883,7 @@ int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
 	err = voluta_stage_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
-	err = voluta_do_rdwr_post(op, ii, xiov, cnt);
+	err = voluta_do_rdwr_post(op, ii, fiov, cnt);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);

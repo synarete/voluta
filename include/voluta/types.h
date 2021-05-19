@@ -254,11 +254,12 @@ struct voluta_cache_elem {
 	int  ce_refcnt;
 	bool ce_mapped;
 	bool ce_forgot;
+	char ce_pad[2];
 };
 
-/* block caching info */
+/* blocks caching info */
 struct voluta_bk_info {
-	struct voluta_cache_elem bki_ce;
+	struct voluta_cache_elem bk_ce;
 	struct voluta_block     *bk;
 	voluta_lba_t    bk_lba;
 	uint64_t        bk_mask;
@@ -605,7 +606,7 @@ struct voluta_listxattr_ctx {
 };
 
 typedef int (*voluta_rwiter_fn)(struct voluta_rwiter_ctx *rwi_ctx,
-                                const struct voluta_xiovec *xiov);
+                                const struct voluta_fiovec *fiov);
 
 struct voluta_rwiter_ctx {
 	voluta_rwiter_fn actor;

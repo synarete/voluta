@@ -6,6 +6,7 @@ nobase_include_HEADERS += voluta/consts.h
 nobase_include_HEADERS += voluta/defs.h
 nobase_include_HEADERS += voluta/errors.h
 nobase_include_HEADERS += voluta/extern.h
+nobase_include_HEADERS += voluta/fiovec.h
 nobase_include_HEADERS += voluta/ioctls.h
 nobase_include_HEADERS += voluta/list.h
 nobase_include_HEADERS += voluta/logging.h

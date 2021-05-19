@@ -73,9 +73,9 @@ mrecord_new(struct voluta_qalloc *qal, size_t msz)
 	int err;
 	void *mem;
 	struct ut_mrecord *mr;
-	struct voluta_xiovec xiov = {
-		.base = NULL,
-		.fd = -1
+	struct voluta_fiovec fiov = {
+		.fv_base = NULL,
+		.fv_fd = -1
 	};
 
 	mem = voluta_qalloc_malloc(qal, msz);
@@ -84,9 +84,9 @@ mrecord_new(struct voluta_qalloc *qal, size_t msz)
 	err = voluta_qalloc_mcheck(qal, mem, msz);
 	ut_expect_ok(err);
 
-	err = voluta_qalloc_xiovec(qal, mem, msz, &xiov);
+	err = voluta_qalloc_fiovec(qal, mem, msz, &fiov);
 	ut_expect_ok(err);
-	ut_expect_eq(mem, xiov.base);
+	ut_expect_eq(mem, fiov.fv_base);
 
 	mr = mrecord_of(mem, msz);
 	mr->qal = qal;

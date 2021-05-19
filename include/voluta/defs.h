@@ -71,9 +71,16 @@
 /* logical block size (64K) */
 #define VOLUTA_BK_SIZE                  (1L << VOLUTA_BK_SHIFT)
 
+/* number of logical blocks within blocks-unit */
+#define VOLUTA_NBK_IN_BU                (4)
+
 /* number of logical blocks within allocation-group */
 #define VOLUTA_NBK_IN_AG                (1024L)
 
+
+/* blocks-unit size (256K) */
+#define VOLUTA_BU_SIZE \
+	(VOLUTA_NBK_IN_BU * VOLUTA_BK_SIZE)
 
 /* allocation-group size (64M) */
 #define VOLUTA_AG_SIZE \
@@ -790,6 +797,11 @@ union voluta_block_u {
 
 struct voluta_block {
 	union voluta_block_u u;
+} voluta_packed_aligned64;
+
+
+struct voluta_blocks_unit {
+	struct voluta_block bk[VOLUTA_NBK_IN_BU];
 } voluta_packed_aligned64;
 
 

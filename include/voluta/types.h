@@ -31,10 +31,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include <voluta/infra.h>
 #include <voluta/defs.h>
-#include <voluta/consts.h>
-#include <voluta/thread.h>
-#include <voluta/pipe.h>
 
 
 /* standard types forward declarations */
@@ -123,12 +121,6 @@ struct voluta_qstr {
 
 struct voluta_namestr {
 	struct voluta_str str;
-};
-
-struct voluta_buf {
-	void  *buf;
-	size_t len;
-	size_t bsz;
 };
 
 /* pair of ino and dir-type */

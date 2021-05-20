@@ -23,10 +23,10 @@
 #include <errno.h>
 #include <limits.h>
 
-#include <voluta/logging.h>
-#include <voluta/syscall.h>
-#include <voluta/minmax.h>
-#include <voluta/pipe.h>
+#include <voluta/infra/syscall.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/logging.h>
+#include <voluta/infra/pipe.h>
 
 
 static size_t iov_length(const struct iovec *iov, size_t niov)

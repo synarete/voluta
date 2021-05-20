@@ -658,15 +658,15 @@ static int sgv_flush_dset(struct voluta_sgvec *sgv,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_iobuf {
-	struct voluta_buf buf;
+	struct voluta_slice buf;
 	loff_t off;
 };
 
 static void iob_setup(struct voluta_iobuf *iob, struct voluta_encbuf *eb)
 {
 	iob->buf.len = 0;
-	iob->buf.buf = eb->b;
-	iob->buf.bsz = sizeof(eb->b);
+	iob->buf.ptr = eb->b;
+	iob->buf.cap = sizeof(eb->b);
 	iob->off = -1;
 }
 
@@ -676,14 +676,14 @@ static bool iob_isappendable(const struct voluta_iobuf *iob,
 	loff_t off;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	if ((iob->buf.len == 0) && (vaddr->len < iob->buf.bsz)) {
+	if ((iob->buf.len == 0) && (vaddr->len < iob->buf.cap)) {
 		return true;
 	}
 	off = off_end(iob->off, iob->buf.len);
 	if (vaddr->off != off) {
 		return false;
 	}
-	if ((iob->buf.len + vaddr->len) > iob->buf.bsz) {
+	if ((iob->buf.len + vaddr->len) > iob->buf.cap) {
 		return false;
 	}
 	return true;
@@ -700,9 +700,7 @@ static int iob_append(struct voluta_iobuf *iob,
 	if (iob->off == -1) {
 		iob->off = vi_offset(vi);
 	}
-	voluta_assert_ge(buf_rem(&iob->buf), len);
-
-	ptr = buf_end(&iob->buf);
+	ptr = voluta_slice_end(&iob->buf);
 	err = encrypt_vnode(vi, ci, ptr);
 	if (err) {
 		return err;
@@ -742,7 +740,7 @@ static int iob_destage(const struct voluta_iobuf *iob,
 	voluta_assert_gt(lba, VOLUTA_LBA_SB);
 
 	return voluta_vstore_write(vstore, iob->off,
-	                           iob->buf.len, iob->buf.buf);
+	                           iob->buf.len, iob->buf.ptr);
 }
 
 static int iob_flush_dset(struct voluta_iobuf *iob,

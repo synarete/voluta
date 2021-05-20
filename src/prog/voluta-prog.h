@@ -33,7 +33,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <getopt.h>
-#include <voluta/syscall.h>
 #include <voluta/voluta.h>
 
 

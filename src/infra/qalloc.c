@@ -17,7 +17,6 @@
 #define _GNU_SOURCE 1
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -27,15 +26,15 @@
 #include <errno.h>
 #include <limits.h>
 
-#include <voluta/macros.h>
-#include <voluta/consts.h>
-#include <voluta/errors.h>
-#include <voluta/logging.h>
-#include <voluta/list.h>
-#include <voluta/minmax.h>
-#include <voluta/syscall.h>
-#include <voluta/fiovec.h>
-#include <voluta/qalloc.h>
+#include <voluta/infra/consts.h>
+#include <voluta/infra/syscall.h>
+#include <voluta/infra/macros.h>
+#include <voluta/infra/list.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/fiovec.h>
+#include <voluta/infra/errors.h>
+#include <voluta/infra/logging.h>
+#include <voluta/infra/qalloc.h>
 
 
 #define QALLOC_PAGE_SHIFT       VOLUTA_PAGE_SHIFT
@@ -109,6 +108,11 @@ static void static_assert_alloc_sizes(void)
 	STATICASSERT_SIZEOF_LE(struct voluta_slab_seg, QALLOC_CACHELINE_SIZE);
 	STATICASSERT_SIZEOF_GE(struct voluta_page_info, QALLOC_CACHELINE_SIZE);
 	STATICASSERT_EQ(VOLUTA_ARRAY_SIZE(qal->slabs), QALLOC_NSLABS);
+}
+
+static void do_memzero(void *s, size_t n)
+{
+	memset(s, 0, n);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -856,7 +860,7 @@ void *voluta_qalloc_zmalloc(struct voluta_qalloc *qal, size_t nbytes)
 
 	ptr = voluta_qalloc_malloc(qal, nbytes);
 	if (ptr != NULL) {
-		memset(ptr, 0, nbytes);
+		do_memzero(ptr, nbytes);
 	}
 	return ptr;
 }
@@ -1114,7 +1118,7 @@ void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
 void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
 {
 	if (ptr != NULL) {
-		memset(ptr, 0, nbytes);
+		do_memzero(ptr, nbytes);
 		voluta_qalloc_free(qal, ptr, nbytes);
 	}
 }
@@ -1173,5 +1177,61 @@ void voluta_qalloc_stat(const struct voluta_qalloc *qal,
                         struct voluta_qastat *qast)
 {
 	memcpy(qast, &qal->st, sizeof(*qast));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+/* memory utilities */
+
+void voluta_memzero(void *s, size_t n)
+{
+	do_memzero(s, n);
+}
+
+static size_t alignment_of(size_t sz)
+{
+	size_t al;
+
+	if (sz <= 512) {
+		al = 512;
+	} else if (sz <= 1024) {
+		al = 1024;
+	} else if (sz <= 2048) {
+		al = 2048;
+	} else {
+		al = (size_t)voluta_sc_page_size();
+	}
+	return al;
+}
+
+int voluta_zalloc_aligned(size_t sz, void **out_mem)
+{
+	errno = 0;
+	*out_mem = aligned_alloc(alignment_of(sz), sz);
+	if (*out_mem == NULL) {
+		return errno ? -errno : -ENOMEM;
+	}
+	do_memzero(*out_mem, sz);
+	return 0;
+}
+
+static void burnstack_recursively(int depth, int nbytes)
+{
+	char buf[1024];
+	const int cnt = voluta_min32((int)sizeof(buf), nbytes);
+
+	if (cnt > 0) {
+		memset(buf, 0xF4 ^ depth, (size_t)cnt);
+		burnstack_recursively(depth + 1, nbytes - cnt);
+	}
+}
+
+void voluta_burnstackn(int n)
+{
+	burnstack_recursively(0, n);
+}
+
+void voluta_burnstack(void)
+{
+	voluta_burnstackn((int)voluta_sc_page_size());
 }
 

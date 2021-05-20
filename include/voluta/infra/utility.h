@@ -14,12 +14,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  */
-#ifndef VOLUTA_MINMAX_H_
-#define VOLUTA_MINMAX_H_
+#ifndef VOLUTA_UTILITY_H_
+#define VOLUTA_UTILITY_H_
 
 #include <stdlib.h>
 #include <stdint.h>
-
 
 static inline int32_t voluta_min32(int32_t x, int32_t y)
 {
@@ -78,4 +77,4 @@ static inline void *voluta_unconst(const void *p)
 	return u.q;
 }
 
-#endif /* VOLUTA_MINMAX_H_ */
+#endif /* VOLUTA_UTILITY_H_ */

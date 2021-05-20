@@ -26,8 +26,8 @@
 #include <stdint.h>
 #include <endian.h>
 #include <errno.h>
+#include <voluta/infra.h>
 #include <voluta/voluta.h>
-#include <voluta/syscall.h>
 #include "aliases.h"
 #include "inlines.h"
 
@@ -1265,19 +1265,6 @@ int voluta_resolve_fiovec_at(const struct voluta_blob_info *bli,
                              struct voluta_fiovec *fiov);
 
 
-/* utility */
-void voluta_ts_now(struct timespec *ts);
-
-
-void voluta_buf_init(struct voluta_buf *buf, void *p, size_t n);
-
-size_t voluta_buf_append(struct voluta_buf *buf, const void *ptr, size_t len);
-
-size_t voluta_buf_rem(const struct voluta_buf *buf);
-
-void *voluta_buf_end(const struct voluta_buf *buf);
-
-void voluta_buf_seteos(struct voluta_buf *buf);
 
 /* guarantee */
 void voluta_guarantee_persistent_format(void);

@@ -14,54 +14,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  */
-#ifndef VOLUTA_UTILITY_H_
-#define VOLUTA_UTILITY_H_
+#ifndef VOLUTA_TIME_H_
+#define VOLUTA_TIME_H_
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <uuid/uuid.h>
+#include <time.h>
 
+time_t voluta_time_now(void);
 
-/* commons */
-
-void voluta_burnstack(void);
-
-
-
-/* memory utilities */
-int voluta_mmap_memory(size_t, void **);
-
-int voluta_mmap_secure_memory(size_t, void **);
-
-void voluta_munmap_memory(void *, size_t);
-
-void voluta_munmap_secure_memory(void *, size_t);
-
-void voluta_memzero(void *s, size_t n);
-
-int voluta_zalloc_aligned(size_t sz, void **out_mem);
-
-
-/* time wrappers */
 void voluta_rclock_now(struct timespec *ts);
 
 void voluta_mclock_now(struct timespec *ts);
 
 void voluta_mclock_dur(const struct timespec *start, struct timespec *dur);
 
-time_t voluta_time_now(void);
-
 void voluta_ts_copy(struct timespec *dst, const struct timespec *src);
 
-int voluta_ts_gettime(struct timespec *ts, bool realtime);
+int voluta_ts_gettime(struct timespec *ts, int realtime);
 
-/* getentropy wrapper */
-void voluta_getentropy(void *buf, size_t len);
-
-uint32_t voluta_getentropy32(void);
-
-uint64_t voluta_getentropy64(void);
-
-#endif /* VOLUTA_UTILITY_H_ */
+#endif /* VOLUTA_TIME_H_ */

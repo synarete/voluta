@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
 /*
  * This file is part of libvoluta
  *
@@ -12,19 +13,24 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
- *
  */
-#ifndef VOLUTA_VOLUTA_H_
-#define VOLUTA_VOLUTA_H_
+#ifndef VOLUTA_SLICE_H_
+#define VOLUTA_SLICE_H_
 
-#include <stddef.h>
-#include <stdint.h>
-#include <voluta/infra.h>
-#include <voluta/defs.h>
-#include <voluta/types.h>
-#include <voluta/extern.h>
-#include <voluta/ioctls.h>
+#include <stdlib.h>
 
-#endif /* VOLUTA_VOLUTA_H_ */
+struct voluta_slice {
+	void  *ptr;
+	size_t len;
+	size_t cap;
+};
 
+void voluta_slice_init(struct voluta_slice *sl, void *p, size_t n);
 
+void voluta_slice_fini(struct voluta_slice *sl);
+
+void *voluta_slice_end(const struct voluta_slice *sl);
+
+size_t voluta_slice_append(struct voluta_slice *sl, const void *p, size_t len);
+
+#endif /* VOLUTA_SLICE_H_ */

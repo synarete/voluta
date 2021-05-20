@@ -20,10 +20,10 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#include <voluta/macros.h>
-#include <voluta/errors.h>
-#include <voluta/minmax.h>
-#include <voluta/strings.h>
+#include <voluta/infra/macros.h>
+#include <voluta/infra/errors.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/strings.h>
 
 
 static char *unconst_str(const char *s)

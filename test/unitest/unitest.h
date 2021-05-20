@@ -36,7 +36,6 @@
 #include <errno.h>
 
 #include <voluta/voluta.h>
-#include <voluta/syscall.h>
 
 
 #define VOLUTA_LIBPRIVATE 1

@@ -18,7 +18,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include <voluta/version.h>
+#include <voluta/infra/version.h>
 
 #ifdef HAVE_CONFIG_H
 #if !defined(VERSION)

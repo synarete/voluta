@@ -848,7 +848,7 @@ void ut_readlink_expect(struct ut_env *ute, ino_t ino, const char *value)
 	err = ut_readlink(ute, ino, lnk, lsz, &nrd);
 	ut_expect_ok(err);
 	ut_expect_eq(strlen(value), nrd);
-	ut_expect_eqs(value, lnk);
+	ut_expect_eqm(value, lnk, nrd);
 }
 
 static void ut_create_status(struct ut_env *ute, ino_t parent,

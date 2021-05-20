@@ -46,9 +46,10 @@ struct voluta_qalloc {
 	struct voluta_qastat st;
 	struct voluta_list_head free_list;
 	struct voluta_slab slabs[8];
-} voluta_aligned64;
+};
 
 
+/* quick allocator */
 int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize);
 
 int voluta_qalloc_fini(struct voluta_qalloc *qal);
@@ -69,5 +70,16 @@ int voluta_qalloc_fiovec(const struct voluta_qalloc *qal, void *ptr,
 
 int voluta_qalloc_mcheck(const struct voluta_qalloc *qal,
                          const void *ptr, size_t nbytes);
+
+
+/* memory utilities */
+void voluta_burnstackn(int n);
+
+void voluta_burnstack(void);
+
+void voluta_memzero(void *s, size_t n);
+
+int voluta_zalloc_aligned(size_t sz, void **out_mem);
+
 
 #endif /* VOLUTA_QALLOC_H_ */

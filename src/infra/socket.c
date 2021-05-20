@@ -31,9 +31,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include <voluta/syscall.h>
-#include <voluta/minmax.h>
-#include <voluta/socket.h>
+#include <voluta/infra/syscall.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/socket.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

@@ -213,11 +213,10 @@ static int check_symlnk(const struct voluta_symlnk_ctx *sl_ctx)
 	return 0;
 }
 
-static void append_symval(struct voluta_buf *buf, const void *p, size_t n)
+static void append_symval(struct voluta_slice *buf, const void *p, size_t n)
 {
 	if (p && n) {
-		buf_append(buf, p, n);
-		buf_seteos(buf);
+		voluta_slice_append(buf, p, n);
 	}
 }
 
@@ -230,7 +229,7 @@ static int stage_symval(const struct voluta_symlnk_ctx *sl_ctx,
 
 static int extern_symval_head(const struct voluta_symlnk_ctx *sl_ctx,
                               const struct voluta_symval_info *svi,
-                              struct voluta_buf *buf)
+                              struct voluta_slice *buf)
 {
 	const struct voluta_inode_info *lnk_ii = sl_ctx->lnk_ii;
 
@@ -240,7 +239,7 @@ static int extern_symval_head(const struct voluta_symlnk_ctx *sl_ctx,
 
 static int extern_symval_parts(const struct voluta_symlnk_ctx *sl_ctx,
                                const struct voluta_symval_info *svi,
-                               struct voluta_buf *buf)
+                               struct voluta_slice *buf)
 {
 	int err;
 	struct voluta_vaddr vaddr;
@@ -265,7 +264,7 @@ static int extern_symval_parts(const struct voluta_symlnk_ctx *sl_ctx,
 
 
 static int extern_symval(const struct voluta_symlnk_ctx *sl_ctx,
-                         struct voluta_buf *buf)
+                         struct voluta_slice *buf)
 {
 	int err;
 	size_t len;
@@ -289,7 +288,7 @@ static int extern_symval(const struct voluta_symlnk_ctx *sl_ctx,
 }
 
 static int readlink_of(const struct voluta_symlnk_ctx *sl_ctx,
-                       struct voluta_buf *buf)
+                       struct voluta_slice *buf)
 {
 	int err;
 
@@ -309,21 +308,19 @@ int voluta_do_readlink(const struct voluta_oper *op,
                        void *ptr, size_t lim, size_t *out_len)
 {
 	int err;
-	struct voluta_buf buf = {
-		.buf = ptr,
-		.len = 0,
-		.bsz = lim
-	};
+	struct voluta_slice sl;
 	struct voluta_symlnk_ctx sl_ctx = {
 		.op = op,
 		.sbi = ii_sbi(lnk_ii),
 		.lnk_ii = lnk_ii,
 	};
 
+	voluta_slice_init(&sl, ptr, lim);
 	ii_incref(lnk_ii);
-	err = readlink_of(&sl_ctx, &buf);
+	err = readlink_of(&sl_ctx, &sl);
 	ii_decref(lnk_ii);
-	*out_len = buf.len;
+	*out_len = sl.len;
+	voluta_slice_fini(&sl);
 	return err;
 }
 

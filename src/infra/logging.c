@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
-#include <voluta/logging.h>
+#include <voluta/infra/logging.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* logging */

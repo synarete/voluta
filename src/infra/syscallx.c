@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <voluta/syscall.h>
+#include <voluta/infra/syscall.h>
 
 static void *buffer_at(const void *buf, size_t step)
 {

@@ -81,7 +81,7 @@ static size_t xe_calc_nents(size_t name_len, size_t value_size)
 }
 
 static size_t xe_calc_nents_of(const struct voluta_str *name,
-                               const struct voluta_buf *value)
+                               const struct voluta_slice *value)
 {
 	return xe_calc_nents(name->len, value->len);
 }
@@ -160,12 +160,12 @@ static struct voluta_xattr_entry *xe_next(const struct voluta_xattr_entry *xe)
 
 static void xe_assign(struct voluta_xattr_entry *xe,
                       const struct voluta_str *name,
-                      const struct voluta_buf *value)
+                      const struct voluta_slice *value)
 {
 	xe_set_name_len(xe, name->len);
 	xe_set_value_size(xe, value->len);
 	memcpy(xe_name(xe), name->str, name->len);
-	memcpy(xe_value(xe), value->buf, value->len);
+	memcpy(xe_value(xe), value->ptr, value->len);
 }
 
 static void xe_reset(struct voluta_xattr_entry *xe)
@@ -189,9 +189,9 @@ static void xe_squeeze(struct voluta_xattr_entry *xe,
 }
 
 static void xe_copy_value(const struct voluta_xattr_entry *xe,
-                          struct voluta_buf *buf)
+                          struct voluta_slice *buf)
 {
-	buf_append(buf, xe_value(xe), xe_value_size(xe));
+	voluta_slice_append(buf, xe_value(xe), xe_value_size(xe));
 }
 
 static struct voluta_xattr_entry *
@@ -212,7 +212,7 @@ static struct voluta_xattr_entry *
 xe_append(struct voluta_xattr_entry *xe,
           const struct voluta_xattr_entry *end,
           const struct voluta_str *name,
-          const struct voluta_buf *value)
+          const struct voluta_slice *value)
 {
 	const size_t nfree = xe_diff(xe, end);
 	const size_t nents = xe_calc_nents_of(name, value);
@@ -313,7 +313,7 @@ xan_search(const struct voluta_xattr_node *xan, const struct voluta_str *str)
 
 static struct voluta_xattr_entry *
 xan_insert(struct voluta_xattr_node *xan,
-           const struct voluta_str *name, const struct voluta_buf *value)
+           const struct voluta_str *name, const struct voluta_slice *value)
 {
 	struct voluta_xattr_entry *xe;
 
@@ -445,7 +445,7 @@ xai_search(const struct voluta_xattr_ispec *xai,
 static struct voluta_xattr_entry *
 xai_insert(struct voluta_xattr_ispec *xai,
            const struct voluta_str *name,
-           const struct voluta_buf *value)
+           const struct voluta_slice *value)
 {
 	struct voluta_xattr_entry *xe;
 
@@ -517,7 +517,7 @@ struct voluta_xattr_ctx {
 	struct voluta_listxattr_ctx *lxa_ctx;
 	struct voluta_inode_info *ii;
 	const struct voluta_namestr *name;
-	struct voluta_buf value;
+	struct voluta_slice value;
 	size_t size;
 	int flags;
 	int keep_iter;
@@ -703,7 +703,7 @@ out:
 static int do_getxattr(struct voluta_xattr_ctx *xa_ctx, size_t *out_size)
 {
 	int err;
-	struct voluta_buf *buf = &xa_ctx->value;
+	struct voluta_slice *buf = &xa_ctx->value;
 	struct voluta_xentry_info xei = { .xe = NULL };
 
 	err = check_xattr(xa_ctx, R_OK);
@@ -715,10 +715,10 @@ static int do_getxattr(struct voluta_xattr_ctx *xa_ctx, size_t *out_size)
 		return err;
 	}
 	*out_size = xe_value_size(xei.xe);
-	if (!buf->bsz || (buf->buf == NULL)) {
+	if (!buf->cap || (buf->ptr == NULL)) {
 		return 0;
 	}
-	if (buf->bsz < (buf->len + *out_size)) {
+	if (buf->cap < (buf->len + *out_size)) {
 		return -ERANGE;
 	}
 	xe_copy_value(xei.xe, buf);
@@ -736,9 +736,9 @@ int voluta_do_getxattr(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.name = name,
-		.value.buf = buf,
+		.value.ptr = buf,
 		.value.len = 0,
-		.value.bsz = size
+		.value.cap = size
 	};
 
 	ii_incref(ii);
@@ -957,9 +957,9 @@ int voluta_do_setxattr(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.name = name,
-		.value.buf = unconst(value),
+		.value.ptr = unconst(value),
 		.value.len = size,
-		.value.bsz = size,
+		.value.cap = size,
 		.size = size,
 		.flags = flags
 	};

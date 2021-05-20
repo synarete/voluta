@@ -17,6 +17,8 @@
 #ifndef VOLUTA_SYSCALL_H_
 #define VOLUTA_SYSCALL_H_
 
+#include <unistd.h>
+
 struct stat;
 struct statx;
 struct statvfs;

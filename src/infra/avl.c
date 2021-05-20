@@ -18,9 +18,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include <voluta/macros.h>
-#include <voluta/errors.h>
-#include <voluta/avl.h>
+#include <voluta/infra/macros.h>
+#include <voluta/infra/errors.h>
+#include <voluta/infra/avl.h>
 
 
 #define AVL_MAGIC 0x6176

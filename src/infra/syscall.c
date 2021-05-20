@@ -44,7 +44,7 @@
 #include <limits.h>
 #include <utime.h>
 #include <time.h>
-#include <voluta/syscall.h>
+#include <voluta/infra/syscall.h>
 
 
 #if _POSIX_C_SOURCE < 200809L

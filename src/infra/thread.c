@@ -23,9 +23,9 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <voluta/minmax.h>
-#include <voluta/errors.h>
-#include <voluta/thread.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/errors.h>
+#include <voluta/infra/thread.h>
 
 #if defined(NDEBUG)
 #define VOLUTA_MUTEX_KIND PTHREAD_MUTEX_NORMAL

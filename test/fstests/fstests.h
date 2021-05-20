@@ -34,7 +34,7 @@
 #include <errno.h>
 
 #include <voluta/voluta.h>
-#include <voluta/syscall.h>
+
 
 /* Re-mapped macros */
 #define VT_KILO                 VOLUTA_KILO

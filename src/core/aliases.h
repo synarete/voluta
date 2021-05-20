@@ -152,10 +152,5 @@
 #define listq_next(lq, lh)              voluta_listq_next(lq, lh)
 #define listq_prev(lq, lh)              voluta_listq_prev(lq, lh)
 
-#define buf_append(b, p, n)             voluta_buf_append(b, p, n)
-#define buf_seteos(b)                   voluta_buf_seteos(b)
-#define buf_rem(b)                      voluta_buf_rem(b)
-#define buf_end(b)                      voluta_buf_end(b)
-
 #endif /* VOLUTA_ALIASES_H_ */
 

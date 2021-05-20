@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 
+struct iovec;
 
 struct voluta_pipe {
 	int     fd[2];

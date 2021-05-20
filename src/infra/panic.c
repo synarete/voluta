@@ -26,11 +26,12 @@
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
 
-#include <voluta/macros.h>
-#include <voluta/logging.h>
-#include <voluta/errors.h>
-#include <voluta/minmax.h>
-#include <voluta/utility.h>
+#include <voluta/infra/macros.h>
+#include <voluta/infra/utility.h>
+#include <voluta/infra/errors.h>
+#include <voluta/infra/list.h>
+#include <voluta/infra/qalloc.h>
+#include <voluta/infra/logging.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

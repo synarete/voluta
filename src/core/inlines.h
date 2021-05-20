@@ -26,8 +26,8 @@
 #include <stdint.h>
 #include <endian.h>
 #include <errno.h>
+#include <voluta/infra.h>
 #include <voluta/defs.h>
-#include <voluta/utility.h>
 #include <voluta/types.h>
 
 static inline bool ino_isnull(ino_t ino)

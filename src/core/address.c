@@ -69,7 +69,10 @@ voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 
 static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
-	const voluta_lba_t hsm_lba = (voluta_lba_t)(VOLUTA_LBA_SB + hs_index);
+	const size_t nbk_in_bu = VOLUTA_NBK_IN_BU;
+	const voluta_lba_t hsm_lba = (voluta_lba_t)(nbk_in_bu + hs_index);
+
+	voluta_assert_gt(VOLUTA_NBK_IN_BU, VOLUTA_LBA_SB);
 
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 

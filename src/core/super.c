@@ -42,7 +42,7 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
                        struct voluta_agroup_info **out_agi);
 static int stage_parents_of(struct voluta_sb_info *sbi,
                             const struct voluta_vaddr *vaddr, bool dont_reload,
-                            struct voluta_bk_info **out_bki);
+                            struct voluta_bu_info **out_bui);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -358,21 +358,31 @@ static void mark_unallocate_at(struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void resolve_bk_fiovec(const struct voluta_sb_info *sbi,
-                              const struct voluta_bk_info *bki,
+static const struct voluta_block *
+block_of(const struct voluta_bu_info *bui, loff_t off)
+{
+	const loff_t lba = off_to_lba(off);
+	struct voluta_blocks_unit *bu = bui->bu;
+	const size_t slot = (size_t)lba % ARRAY_SIZE(bu->bk);
+
+	return &bu->bk[slot];
+}
+
+static void resolve_bu_fiovec(const struct voluta_sb_info *sbi,
+                              const struct voluta_bu_info *bui,
                               struct voluta_fiovec *out_fiov)
 {
 	out_fiov->fv_base = NULL;
-	out_fiov->fv_off = lba_to_off(bki->bk_lba);
-	out_fiov->fv_len = sizeof(*bki->bk);
+	out_fiov->fv_off = lba_to_off(bui->bk_lba);
+	out_fiov->fv_len = sizeof(*bui->bu);
 	out_fiov->fv_fd = sbi->sb_vstore->vs_pstore.ps_vfd;
 }
 
 static int find_cached_bk(struct voluta_sb_info *sbi, voluta_lba_t lba,
-                          struct voluta_bk_info **out_bki)
+                          struct voluta_bu_info **out_bui)
 {
-	*out_bki = voluta_cache_lookup_bki(sbi->sb_cache, lba);
-	return (*out_bki != NULL) ? 0 : -ENOENT;
+	*out_bui = voluta_cache_lookup_bui(sbi->sb_cache, lba);
+	return (*out_bui != NULL) ? 0 : -ENOENT;
 }
 
 static size_t total_dirty_size(const struct voluta_sb_info *sbi)
@@ -394,15 +404,15 @@ static int commit_dirty_now(struct voluta_sb_info *sbi)
 	return err;
 }
 
-static int spawn_bk(struct voluta_sb_info *sbi, voluta_lba_t lba,
-                    struct voluta_bk_info **out_bki)
+static int spawn_bu(struct voluta_sb_info *sbi, voluta_lba_t lba,
+                    struct voluta_bu_info **out_bui)
 {
 	int err;
 	struct voluta_cache *cache = cache_of(sbi);
 
 	for (size_t retry = 0; retry < 4; ++retry) {
-		*out_bki = voluta_cache_spawn_bki(cache, lba);
-		if (*out_bki != NULL) {
+		*out_bui = voluta_cache_spawn_bui(cache, lba);
+		if (*out_bui != NULL) {
 			return 0;
 		}
 		err = commit_dirty_now(sbi);
@@ -413,81 +423,89 @@ static int spawn_bk(struct voluta_sb_info *sbi, voluta_lba_t lba,
 	return -ENOMEM;
 }
 
-static void zero_bk(struct voluta_bk_info *bki)
+static void zero_bu(struct voluta_bu_info *bui)
 {
-	struct voluta_block *bk = bki->bk;
+	struct voluta_blocks_unit *bu = bui->bu;
 
-	voluta_memzero(bk, sizeof(*bk));
+	voluta_memzero(bu, sizeof(*bu));
 }
 
-static int load_bk(const struct voluta_sb_info *sbi,
-                   struct voluta_bk_info *bki)
+static int load_bu(const struct voluta_sb_info *sbi,
+                   struct voluta_bu_info *bui)
 {
-	struct voluta_fiovec fiov;
+	struct voluta_fiovec fiov = { .fv_cookie = NULL };
 	const struct voluta_vstore *vstore = vstore_of(sbi);
 
-	resolve_bk_fiovec(sbi, bki, &fiov);
-	return voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bki->bk);
+	resolve_bu_fiovec(sbi, bui, &fiov);
+	return voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bui->bu);
 }
 
-static void forget_bk(const struct voluta_sb_info *sbi,
-                      struct voluta_bk_info *bki)
+static void forget_bu(const struct voluta_sb_info *sbi,
+                      struct voluta_bu_info *bui)
 {
-	if (bki != NULL) {
-		voluta_cache_forget_bki(cache_of(sbi), bki);
+	if (bui != NULL) {
+		voluta_cache_forget_bui(cache_of(sbi), bui);
 	}
 }
 
 static int stage_bk(struct voluta_sb_info *sbi, const voluta_lba_t lba,
-                    bool dont_reload, struct voluta_bk_info **out_bki)
+                    bool dont_reload, struct voluta_bu_info **out_bui)
 {
 	int err;
-	struct voluta_bk_info *bki = NULL;
+	struct voluta_bu_info *bui = NULL;
 
-	err = find_cached_bk(sbi, lba, out_bki);
+	err = find_cached_bk(sbi, lba, out_bui);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bk(sbi, lba, &bki);
+	err = spawn_bu(sbi, lba, &bui);
 	if (err) {
 		goto out_err;
 	}
 	if (dont_reload) {
-		zero_bk(bki);
+		zero_bu(bui);
 		goto out_ok;
 	}
-	err = load_bk(sbi, bki);
+	err = load_bu(sbi, bui);
 	if (err) {
 		goto out_err;
 	}
 out_ok:
-	*out_bki = bki;
+	*out_bui = bui;
 	return 0;
 out_err:
-	forget_bk(sbi, bki);
-	*out_bki = NULL;
+	forget_bu(sbi, bui);
+	*out_bui = NULL;
 	return err;
 }
 
-static struct voluta_view *view_of(const void *p)
+static struct voluta_view *make_view(const void *p)
 {
-	return unconst(p);
+	const struct voluta_view *view = p;
+
+	return unconst(view);
 }
 
 static struct voluta_view *
-view_at(const struct voluta_bk_info *bki, loff_t off)
+view_at(const struct voluta_bu_info *bui, loff_t off)
 {
 	long pos;
 	long kbn;
 	const long kb_size = VOLUTA_KB_SIZE;
 	const long nkb_in_bk = VOLUTA_NKB_IN_BK;
-	const struct voluta_block *bk = bki->bk;
+	const struct voluta_block *bk = block_of(bui, off);
 
 	kbn = ((off / kb_size) % nkb_in_bk);
 	pos = kbn * kb_size;
 	voluta_assert_le(pos + kb_size, sizeof(bk->u.bk));
 
-	return view_of(&bk->u.bk[pos]);
+	return make_view(&bk->u.bk[pos]);
+}
+
+static struct voluta_view *
+view_of(const struct voluta_bu_info *bui, const struct voluta_vaddr *vaddr)
+{
+	return view_at(bui, vaddr->off);
 }
 
 static int verify_vnode_view(struct voluta_vnode_info *vi)
@@ -788,32 +806,30 @@ static void update_dskey(struct voluta_vnode_info *vi,
 
 static void attach_vnode(struct voluta_sb_info *sbi,
                          struct voluta_vnode_info *vi,
-                         struct voluta_bk_info *bki)
+                         struct voluta_bu_info *bui)
 {
 	vi->v_sbi = sbi;
-	voluta_vi_attach_to(vi, bki);
+	voluta_vi_attach_to(vi, bui);
 }
 
 static int bind_vnode(struct voluta_sb_info *sbi,
                       struct voluta_vnode_info *vi,
-                      struct voluta_bk_info *bki)
+                      struct voluta_bu_info *bui)
 {
-	struct voluta_view *view;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	attach_vnode(sbi, vi, bki);
-	view = view_at(bki, vaddr->off);
-	bind_view(vi, view);
+	attach_vnode(sbi, vi, bui);
+	bind_view(vi, view_of(bui, vaddr));
 	return 0;
 }
 
 static int bind_inode(struct voluta_sb_info *sbi,
                       struct voluta_inode_info *ii,
-                      struct voluta_bk_info *bki)
+                      struct voluta_bu_info *bui)
 {
 	int err;
 
-	err = bind_vnode(sbi, ii_vi(ii), bki);
+	err = bind_vnode(sbi, ii_vi(ii), bui);
 	if (err) {
 		return err;
 	}
@@ -868,9 +884,9 @@ static int spawn_bind_vi(struct voluta_sb_info *sbi,
                          struct voluta_vnode_info **out_vi)
 {
 	int err;
-	struct voluta_bk_info *bki = NULL;
+	struct voluta_bu_info *bui = NULL;
 
-	err = stage_parents_of(sbi, vaddr, dont_reload, &bki);
+	err = stage_parents_of(sbi, vaddr, dont_reload, &bui);
 	if (err) {
 		return err;
 	}
@@ -878,7 +894,7 @@ static int spawn_bind_vi(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = bind_vnode(sbi, *out_vi, bki);
+	err = bind_vnode(sbi, *out_vi, bui);
 	if (err) {
 		return err;
 	}
@@ -931,9 +947,9 @@ static int spawn_bind_ii(struct voluta_sb_info *sbi,
                          struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_bk_info *bki = NULL;
+	struct voluta_bu_info *bui = NULL;
 
-	err = stage_parents_of(sbi, &iaddr->vaddr, dont_reload, &bki);
+	err = stage_parents_of(sbi, &iaddr->vaddr, dont_reload, &bui);
 	if (err) {
 		return err;
 	}
@@ -941,7 +957,7 @@ static int spawn_bind_ii(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = bind_inode(sbi, *out_ii, bki);
+	err = bind_inode(sbi, *out_ii, bui);
 	if (err) {
 		return err;
 	}
@@ -954,14 +970,14 @@ static void forget_cached_ii(struct voluta_sb_info *sbi,
 	voulta_cache_forget_ii(cache_of(sbi), ii);
 }
 
-static int lookup_or_spawn_bki(struct voluta_sb_info *sbi, voluta_lba_t lba,
-                               struct voluta_bk_info **out_bki)
+static int lookup_or_spawn_bui(struct voluta_sb_info *sbi, voluta_lba_t lba,
+                               struct voluta_bu_info **out_bui)
 {
 	int err;
 
-	err = find_cached_bk(sbi, lba, out_bki);
+	err = find_cached_bk(sbi, lba, out_bui);
 	if (err) {
-		err = spawn_bk(sbi, lba, out_bki);
+		err = spawn_bu(sbi, lba, out_bui);
 	}
 	return err;
 }
@@ -971,9 +987,9 @@ static int spawn_spmap(struct voluta_sb_info *sbi,
                        struct voluta_vnode_info **out_vi)
 {
 	int err;
-	struct voluta_bk_info *bki = NULL;
+	struct voluta_bu_info *bui = NULL;
 
-	err = lookup_or_spawn_bki(sbi, vaddr->lba, &bki);
+	err = lookup_or_spawn_bui(sbi, vaddr->lba, &bui);
 	if (err) {
 		return err;
 	}
@@ -1759,15 +1775,15 @@ static int require_stable_at(const struct voluta_agroup_info *agi,
 
 static int stage_parents_of_spmap(struct voluta_sb_info *sbi,
                                   const struct voluta_vaddr *vaddr,
-                                  struct voluta_bk_info **out_bki)
+                                  struct voluta_bu_info **out_bui)
 {
-	return stage_bk(sbi, vaddr->lba, false, out_bki);
+	return stage_bk(sbi, vaddr->lba, false, out_bui);
 }
 
 static int stage_parents_of_normal(struct voluta_sb_info *sbi,
                                    const struct voluta_vaddr *vaddr,
                                    bool dont_reload,
-                                   struct voluta_bk_info **out_bki)
+                                   struct voluta_bu_info **out_bui)
 {
 	int err;
 	struct voluta_agroup_info *agi = NULL;
@@ -1780,7 +1796,7 @@ static int stage_parents_of_normal(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = stage_bk(sbi, vaddr->lba, dont_reload, out_bki);
+	err = stage_bk(sbi, vaddr->lba, dont_reload, out_bui);
 	if (err) {
 		return err;
 	}
@@ -1789,11 +1805,11 @@ static int stage_parents_of_normal(struct voluta_sb_info *sbi,
 
 static int stage_parents_of(struct voluta_sb_info *sbi,
                             const struct voluta_vaddr *vaddr, bool dont_reload,
-                            struct voluta_bk_info **out_bki)
+                            struct voluta_bu_info **out_bui)
 {
 	return vaddr_isspmap(vaddr) ?
-	       stage_parents_of_spmap(sbi, vaddr, out_bki) :
-	       stage_parents_of_normal(sbi, vaddr, dont_reload, out_bki);
+	       stage_parents_of_spmap(sbi, vaddr, out_bui) :
+	       stage_parents_of_normal(sbi, vaddr, dont_reload, out_bui);
 }
 
 static int commit_last(const struct voluta_sb_info *sbi, int flags)
@@ -2409,11 +2425,11 @@ static void mark_opaque_at(struct voluta_sb_info *sbi,
                            const struct voluta_vaddr *vaddr)
 {
 	int err;
-	struct voluta_bk_info *bki = NULL;
+	struct voluta_bu_info *bui = NULL;
 
-	err = find_cached_bk(sbi, vaddr->lba, &bki);
+	err = find_cached_bk(sbi, vaddr->lba, &bui);
 	if (!err) {
-		voluta_mark_opaque_at(bki, vaddr);
+		voluta_mark_opaque_at(bui, vaddr);
 	}
 }
 

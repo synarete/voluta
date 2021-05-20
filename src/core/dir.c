@@ -212,6 +212,17 @@ de_view_of(const struct voluta_dir_entry *de)
 	return unconst(de_view);
 }
 
+static struct voluta_dir_entry *de_unconst(const struct voluta_dir_entry *de)
+{
+	union {
+		const struct voluta_dir_entry *p;
+		struct voluta_dir_entry *q;
+	} u = {
+		.p = de
+	};
+	return u.q;
+}
+
 static mode_t de_dt(const struct voluta_dir_entry *de)
 {
 	return de->de_dt;
@@ -313,7 +324,7 @@ static struct voluta_dir_entry *de_next(const struct voluta_dir_entry *de)
 {
 	const size_t step = de_nents(de);
 
-	return unconst(de + step);
+	return de_unconst(de + step);
 }
 
 static struct voluta_dir_entry *
@@ -322,7 +333,7 @@ de_next_safe(const struct voluta_dir_entry *de,
 {
 	const struct voluta_dir_entry *next = de_next(de);
 
-	return (next < end) ? unconst(next) : NULL;
+	return (next < end) ? de_unconst(next) : NULL;
 }
 
 static struct voluta_dir_entry *
@@ -330,7 +341,7 @@ de_prev_safe(const struct voluta_dir_entry *de)
 {
 	const size_t step = de_nprev(de);
 
-	return step ? unconst(de - step) : NULL;
+	return step ? de_unconst(de - step) : NULL;
 }
 
 static void de_assign(struct voluta_dir_entry *de, size_t nents,
@@ -587,7 +598,7 @@ static size_t htn_depth(const struct voluta_dir_htnode *htn)
 static struct voluta_dir_entry *
 htn_begin(const struct voluta_dir_htnode *htn)
 {
-	return unconst(htn->de);
+	return de_unconst(htn->de);
 }
 
 static const struct voluta_dir_entry *

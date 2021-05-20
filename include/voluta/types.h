@@ -258,11 +258,11 @@ struct voluta_cache_elem {
 };
 
 /* blocks caching info */
-struct voluta_bk_info {
-	struct voluta_cache_elem bk_ce;
-	struct voluta_block     *bk;
+struct voluta_bu_info {
+	struct voluta_cache_elem        bk_ce;
+	struct voluta_blocks_unit      *bu;
+	uint64_t        bk_mask[VOLUTA_NBK_IN_BU];
 	voluta_lba_t    bk_lba;
-	uint64_t        bk_mask;
 };
 
 /* vnode */
@@ -290,7 +290,7 @@ struct voluta_vnode_info {
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
 	struct voluta_sb_info          *v_sbi;
-	struct voluta_bk_info          *v_bki;
+	struct voluta_bu_info          *v_bui;
 	struct voluta_cache_elem        v_ce;
 	struct voluta_list_head         v_dq_mlh;
 	struct voluta_list_head         v_dq_blh;

@@ -1143,14 +1143,14 @@ bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
 void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
                                struct voluta_dset *dset);
 
-struct voluta_bk_info *
-voluta_cache_lookup_bki(struct voluta_cache *cache, voluta_lba_t lba);
+struct voluta_bu_info *
+voluta_cache_lookup_bui(struct voluta_cache *cache, voluta_lba_t lba);
 
-struct voluta_bk_info *
-voluta_cache_spawn_bki(struct voluta_cache *cache, voluta_lba_t lba);
+struct voluta_bu_info *
+voluta_cache_spawn_bui(struct voluta_cache *cache, voluta_lba_t lba);
 
-void voluta_cache_forget_bki(struct voluta_cache *cache,
-                             struct voluta_bk_info *bki);
+void voluta_cache_forget_bui(struct voluta_cache *cache,
+                             struct voluta_bu_info *bui);
 
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
@@ -1187,7 +1187,7 @@ bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
 
 void voluta_vi_attach_to(struct voluta_vnode_info *vi,
-                         struct voluta_bk_info *bki);
+                         struct voluta_bu_info *bui);
 
 void voluta_vi_incref(struct voluta_vnode_info *vi);
 
@@ -1198,7 +1198,7 @@ size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi);
 
 void voluta_mark_visible(const struct voluta_vnode_info *vi);
 
-void voluta_mark_opaque_at(struct voluta_bk_info *bki,
+void voluta_mark_opaque_at(struct voluta_bu_info *bui,
                            const struct voluta_vaddr *vaddr);
 
 bool voluta_is_visible(const struct voluta_vnode_info *vi);
@@ -1225,9 +1225,9 @@ void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);
 
 void voluta_mpool_fini(struct voluta_mpool *mpool);
 
-struct voluta_bk_info *voluta_malloc_bki(struct voluta_mpool *mpool);
+struct voluta_bu_info *voluta_malloc_bui(struct voluta_mpool *mpool);
 
-void voluta_free_bki(struct voluta_mpool *mpool, struct voluta_bk_info *bki);
+void voluta_free_bui(struct voluta_mpool *mpool, struct voluta_bu_info *bui);
 
 struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool);
 

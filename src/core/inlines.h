@@ -260,10 +260,10 @@ ii_vaddr(const struct voluta_inode_info *ii)
 	return vi_vaddr(ii_vi(ii));
 }
 
-static inline struct voluta_bk_info *
-ii_bki(const struct voluta_inode_info *ii)
+static inline struct voluta_bu_info *
+ii_bui(const struct voluta_inode_info *ii)
 {
-	return ii_vi(ii)->v_bki;
+	return ii_vi(ii)->v_bui;
 }
 
 static inline struct voluta_sb_info *

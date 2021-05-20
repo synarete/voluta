@@ -12,6 +12,7 @@ nobase_include_HEADERS += voluta/list.h
 nobase_include_HEADERS += voluta/logging.h
 nobase_include_HEADERS += voluta/macros.h
 nobase_include_HEADERS += voluta/minmax.h
+nobase_include_HEADERS += voluta/pipe.h
 nobase_include_HEADERS += voluta/qalloc.h
 nobase_include_HEADERS += voluta/socket.h
 nobase_include_HEADERS += voluta/strings.h

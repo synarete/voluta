@@ -191,7 +191,8 @@ static void guarantee_persistent_types_members(void)
 	               de, VOLUTA_DIR_HTNODE_NENTS);
 	REQUIRE_NELEMS(struct voluta_dir_htnode,
 	               dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
-	REQUIRE_NBITS(struct voluta_bk_info, bk_mask, VOLUTA_NKB_IN_BK);
+	REQUIRE_NBITS(struct voluta_bu_info, bk_mask,
+	              VOLUTA_NKB_IN_BK * VOLUTA_NBK_IN_BU);
 }
 
 static void guarantee_persistent_types_alignment(void)

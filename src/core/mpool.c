@@ -19,6 +19,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define MPC_MAGIC               0xA119CE6D2BL

@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <voluta/infra/macros.h>
 #include <voluta/infra/utility.h>
 #include <voluta/infra/errors.h>
 #include <voluta/infra/random.h>
@@ -43,5 +44,25 @@ void voluta_getentropy(void *buf, size_t len)
 		cnt = voluta_min((size_t)(end - ptr), getentropy_max);
 		do_getentropy(ptr, cnt);
 		ptr += cnt;
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_random_ascii(char *str, size_t len)
+{
+	int nrands = 0;
+	int print_ch;
+	int rands[64];
+	const int base = 33;
+	const int last = 126;
+
+	for (size_t i = 0; i < len; ++i) {
+		if (nrands == 0) {
+			nrands = VOLUTA_ARRAY_SIZE(rands);
+			voluta_getentropy(rands, sizeof(rands));
+		}
+		print_ch = (abs(rands[--nrands]) % (last - base)) + base;
+		str[i] = (char)print_ch;
 	}
 }

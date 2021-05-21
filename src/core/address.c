@@ -15,9 +15,14 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <stdlib.h>
+#include <stdint.h>
+#include <endian.h>
+#include <errno.h>
 #include <ctype.h>
-#include "libvoluta.h"
-
+#include <voluta/core/types.h>
+#include <voluta/core/address.h>
+#include <voluta/core/private.h>
 
 static voluta_lba_t lba_plus(voluta_lba_t lba, size_t nbk)
 {
@@ -319,12 +324,12 @@ void voluta_vaddr56_set(struct voluta_vaddr56 *vadr, loff_t off)
 
 	if (!off_isnull(off)) {
 		voluta_assert_eq(uoff & 0xFFL, 0);
-		vadr->lo = cpu_to_le32((uint32_t)(uoff >> 8));
-		vadr->me = cpu_to_le16((uint16_t)(uoff >> 40));
+		vadr->lo = voluta_cpu_to_le32((uint32_t)(uoff >> 8));
+		vadr->me = voluta_cpu_to_le16((uint16_t)(uoff >> 40));
 		vadr->hi = (uint8_t)(uoff >> 56);
 	} else {
-		vadr->lo = cpu_to_le32(UINT32_MAX);
-		vadr->me = cpu_to_le16(UINT16_MAX);
+		vadr->lo = voluta_cpu_to_le32(UINT32_MAX);
+		vadr->me = voluta_cpu_to_le16(UINT16_MAX);
 		vadr->hi = UINT8_MAX;
 	}
 }
@@ -332,8 +337,8 @@ void voluta_vaddr56_set(struct voluta_vaddr56 *vadr, loff_t off)
 loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *vadr)
 {
 	loff_t off;
-	const uint64_t lo = le32_to_cpu(vadr->lo);
-	const uint64_t me = le16_to_cpu(vadr->me);
+	const uint64_t lo = voluta_le32_to_cpu(vadr->lo);
+	const uint64_t me = voluta_le16_to_cpu(vadr->me);
 	const uint64_t hi = vadr->hi;
 
 	if ((lo == UINT32_MAX) && (me == UINT16_MAX) && (hi == UINT8_MAX)) {
@@ -351,7 +356,7 @@ void voluta_vaddr64_set(struct voluta_vaddr64 *vadr,
 	const uint64_t vtype = (uint64_t)vaddr->vtype;
 
 	if (!vaddr_isnull(vaddr)) {
-		vadr->off_vtype = cpu_to_le64((off << 8) | (vtype & 0xFF));
+		vadr->off_vtype = voluta_cpu_to_le64((off << 8) | (vtype & 0xFF));
 	} else {
 		vadr->off_vtype = 0;
 	}
@@ -360,7 +365,7 @@ void voluta_vaddr64_set(struct voluta_vaddr64 *vadr,
 void voluta_vaddr64_parse(const struct voluta_vaddr64 *vadr,
                           struct voluta_vaddr *vaddr)
 {
-	const uint64_t off_vtype = le64_to_cpu(vadr->off_vtype);
+	const uint64_t off_vtype = voluta_le64_to_cpu(vadr->off_vtype);
 
 	if (off_vtype != 0) {
 		vaddr_setup(vaddr, off_vtype & 0xFF, (loff_t)(off_vtype >> 8));
@@ -522,5 +527,57 @@ void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
 		s++;
 	}
 	*t = '\0';
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+uint16_t voluta_cpu_to_le16(uint16_t n)
+{
+	return htole16(n);
+}
+
+uint16_t voluta_le16_to_cpu(uint16_t n)
+{
+	return le16toh(n);
+}
+
+uint32_t voluta_cpu_to_le32(uint32_t n)
+{
+	return htole32(n);
+}
+
+uint32_t voluta_le32_to_cpu(uint32_t n)
+{
+	return le32toh(n);
+}
+
+uint64_t voluta_cpu_to_le64(uint64_t n)
+{
+	return htole64(n);
+}
+
+uint64_t voluta_le64_to_cpu(uint64_t n)
+{
+	return le64toh(n);
+}
+
+uint64_t voluta_cpu_to_ino(ino_t ino)
+{
+	return voluta_cpu_to_le64(ino);
+}
+
+ino_t voluta_ino_to_cpu(uint64_t ino)
+{
+	return (ino_t)voluta_le64_to_cpu(ino);
+}
+
+int64_t voluta_cpu_to_off(loff_t off)
+{
+	return (int64_t)voluta_cpu_to_le64((uint64_t)off);
+}
+
+loff_t voluta_off_to_cpu(int64_t off)
+{
+	return (loff_t)voluta_le64_to_cpu((uint64_t)off);
 }
 

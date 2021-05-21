@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-3.0-or-later */
 /*
  * This file is part of libvoluta
  *
@@ -12,19 +13,12 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
- *
  */
-#ifndef VOLUTA_VOLUTA_H_
-#define VOLUTA_VOLUTA_H_
+#ifndef VOLUTA_INIT_H_
+#define VOLUTA_INIT_H_
 
-#include <stddef.h>
-#include <stdint.h>
-#include <voluta/infra.h>
-#include <voluta/defs.h>
-#include <voluta/core.h>
-#include <voluta/extern.h>
-#include <voluta/ioctls.h>
+int voluta_init_lib(void); /* TODO: have fini_lib */
 
-#endif /* VOLUTA_VOLUTA_H_ */
+int voluta_init_gcrypt(void);
 
-
+#endif /* VOLUTA_INIT_H_ */

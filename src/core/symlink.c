@@ -18,7 +18,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 
@@ -85,17 +87,17 @@ static int setup_symval_info(struct voluta_symval_info *svi,
 
 static ino_t lnv_parent(const struct voluta_lnk_value *lnv)
 {
-	return ino_to_cpu(lnv->lv_parent);
+	return voluta_ino_to_cpu(lnv->lv_parent);
 }
 
 static void lnv_set_parent(struct voluta_lnk_value *lnv, ino_t parent)
 {
-	lnv->lv_parent = cpu_to_ino(parent);
+	lnv->lv_parent = voluta_cpu_to_ino(parent);
 }
 
 static void lnv_set_length(struct voluta_lnk_value *lnv, size_t length)
 {
-	lnv->lv_length = cpu_to_le16((uint16_t)length);
+	lnv->lv_length = voluta_cpu_to_le16((uint16_t)length);
 }
 
 static const void *lnv_value(const struct voluta_lnk_value *lnv)

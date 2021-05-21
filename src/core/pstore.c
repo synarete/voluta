@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 

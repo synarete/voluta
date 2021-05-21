@@ -20,123 +20,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 
-static int g_libvoluta_init;
-
-static int errno_or_errnum(int errnum)
-{
-	return (errno > 0) ? -errno : -abs(errnum);
-}
-
-static int check_sysconf(void)
-{
-	long val;
-	long page_shift = 0;
-	const long page_size_min = VOLUTA_PAGE_SIZE;
-	const long page_shift_min = VOLUTA_PAGE_SHIFT;
-	const long page_shift_max = VOLUTA_PAGE_SHIFT_MAX;
-	const long cl_size_min = VOLUTA_CACHELINE_SIZE;
-
-	errno = 0;
-	val = (long)voluta_sc_phys_pages();
-	if (val <= 0) {
-		return errno_or_errnum(ENOMEM);
-	}
-	val = (long)voluta_sc_avphys_pages();
-	if (val <= 0) {
-		return errno_or_errnum(ENOMEM);
-	}
-	val = (long)voluta_sc_l1_dcache_linesize();
-	if ((val != cl_size_min) || (val % cl_size_min)) {
-		return errno_or_errnum(EOPNOTSUPP);
-	}
-	val = (long)voluta_sc_page_size();
-	if ((val < page_size_min) || (val % page_size_min)) {
-		return errno_or_errnum(EOPNOTSUPP);
-	}
-	for (long shift = page_shift_min; shift <= page_shift_max; ++shift) {
-		if (val == (1L << shift)) {
-			page_shift = val;
-			break;
-		}
-	}
-	if (page_shift == 0) {
-		return -EOPNOTSUPP;
-	}
-	return 0;
-}
-
-static int check_system_page_size(void)
-{
-	long page_size;
-	const size_t page_shift[] = { 12, 13, 14, 16 };
-
-	page_size = voluta_sc_page_size();
-	if (page_size > VOLUTA_BK_SIZE) {
-		return -EOPNOTSUPP;
-	}
-	for (size_t i = 0; i < ARRAY_SIZE(page_shift); ++i) {
-		if (page_size == (1L << page_shift[i])) {
-			return 0;
-		}
-	}
-	return -EOPNOTSUPP;
-}
-
-static int check_proc_rlimits(void)
-{
-	int err;
-	struct rlimit rlim;
-
-	err = voluta_sys_getrlimit(RLIMIT_AS, &rlim);
-	if (err) {
-		return err;
-	}
-	if (rlim.rlim_cur < VOLUTA_MEGA) {
-		return -ENOMEM;
-	}
-	err = voluta_sys_getrlimit(RLIMIT_NOFILE, &rlim);
-	if (err) {
-		return err;
-	}
-	if (rlim.rlim_cur < 64) {
-		return -EMFILE;
-	}
-	return 0;
-}
-
-int voluta_lib_init(void)
-{
-	int err;
-
-	voluta_guarantee_persistent_format();
-
-	if (g_libvoluta_init) {
-		return 0;
-	}
-	err = check_sysconf();
-	if (err) {
-		return err;
-	}
-	err = check_system_page_size();
-	if (err) {
-		return err;
-	}
-	err = check_proc_rlimits();
-	if (err) {
-		return err;
-	}
-	err = voluta_init_gcrypt();
-	if (err) {
-		return err;
-	}
-	voluta_burnstack();
-	g_libvoluta_init = 1;
-
-	return 0;
-}
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
@@ -178,57 +66,57 @@ static bool hash512_isequal(const struct voluta_hash512 *hash,
 static void kdf_to_cpu(const struct voluta_kdf_desc *kd_le,
                        struct voluta_kdf_desc *kd)
 {
-	kd->kd_iterations = le32_to_cpu(kd_le->kd_iterations);
-	kd->kd_algo = le32_to_cpu(kd_le->kd_algo);
-	kd->kd_subalgo = le16_to_cpu(kd_le->kd_subalgo);
-	kd->kd_salt_md = le16_to_cpu(kd_le->kd_salt_md);
+	kd->kd_iterations = voluta_le32_to_cpu(kd_le->kd_iterations);
+	kd->kd_algo = voluta_le32_to_cpu(kd_le->kd_algo);
+	kd->kd_subalgo = voluta_le16_to_cpu(kd_le->kd_subalgo);
+	kd->kd_salt_md = voluta_le16_to_cpu(kd_le->kd_salt_md);
 }
 
 static void cpu_to_kdf(const struct voluta_kdf_desc *kd,
                        struct voluta_kdf_desc *kd_le)
 {
-	kd_le->kd_iterations = cpu_to_le32(kd->kd_iterations);
-	kd_le->kd_algo = cpu_to_le32(kd->kd_algo);
-	kd_le->kd_subalgo = cpu_to_le16(kd->kd_subalgo);
-	kd_le->kd_salt_md = cpu_to_le16(kd->kd_salt_md);
+	kd_le->kd_iterations = voluta_cpu_to_le32(kd->kd_iterations);
+	kd_le->kd_algo = voluta_cpu_to_le32(kd->kd_algo);
+	kd_le->kd_subalgo = voluta_cpu_to_le16(kd->kd_subalgo);
+	kd_le->kd_salt_md = voluta_cpu_to_le16(kd->kd_salt_md);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static uint64_t br_magic(const struct voluta_boot_record *br)
 {
-	return le64_to_cpu(br->br_magic);
+	return voluta_le64_to_cpu(br->br_magic);
 }
 
 static void br_set_magic(struct voluta_boot_record *br, uint64_t magic)
 {
-	br->br_magic = cpu_to_le64(magic);
+	br->br_magic = voluta_cpu_to_le64(magic);
 }
 
 static long br_version(const struct voluta_boot_record *br)
 {
-	return (long)le64_to_cpu(br->br_version);
+	return (long)voluta_le64_to_cpu(br->br_version);
 }
 
 static void br_set_version(struct voluta_boot_record *br, long version)
 {
-	br->br_version = cpu_to_le64((uint64_t)version);
+	br->br_version = voluta_cpu_to_le64((uint64_t)version);
 }
 
 enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br)
 {
-	return le32_to_cpu(br->br_type);
+	return voluta_le32_to_cpu(br->br_type);
 }
 
 static void br_set_type(struct voluta_boot_record *br,
                         enum voluta_ztype type)
 {
-	br->br_type = cpu_to_le32(type);
+	br->br_type = voluta_cpu_to_le32(type);
 }
 
 static enum voluta_brf br_flags(const struct voluta_boot_record *br)
 {
-	const uint32_t flags = le32_to_cpu(br->br_flags);
+	const uint32_t flags = voluta_le32_to_cpu(br->br_flags);
 
 	return (enum voluta_brf)flags;
 }
@@ -236,7 +124,7 @@ static enum voluta_brf br_flags(const struct voluta_boot_record *br)
 static void br_set_flags(struct voluta_boot_record *br,
                          enum voluta_brf f)
 {
-	br->br_flags = cpu_to_le32((uint32_t)f);
+	br->br_flags = voluta_cpu_to_le32((uint32_t)f);
 }
 
 static void br_add_flag(struct voluta_boot_record *br, enum voluta_brf f)
@@ -290,12 +178,12 @@ static void br_set_uuid(struct voluta_boot_record *br)
 
 size_t voluta_br_size(const struct voluta_boot_record *br)
 {
-	return le64_to_cpu(br->br_size);
+	return voluta_le64_to_cpu(br->br_size);
 }
 
 void voluta_br_set_size(struct voluta_boot_record *br, size_t size)
 {
-	br->br_size = cpu_to_le64(size);
+	br->br_size = voluta_cpu_to_le64(size);
 }
 
 static void br_kdf(const struct voluta_boot_record *br,
@@ -314,19 +202,19 @@ static void br_set_kdf(struct voluta_boot_record *br,
 
 static uint32_t br_chiper_algo(const struct voluta_boot_record *br)
 {
-	return le32_to_cpu(br->br_chiper_algo);
+	return voluta_le32_to_cpu(br->br_chiper_algo);
 }
 
 static uint32_t br_chiper_mode(const struct voluta_boot_record *br)
 {
-	return le32_to_cpu(br->br_chiper_mode);
+	return voluta_le32_to_cpu(br->br_chiper_mode);
 }
 
 static void br_set_cipher(struct voluta_boot_record *br,
                           uint32_t cipher_algo, uint32_t cipher_mode)
 {
-	br->br_chiper_algo = cpu_to_le32(cipher_algo);
-	br->br_chiper_mode = cpu_to_le32(cipher_mode);
+	br->br_chiper_algo = voluta_cpu_to_le32(cipher_algo);
+	br->br_chiper_mode = voluta_cpu_to_le32(cipher_mode);
 }
 
 void voluta_br_crypt_params(const struct voluta_boot_record *br,
@@ -502,12 +390,12 @@ static bool sb_has_pass_hash(const struct voluta_super_block *sb,
 
 void voluta_sb_set_birth_time(struct voluta_super_block *sb, time_t btime)
 {
-	sb->sb_birth_time = cpu_to_le64((uint64_t)btime);
+	sb->sb_birth_time = voluta_cpu_to_le64((uint64_t)btime);
 }
 
 void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count)
 {
-	sb->sb_ag_count = cpu_to_le64(ag_count);
+	sb->sb_ag_count = voluta_cpu_to_le64(ag_count);
 }
 
 void voluta_sb_self_vaddr(const struct voluta_super_block *sb,

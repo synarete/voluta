@@ -17,11 +17,9 @@
 #include <sys/types.h>
 #include <sys/xattr.h>
 #include <linux/xattr.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <string.h>
-#include <errno.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 
@@ -109,22 +107,22 @@ xe_view_of(const struct voluta_xattr_entry *xe)
 
 static size_t xe_name_len(const struct voluta_xattr_entry *xe)
 {
-	return le16_to_cpu(xe->xe_name_len);
+	return voluta_le16_to_cpu(xe->xe_name_len);
 }
 
 static void xe_set_name_len(struct voluta_xattr_entry *xe, size_t name_len)
 {
-	xe->xe_name_len = cpu_to_le16((uint16_t)name_len);
+	xe->xe_name_len = voluta_cpu_to_le16((uint16_t)name_len);
 }
 
 static size_t xe_value_size(const struct voluta_xattr_entry *xe)
 {
-	return le16_to_cpu(xe->xe_value_size);
+	return voluta_le16_to_cpu(xe->xe_value_size);
 }
 
 static void xe_set_value_size(struct voluta_xattr_entry *xe, size_t value_size)
 {
-	xe->xe_value_size = cpu_to_le16((uint16_t)value_size);
+	xe->xe_value_size = voluta_cpu_to_le16((uint16_t)value_size);
 }
 
 static char *xe_name(const struct voluta_xattr_entry *xe)
@@ -244,22 +242,22 @@ static int xe_verify(const struct voluta_xattr_entry *xe,
 
 static ino_t xan_ino(const struct voluta_xattr_node *xan)
 {
-	return ino_to_cpu(xan->xa_ino);
+	return voluta_ino_to_cpu(xan->xa_ino);
 }
 
 static void xan_set_ino(struct voluta_xattr_node *xan, ino_t ino)
 {
-	xan->xa_ino = cpu_to_ino(ino);
+	xan->xa_ino = voluta_cpu_to_ino(ino);
 }
 
 static size_t xan_nents(const struct voluta_xattr_node *xan)
 {
-	return le16_to_cpu(xan->xa_nents);
+	return voluta_le16_to_cpu(xan->xa_nents);
 }
 
 static void xan_set_nents(struct voluta_xattr_node *xan, size_t n)
 {
-	xan->xa_nents = cpu_to_le16((uint16_t)n);
+	xan->xa_nents = voluta_cpu_to_le16((uint16_t)n);
 }
 
 static void xan_inc_nents(struct voluta_xattr_node *xan, size_t n)
@@ -355,12 +353,12 @@ static struct voluta_xattr_ispec *xai_of(const struct voluta_inode_info *ii)
 
 static size_t xai_nents(const struct voluta_xattr_ispec *xai)
 {
-	return le16_to_cpu(xai->xa_nents);
+	return voluta_le16_to_cpu(xai->xa_nents);
 }
 
 static void xai_set_nents(struct voluta_xattr_ispec *xai, size_t n)
 {
-	xai->xa_nents = cpu_to_le16((uint16_t)n);
+	xai->xa_nents = voluta_cpu_to_le16((uint16_t)n);
 }
 
 static void xai_inc_nents(struct voluta_xattr_ispec *xai, size_t n)

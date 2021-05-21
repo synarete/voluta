@@ -22,6 +22,9 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 struct voluta_spalloc_ctx {

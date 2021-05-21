@@ -16,12 +16,20 @@
  */
 #define _GNU_SOURCE 1
 #include <linux/limits.h>
+#include <sys/types.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <limits.h>
-#include <gcrypt.h>
-#include "libvoluta.h"
+
+#include <voluta/infra.h>
+#include <voluta/defs.h>
+#include <voluta/ioctls.h>
+#include <voluta/core/types.h>
+#include <voluta/core/init.h>
+
 
 #define BITS_SIZE(a)    (CHAR_BIT * sizeof(a))
 
@@ -286,7 +294,7 @@ static void guarantee_external_constants(void)
 	REQUIRE_EQ(VOLUTA_KDF_SCRYPT, GCRY_KDF_SCRYPT);
 }
 
-void voluta_guarantee_persistent_format(void)
+static void guarantee_sane(void)
 {
 	guarantee_fundamental_types_size();
 	guarantee_persistent_types_size();
@@ -294,4 +302,123 @@ void voluta_guarantee_persistent_format(void)
 	guarantee_persistent_types_alignment();
 	guarantee_defs_consistency();
 	guarantee_external_constants();
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
+static int g_libvoluta_init;
+
+
+static int errno_or_errnum(int errnum)
+{
+	return (errno > 0) ? -errno : -abs(errnum);
+}
+
+static int check_sysconf(void)
+{
+	long val;
+	long page_shift = 0;
+	const long page_size_min = VOLUTA_PAGE_SIZE;
+	const long page_shift_min = VOLUTA_PAGE_SHIFT;
+	const long page_shift_max = VOLUTA_PAGE_SHIFT_MAX;
+	const long cl_size_min = VOLUTA_CACHELINE_SIZE;
+
+	errno = 0;
+	val = (long)voluta_sc_phys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
+	val = (long)voluta_sc_avphys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
+	val = (long)voluta_sc_l1_dcache_linesize();
+	if ((val != cl_size_min) || (val % cl_size_min)) {
+		return errno_or_errnum(EOPNOTSUPP);
+	}
+	val = (long)voluta_sc_page_size();
+	if ((val < page_size_min) || (val % page_size_min)) {
+		return errno_or_errnum(EOPNOTSUPP);
+	}
+	for (long shift = page_shift_min; shift <= page_shift_max; ++shift) {
+		if (val == (1L << shift)) {
+			page_shift = val;
+			break;
+		}
+	}
+	if (page_shift == 0) {
+		return -EOPNOTSUPP;
+	}
+	return 0;
+}
+
+static int check_system_page_size(void)
+{
+	long page_size;
+	const size_t page_shift[] = { 12, 13, 14, 16 };
+
+	page_size = voluta_sc_page_size();
+	if (page_size > VOLUTA_BK_SIZE) {
+		return -EOPNOTSUPP;
+	}
+	for (size_t i = 0; i < VOLUTA_ARRAY_SIZE(page_shift); ++i) {
+		if (page_size == (1L << page_shift[i])) {
+			return 0;
+		}
+	}
+	return -EOPNOTSUPP;
+}
+
+static int check_proc_rlimits(void)
+{
+	int err;
+	struct rlimit rlim;
+
+	err = voluta_sys_getrlimit(RLIMIT_AS, &rlim);
+	if (err) {
+		return err;
+	}
+	if (rlim.rlim_cur < VOLUTA_MEGA) {
+		return -ENOMEM;
+	}
+	err = voluta_sys_getrlimit(RLIMIT_NOFILE, &rlim);
+	if (err) {
+		return err;
+	}
+	if (rlim.rlim_cur < 64) {
+		return -EMFILE;
+	}
+	return 0;
+}
+
+
+int voluta_init_lib(void)
+{
+	int err;
+
+	guarantee_sane();
+	if (g_libvoluta_init) {
+		return 0;
+	}
+	err = check_sysconf();
+	if (err) {
+		return err;
+	}
+	err = check_system_page_size();
+	if (err) {
+		return err;
+	}
+	err = check_proc_rlimits();
+	if (err) {
+		return err;
+	}
+	err = voluta_init_gcrypt();
+	if (err) {
+		return err;
+	}
+	voluta_burnstack();
+
+	g_libvoluta_init = 1;
+
+	return 0;
 }

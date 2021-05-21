@@ -27,17 +27,11 @@
 #include <endian.h>
 #include <errno.h>
 #include <voluta/infra.h>
+#include <voluta/core.h>
 #include <voluta/voluta.h>
-#include "aliases.h"
-#include "inlines.h"
 
 struct statvfs;
 struct fiemap;
-
-
-/* non-valid ("NIL") allocation-group index */
-#define VOLUTA_AG_INDEX_NULL            (0UL - 1)
-#define VOLUTA_HS_INDEX_NULL            (0UL - 1)
 
 
 struct voluta_ag_range {
@@ -310,94 +304,6 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op,
                     ino_t ino, char *str, size_t lim);
 
-/* address */
-voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
-
-voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
-
-voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
-
-
-bool voluta_vtype_isspmap(enum voluta_vtype vtype);
-
-bool voluta_vtype_isdata(enum voluta_vtype vtype);
-
-bool voluta_vtype_ismeta(enum voluta_vtype vtype);
-
-size_t voluta_vtype_size(enum voluta_vtype vtype);
-
-ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
-
-size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
-
-
-const struct voluta_vaddr *voluta_vaddr_none(void);
-
-void voluta_vaddr_reset(struct voluta_vaddr *vaddr);
-
-bool voluta_vaddr_isnull(const struct voluta_vaddr *vaddr);
-
-bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr);
-
-bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr);
-
-void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr,
-                           voluta_index_t hs_index);
-
-void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr,
-                           voluta_index_t ag_index);
-
-void voluta_vaddr_of_blob(struct voluta_vaddr *vaddr, voluta_index_t ag_index);
-
-void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
-                        voluta_index_t ag_index, size_t bn, size_t kbn);
-
-
-void voluta_vaddr56_set(struct voluta_vaddr56 *va, loff_t off);
-
-loff_t voluta_vaddr56_parse(const struct voluta_vaddr56 *va);
-
-void voluta_vaddr64_set(struct voluta_vaddr64 *va,
-                        const struct voluta_vaddr *vaddr);
-
-void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
-                          struct voluta_vaddr *vaddr);
-
-
-const struct voluta_baddr *voluta_baddr_none(void);
-
-void voluta_baddr_reset(struct voluta_baddr *baddr);
-
-void voluta_baddr_create(struct voluta_baddr *baddr, loff_t size);
-
-void voluta_baddr_copyto(const struct voluta_baddr *baddr,
-                         struct voluta_baddr *other);
-
-bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
-                          const struct voluta_baddr *other);
-
-uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr);
-
-void voluta_blobid_copyto(const struct voluta_blobid *blobid,
-                          struct voluta_blobid *other);
-
-bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
-                           const struct voluta_blobid *other);
-
-
-int voluta_check_volume_size(loff_t size);
-
-int voluta_check_address_space(loff_t size);
-
-int voluta_calc_volume_space(loff_t volume_capacity,
-                             loff_t *out_capacity_size,
-                             loff_t *out_address_space);
-
-void voluta_uuid_generate(struct voluta_uuid *uu);
-
-void voluta_uuid_copyto(const struct voluta_uuid *u1, struct voluta_uuid *u2);
-
-void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb);
 
 /* vstore */
 int voluta_verify_ino(ino_t ino);
@@ -475,11 +381,6 @@ void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 
 
 
-void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
-                         struct voluta_vaddr *other);
-
-void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
-                        enum voluta_vtype vtype, loff_t off);
 
 int voluta_adjust_super(struct voluta_sb_info *sbi);
 
@@ -1058,9 +959,7 @@ int voluta_pstore_zero_range(const struct voluta_pstore *pstore,
 int voluta_calc_vsize(loff_t size_cur, loff_t size_want, loff_t *out_size);
 
 /* crypto */
-int voluta_init_gcrypt(void);
 
-void voluta_fill_random_ascii(char *str, size_t len);
 
 int voluta_crypto_init(struct voluta_crypto *crypto);
 
@@ -1124,91 +1023,6 @@ void voluta_krec_kivam_of(const struct voluta_keys_record *keys,
                           struct voluta_kivam *out_kivam);
 
 
-/* cache */
-int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool);
-
-void voluta_cache_fini(struct voluta_cache *cache);
-
-void voluta_cache_relax(struct voluta_cache *cache, int flags);
-
-void voluta_cache_drop(struct voluta_cache *cache);
-
-void voluta_cache_shrink_once(struct voluta_cache *cache);
-
-bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags);
-
-bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
-                                const struct voluta_inode_info *ii, int flags);
-
-void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
-                               struct voluta_dset *dset);
-
-struct voluta_bu_info *
-voluta_cache_lookup_bui(struct voluta_cache *cache, voluta_lba_t lba);
-
-struct voluta_bu_info *
-voluta_cache_spawn_bui(struct voluta_cache *cache, voluta_lba_t lba);
-
-void voluta_cache_forget_bui(struct voluta_cache *cache,
-                             struct voluta_bu_info *bui);
-
-struct voluta_inode_info *
-voluta_cache_spawn_ii(struct voluta_cache *cache,
-                      const struct voluta_iaddr *iaddr);
-
-void voulta_cache_forget_ii(struct voluta_cache *cache,
-                            struct voluta_inode_info *ii);
-
-struct voluta_inode_info *
-voluta_cache_lookup_ii(struct voluta_cache *cache,
-                       const struct voluta_iaddr *iaddr);
-
-struct voluta_vnode_info *
-voluta_cache_lookup_vi(struct voluta_cache *cache,
-                       const struct voluta_vaddr *vaddr);
-
-struct voluta_vnode_info *
-voluta_cache_spawn_vi(struct voluta_cache *cache,
-                      const struct voluta_vaddr *vaddr);
-
-void voulta_cache_forget_vi(struct voluta_cache *cache,
-                            struct voluta_vnode_info *vi);
-
-void voluta_vi_dirtify(struct voluta_vnode_info *vi);
-
-void voluta_vi_undirtify(struct voluta_vnode_info *vi);
-
-void voluta_ii_dirtify(struct voluta_inode_info *ii);
-
-void voluta_ii_undirtify(struct voluta_inode_info *ii);
-
-bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
-
-bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
-
-void voluta_vi_attach_to(struct voluta_vnode_info *vi,
-                         struct voluta_bu_info *bui);
-
-void voluta_vi_incref(struct voluta_vnode_info *vi);
-
-void voluta_vi_decref(struct voluta_vnode_info *vi);
-
-size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi);
-
-
-void voluta_mark_visible(const struct voluta_vnode_info *vi);
-
-void voluta_mark_opaque_at(struct voluta_bu_info *bui,
-                           const struct voluta_vaddr *vaddr);
-
-bool voluta_is_visible(const struct voluta_vnode_info *vi);
-
-struct voluta_hspace_info *
-voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
-
-struct voluta_agroup_info *
-voluta_agi_from_vi(const struct voluta_vnode_info *vi);
-
 /* fuseq */
 int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi);
 
@@ -1220,54 +1034,6 @@ int voluta_fuseq_exec(struct voluta_fuseq *fq);
 
 void voluta_fuseq_term(struct voluta_fuseq *fq);
 
-/* mpool */
-void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);
-
-void voluta_mpool_fini(struct voluta_mpool *mpool);
-
-struct voluta_bu_info *voluta_malloc_bui(struct voluta_mpool *mpool);
-
-void voluta_free_bui(struct voluta_mpool *mpool, struct voluta_bu_info *bui);
-
-struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool);
-
-void voluta_free_vi(struct voluta_mpool *mpool, struct voluta_vnode_info *vi);
-
-struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
-
-void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
-
-/* repo */
-int voluta_repo_init(struct voluta_repo *repo,
-                     struct voluta_qalloc *qalloc);
-
-void voluta_repo_fini(struct voluta_repo *repo);
-
-int voluta_repo_open(struct voluta_repo *repo, const char *path);
-
-int voluta_repo_close(struct voluta_repo *repo);
-
-int voluta_repo_format(struct voluta_repo *repo);
-
-int voluta_repo_create_blob(struct voluta_repo *repo,
-                            const struct voluta_baddr *baddr,
-                            struct voluta_blob_info **out_bli);
-
-int voluta_repo_fetch_blob(struct voluta_repo *repo,
-                           const struct voluta_baddr *baddr,
-                           struct voluta_blob_info **out_bli);
-
-void voluta_repo_forget_blob(struct voluta_repo *repo,
-                             struct voluta_blob_info *bli);
-
-int voluta_resolve_fiovec_at(const struct voluta_blob_info *bli,
-                             loff_t off, size_t len,
-                             struct voluta_fiovec *fiov);
-
-
-
-/* guarantee */
-void voluta_guarantee_persistent_format(void);
 
 #endif /* LIBVOLUTA_H_ */
 

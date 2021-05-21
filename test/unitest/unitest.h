@@ -39,6 +39,8 @@
 
 
 #define VOLUTA_LIBPRIVATE 1
+#include <voluta/core/private.h>
+
 #include <libvoluta.h>
 
 #ifndef VOLUTA_UNITEST

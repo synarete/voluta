@@ -24,6 +24,9 @@
 #include <errno.h>
 #include <limits.h>
 #include <time.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 

@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <gcrypt.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define VOLUTA_SECMEM_SIZE      (64L * VOLUTA_KILO)
@@ -486,34 +488,6 @@ out:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void do_randomize(void *buf, size_t len, bool very_strong)
-{
-	const enum gcry_random_level random_level =
-	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
-
-	gcry_randomize(buf, len, random_level);
-}
-
-void voluta_fill_random_ascii(char *str, size_t len)
-{
-	int nrands = 0;
-	int print_ch;
-	int rands[64];
-	const int base = 33;
-	const int last = 126;
-
-	for (size_t i = 0; i < len; ++i) {
-		if (nrands == 0) {
-			nrands = ARRAY_SIZE(rands);
-			do_randomize(rands, sizeof(rands), false);
-		}
-		print_ch = (abs(rands[--nrands]) % (last - base)) + base;
-		str[i] = (char)print_ch;
-	}
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
 int voluta_crypto_init(struct voluta_crypto *crypto)
 {
 	int err;
@@ -540,6 +514,14 @@ void voluta_crypto_fini(struct voluta_crypto *crypto)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void do_randomize(void *buf, size_t len, bool very_strong)
+{
+	const enum gcry_random_level random_level =
+	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
+
+	gcry_randomize(buf, len, random_level);
+}
 
 static void iv_clone(const struct voluta_iv *iv, struct voluta_iv *other)
 {
@@ -598,23 +580,23 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 
 static uint32_t kr_cipher_algo(const struct voluta_keys_record *kr)
 {
-	return le32_to_cpu(kr->kr_cipher_algo);
+	return voluta_le32_to_cpu(kr->kr_cipher_algo);
 }
 
 static void
 kr_set_cipher_algo(struct voluta_keys_record *kr, uint32_t algo)
 {
-	kr->kr_cipher_algo = cpu_to_le32(algo);
+	kr->kr_cipher_algo = voluta_cpu_to_le32(algo);
 }
 
 static uint32_t kr_cipher_mode(const struct voluta_keys_record *kr)
 {
-	return le32_to_cpu(kr->kr_cipher_mode);
+	return voluta_le32_to_cpu(kr->kr_cipher_mode);
 }
 
 static void kr_set_cipher_mode(struct voluta_keys_record *kr, uint32_t mode)
 {
-	kr->kr_cipher_mode = cpu_to_le32(mode);
+	kr->kr_cipher_mode = voluta_cpu_to_le32(mode);
 }
 
 void voluta_krec_setup(struct voluta_keys_record *kr)

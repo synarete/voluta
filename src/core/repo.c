@@ -19,10 +19,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include "libvoluta.h"
 
+#include <voluta/infra.h>
+#include <voluta/core/address.h>
+#include <voluta/core/repo.h>
+#include <voluta/core/private.h>
 
 static voluta_index_t baddr_to_index(const struct voluta_baddr *baddr,
                                      const voluta_index_t index_max)

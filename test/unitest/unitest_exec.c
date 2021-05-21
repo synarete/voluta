@@ -263,7 +263,7 @@ static const char *ut_make_passwd(struct voluta_passphrase *pp)
 	voluta_memzero(pp, sizeof(*pp));
 
 	pp->passlen = sizeof(pp->pass) - 1;
-	voluta_fill_random_ascii((char *)pp->pass, pp->passlen);
+	voluta_random_ascii((char *)pp->pass, pp->passlen);
 
 	return (const char *)(pp->pass);
 }

@@ -25,6 +25,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 /*
@@ -49,16 +52,16 @@
 static void ts_to_cpu(const struct voluta_timespec *vts, struct timespec *ts)
 {
 	if (ts != NULL) {
-		ts->tv_sec = (time_t)le64_to_cpu(vts->t_sec);
-		ts->tv_nsec = (long)le64_to_cpu(vts->t_nsec);
+		ts->tv_sec = (time_t)voluta_le64_to_cpu(vts->t_sec);
+		ts->tv_nsec = (long)voluta_le64_to_cpu(vts->t_nsec);
 	}
 }
 
 static void cpu_to_ts(const struct timespec *ts, struct voluta_timespec *vts)
 {
 	if (ts != NULL) {
-		vts->t_sec = cpu_to_le64((uint64_t)ts->tv_sec);
-		vts->t_nsec = cpu_to_le64((uint64_t)ts->tv_nsec);
+		vts->t_sec = voluta_cpu_to_le64((uint64_t)ts->tv_sec);
+		vts->t_nsec = voluta_cpu_to_le64((uint64_t)ts->tv_nsec);
 	}
 }
 
@@ -78,102 +81,102 @@ static void assign_xts(struct statx_timestamp *xts, const struct timespec *ts)
 
 ino_t voluta_inode_ino(const struct voluta_inode *inode)
 {
-	return cpu_to_ino(inode->i_ino);
+	return voluta_cpu_to_ino(inode->i_ino);
 }
 
 static void inode_set_ino(struct voluta_inode *inode, ino_t ino)
 {
-	inode->i_ino = ino_to_cpu(ino);
+	inode->i_ino = voluta_ino_to_cpu(ino);
 }
 
 static ino_t inode_parent(const struct voluta_inode *inode)
 {
-	return cpu_to_ino(inode->i_parent);
+	return voluta_cpu_to_ino(inode->i_parent);
 }
 
 static void inode_set_parent(struct voluta_inode *inode, ino_t ino)
 {
-	inode->i_parent = cpu_to_ino(ino);
+	inode->i_parent = voluta_cpu_to_ino(ino);
 }
 
 static uid_t inode_uid(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_uid);
+	return voluta_le32_to_cpu(inode->i_uid);
 }
 
 static void inode_set_uid(struct voluta_inode *inode, uid_t uid)
 {
-	inode->i_uid = cpu_to_le32(uid);
+	inode->i_uid = voluta_cpu_to_le32(uid);
 }
 
 static gid_t inode_gid(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_gid);
+	return voluta_le32_to_cpu(inode->i_gid);
 }
 
 static void inode_set_gid(struct voluta_inode *inode, uid_t gid)
 {
-	inode->i_gid = cpu_to_le32(gid);
+	inode->i_gid = voluta_cpu_to_le32(gid);
 }
 
 static mode_t inode_mode(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_mode);
+	return voluta_le32_to_cpu(inode->i_mode);
 }
 
 static void inode_set_mode(struct voluta_inode *inode, mode_t mode)
 {
-	inode->i_mode = cpu_to_le32(mode);
+	inode->i_mode = voluta_cpu_to_le32(mode);
 }
 
 static loff_t inode_size(const struct voluta_inode *inode)
 {
-	return off_to_cpu(inode->i_size);
+	return voluta_off_to_cpu(inode->i_size);
 }
 
 static void inode_set_size(struct voluta_inode *inode, loff_t off)
 {
-	inode->i_size = cpu_to_off(off);
+	inode->i_size = voluta_cpu_to_off(off);
 }
 
 static loff_t inode_span(const struct voluta_inode *inode)
 {
-	return off_to_cpu(inode->i_span);
+	return voluta_off_to_cpu(inode->i_span);
 }
 
 static void inode_set_span(struct voluta_inode *inode, loff_t off)
 {
-	inode->i_span = cpu_to_off(off);
+	inode->i_span = voluta_cpu_to_off(off);
 }
 
 static blkcnt_t inode_blocks(const struct voluta_inode *inode)
 {
-	return (blkcnt_t)le64_to_cpu(inode->i_blocks);
+	return (blkcnt_t)voluta_le64_to_cpu(inode->i_blocks);
 }
 
 static void inode_set_blocks(struct voluta_inode *inode, blkcnt_t blocks)
 {
-	inode->i_blocks = cpu_to_le64((uint64_t)blocks);
+	inode->i_blocks = voluta_cpu_to_le64((uint64_t)blocks);
 }
 
 static nlink_t inode_nlink(const struct voluta_inode *inode)
 {
-	return le64_to_cpu(inode->i_nlink);
+	return voluta_le64_to_cpu(inode->i_nlink);
 }
 
 static void inode_set_nlink(struct voluta_inode *inode, nlink_t nlink)
 {
-	inode->i_nlink = cpu_to_le64(nlink);
+	inode->i_nlink = voluta_cpu_to_le64(nlink);
 }
 
 static long inode_revision(const struct voluta_inode *inode)
 {
-	return (long)le64_to_cpu(inode->i_revision);
+	return (long)voluta_le64_to_cpu(inode->i_revision);
 }
 
 static void inode_set_revision(struct voluta_inode *inode, long r)
 {
-	inode->i_revision = cpu_to_le64((uint64_t)r);
+	inode->i_revision = voluta_cpu_to_le64((uint64_t)r);
 }
 
 static void inode_inc_revision(struct voluta_inode *inode)
@@ -183,13 +186,13 @@ static void inode_inc_revision(struct voluta_inode *inode)
 
 static enum voluta_inodef inode_flags(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_flags);
+	return voluta_le32_to_cpu(inode->i_flags);
 }
 
 static void inode_set_flags(struct voluta_inode *inode,
                             enum voluta_inodef flags)
 {
-	inode->i_flags = cpu_to_le32(flags);
+	inode->i_flags = voluta_cpu_to_le32(flags);
 }
 
 static bool inode_has_flags(struct voluta_inode *inode,
@@ -200,19 +203,19 @@ static bool inode_has_flags(struct voluta_inode *inode,
 
 static unsigned int inode_rdev_major(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_rdev_major);
+	return voluta_le32_to_cpu(inode->i_rdev_major);
 }
 
 static unsigned int inode_rdev_minor(const struct voluta_inode *inode)
 {
-	return le32_to_cpu(inode->i_rdev_minor);
+	return voluta_le32_to_cpu(inode->i_rdev_minor);
 }
 
 static void inode_set_rdev(struct voluta_inode *inode,
                            unsigned int maj, unsigned int min)
 {
-	inode->i_rdev_major = cpu_to_le32(maj);
-	inode->i_rdev_minor = cpu_to_le32(min);
+	inode->i_rdev_major = voluta_cpu_to_le32(maj);
+	inode->i_rdev_minor = voluta_cpu_to_le32(min);
 }
 
 static void inode_btime(const struct voluta_inode *inode, struct timespec *ts)

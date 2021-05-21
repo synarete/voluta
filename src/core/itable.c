@@ -22,6 +22,9 @@
 #include <stdbool.h>
 #include <dirent.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define ITNODE_ROOT_DEPTH 1
@@ -75,12 +78,12 @@ static void iaddr_copyto(const struct voluta_iaddr *iaddr,
 
 static ino_t ite_ino(const struct voluta_itable_entry *ite)
 {
-	return ino_to_cpu(ite->ino);
+	return voluta_ino_to_cpu(ite->ino);
 }
 
 static void ite_set_ino(struct voluta_itable_entry *ite, ino_t ino)
 {
-	ite->ino = cpu_to_ino(ino);
+	ite->ino = voluta_cpu_to_ino(ino);
 }
 
 static void ite_vaddr(const struct voluta_itable_entry *ite,
@@ -139,22 +142,22 @@ static void itn_reset_parent(struct voluta_itable_tnode *itn)
 
 static size_t itn_depth(const struct voluta_itable_tnode *itn)
 {
-	return le16_to_cpu(itn->it_depth);
+	return voluta_le16_to_cpu(itn->it_depth);
 }
 
 static void itn_set_depth(struct voluta_itable_tnode *itn, size_t depth)
 {
-	itn->it_depth = cpu_to_le16((uint16_t)depth);
+	itn->it_depth = voluta_cpu_to_le16((uint16_t)depth);
 }
 
 static size_t itn_nents(const struct voluta_itable_tnode *itn)
 {
-	return le16_to_cpu(itn->it_nents);
+	return voluta_le16_to_cpu(itn->it_nents);
 }
 
 static void itn_set_nents(struct voluta_itable_tnode *itn, size_t nents)
 {
-	itn->it_nents = cpu_to_le16((uint16_t)nents);
+	itn->it_nents = voluta_cpu_to_le16((uint16_t)nents);
 }
 
 static void itn_inc_nents(struct voluta_itable_tnode *itn)
@@ -169,7 +172,7 @@ static void itn_dec_nents(struct voluta_itable_tnode *itn)
 
 static size_t itn_nchilds(const struct voluta_itable_tnode *itn)
 {
-	return le16_to_cpu(itn->it_nchilds);
+	return voluta_le16_to_cpu(itn->it_nchilds);
 }
 
 static size_t itn_nchilds_max(const struct voluta_itable_tnode *itn)
@@ -180,7 +183,7 @@ static size_t itn_nchilds_max(const struct voluta_itable_tnode *itn)
 static void itn_set_nchilds(struct voluta_itable_tnode *itn, size_t nchilds)
 {
 	voluta_assert_le(nchilds, itn_nchilds_max(itn));
-	itn->it_nchilds = cpu_to_le16((uint16_t)nchilds);
+	itn->it_nchilds = voluta_cpu_to_le16((uint16_t)nchilds);
 }
 
 static void itn_inc_nchilds(struct voluta_itable_tnode *itn)

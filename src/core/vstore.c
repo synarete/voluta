@@ -15,23 +15,26 @@
  * GNU Lesser General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static uint32_t hdr_magic(const struct voluta_header *hdr)
 {
-	return le32_to_cpu(hdr->h_magic);
+	return voluta_le32_to_cpu(hdr->h_magic);
 }
 
 static void hdr_set_magic(struct voluta_header *hdr, uint32_t magic)
 {
-	hdr->h_magic = cpu_to_le32(magic);
+	hdr->h_magic = voluta_cpu_to_le32(magic);
 }
 
 static size_t hdr_size(const struct voluta_header *hdr)
 {
-	return le32_to_cpu(hdr->h_size);
+	return voluta_le32_to_cpu(hdr->h_size);
 }
 
 static size_t hdr_payload_size(const struct voluta_header *hdr)
@@ -41,7 +44,7 @@ static size_t hdr_payload_size(const struct voluta_header *hdr)
 
 static void hdr_set_size(struct voluta_header *hdr, size_t size)
 {
-	hdr->h_size = cpu_to_le32((uint32_t)size);
+	hdr->h_size = voluta_cpu_to_le32((uint32_t)size);
 }
 
 static enum voluta_vtype hdr_vtype(const struct voluta_header *hdr)
@@ -56,12 +59,12 @@ static void hdr_set_vtype(struct voluta_header *hdr, enum voluta_vtype vtype)
 
 static uint32_t hdr_csum(const struct voluta_header *hdr)
 {
-	return le32_to_cpu(hdr->h_csum);
+	return voluta_le32_to_cpu(hdr->h_csum);
 }
 
 static void hdr_set_csum(struct voluta_header *hdr, uint32_t csum)
 {
-	hdr->h_csum = cpu_to_le32(csum);
+	hdr->h_csum = voluta_cpu_to_le32(csum);
 }
 
 static const void *hdr_payload(const struct voluta_header *hdr)

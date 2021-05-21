@@ -21,11 +21,17 @@ nobase_include_HEADERS += voluta/infra/utility.h
 nobase_include_HEADERS += voluta/infra/version.h
 nobase_include_HEADERS += voluta/infra.h
 
+nobase_include_HEADERS += voluta/core/address.h
+nobase_include_HEADERS += voluta/core/cache.h
+nobase_include_HEADERS += voluta/core/init.h
+nobase_include_HEADERS += voluta/core/private.h
+nobase_include_HEADERS += voluta/core/repo.h
+nobase_include_HEADERS += voluta/core/types.h
+nobase_include_HEADERS += voluta/core.h
 
 nobase_include_HEADERS += voluta/defs.h
 nobase_include_HEADERS += voluta/extern.h
 nobase_include_HEADERS += voluta/ioctls.h
-nobase_include_HEADERS += voluta/types.h
 nobase_include_HEADERS += voluta/voluta.h
 
 noinst_HEADERS = config.h

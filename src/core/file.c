@@ -23,11 +23,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <stdint.h>
 #include <errno.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define STATICASSERT_NELEMS(x, y) \
@@ -295,12 +295,12 @@ static int fiovec_copy_splice(const struct voluta_fiovec *fiov_src,
 
 static size_t rtn_refcnt(const struct voluta_radix_tnode *rtn)
 {
-	return le64_to_cpu(rtn->r_refcnt);
+	return voluta_le64_to_cpu(rtn->r_refcnt);
 }
 
 static void rtn_set_refcnt(struct voluta_radix_tnode *rtn, size_t refcnt)
 {
-	rtn->r_refcnt = cpu_to_le64(refcnt);
+	rtn->r_refcnt = voluta_cpu_to_le64(refcnt);
 }
 
 static void rtn_inc_refcnt(struct voluta_radix_tnode *rtn)
@@ -317,32 +317,32 @@ static void rtn_dec_refcnt(struct voluta_radix_tnode *rtn)
 
 static ino_t rtn_ino(const struct voluta_radix_tnode *rtn)
 {
-	return ino_to_cpu(rtn->r_ino);
+	return voluta_ino_to_cpu(rtn->r_ino);
 }
 
 static void rtn_set_ino(struct voluta_radix_tnode *rtn, ino_t ino)
 {
-	rtn->r_ino = cpu_to_ino(ino);
+	rtn->r_ino = voluta_cpu_to_ino(ino);
 }
 
 static loff_t rtn_beg(const struct voluta_radix_tnode *rtn)
 {
-	return off_to_cpu(rtn->r_beg);
+	return voluta_off_to_cpu(rtn->r_beg);
 }
 
 static void rtn_set_beg(struct voluta_radix_tnode *rtn, loff_t beg)
 {
-	rtn->r_beg = cpu_to_off(beg);
+	rtn->r_beg = voluta_cpu_to_off(beg);
 }
 
 static loff_t rtn_end(const struct voluta_radix_tnode *rtn)
 {
-	return off_to_cpu(rtn->r_end);
+	return voluta_off_to_cpu(rtn->r_end);
 }
 
 static void rtn_set_end(struct voluta_radix_tnode *rtn, loff_t end)
 {
-	rtn->r_end = cpu_to_off(end);
+	rtn->r_end = voluta_cpu_to_off(end);
 }
 
 static size_t rtn_nchilds_max(const struct voluta_radix_tnode *rtn)

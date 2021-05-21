@@ -20,6 +20,9 @@
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 
@@ -27,12 +30,12 @@
 
 static voluta_index_t index_to_cpu(uint64_t index)
 {
-	return le64_to_cpu(index);
+	return voluta_le64_to_cpu(index);
 }
 
 static uint64_t cpu_to_index(voluta_index_t index)
 {
-	return cpu_to_le64(index);
+	return voluta_cpu_to_le64(index);
 }
 
 static bool vtype_ismeta(enum voluta_vtype vtype)
@@ -171,44 +174,44 @@ void voluta_usm_set_vaddr(struct voluta_uspace_map *usm,
 
 static size_t agr_used_meta(const struct voluta_ag_rec *agr)
 {
-	return le32_to_cpu(agr->ag_used_meta);
+	return voluta_le32_to_cpu(agr->ag_used_meta);
 }
 
 static void agr_set_used_meta(struct voluta_ag_rec *agr, size_t used_meta)
 {
-	agr->ag_used_meta = cpu_to_le32((uint32_t)used_meta);
+	agr->ag_used_meta = voluta_cpu_to_le32((uint32_t)used_meta);
 }
 
 static size_t agr_used_data(const struct voluta_ag_rec *agr)
 {
-	return le32_to_cpu(agr->ag_used_data);
+	return voluta_le32_to_cpu(agr->ag_used_data);
 }
 
 static void agr_set_used_data(struct voluta_ag_rec *agr, size_t used_data)
 {
-	agr->ag_used_data = cpu_to_le32((uint32_t)used_data);
+	agr->ag_used_data = voluta_cpu_to_le32((uint32_t)used_data);
 }
 
 static size_t agr_nfiles(const struct voluta_ag_rec *agr)
 {
-	return le32_to_cpu(agr->ag_nfiles);
+	return voluta_le32_to_cpu(agr->ag_nfiles);
 }
 
 static void agr_set_nfiles(struct voluta_ag_rec *agr, size_t nfiles)
 {
 	voluta_assert_lt(nfiles, UINT32_MAX / 2);
 
-	agr->ag_nfiles = cpu_to_le32((uint32_t)nfiles);
+	agr->ag_nfiles = voluta_cpu_to_le32((uint32_t)nfiles);
 }
 
 static enum voluta_agf agr_flags(const struct voluta_ag_rec *agr)
 {
-	return le32_to_cpu(agr->ag_flags);
+	return voluta_le32_to_cpu(agr->ag_flags);
 }
 
 static void agr_set_flags(struct voluta_ag_rec *agr, enum voluta_agf f)
 {
-	agr->ag_flags = cpu_to_le32((uint32_t)f);
+	agr->ag_flags = voluta_cpu_to_le32((uint32_t)f);
 }
 
 static bool agr_has_flags(const struct voluta_ag_rec *agr,
@@ -389,13 +392,13 @@ static void hsm_set_index(struct voluta_hspace_map *hsm,
 
 static enum voluta_hsf hsm_flags(const struct voluta_hspace_map *hsm)
 {
-	return le32_to_cpu(hsm->hs_flags);
+	return voluta_le32_to_cpu(hsm->hs_flags);
 }
 
 static void hsm_set_flags(struct voluta_hspace_map *hsm,
                           enum voluta_hsf flags)
 {
-	hsm->hs_flags = cpu_to_le32((uint32_t)flags);
+	hsm->hs_flags = voluta_cpu_to_le32((uint32_t)flags);
 }
 
 static void hsm_add_flag(struct voluta_hspace_map *hsm, enum voluta_hsf f)
@@ -417,26 +420,26 @@ static bool hsm_test_hasnext(const struct voluta_hspace_map *hsm)
 
 static size_t hsm_nags_span(const struct voluta_hspace_map *hsm)
 {
-	return le32_to_cpu(hsm->hs_nags_span);
+	return voluta_le32_to_cpu(hsm->hs_nags_span);
 }
 
 static void hsm_set_nags_span(struct voluta_hspace_map *hsm, size_t nags)
 {
 	voluta_assert_le(nags, ARRAY_SIZE(hsm->hs_agr));
 
-	hsm->hs_nags_span = cpu_to_le32((uint32_t)nags);
+	hsm->hs_nags_span = voluta_cpu_to_le32((uint32_t)nags);
 }
 
 static size_t hsm_nags_form(const struct voluta_hspace_map *hsm)
 {
-	return le32_to_cpu(hsm->hs_nags_form);
+	return voluta_le32_to_cpu(hsm->hs_nags_form);
 }
 
 static void hsm_set_nags_form(struct voluta_hspace_map *hsm, size_t nags_form)
 {
 	voluta_assert_le(nags_form, ARRAY_SIZE(hsm->hs_agr));
 
-	hsm->hs_nags_form = cpu_to_le32((uint32_t)nags_form);
+	hsm->hs_nags_form = voluta_cpu_to_le32((uint32_t)nags_form);
 }
 
 static void hsm_inc_nags_form(struct voluta_hspace_map *hsm)
@@ -446,13 +449,13 @@ static void hsm_inc_nags_form(struct voluta_hspace_map *hsm)
 
 static size_t hsm_nused(const struct voluta_hspace_map *hsm)
 {
-	return le64_to_cpu(hsm->hs_nused);
+	return voluta_le64_to_cpu(hsm->hs_nused);
 }
 
 static void hsm_set_nused(struct voluta_hspace_map *hsm, size_t nused)
 {
 	voluta_assert_le(nused, VOLUTA_HS_SIZE);
-	hsm->hs_nused = cpu_to_le64(nused);
+	hsm->hs_nused = voluta_cpu_to_le64(nused);
 }
 
 static voluta_index_t hsm_ag_index_beg(const struct voluta_hspace_map *hsm)
@@ -702,19 +705,19 @@ static bool bkr_has_vtype_or_none(const struct voluta_bk_rec *bkr,
 
 static void bkr_set_flags(struct voluta_bk_rec *bkr, uint32_t f)
 {
-	bkr->bk_flags = cpu_to_le32(f);
+	bkr->bk_flags = voluta_cpu_to_le32(f);
 }
 
 static size_t bkr_refcnt(const struct voluta_bk_rec *bkr)
 {
-	return le64_to_cpu(bkr->bk_refcnt);
+	return voluta_le64_to_cpu(bkr->bk_refcnt);
 }
 
 static void bkr_set_refcnt(struct voluta_bk_rec *bkr, size_t refcnt)
 {
 	voluta_assert_le(refcnt, VOLUTA_NKB_IN_BK);
 
-	bkr->bk_refcnt = cpu_to_le64(refcnt);
+	bkr->bk_refcnt = voluta_cpu_to_le64(refcnt);
 }
 
 static void bkr_inc_refcnt(struct voluta_bk_rec *bkr, size_t n)
@@ -731,12 +734,12 @@ static void bkr_dec_refcnt(struct voluta_bk_rec *bkr, size_t n)
 
 static uint64_t bkr_allocated(const struct voluta_bk_rec *bkr)
 {
-	return le64_to_cpu(bkr->bk_allocated);
+	return voluta_le64_to_cpu(bkr->bk_allocated);
 }
 
 static void bkr_set_allocated(struct voluta_bk_rec *bkr, uint64_t allocated)
 {
-	bkr->bk_allocated = cpu_to_le64(allocated);
+	bkr->bk_allocated = voluta_cpu_to_le64(allocated);
 }
 
 static bool bkr_test_allocated_at(const struct voluta_bk_rec *bkr,
@@ -797,12 +800,12 @@ static bool bkr_isunused(const struct voluta_bk_rec *bkr)
 
 static uint64_t bkr_unwritten(const struct voluta_bk_rec *bkr)
 {
-	return le64_to_cpu(bkr->bk_unwritten);
+	return voluta_le64_to_cpu(bkr->bk_unwritten);
 }
 
 static void bkr_set_unwritten(struct voluta_bk_rec *bkr, uint64_t unwritten)
 {
-	bkr->bk_unwritten = cpu_to_le64(unwritten);
+	bkr->bk_unwritten = voluta_cpu_to_le64(unwritten);
 }
 
 static bool bkr_test_unwritten_at(const struct voluta_bk_rec *bkr,

@@ -21,9 +21,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
-#include <uuid/uuid.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define ROUND_TO_HK(n)  VOLUTA_ROUND_TO(n, 512)

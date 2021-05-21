@@ -32,13 +32,11 @@
 #include <linux/fuse.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 #include <time.h>
+#include <voluta/core/private.h>
 #include "libvoluta.h"
 
 #if FUSE_KERNEL_VERSION != 7

@@ -1265,7 +1265,7 @@ void voluta_init_process(void)
 {
 	int err;
 
-	err = voluta_lib_init();
+	err = voluta_init_lib();
 	if (err) {
 		voluta_die(err, "unable to init lib");
 	}

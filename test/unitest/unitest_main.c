@@ -173,7 +173,7 @@ static void ut_init_lib(void)
 {
 	int err;
 
-	err = voluta_lib_init();
+	err = voluta_init_lib();
 	if (err) {
 		error(EXIT_FAILURE, -err, "failed to init libvoluta");
 	}

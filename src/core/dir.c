@@ -21,6 +21,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 
@@ -240,12 +243,12 @@ static bool de_isvalid(const struct voluta_dir_entry *de)
 
 static ino_t de_ino(const struct voluta_dir_entry *de)
 {
-	return ino_to_cpu(de->de_ino);
+	return voluta_ino_to_cpu(de->de_ino);
 }
 
 static void de_set_ino(struct voluta_dir_entry *de, ino_t ino)
 {
-	de->de_ino = cpu_to_ino(ino);
+	de->de_ino = voluta_cpu_to_ino(ino);
 }
 
 static void de_set_ino_dt(struct voluta_dir_entry *de, ino_t ino, mode_t dt)
@@ -256,12 +259,12 @@ static void de_set_ino_dt(struct voluta_dir_entry *de, ino_t ino, mode_t dt)
 
 static size_t de_name_len(const struct voluta_dir_entry *de)
 {
-	return le16_to_cpu(de->de_name_len);
+	return voluta_le16_to_cpu(de->de_name_len);
 }
 
 static void de_set_name_len(struct voluta_dir_entry *de, size_t nlen)
 {
-	de->de_name_len = cpu_to_le16((uint16_t)nlen);
+	de->de_name_len = voluta_cpu_to_le16((uint16_t)nlen);
 }
 
 static bool de_isactive(const struct voluta_dir_entry *de)
@@ -302,22 +305,22 @@ static size_t de_nents_for_name(const struct voluta_dir_entry *de, size_t nlen)
 
 static size_t de_nents(const struct voluta_dir_entry *de)
 {
-	return le16_to_cpu(de->de_nents);
+	return voluta_le16_to_cpu(de->de_nents);
 }
 
 static void de_set_nents(struct voluta_dir_entry *de, size_t nents)
 {
-	de->de_nents = cpu_to_le16((uint16_t)nents);
+	de->de_nents = voluta_cpu_to_le16((uint16_t)nents);
 }
 
 static size_t de_nprev(const struct voluta_dir_entry *de)
 {
-	return le16_to_cpu(de->de_nprev);
+	return voluta_le16_to_cpu(de->de_nprev);
 }
 
 static void de_set_nprev(struct voluta_dir_entry *de, size_t nprev)
 {
-	de->de_nprev = cpu_to_le16((uint16_t)nprev);
+	de->de_nprev = voluta_cpu_to_le16((uint16_t)nprev);
 }
 
 static struct voluta_dir_entry *de_next(const struct voluta_dir_entry *de)
@@ -523,32 +526,32 @@ static void de_remove(struct voluta_dir_entry *de,
 
 static ino_t htn_ino(const struct voluta_dir_htnode *htn)
 {
-	return ino_to_cpu(htn->dh_ino);
+	return voluta_ino_to_cpu(htn->dh_ino);
 }
 
 static void htn_set_ino(struct voluta_dir_htnode *htn, ino_t ino)
 {
-	htn->dh_ino = cpu_to_ino(ino);
+	htn->dh_ino = voluta_cpu_to_ino(ino);
 }
 
 static loff_t htn_parent(const struct voluta_dir_htnode *htn)
 {
-	return off_to_cpu(htn->dh_parent);
+	return voluta_off_to_cpu(htn->dh_parent);
 }
 
 static void htn_set_parent(struct voluta_dir_htnode *htn, loff_t parent)
 {
-	htn->dh_parent = cpu_to_off(parent);
+	htn->dh_parent = voluta_cpu_to_off(parent);
 }
 
 static size_t htn_node_index(const struct voluta_dir_htnode *htn)
 {
-	return le32_to_cpu(htn->dh_node_index);
+	return voluta_le32_to_cpu(htn->dh_node_index);
 }
 
 static void htn_set_node_index(struct voluta_dir_htnode *htn, size_t index)
 {
-	htn->dh_node_index = cpu_to_le32((uint32_t)index);
+	htn->dh_node_index = voluta_cpu_to_le32((uint32_t)index);
 }
 
 static void htn_child(const struct voluta_dir_htnode *htn,
@@ -717,12 +720,12 @@ static struct voluta_dir_ispec *dis_of(const struct voluta_inode *inode)
 
 static uint64_t dis_ndents(const struct voluta_dir_ispec *dis)
 {
-	return le64_to_cpu(dis->d_ndents);
+	return voluta_le64_to_cpu(dis->d_ndents);
 }
 
 static void dis_set_ndents(struct voluta_dir_ispec *dis, size_t n)
 {
-	dis->d_ndents = cpu_to_le64(n);
+	dis->d_ndents = voluta_cpu_to_le64(n);
 }
 
 static void dis_inc_ndents(struct voluta_dir_ispec *dis)
@@ -737,12 +740,12 @@ static void dis_dec_ndents(struct voluta_dir_ispec *dis)
 
 static size_t dis_last_index(const struct voluta_dir_ispec *dis)
 {
-	return le32_to_cpu(dis->d_last_index);
+	return voluta_le32_to_cpu(dis->d_last_index);
 }
 
 static void dis_set_last_index(struct voluta_dir_ispec *dis, size_t index)
 {
-	dis->d_last_index = cpu_to_le32((uint32_t)index);
+	dis->d_last_index = voluta_cpu_to_le32((uint32_t)index);
 }
 
 static void dis_update_last_index(struct voluta_dir_ispec *dis,
@@ -767,23 +770,23 @@ static void dis_update_last_index(struct voluta_dir_ispec *dis,
 
 static loff_t dis_htree_root(const struct voluta_dir_ispec *dis)
 {
-	return off_to_cpu(dis->d_root);
+	return voluta_off_to_cpu(dis->d_root);
 }
 
 static void dis_set_htree_root(struct voluta_dir_ispec *dis, loff_t off)
 {
-	dis->d_root = cpu_to_off(off);
+	dis->d_root = voluta_cpu_to_off(off);
 }
 
 static enum voluta_dirf dis_flags(const struct voluta_dir_ispec *dis)
 {
-	return le32_to_cpu(dis->d_flags);
+	return voluta_le32_to_cpu(dis->d_flags);
 }
 
 static void dis_set_flags(struct voluta_dir_ispec *dis,
                           enum voluta_dirf f)
 {
-	dis->d_flags = cpu_to_le32((uint32_t)f);
+	dis->d_flags = voluta_cpu_to_le32((uint32_t)f);
 }
 
 static void dis_setup(struct voluta_dir_ispec *dis)

@@ -24,6 +24,12 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
+
+#include <voluta/infra.h>
+#include <voluta/defs.h>
+#include <voluta/core.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

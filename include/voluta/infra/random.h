@@ -21,4 +21,6 @@
 
 void voluta_getentropy(void *buf, size_t len);
 
+void voluta_random_ascii(char *str, size_t len);
+
 #endif /* VOLUTA_RANDOM_H_ */

@@ -27,6 +27,9 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <limits.h>
+#include <voluta/core/cache.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 

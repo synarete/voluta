@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
+#include <voluta/core/private.h>
+
 #include "libvoluta.h"
 
 #define BSTORE_NSUBDIRS         256
@@ -432,12 +434,12 @@ struct voluta_ar_blob_info {
 
 static size_t arm_nents(const struct voluta_meta_block4 *arm)
 {
-	return le64_to_cpu(arm->sb_ar_nents);
+	return voluta_le64_to_cpu(arm->sb_ar_nents);
 }
 
 static void arm_set_nents(struct voluta_meta_block4 *arm, size_t nents)
 {
-	arm->sb_ar_nents = cpu_to_le64(nents);
+	arm->sb_ar_nents = voluta_cpu_to_le64(nents);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -492,32 +494,32 @@ static void hash256_to_name(const struct voluta_hash256 *hash,
 
 static void bref_set_magic(struct voluta_ar_blobref *bref, uint32_t magic)
 {
-	bref->br_magic = cpu_to_le32(magic);
+	bref->br_magic = voluta_cpu_to_le32(magic);
 }
 
 static void bref_set_hfunc(struct voluta_ar_blobref *bref, int hfunc)
 {
-	bref->br_hfunc = cpu_to_le16((uint16_t)hfunc);
+	bref->br_hfunc = voluta_cpu_to_le16((uint16_t)hfunc);
 }
 
 static size_t bref_length(const struct voluta_ar_blobref *bref)
 {
-	return le32_to_cpu(bref->br_length);
+	return voluta_le32_to_cpu(bref->br_length);
 }
 
 static void bref_set_length(struct voluta_ar_blobref *bref, size_t len)
 {
-	bref->br_length = cpu_to_le32((uint32_t)len);
+	bref->br_length = voluta_cpu_to_le32((uint32_t)len);
 }
 
 static loff_t bref_voff(const struct voluta_ar_blobref *bref)
 {
-	return off_to_cpu(bref->br_voff);
+	return voluta_off_to_cpu(bref->br_voff);
 }
 
 static void bref_set_voff(struct voluta_ar_blobref *bref, loff_t voff)
 {
-	bref->br_voff = cpu_to_off(voff);
+	bref->br_voff = voluta_cpu_to_off(voff);
 }
 
 static void bref_init(struct voluta_ar_blobref *bref, loff_t voff, size_t len)
@@ -543,12 +545,12 @@ static void bref_copyto(const struct voluta_ar_blobref *bref,
 
 static uint16_t bref_xbin(const struct voluta_ar_blobref *bref)
 {
-	return le16_to_cpu(bref->br_xbin);
+	return voluta_le16_to_cpu(bref->br_xbin);
 }
 
 static void bref_set_xbin(struct voluta_ar_blobref *bref, uint16_t xbin)
 {
-	bref->br_xbin = cpu_to_le16(xbin);
+	bref->br_xbin = voluta_cpu_to_le16(xbin);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -3,16 +3,15 @@
 bin_PROGRAMS = voluta-unitest
 voluta_unitest_CPPFLAGS = $(NULL)
 voluta_unitest_CPPFLAGS += -I$(top_srcdir)/include
-voluta_unitest_CPPFLAGS += -I$(top_srcdir)/src/core
 voluta_unitest_CPPFLAGS += -DVOLUTA_UNITEST=1
 voluta_unitest_LDFLAGS = $(NULL)
 voluta_unitest_LDFLAGS += $(PTHREAD_CFLAGS) $(PTHREAD_DEF)
-voluta_unitest_LDFLAGS += -L$(top_builddir)/src/infra/
-voluta_unitest_LDFLAGS += -L$(top_builddir)/src/core/
+voluta_unitest_LDFLAGS += -L$(top_builddir)/src/infra
+voluta_unitest_LDFLAGS += -L$(top_builddir)/src/fs
 voluta_unitest_LDFLAGS += -static
 voluta_unitest_LDADD = $(NULL)
 voluta_unitest_LDADD += @LIBS@
-voluta_unitest_LDADD += $(top_builddir)/src/core/libvoluta_core.la
+voluta_unitest_LDADD += $(top_builddir)/src/fs/libvoluta_fs.la
 voluta_unitest_LDADD += $(top_builddir)/src/infra/libvoluta_infra.la
 voluta_unitest_LDADD += $(PTHREAD_LIBS)
 voluta_unitest_LDADD += $(LIBGCRYPT_LIBS)

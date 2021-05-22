@@ -33,7 +33,8 @@
 #include <limits.h>
 #include <errno.h>
 
-#include <voluta/voluta.h>
+#include <voluta/infra.h>
+#include <voluta/defs.h>
 
 
 /* Re-mapped macros */

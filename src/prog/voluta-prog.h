@@ -33,8 +33,9 @@
 #include <stdint.h>
 #include <errno.h>
 #include <getopt.h>
-#include <voluta/voluta.h>
-
+#include <voluta/infra.h>
+#include <voluta/fs.h>
+#include <voluta/ioctls.h>
 
 
 typedef void (*voluta_exec_fn)(void);

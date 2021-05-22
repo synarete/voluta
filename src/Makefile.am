@@ -1,1 +1,1 @@
-SUBDIRS = infra core prog
+SUBDIRS = infra fs prog

@@ -17,6 +17,9 @@
 #ifndef VOLUTA_INFRA_H_
 #define VOLUTA_INFRA_H_
 
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <voluta/infra/version.h>
 #include <voluta/infra/macros.h>
 #include <voluta/infra/consts.h>

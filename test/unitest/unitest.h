@@ -35,13 +35,14 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include <voluta/voluta.h>
+#include <voluta/infra.h>
+#include <voluta/defs.h>
+#include <voluta/fs.h>
+#include <voluta/ioctls.h>
 
 
 #define VOLUTA_LIBPRIVATE 1
-#include <voluta/core/private.h>
-
-#include <libvoluta.h>
+#include <voluta/fs/private.h>
 
 #ifndef VOLUTA_UNITEST
 #error "this header must not be included out-side of unitest"

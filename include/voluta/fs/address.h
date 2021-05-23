@@ -99,11 +99,23 @@ bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
 
 uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr);
 
+
+int voluta_baddr_to_name(const struct voluta_baddr *baddr,
+                         char *name, size_t nmax, size_t *out_len);
+
+int voluta_baddr_from_name(struct voluta_baddr *baddr,
+                           const char *name, size_t len);
+
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
                           struct voluta_blobid *other);
 
 bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
                            const struct voluta_blobid *other);
+
+
+void voluta_vba_reset(struct voluta_vba *vba);
+
+void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other);
 
 
 void voluta_uuid_generate(struct voluta_uuid *uu);

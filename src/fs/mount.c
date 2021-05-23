@@ -1119,7 +1119,7 @@ int voluta_mse_new(struct voluta_ms_env **out_mse)
 	struct voluta_ms_env *mse = NULL;
 	struct voluta_ms_env_obj *mse_obj = NULL;
 
-	err = voluta_zalloc_aligned(sizeof(*mse_obj), &mem);
+	err = voluta_zmalloc(sizeof(*mse_obj), &mem);
 	if (err) {
 		return err;
 	}
@@ -1148,8 +1148,7 @@ void voluta_mse_del(struct voluta_ms_env *mse)
 	struct voluta_ms_env_obj *mse_obj = mse_obj_of(mse);
 
 	mse_fini(mse);
-	memset(mse, 5, sizeof(*mse));
-	free(mse_obj);
+	voluta_zfree(mse_obj, sizeof(*mse_obj));
 	voluta_burnstack();
 }
 

@@ -20,8 +20,7 @@
 #include <unistd.h>
 #include <voluta/defs.h>
 
-void voluta_br_init(struct voluta_boot_record *br,
-                    enum voluta_ztype ztype, size_t size);
+void voluta_br_init(struct voluta_boot_record *br, size_t size);
 
 void voluta_br_fini(struct voluta_boot_record *br);
 
@@ -36,8 +35,7 @@ size_t voluta_br_size(const struct voluta_boot_record *br);
 void voluta_br_crypt_params(const struct voluta_boot_record *br,
                             struct voluta_zcrypt_params *zcp);
 
-struct voluta_super_block *
-voluta_sb_new(struct voluta_qalloc *qal, enum voluta_ztype ztype);
+struct voluta_super_block *voluta_sb_new(struct voluta_qalloc *qal);
 
 void voluta_sb_del(struct voluta_super_block *sb,
                    struct voluta_qalloc *qal);
@@ -94,6 +92,9 @@ int voluta_sb_decrypt(struct voluta_super_block *sb,
                       const struct voluta_crypto *crypto,
                       const struct voluta_passphrase *passph);
 
+void voluta_sb_setup_new(struct voluta_super_block *sb,
+                         time_t btime, size_t vsize);
+
 void voluta_hrec_setup(struct voluta_hash_record *hr,
                        const struct voluta_mdigest *md);
 
@@ -107,8 +108,6 @@ int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant);
 
 int voluta_decipher_super_block(struct voluta_super_block *sb,
                                 const char *password);
-
-enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br);
 
 enum voluta_brf voluta_br_flags(const struct voluta_boot_record *br);
 

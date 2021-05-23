@@ -534,7 +534,7 @@ static bool has_itype(const struct voluta_inode_info *ii, mode_t mode)
 }
 
 static int check_waccess(const struct voluta_oper *op,
-                         const struct voluta_inode_info *ii)
+                         struct voluta_inode_info *ii)
 {
 	return voluta_do_access(op, ii, W_OK);
 }
@@ -785,7 +785,7 @@ static bool is_utime_omit(const struct timespec *tv)
 }
 
 static int check_utimens(const struct voluta_oper *op,
-                         const struct voluta_inode_info *ii)
+                         struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1008,8 +1008,7 @@ static int do_getattr(const struct voluta_oper *op,
 }
 
 int voluta_do_getattr(const struct voluta_oper *op,
-                      const struct voluta_inode_info *ii,
-                      struct stat *out_st)
+                      struct voluta_inode_info *ii, struct stat *out_st)
 {
 	int err;
 
@@ -1034,7 +1033,7 @@ static int do_statx(const struct voluta_oper *op,
 }
 
 int voluta_do_statx(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     unsigned int request_mask, struct statx *out_stx)
 {
 	int err;

@@ -84,6 +84,7 @@
 #define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
 #define baddr_reset(ba)                 voluta_baddr_reset(ba)
+#define baddr_create(ba, sz)            voluta_baddr_create(ba, sz)
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
 
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
@@ -93,9 +94,9 @@
 #define vi_undirtify(vi)                voluta_vi_undirtify(vi)
 #define vi_isdata(vi)                   voluta_vi_isdata(vi)
 #define vi_dat_of(vi)                   voluta_vi_dat_of(vi)
-#define ii_refcnt(ii)                   vi_refcnt(ii_vi(ii))
-#define ii_incref(ii)                   vi_incref(ii_vi(ii))
-#define ii_decref(ii)                   vi_decref(ii_vi(ii))
+#define ii_refcnt(ii)                   voluta_ii_refcnt(ii)
+#define ii_incref(ii)                   voluta_ii_incref(ii)
+#define ii_decref(ii)                   voluta_ii_decref(ii)
 #define ii_dirtify(ii)                  voluta_ii_dirtify(ii)
 #define ii_undirtify(ii)                voluta_ii_undirtify(ii)
 #define ii_isrdonly(ii)                 voluta_ii_isrdonly(ii)
@@ -115,6 +116,8 @@
 #define ii_isfifo(ii)                   voluta_ii_isfifo(ii)
 #define ii_issock(ii)                   voluta_ii_issock(ii)
 #define ii_isevictable(ii)              voluta_ii_isevictable(ii)
+#define bli_incref(bli)                 voluta_bli_incref(bli)
+#define bli_decref(bli)                 voluta_bli_decref(bli)
 
 #define ts_copy(dst, src)               voluta_ts_copy(dst, src)
 #define iattr_setup(ia, ino)            voluta_iattr_setup(ia, ino)
@@ -389,10 +392,10 @@ ii_vaddr(const struct voluta_inode_info *ii)
 	return vi_vaddr(ii_vi(ii));
 }
 
-static inline struct voluta_bu_info *
-ii_bui(const struct voluta_inode_info *ii)
+static inline struct voluta_bksec_info *
+ii_bsi(const struct voluta_inode_info *ii)
 {
-	return ii_vi(ii)->v_bui;
+	return ii_vi(ii)->v_bsi;
 }
 
 static inline struct voluta_sb_info *

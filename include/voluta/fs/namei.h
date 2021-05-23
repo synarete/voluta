@@ -37,7 +37,7 @@ int voluta_do_statvfs(const struct voluta_oper *op,
                       struct statvfs *out_stvfs);
 
 int voluta_do_access(const struct voluta_oper *op,
-                     const struct voluta_inode_info *ii, int mode);
+                     struct voluta_inode_info *ii, int mode);
 
 int voluta_do_open(const struct voluta_oper *op,
                    struct voluta_inode_info *ii, int flags);
@@ -86,7 +86,7 @@ int voluta_do_mknod(const struct voluta_oper *op,
                     struct voluta_inode_info **out_ii);
 
 int voluta_do_lookup(const struct voluta_oper *op,
-                     const struct voluta_inode_info *dir_ii,
+                     struct voluta_inode_info *dir_ii,
                      const struct voluta_namestr *name,
                      struct voluta_inode_info **out_ii);
 
@@ -106,11 +106,11 @@ int voluta_do_flush(const struct voluta_oper *op,
                     struct voluta_inode_info *ii);
 
 int voluta_do_query(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     struct voluta_ioc_query *out_qry);
 
 int voluta_do_clone(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii, char *str, size_t lim);
+                    struct voluta_inode_info *ii, char *str, size_t lim);
 
 int voluta_check_name(const char *name);
 

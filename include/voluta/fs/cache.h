@@ -38,14 +38,14 @@ bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
 void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
                                struct voluta_dset *dset);
 
-struct voluta_bu_info *
-voluta_cache_lookup_bui(struct voluta_cache *cache, voluta_lba_t lba);
+struct voluta_bksec_info *
+voluta_cache_lookup_bsi(struct voluta_cache *cache, voluta_lba_t lba);
 
-struct voluta_bu_info *
-voluta_cache_spawn_bui(struct voluta_cache *cache, voluta_lba_t lba);
+struct voluta_bksec_info *
+voluta_cache_spawn_bsi(struct voluta_cache *cache, voluta_lba_t lba);
 
-void voluta_cache_forget_bui(struct voluta_cache *cache,
-                             struct voluta_bu_info *bui);
+void voluta_cache_forget_bsi(struct voluta_cache *cache,
+                             struct voluta_bksec_info *bsi);
 
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
@@ -73,6 +73,21 @@ void voluta_vi_dirtify(struct voluta_vnode_info *vi);
 
 void voluta_vi_undirtify(struct voluta_vnode_info *vi);
 
+void voluta_vi_attach_to(struct voluta_vnode_info *vi,
+                         struct voluta_bksec_info *bsi);
+
+void voluta_vi_incref(struct voluta_vnode_info *vi);
+
+void voluta_vi_decref(struct voluta_vnode_info *vi);
+
+size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi);
+
+size_t voluta_ii_refcnt(const struct voluta_inode_info *ii);
+
+void voluta_ii_incref(struct voluta_inode_info *ii);
+
+void voluta_ii_decref(struct voluta_inode_info *ii);
+
 void voluta_ii_dirtify(struct voluta_inode_info *ii);
 
 void voluta_ii_undirtify(struct voluta_inode_info *ii);
@@ -81,19 +96,10 @@ bool voluta_ii_isrdonly(const struct voluta_inode_info *ii);
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
 
-void voluta_vi_attach_to(struct voluta_vnode_info *vi,
-                         struct voluta_bu_info *bui);
-
-void voluta_vi_incref(struct voluta_vnode_info *vi);
-
-void voluta_vi_decref(struct voluta_vnode_info *vi);
-
-size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi);
-
 
 void voluta_mark_visible(const struct voluta_vnode_info *vi);
 
-void voluta_mark_opaque_at(struct voluta_bu_info *bui,
+void voluta_mark_opaque_at(struct voluta_bksec_info *bsi,
                            const struct voluta_vaddr *vaddr);
 
 bool voluta_is_visible(const struct voluta_vnode_info *vi);

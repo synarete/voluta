@@ -1217,7 +1217,7 @@ static int do_lookup_dentry(struct voluta_dir_ctx *d_ctx,
 }
 
 int voluta_lookup_dentry(const struct voluta_oper *op,
-                         const struct voluta_inode_info *dir_ii,
+                         struct voluta_inode_info *dir_ii,
                          const struct voluta_qstr *name,
                          struct voluta_ino_dt *out_idt)
 {

@@ -61,11 +61,10 @@ void voluta_fixup_rootdir(struct voluta_inode_info *ii);
 enum voluta_inodef voluta_ii_flags(const struct voluta_inode_info *ii);
 
 int voluta_do_getattr(const struct voluta_oper *op,
-                      const struct voluta_inode_info *ii,
-                      struct stat *out_st);
+                      struct voluta_inode_info *ii, struct stat *out_st);
 
 int voluta_do_statx(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     unsigned int request_mask, struct statx *out_stx);
 
 int voluta_do_chmod(const struct voluta_oper *op,

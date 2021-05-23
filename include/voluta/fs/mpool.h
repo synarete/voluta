@@ -23,9 +23,10 @@ void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);
 
 void voluta_mpool_fini(struct voluta_mpool *mpool);
 
-struct voluta_bu_info *voluta_malloc_bui(struct voluta_mpool *mpool);
+struct voluta_bksec_info *voluta_malloc_bsi(struct voluta_mpool *mpool);
 
-void voluta_free_bui(struct voluta_mpool *mpool, struct voluta_bu_info *bui);
+void voluta_free_bsi(struct voluta_mpool *mpool,
+                     struct voluta_bksec_info *bsi);
 
 struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool);
 

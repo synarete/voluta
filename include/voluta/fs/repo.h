@@ -36,19 +36,15 @@ int voluta_repo_close(struct voluta_repo *repo);
 
 int voluta_repo_format(struct voluta_repo *repo);
 
-int voluta_repo_create_blob(struct voluta_repo *repo,
-                            const struct voluta_baddr *baddr,
-                            struct voluta_blob_info **out_bli);
+int voluta_repo_create_blob(struct voluta_repo *repo, loff_t off,
+                            const struct voluta_baddr *baddr);
 
-int voluta_repo_fetch_blob(struct voluta_repo *repo,
-                           const struct voluta_baddr *baddr,
-                           struct voluta_blob_info **out_bli);
+int voluta_repo_save_blob(struct voluta_repo *repo,
+                          const struct voluta_baddr *baddr,
+                          const void *blob, loff_t voff, size_t len);
 
-void voluta_repo_forget_blob(struct voluta_repo *repo,
-                             struct voluta_blob_info *bli);
-
-int voluta_resolve_fiovec_at(const struct voluta_blob_info *bli,
-                             loff_t off, size_t len,
-                             struct voluta_fiovec *fiov);
+int voluta_repo_load_blob(struct voluta_repo *repo,
+                          const struct voluta_baddr *baddr,
+                          void *blob, loff_t off, size_t len);
 
 #endif /* VOLUTA_REPO_H_ */

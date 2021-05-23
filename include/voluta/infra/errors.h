@@ -113,8 +113,6 @@ void voluta_expect_eqm_(const void *p, const void *q,
 __attribute__((__noreturn__))
 void voluta_panicf(const char *file, int line, const char *fmt, ...);
 
-char voluta_nibble_to_ascii(unsigned int n);
-
 /* backtrace */
 void voluta_backtrace(void);
 

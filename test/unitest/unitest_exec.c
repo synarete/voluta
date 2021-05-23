@@ -279,6 +279,10 @@ static void ut_print_tests_start(const struct ut_args *args)
 	       (int)args->fs_args.encrypted);
 }
 
+static const char ut_super_id[] = \
+                                  "FFFFFFFFFFFFFFFF0000000000000000" \
+                                  "FFFFFFFFFFFFFFFF0000000000000000";
+
 void ut_execute_tests(void)
 {
 	char *testdir = NULL;
@@ -286,6 +290,7 @@ void ut_execute_tests(void)
 	bool encryptwr = false;
 	struct ut_args args = {
 		.fs_args = {
+			.superid = ut_super_id,
 			.uid = getuid(),
 			.gid = getgid(),
 			.pid = getpid(),
@@ -305,6 +310,7 @@ void ut_execute_tests(void)
 	testdir = ut_globals.test_dir_real;
 	volpath = ut_joinpath(testdir, "unitests.voluta");
 	args.fs_args.volume = volpath;
+	args.fs_args.repodir = testdir;
 
 	args.fs_args.passwd = ut_make_passwd(&passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;

@@ -34,7 +34,7 @@ int voluta_do_write_iter(const struct voluta_oper *op,
                          struct voluta_rwiter_ctx *rwi_ctx);
 
 int voluta_do_rdwr_post(const struct voluta_oper *op,
-                        const struct voluta_inode_info *ii,
+                        struct voluta_inode_info *ii,
                         const struct voluta_fiovec *fiov, size_t cnt);
 
 int voluta_do_read_iter(const struct voluta_oper *op,

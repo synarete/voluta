@@ -24,6 +24,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/boot.h>
 #include <voluta/fs/crypto.h>
+#include <voluta/fs/spmaps.h>
 #include <voluta/fs/private.h>
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
@@ -101,17 +102,6 @@ static long br_version(const struct voluta_boot_record *br)
 static void br_set_version(struct voluta_boot_record *br, long version)
 {
 	br->br_version = voluta_cpu_to_le64((uint64_t)version);
-}
-
-enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br)
-{
-	return voluta_le32_to_cpu(br->br_type);
-}
-
-static void br_set_type(struct voluta_boot_record *br,
-                        enum voluta_ztype type)
-{
-	br->br_type = voluta_cpu_to_le32(type);
 }
 
 static enum voluta_brf br_flags(const struct voluta_boot_record *br)
@@ -226,13 +216,11 @@ void voluta_br_crypt_params(const struct voluta_boot_record *br,
 	zcp->cipher_mode = br_chiper_mode(br);
 }
 
-void voluta_br_init(struct voluta_boot_record *br,
-                    enum voluta_ztype ztype, size_t size)
+void voluta_br_init(struct voluta_boot_record *br, size_t size)
 {
 	memset(br, 0, sizeof(*br));
 	br_set_magic(br, VOLUTA_BOOT_MARK);
 	br_set_version(br, VOLUTA_FMT_VERSION);
-	br_set_type(br, ztype);
 	br_set_flags(br, VOLUTA_ZBF_NONE);
 	br_set_sw_version(br, voluta_version.string);
 	br_set_uuid(br);
@@ -250,27 +238,8 @@ void voluta_br_fini(struct voluta_boot_record *br)
 	voluta_br_set_size(br, 0);
 }
 
-static int ztype_check(enum voluta_ztype ztype)
-{
-	int err;
-
-	switch (ztype) {
-	case VOLUTA_ZTYPE_VOLUME:
-	case VOLUTA_ZTYPE_ARCHIVE:
-		err = 0;
-		break;
-	case VOLUTA_ZTYPE_NONE:
-	default:
-		err = -EFSCORRUPTED;
-		break;
-	}
-	return err;
-}
-
 int voluta_check_boot_record(const struct voluta_super_block *sb)
 {
-	int err;
-	enum voluta_ztype ztype;
 	const struct voluta_boot_record *br = &sb->sb_boot_rec;
 
 	if (br_magic(br) != VOLUTA_BOOT_MARK) {
@@ -278,11 +247,6 @@ int voluta_check_boot_record(const struct voluta_super_block *sb)
 	}
 	if (br_version(br) != VOLUTA_FMT_VERSION) {
 		return -EFSCORRUPTED;
-	}
-	ztype = voluta_br_type(br);
-	err = ztype_check(ztype);
-	if (err) {
-		return err;
 	}
 	return 0;
 }
@@ -346,10 +310,10 @@ int voluta_hrec_check(const struct voluta_hash_record *hr,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void sb_init(struct voluta_super_block *sb, enum voluta_ztype ztype)
+static void sb_init(struct voluta_super_block *sb)
 {
 	voluta_memzero(sb, sizeof(*sb));
-	voluta_br_init(&sb->sb_boot_rec, ztype, sizeof(*sb));
+	voluta_br_init(&sb->sb_boot_rec, sizeof(*sb));
 }
 
 static void sb_fini(struct voluta_super_block *sb)
@@ -358,14 +322,13 @@ static void sb_fini(struct voluta_super_block *sb)
 	voluta_memzero(sb, sizeof(*sb));
 }
 
-struct voluta_super_block *
-voluta_sb_new(struct voluta_qalloc *qal, enum voluta_ztype ztype)
+struct voluta_super_block *voluta_sb_new(struct voluta_qalloc *qal)
 {
 	struct voluta_super_block *sb;
 
 	sb = voluta_qalloc_malloc(qal, sizeof(*sb));
 	if (sb != NULL) {
-		sb_init(sb, ztype);
+		sb_init(sb);
 	}
 	return sb;
 }
@@ -442,18 +405,7 @@ void voluta_sb_setup_rand(struct voluta_super_block *sb,
 
 int voluta_sb_check_volume(const struct voluta_super_block *sb)
 {
-	int err;
-	enum voluta_ztype ztype;
-
-	err = voluta_check_boot_record(sb);
-	if (err) {
-		return err;
-	}
-	ztype = voluta_br_type(&sb->sb_boot_rec);
-	if (ztype != VOLUTA_ZTYPE_VOLUME) {
-		return -EINVAL;
-	}
-	return 0;
+	return voluta_check_boot_record(sb);
 }
 
 int voluta_sb_check_pass_hash(const struct voluta_super_block *sb,
@@ -559,6 +511,16 @@ int voluta_sb_decrypt(struct voluta_super_block *sb,
 out:
 	voluta_kivam_fini(&kivam);
 	return err;
+}
+
+void voluta_sb_setup_new(struct voluta_super_block *sb,
+                         time_t btime, size_t vsize)
+{
+	voluta_sb_set_birth_time(sb, btime);
+	voluta_sb_set_itable_root(sb, vaddr_none());
+	voluta_sb_setup_keys(sb);
+	voluta_br_set_size(&sb->sb_boot_rec, vsize);
+	voluta_usm_init(&sb->sb_usm);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

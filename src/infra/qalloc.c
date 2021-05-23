@@ -1203,7 +1203,7 @@ static size_t alignment_of(size_t sz)
 	return al;
 }
 
-int voluta_zalloc_aligned(size_t sz, void **out_mem)
+int voluta_zmalloc(size_t sz, void **out_mem)
 {
 	int err;
 
@@ -1212,6 +1212,12 @@ int voluta_zalloc_aligned(size_t sz, void **out_mem)
 		do_memzero(*out_mem, sz);
 	}
 	return err;
+}
+
+void voluta_zfree(void *mem, size_t sz)
+{
+	voluta_memzero(mem, sz);
+	free(mem);
 }
 
 static void burnstack_recursively(int depth, int nbytes)

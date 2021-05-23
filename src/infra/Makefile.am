@@ -25,4 +25,5 @@ libvoluta_infra_la_SOURCES += syscall.c
 libvoluta_infra_la_SOURCES += syscallx.c
 libvoluta_infra_la_SOURCES += thread.c
 libvoluta_infra_la_SOURCES += time.c
+libvoluta_infra_la_SOURCES += utility.c
 libvoluta_infra_la_SOURCES += version.c

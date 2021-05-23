@@ -227,8 +227,6 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 
 void voluta_die_if_not_lockable(const char *path, bool rw);
 
-void voluta_die_if_not_archive(const char *path);
-
 void voluta_die_if_no_mountd(void);
 
 

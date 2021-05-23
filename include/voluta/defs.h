@@ -71,8 +71,8 @@
 /* logical block size (64K) */
 #define VOLUTA_BK_SIZE                  (1L << VOLUTA_BK_SHIFT)
 
-/* number of logical blocks within blocks-unit */
-#define VOLUTA_NBK_IN_BU                (4)
+/* number of logical blocks within blocks-section */
+#define VOLUTA_NBK_IN_BSEC              (4)
 
 /* number of logical blocks within allocation-group */
 #define VOLUTA_NBK_IN_AG                (1024L)
@@ -80,7 +80,7 @@
 
 /* blocks-unit size (256K) */
 #define VOLUTA_BU_SIZE \
-	(VOLUTA_NBK_IN_BU * VOLUTA_BK_SIZE)
+	(VOLUTA_NBK_IN_BSEC * VOLUTA_BK_SIZE)
 
 /* allocation-group size (64M) */
 #define VOLUTA_AG_SIZE \
@@ -278,14 +278,6 @@
 /* size in bytes of object identifier */
 #define VOLUTA_OID_LEN                  (32)
 
-
-
-/* zero-LBA meta-block types */
-enum voluta_ztype {
-	VOLUTA_ZTYPE_NONE       = 0,
-	VOLUTA_ZTYPE_VOLUME     = 1,
-	VOLUTA_ZTYPE_ARCHIVE    = 2,
-};
 
 
 /* boot-record control flags */
@@ -788,6 +780,7 @@ struct voluta_data_block {
 
 /* semantic "view" into 64K block */
 union voluta_block_u {
+	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_data_block        dbk;
@@ -800,8 +793,9 @@ struct voluta_block {
 } voluta_packed_aligned64;
 
 
-struct voluta_blocks_unit {
-	struct voluta_block bk[VOLUTA_NBK_IN_BU];
+/* blocks-section unit */
+struct voluta_blocks_sec {
+	struct voluta_block bk[VOLUTA_NBK_IN_BSEC];
 } voluta_packed_aligned64;
 
 
@@ -828,52 +822,5 @@ union voluta_view_u {
 struct voluta_view {
 	union voluta_view_u u;
 } voluta_packed_aligned64;
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-
-struct voluta_meta_block4 {
-	struct voluta_name      sb_name;
-	uint64_t                sb_birth_time;
-	uint64_t                sb_ag_count;
-	uint64_t                sb_ar_nents;
-	uint8_t                 sb_reserved[3808];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blob {
-	uint8_t b[VOLUTA_AR_BLOB_SIZE];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blobref {
-	uint32_t                        br_magic;
-	uint32_t                        br_flags;
-	uint32_t                        br_length;
-	uint16_t                        br_hfunc;
-	uint16_t                        br_xbin;
-	int64_t                         br_voff;
-	uint64_t                        br_reserved2;
-	struct voluta_hash256           br_hash;
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blobrefs {
-	struct voluta_ar_blobref        ar_bref[1024];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_spec {
-	struct voluta_boot_record       ar_zero;
-	struct voluta_meta_block4       ar_meta;
-	struct voluta_hash_record       ar_rand[14];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_spec_brefs {
-	struct voluta_ar_spec           spec;
-	struct voluta_ar_blobrefs       brefs;
-} voluta_packed_aligned64;
-
 
 #endif /* VOLUTA_DEFS_H_ */

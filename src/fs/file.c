@@ -2567,7 +2567,7 @@ int voluta_do_write(const struct voluta_oper *op,
 }
 
 int voluta_do_rdwr_post(const struct voluta_oper *op,
-                        const struct voluta_inode_info *ii,
+                        struct voluta_inode_info *ii,
                         const struct voluta_fiovec *fiov, size_t cnt)
 {
 	struct voluta_vnode_info *vi;

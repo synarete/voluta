@@ -231,6 +231,12 @@ struct voluta_baddr {
 	loff_t size;
 };
 
+/* logical-to-object address mapping */
+struct voluta_vba {
+	struct voluta_vaddr vaddr;
+	struct voluta_baddr baddr;
+};
+
 /* inode-address */
 struct voluta_iaddr {
 	struct voluta_vaddr vaddr;
@@ -249,12 +255,12 @@ struct voluta_cache_elem {
 	char ce_pad[2];
 };
 
-/* blocks caching info */
-struct voluta_bu_info {
-	struct voluta_cache_elem        bk_ce;
-	struct voluta_blocks_unit      *bu;
-	uint64_t        bk_mask[VOLUTA_NBK_IN_BU];
-	voluta_lba_t    bk_lba;
+/* cached blocks-section info */
+struct voluta_bksec_info {
+	struct voluta_cache_elem        bs_ce;
+	struct voluta_blocks_sec       *bs;
+	uint64_t        bs_mask[VOLUTA_NBK_IN_BSEC];
+	voluta_lba_t    bs_lba;
 };
 
 /* vnode */
@@ -276,13 +282,12 @@ union voluta_vnode_u {
 typedef void (*voluta_delete_vnode_fn)(const struct voluta_cache *cache,
                                        struct voluta_vnode_info *vi);
 
-
 struct voluta_vnode_info {
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
 	struct voluta_sb_info          *v_sbi;
-	struct voluta_bu_info          *v_bui;
+	struct voluta_bksec_info       *v_bsi;
 	struct voluta_cache_elem        v_ce;
 	struct voluta_list_head         v_dq_mlh;
 	struct voluta_list_head         v_dq_blh;
@@ -393,17 +398,10 @@ struct voluta_vstore {
 	unsigned long vs_ctl_flags;
 };
 
-/* blob cache-entry */
-struct voluta_blob_info {
-	struct voluta_baddr     bi_baddr;
-	struct voluta_list_head bi_htb_lh;
-	unsigned long           bi_hkey;
-	int                     bi_fd;
-};
-
 /* blobs storage controller */
 struct voluta_repo {
 	struct voluta_list_head re_htbl[1024];
+	struct voluta_listq     re_lru;
 	struct voluta_qalloc   *re_qalloc;
 	size_t  re_nsubs;
 	size_t  re_hsize;
@@ -447,6 +445,8 @@ struct voluta_sb_info {
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_vstore           *sb_vstore;
+	struct voluta_repo             *sb_repo;
+	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
 	struct voluta_space_info        sb_spi;
@@ -532,7 +532,9 @@ struct voluta_fuseq {
 
 /* file-system arguments */
 struct voluta_fs_args {
+	const char *superid;
 	const char *volume;
+	const char *repodir;
 	const char *mountp;
 	const char *fsname;
 	const char *passwd;
@@ -564,6 +566,7 @@ struct voluta_fs_env {
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
 	struct voluta_vstore           *vstore;
+	struct voluta_repo             *repo;
 	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;

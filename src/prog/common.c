@@ -224,9 +224,7 @@ static struct voluta_super_block *read_super_block(const char *path)
 	return sb;
 }
 
-static void die_if_bad_boot_record(const char *path,
-                                   enum voluta_ztype *out_ztype,
-                                   enum voluta_brf *out_brf)
+static void die_if_bad_boot_record(const char *path, enum voluta_brf *out_brf)
 {
 	int err;
 	struct voluta_super_block *sb = NULL;
@@ -236,7 +234,6 @@ static void die_if_bad_boot_record(const char *path,
 	if (err) {
 		goto out;
 	}
-	*out_ztype = voluta_br_type(&sb->sb_boot_rec);
 	*out_brf = voluta_br_flags(&sb->sb_boot_rec);
 out:
 	del_super_block(sb);
@@ -255,17 +252,11 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 {
 	int err;
 	enum voluta_brf brf;
-	enum voluta_ztype ztype;
 	struct voluta_super_block *sb = NULL;
 
 	sb = read_super_block(path);
 	err = voluta_check_boot_record(sb);
 	if (err) {
-		goto out;
-	}
-	ztype = voluta_br_type(&sb->sb_boot_rec);
-	if (ztype != VOLUTA_ZTYPE_VOLUME) {
-		err = -EUCLEAN;
 		goto out;
 	}
 	brf = voluta_br_flags(&sb->sb_boot_rec);
@@ -297,7 +288,6 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
                               bool mustnot_be_enc, bool *out_is_encrypted)
 {
 	int err;
-	enum voluta_ztype ztype;
 	enum voluta_brf brf;
 	bool is_enc;
 
@@ -308,10 +298,7 @@ void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
 	} else if (err) {
 		voluta_die(err, "not a valid volume: %s", path);
 	}
-	die_if_bad_boot_record(path, &ztype, &brf);
-	if (ztype != VOLUTA_ZTYPE_VOLUME) {
-		voluta_die(0, "not a volume: %s", path);
-	}
+	die_if_bad_boot_record(path, &brf);
 	is_enc = (brf & VOLUTA_ZBF_ENCRYPTED);
 	if (must_be_enc && !is_enc) {
 		voluta_die(0, "not an encrypted volume: %s", path);
@@ -330,18 +317,6 @@ void voluta_die_if_not_lockable(const char *path, bool rw)
 
 	voluta_open_and_flock(path, rw, &fd);
 	voluta_funlock_and_close(path, &fd);
-}
-
-void voluta_die_if_not_archive(const char *path)
-{
-	enum voluta_ztype ztype;
-	enum voluta_brf brf;
-
-	voluta_die_if_not_reg(path, false); /* TODO: Check size  */
-	die_if_bad_boot_record(path, &ztype, &brf);
-	if (ztype != VOLUTA_ZTYPE_ARCHIVE) {
-		voluta_die(0, "not an archive: %s", path);
-	}
 }
 
 void voluta_die_if_no_mountd(void)
@@ -1016,7 +991,7 @@ void *voluta_zalloc_safe(size_t nbytes)
 	int err;
 	void *mem = NULL;
 
-	err = voluta_zalloc_aligned(nbytes, &mem);
+	err = voluta_zmalloc(nbytes, &mem);
 	if (err) {
 		voluta_die(-err, "alloc failed: nbytes=%lu", nbytes);
 	}

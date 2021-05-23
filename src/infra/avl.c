@@ -111,7 +111,7 @@ avl_node_unconst(const struct voluta_avl_node *x)
 
 static void avl_node_verify(const struct voluta_avl_node *x)
 {
-	if (voluta_unlikely(x->magic != AVL_MAGIC) ||
+	if ((x->magic != AVL_MAGIC) ||
 	    voluta_unlikely((x->balance) > 1) ||
 	    voluta_unlikely((x->balance) < -1)) {
 		voluta_panic("illegal avl-node: %p balance=%d magic=0x%x",

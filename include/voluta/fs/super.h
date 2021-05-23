@@ -23,10 +23,15 @@
 
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
-                    struct voluta_super_block *sb,
-                    struct voluta_cache *cache, struct voluta_vstore *vstore);
+                    struct voluta_cache *cache,
+                    struct voluta_vstore *vstore,
+                    struct voluta_repo *repo);
 
 void voluta_sbi_fini(struct voluta_sb_info *sbi);
+
+void voluta_sbi_bind_sb(struct voluta_sb_info *sbi,
+                        struct voluta_super_block *sb,
+                        const struct voluta_vba *vba);
 
 void voluta_sbi_setowner(struct voluta_sb_info *sbi,
                          const struct voluta_ucred *cred);
@@ -36,9 +41,9 @@ int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity);
 void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 
 
-
-
 int voluta_adjust_super(struct voluta_sb_info *sbi);
+
+int voluta_format_super(struct voluta_sb_info *sbi);
 
 int voluta_format_spmaps(struct voluta_sb_info *sbi);
 
@@ -55,6 +60,10 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
 
 int voluta_shut_super(struct voluta_sb_info *sbi);
 
+int voluta_save_super(struct voluta_sb_info *sbi);
+
+int voluta_load_super(struct voluta_sb_info *sbi);
+
 
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
@@ -67,12 +76,12 @@ int voluta_stage_inode(struct voluta_sb_info *sbi, ino_t xino,
 
 int voluta_stage_vnode(struct voluta_sb_info *sbi,
                        const struct voluta_vaddr *vaddr,
-                       const struct voluta_inode_info *pii,
+                       struct voluta_inode_info *pii,
                        struct voluta_vnode_info **out_vi);
 
 int voluta_stage_data(struct voluta_sb_info *sbi,
                       const struct voluta_vaddr *vaddr,
-                      const struct voluta_inode_info *pii,
+                      struct voluta_inode_info *pii,
                       struct voluta_vnode_info **out_vi);
 
 int voluta_create_inode(struct voluta_sb_info *sbi,

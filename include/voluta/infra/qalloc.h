@@ -79,7 +79,9 @@ void voluta_burnstack(void);
 
 void voluta_memzero(void *s, size_t n);
 
-int voluta_zalloc_aligned(size_t sz, void **out_mem);
+int voluta_zmalloc(size_t sz, void **out_mem);
+
+void voluta_zfree(void *mem, size_t sz);
 
 
 #endif /* VOLUTA_QALLOC_H_ */

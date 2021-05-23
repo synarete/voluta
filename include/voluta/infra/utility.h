@@ -77,4 +77,9 @@ static inline void *voluta_unconst(const void *p)
 	return u.q;
 }
 
+
+char voluta_nibble_to_ascii(int n);
+
+int voluta_ascii_to_nibble(char a);
+
 #endif /* VOLUTA_UTILITY_H_ */

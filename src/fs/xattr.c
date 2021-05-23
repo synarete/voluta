@@ -609,7 +609,7 @@ static int check_xattr_name(const struct voluta_namestr *name)
 static int check_xattr(const struct voluta_xattr_ctx *xa_ctx, int access_mode)
 {
 	int err;
-	const struct voluta_inode_info *ii = xa_ctx->ii;
+	struct voluta_inode_info *ii = xa_ctx->ii;
 
 	if (!ii_isreg(ii) && !ii_isdir(ii) && !ii_islnk(ii)) {
 		return -EINVAL;

@@ -31,7 +31,7 @@ void voluta_setup_dir(struct voluta_inode_info *dir_ii,
                       mode_t parent_mode, nlink_t nlink);
 
 int voluta_lookup_dentry(const struct voluta_oper *op,
-                         const struct voluta_inode_info *dir_ii,
+                         struct voluta_inode_info *dir_ii,
                          const struct voluta_qstr *name,
                          struct voluta_ino_dt *out_idt);
 

@@ -74,10 +74,10 @@ voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
 
 static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
-	const size_t nbk_in_bu = VOLUTA_NBK_IN_BU;
+	const size_t nbk_in_bu = VOLUTA_NBK_IN_BSEC;
 	const voluta_lba_t hsm_lba = (voluta_lba_t)(nbk_in_bu + hs_index);
 
-	voluta_assert_gt(VOLUTA_NBK_IN_BU, VOLUTA_LBA_SB);
+	voluta_assert_gt(VOLUTA_NBK_IN_BSEC, VOLUTA_LBA_SB);
 
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
@@ -445,6 +445,66 @@ bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
 uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr)
 {
 	return (uint64_t)(baddr->size) ^ blobid_hkey(&baddr->bid);
+}
+
+int voluta_baddr_to_name(const struct voluta_baddr *baddr,
+                         char *name, size_t nmax, size_t *out_len)
+{
+	int byte;
+	size_t len = 0;
+	const size_t oid_size = ARRAY_SIZE(baddr->bid.oid);
+
+	if (nmax < (2 * oid_size)) {
+		return -EINVAL;
+	}
+	for (size_t i = 0; i < oid_size; ++i) {
+		byte = (int)(baddr->bid.oid[i]);
+		name[len] = voluta_nibble_to_ascii(byte >> 4);
+		name[len + 1] = voluta_nibble_to_ascii(byte);
+		len += 2;
+	}
+	*out_len = len;
+	return 0;
+}
+
+int voluta_baddr_from_name(struct voluta_baddr *baddr,
+                           const char *name, size_t len)
+{
+	int err = 0;
+	int nib[2];
+	const size_t oid_size = ARRAY_SIZE(baddr->bid.oid);
+
+	if (len < (2 * oid_size)) {
+		return -EINVAL;
+	}
+	for (size_t i = 0; i < oid_size; ++i) {
+		nib[0] = voluta_ascii_to_nibble(name[2 * i]);
+		if (nib[0] < 0) {
+			err = nib[0];
+			break;
+		}
+		nib[1] = voluta_ascii_to_nibble(name[(2 * i) + 1]);
+		if (nib[1] < 0) {
+			err = nib[1];
+			break;
+		}
+		baddr->bid.oid[i] = (uint8_t)((nib[0] << 4) | nib[1]);
+	}
+	return err;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_vba_reset(struct voluta_vba *vba)
+{
+	voluta_vaddr_reset(&vba->vaddr);
+	voluta_baddr_reset(&vba->baddr);
+}
+
+void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other)
+{
+	voluta_vaddr_copyto(&vba->vaddr, &other->vaddr);
+	voluta_baddr_copyto(&vba->baddr, &other->baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

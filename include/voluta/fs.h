@@ -35,6 +35,4 @@
 #include <voluta/fs/exec.h>
 #include <voluta/fs/mount.h>
 
-#include <voluta/fs/archive.h>
-
 #endif /* VOLUTA_FS_H_ */

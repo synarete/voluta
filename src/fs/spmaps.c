@@ -890,27 +890,6 @@ static int bkr_find_free(const struct voluta_bk_rec *bkr,
 	return -ENOSPC;
 }
 
-static void bkr_alloc_info(const struct voluta_bk_rec *bkr,
-                           struct voluta_balloc_info *bai)
-{
-	size_t nkb;
-	uint64_t mask;
-	const uint64_t allocated = bkr_allocated(bkr);
-	const size_t nkb_in_bk = VOLUTA_NKB_IN_BK;
-
-	bai->cnt = 0;
-	bai->vtype = bkr_vtype(bkr);
-	if (!vtype_isnone(bai->vtype)) {
-		nkb = vtype_nkbs(bai->vtype);
-		for (size_t kbn = 0; (kbn + nkb) <= nkb_in_bk; kbn += nkb) {
-			mask = mask_of(kbn, nkb);
-			if ((allocated & mask) == mask) {
-				bai->kbn[bai->cnt++] = kbn;
-			}
-		}
-	}
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static voluta_index_t agm_index(const struct voluta_agroup_map *agm)
@@ -940,17 +919,6 @@ agm_bkr_at(const struct voluta_agroup_map *agm, size_t slot)
 
 	voluta_assert_lt(slot, ARRAY_SIZE(agm->ag_bkr));
 	return unconst(bkr);
-}
-
-static void agm_balloc_info_at(const struct voluta_agroup_map *agm,
-                               size_t slot, struct voluta_balloc_info *bai)
-{
-	const voluta_index_t ag_index = agm_index(agm);
-	const struct voluta_bk_rec *bkr = agm_bkr_at(agm, slot);
-
-	bkr_alloc_info(bkr, bai);
-	bai->bn = slot;
-	bai->lba = voluta_lba_by_ag(ag_index, bai->bn);
 }
 
 static size_t agm_nslots(const struct voluta_agroup_map *agm)
@@ -1492,15 +1460,6 @@ void voluta_mark_unwritten_at(struct voluta_agroup_info *agi,
 		agi_dirtify(agi);
 	}
 }
-
-void voluta_balloc_info_at(const struct voluta_agroup_info *agi,
-                           size_t slot, struct voluta_balloc_info *bai)
-{
-	const struct voluta_agroup_map *agm = agroup_map_of(agi);
-
-	agm_balloc_info_at(agm, slot, bai);
-}
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

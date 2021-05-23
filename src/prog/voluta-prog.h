@@ -97,52 +97,6 @@ struct voluta_subcmd_clone {
 	char   *volume_tmp;
 };
 
-/* arguments for 'encrypt' sub-command */
-struct voluta_subcmd_encrypt {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_clone;
-	char   *volume_active;
-};
-
-/* arguments for 'encrypt' sub-command */
-struct voluta_subcmd_decrypt {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_clone;
-	char   *volume_active;
-};
-
-/* arguments for 'export' sub-command */
-struct voluta_subcmd_export {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_dir;
-	char   *volume_name;
-	char   *archive;
-	char   *archive_real;
-	char   *archive_path;
-};
-
-/* arguments for 'import' sub-command */
-struct voluta_subcmd_import {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *archive;
-	char   *archive_real;
-	char   *archive_dir;
-	char   *archive_name;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_path;
-};
-
 /* arguments for 'show' sub-command */
 struct voluta_subcmd_show {
 	char   *pathname;
@@ -162,10 +116,6 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_mount      mount;
 	struct voluta_subcmd_umount     umount;
 	struct voluta_subcmd_clone      clone;
-	struct voluta_subcmd_encrypt    encrypt;
-	struct voluta_subcmd_decrypt    decrypt;
-	struct voluta_subcmd_export     export;
-	struct voluta_subcmd_import     import;
 	struct voluta_subcmd_show       show;
 	struct voluta_subcmd_fsck       fsck;
 };
@@ -235,10 +185,6 @@ void voluta_execute_clone(void);
 void voluta_execute_encrypt(void);
 
 void voluta_execute_decrypt(void);
-
-void voluta_execute_export(void);
-
-void voluta_execute_import(void);
 
 
 /* common utilities */
@@ -371,12 +317,6 @@ void voluta_create_mse_inst(void);
 void voluta_destroy_mse_inst(void);
 
 struct voluta_ms_env *voluta_ms_env_inst(void);
-
-void voluta_create_arc_inst(const struct voluta_ar_args *args);
-
-void voluta_destroy_arc_inst(void);
-
-struct voluta_archiver *voluta_arc_inst(void);
 
 
 /* signal call-back hook */

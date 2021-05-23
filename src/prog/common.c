@@ -1076,7 +1076,6 @@ char *voluta_sprintf_path(const char *fmt, ...)
 /* Singleton instances */
 static struct voluta_fs_env *g_fs_env_inst;
 static struct voluta_ms_env *g_ms_env_inst;
-static struct voluta_archiver *g_archiver_inst;
 
 static void voluta_require_no_inst(const void *inst)
 {
@@ -1131,30 +1130,6 @@ void voluta_destroy_mse_inst(void)
 struct voluta_ms_env *voluta_ms_env_inst(void)
 {
 	return g_ms_env_inst;
-}
-
-void voluta_create_arc_inst(const struct voluta_ar_args *args)
-{
-	int err;
-
-	voluta_require_no_inst(g_archiver_inst);
-	err = voluta_archiver_new(args, &g_archiver_inst);
-	if (err) {
-		voluta_die(err, "failed to create instance");
-	}
-}
-
-void voluta_destroy_arc_inst(void)
-{
-	if (g_archiver_inst) {
-		voluta_archiver_del(g_archiver_inst);
-		g_archiver_inst = NULL;
-	}
-}
-
-struct voluta_archiver *voluta_arc_inst(void)
-{
-	return g_archiver_inst;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

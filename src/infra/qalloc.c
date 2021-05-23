@@ -1205,13 +1205,13 @@ static size_t alignment_of(size_t sz)
 
 int voluta_zalloc_aligned(size_t sz, void **out_mem)
 {
-	errno = 0;
-	*out_mem = aligned_alloc(alignment_of(sz), sz);
-	if (*out_mem == NULL) {
-		return errno ? -errno : -ENOMEM;
+	int err;
+
+	err = posix_memalign(out_mem, alignment_of(sz), sz);
+	if (!err) {
+		do_memzero(*out_mem, sz);
 	}
-	do_memzero(*out_mem, sz);
-	return 0;
+	return err;
 }
 
 static void burnstack_recursively(int depth, int nbytes)

@@ -22,7 +22,6 @@ nobase_include_HEADERS += voluta/infra/version.h
 nobase_include_HEADERS += voluta/infra.h
 
 nobase_include_HEADERS += voluta/fs/address.h
-nobase_include_HEADERS += voluta/fs/archive.h
 nobase_include_HEADERS += voluta/fs/boot.h
 nobase_include_HEADERS += voluta/fs/cache.h
 nobase_include_HEADERS += voluta/fs/crypto.h

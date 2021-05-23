@@ -12,7 +12,6 @@ libvoluta_fs_la_LIBADD = @LIBS@
 libvoluta_fs_la_LIBADD += $(PTHREAD_LIBS)
 libvoluta_fs_la_SOURCES = $(NULL)
 libvoluta_fs_la_SOURCES += address.c
-libvoluta_fs_la_SOURCES += archive.c
 libvoluta_fs_la_SOURCES += boot.c
 libvoluta_fs_la_SOURCES += cache.c
 libvoluta_fs_la_SOURCES += crypto.c

@@ -1123,34 +1123,6 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	return 0;
 }
 
-int voluta_fse_traverse(struct voluta_fs_env *fse)
-{
-	int err;
-	struct voluta_oper op;
-
-	err = fse_make_oper_self(fse, &op);
-	if (err) {
-		return err;
-	}
-	err = voluta_fse_reload(fse);
-	if (err) {
-		return err;
-	}
-	err = voluta_traverse_space(fse->sbi);
-	if (err) {
-		return err;
-	}
-	err = fse_flush_dirty(fse, true);
-	if (err) {
-		return err;
-	}
-	err = fse_store_sb(fse);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
 int voluta_fse_serve(struct voluta_fs_env *fse)
 {
 	int err;

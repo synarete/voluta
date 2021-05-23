@@ -48,9 +48,7 @@ static struct ut_tgroup const g_ut_tgroups[] = {
 	UT_DEFTGRP(ut_test_file_fiemap),
 	UT_DEFTGRP(ut_test_file_copy_range),
 	UT_DEFTGRP(ut_test_reload),
-	UT_DEFTGRP(ut_test_recrypt),
 	UT_DEFTGRP(ut_test_fillfs),
-	/* UT_DEFTGRP(ut_test_archive), XXX */
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -81,10 +79,6 @@ static void ute_init(struct ut_env *ute, const struct ut_args *args)
 
 static void ute_cleanup(struct ut_env *ute)
 {
-	if (ute->arc != NULL) {
-		voluta_archiver_del(ute->arc);
-		ute->arc = NULL;
-	}
 	if (ute->fse != NULL) {
 		voluta_fse_term(ute->fse);
 		voluta_fse_del(ute->fse);
@@ -104,9 +98,6 @@ static void ute_setup(struct ut_env *ute)
 	int err;
 
 	err = voluta_fse_new(&ute->args.fs_args, &ute->fse);
-	voluta_assert_ok(err);
-
-	err = voluta_archiver_new(&ute->args.ar_args, &ute->arc);
 	voluta_assert_ok(err);
 }
 
@@ -306,10 +297,6 @@ void ut_execute_tests(void)
 			.memwant = UT_GIGA,
 			.pedantic = false /* TODO: make me a knob (true) */
 		},
-		.ar_args = {
-			.arcname = "unitests-archive.voluta",
-			.memwant = UT_GIGA,
-		},
 		.program = ut_globals.program,
 		.version = ut_globals.version
 	};
@@ -318,10 +305,8 @@ void ut_execute_tests(void)
 	testdir = ut_globals.test_dir_real;
 	volpath = ut_joinpath(testdir, "unitests.voluta");
 	args.fs_args.volume = volpath;
-	args.ar_args.volume = volpath;
-	args.ar_args.blobsdir = testdir;
 
-	args.fs_args.passwd = args.ar_args.passwd = ut_make_passwd(&passph);
+	args.fs_args.passwd = ut_make_passwd(&passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);

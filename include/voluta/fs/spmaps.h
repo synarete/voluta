@@ -122,9 +122,6 @@ void voluta_mark_unwritten_at(struct voluta_agroup_info *agi,
 bool voluta_is_allocated_with(const struct voluta_agroup_info *agi,
                               const struct voluta_vaddr *vaddr);
 
-void voluta_balloc_info_at(const struct voluta_agroup_info *agi,
-                           size_t slot, struct voluta_balloc_info *bai);
-
 
 int voluta_verify_hspace_map(const struct voluta_hspace_map *hsm);
 

@@ -87,10 +87,6 @@ static const struct voluta_cmd_info g_cmd_info[] = {
 	DEFCMD(fsck),
 	DEFCMD(show),
 	DEFCMD(clone),
-	DEFCMD(encrypt),
-	DEFCMD(decrypt),
-	DEFCMD(export),
-	DEFCMD(import),
 };
 
 static const struct voluta_cmd_info *cmt_info_of(const char *cmd_name)

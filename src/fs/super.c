@@ -238,31 +238,10 @@ static void hsi_decref(struct voluta_hspace_info *hsi)
 	vi_decref(hsi_vi(hsi));
 }
 
-static void hsi_dirtify(struct voluta_hspace_info *hsi)
-{
-	vi_dirtify(hsi_vi(hsi));
-}
-
 static const struct voluta_vaddr *
 hsi_vaddr(const struct voluta_hspace_info *hsi)
 {
 	return vi_vaddr(hsi_vi(hsi));
-}
-
-
-static void agi_incref(struct voluta_agroup_info *agi)
-{
-	vi_incref(agi_vi(agi));
-}
-
-static void agi_decref(struct voluta_agroup_info *agi)
-{
-	vi_decref(agi_vi(agi));
-}
-
-static void agi_dirtify(struct voluta_agroup_info *agi)
-{
-	vi_dirtify(agi_vi(agi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1092,17 +1071,6 @@ static int flush_dirty_cache(struct voluta_sb_info *sbi, bool all)
 	return voluta_flush_dirty(sbi, all ? VOLUTA_F_NOW : 0);
 }
 
-static int flush_and_relax(struct voluta_sb_info *sbi, int flags)
-{
-	int err;
-
-	err = voluta_flush_dirty(sbi, flags);
-	if (!err) {
-		voluta_cache_relax(sbi->sb_cache, flags);
-	}
-	return err;
-}
-
 static void update_spi_by_hsm(struct voluta_sb_info *sbi,
                               const struct voluta_hspace_info *hsi)
 {
@@ -1466,159 +1434,6 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi)
 			break;
 		}
 		relax_bringup_cache(sbi);
-	}
-	return 0;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void vaddr_by_bai(struct voluta_vaddr *vaddr,
-                         const struct voluta_agroup_info *agi,
-                         const struct voluta_balloc_info *bai, size_t idx)
-{
-	const voluta_index_t ag_index = voluta_ag_index_of(agi);
-
-	vaddr_by_ag(vaddr, bai->vtype, ag_index, bai->bn, bai->kbn[idx]);
-}
-
-static int traverse_by_balloc_info(struct voluta_sb_info *sbi,
-                                   const struct voluta_agroup_info *agi,
-                                   const struct voluta_balloc_info *bai)
-{
-	int err;
-	size_t nvis = 0;
-	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *vi;
-	struct voluta_vnode_info *vis[VOLUTA_NKB_IN_BK];
-
-	STATICASSERT_EQ(ARRAY_SIZE(vis), ARRAY_SIZE(bai->kbn));
-
-	for (size_t i = 0; i < bai->cnt; ++i) {
-		vaddr_by_bai(&vaddr, agi, bai, i);
-		err = voluta_stage_vnode(sbi, &vaddr, NULL, &vi);
-		if (err) {
-			goto out;
-		}
-		vis[nvis++] = vi;
-		vi_incref(vi);
-	}
-	for (size_t i = 0; i < nvis; ++i) {
-		vi = vis[i];
-		vi_dirtify(vi);
-	}
-	err = voluta_vstore_clear_bk(vstore_of(sbi), bai->lba);
-out:
-	for (size_t i = 0; i < nvis; ++i) {
-		vi = vis[i];
-		vi_decref(vi);
-	}
-	return err;
-}
-
-static int do_traverse_by_agmap(struct voluta_sb_info *sbi,
-                                struct voluta_agroup_info *agi)
-{
-	int err;
-	struct voluta_balloc_info bai = { .cnt = 0 };
-
-	for (size_t bk_idx = 0; bk_idx < VOLUTA_NBK_IN_AG; ++bk_idx) {
-		voluta_balloc_info_at(agi, bk_idx, &bai);
-		if (voluta_vtype_isspmap(bai.vtype)) {
-			continue;
-		}
-		err = traverse_by_balloc_info(sbi, agi, &bai);
-		if (err) {
-			return err;
-		}
-		err = flush_and_relax(sbi, VOLUTA_F_OPSTART);
-		if (err) {
-			return err;
-		}
-	}
-	agi_dirtify(agi);
-	return 0;
-}
-
-static int traverse_by_agmap(struct voluta_sb_info *sbi,
-                             struct voluta_hspace_info *hsi,
-                             struct voluta_agroup_info *agi)
-{
-	int err;
-
-	hsi_incref(hsi);
-	agi_incref(agi);
-	err = do_traverse_by_agmap(sbi, agi);
-	agi_decref(agi);
-	hsi_decref(hsi);
-	return err;
-}
-
-static int do_traverse_by_hsmap(struct voluta_sb_info *sbi,
-                                struct voluta_hspace_info *hsi)
-{
-	int err;
-	voluta_index_t ag_index;
-	struct voluta_ag_range ag_range;
-	struct voluta_agroup_info *agi = NULL;
-
-	voluta_ag_range_of(hsi, &ag_range);
-	for (ag_index = ag_range.beg; ag_index < ag_range.fin; ++ag_index) {
-		err = stage_agmap(sbi, ag_index, &agi);
-		if (err) {
-			return err;
-		}
-		err = traverse_by_agmap(sbi, hsi, agi);
-		if (err) {
-			return err;
-		}
-		err = flush_and_relax(sbi, VOLUTA_F_OPSTART);
-		if (err) {
-			return err;
-		}
-		agi = NULL;
-	}
-	hsi_dirtify(hsi);
-	return 0;
-}
-
-static int traverse_by_hsmap(struct voluta_sb_info *sbi,
-                             struct voluta_hspace_info *hsi)
-{
-	int err;
-
-	hsi_incref(hsi);
-	err = do_traverse_by_hsmap(sbi, hsi);
-	hsi_decref(hsi);
-	return err;
-}
-
-int voluta_traverse_space(struct voluta_sb_info *sbi)
-{
-	int err;
-	bool has_next;
-	voluta_index_t hs_index;
-	struct voluta_hspace_info *hsi;
-	const size_t hs_count = sbi->sb_spi.sp_hs_count;
-
-	voluta_assert_gt(hs_count, 0);
-
-	for (hs_index = 1; hs_index <= hs_count; ++hs_index) {
-		err = load_hsmap_at(sbi, hs_index, &hsi);
-		if (err) {
-			return err;
-		}
-		err = traverse_by_hsmap(sbi, hsi);
-		if (err) {
-			return err;
-		}
-		has_next = voluta_has_next_hspace(hsi);
-		if (!has_next) {
-			break;
-		}
-		err = flush_dirty_cache(sbi, false);
-		if (err) {
-			return err;
-		}
 	}
 	return 0;
 }

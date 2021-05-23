@@ -614,35 +614,4 @@ struct voluta_ag_range {
 	voluta_index_t end; /* end of hyper-range */
 };
 
-
-/* archiving */
-
-struct voluta_balloc_info {
-	voluta_lba_t lba;
-	size_t bn;
-	size_t kbn[VOLUTA_NKB_IN_BK];
-	size_t cnt;
-	enum voluta_vtype vtype;
-};
-struct voluta_ar_args {
-	const char *passwd;
-	const char *volume;
-	const char *blobsdir;
-	const char *arcname;
-	size_t memwant;
-};
-
-struct voluta_archiver {
-	struct voluta_ar_args           ar_args;
-	struct voluta_kivam             ar_kivam;
-	struct voluta_qalloc           *ar_qalloc;
-	struct voluta_crypto           *ar_crypto;
-	struct voluta_bstore           *ar_bstore;
-	struct voluta_ar_blob_info     *ar_bli;
-	struct voluta_ar_spec          *ar_spec;
-	size_t ar_spec_nents;
-	size_t ar_spec_nents_max;
-	int try_clone;
-};
-
 #endif /* VOLUTA_TYPES_H_ */

@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_MACROS_H_
 #define VOLUTA_MACROS_H_
@@ -57,9 +57,12 @@
 #define VOLUTA_ROUND_TO(n, k)           (VOLUTA_DIV_ROUND_UP(n, k) * k)
 #define VOLUTA_BIT(n)                   (1 << n)
 
-/* branch-redictor helpers */
+/* branch-predictor helpers */
 #define voluta_likely(x_)               __builtin_expect(!!(x_), 1)
 #define voluta_unlikely(x_)             __builtin_expect(!!(x_), 0)
+
+/* unreachable code marker */
+#define voluta_unreachable()            __builtin_unreachable()
 
 
 #endif /* VOLUTA_MACROS_H_ */

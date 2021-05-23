@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #include <stdlib.h>
 #include <stdint.h>
@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <gcrypt.h>
 #include <voluta/fs/types.h>
-#include <voluta/fs/init.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/private.h>
@@ -82,7 +81,7 @@ out_control_err:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_mdigest_init(struct voluta_mdigest *md)
+static int mdigest_init(struct voluta_mdigest *md)
 {
 	int algo;
 	gcry_error_t err;
@@ -113,7 +112,7 @@ int voluta_mdigest_init(struct voluta_mdigest *md)
 	return 0;
 }
 
-void voluta_mdigest_fini(struct voluta_mdigest *md)
+static void mdigest_fini(struct voluta_mdigest *md)
 {
 	if (md->md_hd != NULL) {
 		gcry_md_close(md->md_hd);
@@ -461,7 +460,7 @@ static int derive_key(const struct voluta_kdf_desc *kdf,
 	return ret;
 }
 
-int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+int voluta_derive_kivam(const struct voluta_crypt_params *cryp,
                         const struct voluta_passphrase *pp,
                         const struct voluta_mdigest *md,
                         struct voluta_kivam *kivam)
@@ -472,16 +471,16 @@ int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
 	if (err) {
 		goto out;
 	}
-	err = derive_iv(&zcp->kdf.kdf_iv, pp, md, &kivam->iv);
+	err = derive_iv(&cryp->kdf.kdf_iv, pp, md, &kivam->iv);
 	if (err) {
 		goto out;
 	}
-	err = derive_key(&zcp->kdf.kdf_key, pp, md, &kivam->key);
+	err = derive_key(&cryp->kdf.kdf_key, pp, md, &kivam->key);
 	if (err) {
 		goto out;
 	}
-	kivam->cipher_algo = zcp->cipher_algo;
-	kivam->cipher_mode = zcp->cipher_mode;
+	kivam->cipher_algo = cryp->cipher_algo;
+	kivam->cipher_mode = cryp->cipher_mode;
 out:
 	if (err) {
 		voluta_memzero(kivam, sizeof(*kivam));
@@ -496,13 +495,13 @@ int voluta_crypto_init(struct voluta_crypto *crypto)
 	int err;
 
 	memset(crypto, 0, sizeof(*crypto));
-	err = voluta_mdigest_init(&crypto->md);
+	err = mdigest_init(&crypto->md);
 	if (err) {
 		return err;
 	}
 	err = cipher_init(&crypto->ci);
 	if (err) {
-		voluta_mdigest_fini(&crypto->md);
+		mdigest_fini(&crypto->md);
 		return err;
 	}
 	return 0;
@@ -511,39 +510,9 @@ int voluta_crypto_init(struct voluta_crypto *crypto)
 void voluta_crypto_fini(struct voluta_crypto *crypto)
 {
 	cipher_fini(&crypto->ci);
-	voluta_mdigest_fini(&crypto->md);
+	mdigest_fini(&crypto->md);
 
 	memset(crypto, 0xEF, sizeof(*crypto));
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void do_randomize(void *buf, size_t len, bool very_strong)
-{
-	const enum gcry_random_level random_level =
-	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
-
-	gcry_randomize(buf, len, random_level);
-}
-
-static void iv_clone(const struct voluta_iv *iv, struct voluta_iv *other)
-{
-	memcpy(other, iv, sizeof(*other));
-}
-
-static void iv_rand(struct voluta_iv *iv, size_t n)
-{
-	do_randomize(iv, n * sizeof(*iv), false);
-}
-
-static void key_clone(const struct voluta_key *key, struct voluta_key *other)
-{
-	memcpy(other, key, sizeof(*other));
-}
-
-static void key_rand(struct voluta_key *key, size_t n)
-{
-	do_randomize(key, n * sizeof(*key), true);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -560,82 +529,17 @@ void voluta_kivam_fini(struct voluta_kivam *kivam)
 	memset(kivam, 0xC3, sizeof(*kivam));
 }
 
-static void kivam_setup(struct voluta_kivam *kivam,
-                        uint32_t cipher_algo,
-                        uint32_t cipher_mode,
-                        const struct voluta_key *key,
-                        const struct voluta_iv *iv)
-{
-	voluta_kivam_init(kivam);
-	key_clone(key, &kivam->key);
-	iv_clone(iv, &kivam->iv);
-	kivam->cipher_algo = cipher_algo;
-	kivam->cipher_mode = cipher_mode;
-}
-
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other)
 {
 	memcpy(other, kivam, sizeof(*other));
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static uint32_t kr_cipher_algo(const struct voluta_keys_record *kr)
+void voluta_gcry_randomize(void *buf, size_t len, bool very_strong)
 {
-	return voluta_le32_to_cpu(kr->kr_cipher_algo);
+	const enum gcry_random_level random_level =
+	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
+
+	gcry_randomize(buf, len, random_level);
 }
 
-static void
-kr_set_cipher_algo(struct voluta_keys_record *kr, uint32_t algo)
-{
-	kr->kr_cipher_algo = voluta_cpu_to_le32(algo);
-}
-
-static uint32_t kr_cipher_mode(const struct voluta_keys_record *kr)
-{
-	return voluta_le32_to_cpu(kr->kr_cipher_mode);
-}
-
-static void kr_set_cipher_mode(struct voluta_keys_record *kr, uint32_t mode)
-{
-	kr->kr_cipher_mode = voluta_cpu_to_le32(mode);
-}
-
-void voluta_krec_setup(struct voluta_keys_record *kr)
-{
-	kr_set_cipher_algo(kr, VOLUTA_CIPHER_AES256);
-	kr_set_cipher_mode(kr, VOLUTA_CIPHER_MODE_GCM);
-	voluta_memzero(kr->kr_reserved1, sizeof(kr->kr_reserved1));
-	iv_rand(kr->kr_iv, ARRAY_SIZE(kr->kr_iv));
-	key_rand(kr->kr_key, ARRAY_SIZE(kr->kr_key));
-}
-
-static const struct voluta_key *
-kr_key_by_lba(const struct voluta_keys_record *kr, voluta_lba_t lba)
-{
-	size_t key_slot;
-
-	key_slot = (uint64_t)lba % ARRAY_SIZE(kr->kr_key);
-	return &kr->kr_key[key_slot];
-}
-
-static const struct voluta_iv *
-kr_iv_by_ag_index(const struct voluta_keys_record *kr, voluta_index_t ag_index)
-{
-	size_t iv_slot;
-
-	iv_slot = (uint64_t)ag_index % ARRAY_SIZE(kr->kr_iv);
-	return &kr->kr_iv[iv_slot];
-}
-
-void voluta_krec_kivam_of(const struct voluta_keys_record *kr,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_kivam *out_kivam)
-{
-	const struct voluta_iv *iv = kr_iv_by_ag_index(kr, vaddr->ag_index);
-	const struct voluta_key *key = kr_key_by_lba(kr, vaddr->lba);
-
-	kivam_setup(out_kivam, kr_cipher_algo(kr),
-	            kr_cipher_mode(kr), key, iv);
-}

@@ -215,8 +215,8 @@ static void ut_symlink_and_io_(struct ut_env *ute, size_t cnt)
 
 static void ut_symlink_and_io(struct ut_env *ute)
 {
-	ut_symlink_and_io_(ute, 100);
-	ut_symlink_and_io_(ute, 4000);
+	ut_symlink_and_io_(ute, 128);
+	ut_symlink_and_io_(ute, VOLUTA_PATH_MAX - 1);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -286,10 +286,7 @@ static void ut_symlink_and_io2_(struct ut_env *ute, size_t cnt)
 
 static void ut_symlink_and_io2(struct ut_env *ute)
 {
-	ut_symlink_and_io2_(ute, 1);
-	ut_symlink_and_io2_(ute, 2);
 	ut_symlink_and_io2_(ute, 11);
-
 	ut_symlink_and_io2_(ute, 111);
 	ut_symlink_and_io2_(ute, 1111);
 }

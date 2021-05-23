@@ -15,11 +15,11 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
-#include "voluta-prog.h"
+#include <voluta/cmd.h>
 
 
 static const char *voluta_fsck_usage[] = {
-	"fsck [options] <volume-path>",
+	"fsck [options] <repo-path>",
 	"",
 	"options:",
 	"  -v, --version                Show version and exit",
@@ -55,16 +55,16 @@ static void fsck_getopt(void)
 		}
 	}
 	if (optind >= argc) {
-		voluta_die_no_volume_path();
+		voluta_die(0, "missing repo path");
 	}
-	voluta_globals.cmd.fsck.volume = argv[optind++];
+	voluta_globals.cmd.fsck.repodir = argv[optind++];
 	voluta_die_if_redundant_arg();
 }
 
 
 static void fsck_finalize(void)
 {
-	voluta_destrpy_fse_inst();
+	voluta_destroy_fse_inst();
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/

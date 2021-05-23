@@ -16,7 +16,7 @@
  */
 #define _GNU_SOURCE 1
 #include <sys/mount.h>
-#include "voluta-prog.h"
+#include <voluta/cmd.h>
 
 
 static const char *show_usage[] = {
@@ -100,7 +100,7 @@ struct voluta_msflag_name {
 	const char *name;
 };
 
-static void show_mount_flags(long flags, char *buf, size_t bsz)
+static void make_mntflags_str(long flags, char *buf, size_t bsz)
 {
 	size_t len;
 	const char *end = buf + bsz;
@@ -134,10 +134,9 @@ static void show_fsinfo(void)
 
 	show_do_ioctl_query(&query);
 	ms_flags = (long)query.u.fsinfo.msflags;
-	show_mount_flags(ms_flags, ms_flags_str, sizeof(ms_flags_str) - 1);
+	make_mntflags_str(ms_flags, ms_flags_str, sizeof(ms_flags_str) - 1);
 
 	printf("uptime-seconds: %ld\n", query.u.fsinfo.uptime);
-	printf("encrypt:        %d\n", (int)query.u.fsinfo.encrypt);
 	printf("mount-flags:    %s\n", ms_flags_str);
 }
 

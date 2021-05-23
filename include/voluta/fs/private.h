@@ -1,29 +1,30 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_PRIVATE_H_
 #define VOLUTA_PRIVATE_H_
 
-#ifndef VOLUTA_LIBPRIVATE
+#ifndef VOLUTA_USE_PRIVATE
 #error "internal library header -- do not include!"
 #endif
 
 #include <voluta/infra.h>
 #include <voluta/defs.h>
 #include <voluta/fs/types.h>
+#include <voluta/fs/nodes.h>
 
 
 /* error-codes borrowed from XFS */
@@ -46,6 +47,7 @@
 #define STATICASSERT_LT(a_, b_)         VOLUTA_STATICASSERT_LT(a_, b_)
 #define STATICASSERT_LE(a_, b_)         VOLUTA_STATICASSERT_LE(a_, b_)
 #define STATICASSERT_GT(a_, b_)         VOLUTA_STATICASSERT_GT(a_, b_)
+#define STATICASSERT_GE(a_, b_)         VOLUTA_STATICASSERT_GE(a_, b_)
 #define STATICASSERT_SIZEOF(t_, s_)     VOLUTA_STATICASSERT_EQ(sizeof(t_), s_)
 
 /* aliases */
@@ -67,10 +69,10 @@
 #define log_err(fmt, ...)               voluta_log_error(fmt, __VA_ARGS__)
 #define log_crit(fmt, ...)              voluta_log_crit(fmt, __VA_ARGS__)
 
-#define vtype_nkbs(vt)                  voluta_vtype_nkbs(vt)
-#define vtype_size(vt)                  voluta_vtype_size(vt)
-#define vtype_ssize(vt)                 voluta_vtype_ssize(vt)
-#define vtype_isdata(vt)                voluta_vtype_isdata(vt)
+#define ztype_nkbs(zt)                  voluta_ztype_nkbs(zt)
+#define ztype_size(zt)                  voluta_ztype_size(zt)
+#define ztype_ssize(zt)                 voluta_ztype_ssize(zt)
+#define ztype_isdata(zt)                voluta_ztype_isdata(zt)
 
 #define vaddr_none()                    voluta_vaddr_none()
 #define vaddr_isnull(va)                voluta_vaddr_isnull(va)
@@ -83,8 +85,19 @@
 #define vaddr_setup(va, t, o)           voluta_vaddr_setup(va, t, o)
 #define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
+#define blobid_reset(bid)               voluta_blobid_reset(bid)
+#define blobid_copyto(bid, oth)         voluta_blobid_copyto(bid, oth)
+#define blobid_isequal(bid, oth)        voluta_blobid_isequal(bid, oth)
+#define blobid_size(bid)                voluta_blobid_size(bid)
+
 #define baddr_reset(ba)                 voluta_baddr_reset(ba)
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
+#define baddr_setup(ba, bid, s, o)      voluta_baddr_setup(ba, bid, s, o)
+
+#define ui_incref(ui)                   voluta_ui_incref(ui)
+#define ui_decref(ui)                   voluta_ui_decref(ui)
+#define ui_dirtify(ui)                  voluta_ui_dirtify(ui)
+#define ui_undirtify(ui)                voluta_ui_undirtify(ui)
 
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)
@@ -92,13 +105,11 @@
 #define vi_dirtify(vi)                  voluta_vi_dirtify(vi)
 #define vi_undirtify(vi)                voluta_vi_undirtify(vi)
 #define vi_isdata(vi)                   voluta_vi_isdata(vi)
-#define vi_dat_of(vi)                   voluta_vi_dat_of(vi)
-#define ii_refcnt(ii)                   vi_refcnt(ii_vi(ii))
-#define ii_incref(ii)                   vi_incref(ii_vi(ii))
-#define ii_decref(ii)                   vi_decref(ii_vi(ii))
+#define ii_refcnt(ii)                   voluta_ii_refcnt(ii)
+#define ii_incref(ii)                   voluta_ii_incref(ii)
+#define ii_decref(ii)                   voluta_ii_decref(ii)
 #define ii_dirtify(ii)                  voluta_ii_dirtify(ii)
 #define ii_undirtify(ii)                voluta_ii_undirtify(ii)
-#define ii_isrdonly(ii)                 voluta_ii_isrdonly(ii)
 #define ii_xino(ii)                     voluta_ii_xino(ii)
 #define ii_parent(ii)                   voluta_ii_parent(ii)
 #define ii_uid(ii)                      voluta_ii_uid(ii)
@@ -114,7 +125,8 @@
 #define ii_islnk(ii)                    voluta_ii_islnk(ii)
 #define ii_isfifo(ii)                   voluta_ii_isfifo(ii)
 #define ii_issock(ii)                   voluta_ii_issock(ii)
-#define ii_isevictable(ii)              voluta_ii_isevictable(ii)
+
+#define agi_dirtify(agi)                voluta_agi_dirtify(agi)
 
 #define ts_copy(dst, src)               voluta_ts_copy(dst, src)
 #define iattr_setup(ia, ino)            voluta_iattr_setup(ia, ino)
@@ -156,166 +168,215 @@
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
 
-static inline bool ino_isnull(ino_t ino)
+static inline
+bool ino_isnull(ino_t ino)
 {
 	return (ino == VOLUTA_INO_NULL);
 }
 
-
-static inline bool off_isnull(loff_t off)
+static inline
+bool off_isnull(loff_t off)
 {
 	return (off >= VOLUTA_OFF_NULL) || (off < 0);
 }
 
-static inline loff_t off_min(loff_t off1, loff_t off2)
+static inline
+loff_t off_min(loff_t off1, loff_t off2)
 {
 	return (off1 < off2) ? off1 : off2;
 }
 
-static inline loff_t off_max(loff_t off1, loff_t off2)
+static inline
+loff_t off_max(loff_t off1, loff_t off2)
 {
 	return (off1 > off2) ? off1 : off2;
 }
 
-static inline loff_t off_max_min(loff_t off1, loff_t off2, loff_t off3)
+static inline
+loff_t off_max_min(loff_t off1, loff_t off2, loff_t off3)
 {
 	return off_min(off_max(off1, off2), off3);
 }
 
-static inline loff_t off_end(loff_t off, size_t len)
+static inline
+loff_t off_end(loff_t off, size_t len)
 {
 	return off + (loff_t)len;
 }
 
-static inline loff_t off_align(loff_t off, ssize_t align)
+static inline
+loff_t off_align(loff_t off, ssize_t align)
 {
 	return (off / align) * align;
 }
 
-static inline loff_t off_next(loff_t off, ssize_t len)
+static inline
+loff_t off_next(loff_t off, ssize_t len)
 {
 	return off_align(off + len, len);
 }
 
-static inline loff_t off_to_lba(loff_t off)
+static inline
+loff_t off_to_lba(loff_t off)
 {
 	return off / VOLUTA_BK_SIZE;
 }
 
-static inline ssize_t off_diff(loff_t beg, loff_t end)
+static inline
+ssize_t off_diff(loff_t beg, loff_t end)
 {
 	return end - beg;
 }
 
-static inline ssize_t off_len(loff_t beg, loff_t end)
+static inline
+ssize_t off_len(loff_t beg, loff_t end)
 {
 	return off_diff(beg, end);
 }
 
-static inline size_t off_ulen(loff_t beg, loff_t end)
+static inline
+size_t off_ulen(loff_t beg, loff_t end)
 {
 	return (size_t)off_len(beg, end);
 }
 
+static inline
+voluta_lba_t lba_align(voluta_lba_t lba, ssize_t align)
+{
+	return (lba / align) * align;
+}
 
-static inline bool lba_isequal(voluta_lba_t lba1, voluta_lba_t lba2)
+static inline
+bool lba_isequal(voluta_lba_t lba1, voluta_lba_t lba2)
 {
 	return (lba1 == lba2);
 }
 
-static inline bool lba_isnull(voluta_lba_t lba)
+static inline
+bool lba_isnull(voluta_lba_t lba)
 {
 	return lba_isequal(lba, VOLUTA_LBA_NULL);
 }
 
-static inline voluta_lba_t lba_to_off(voluta_lba_t lba)
+static inline
+voluta_lba_t lba_to_off(voluta_lba_t lba)
 {
 	return lba * (voluta_lba_t)VOLUTA_BK_SIZE;
 }
 
+static inline
+voluta_lba_t lba_of_bks(voluta_lba_t lba)
+{
+	return lba_align(lba, VOLUTA_NBK_IN_BKSEC);
+}
 
-static inline loff_t ag_index_to_off(voluta_index_t ag_index)
+static inline
+loff_t ag_index_to_off(voluta_index_t ag_index)
 {
 	return (loff_t)(ag_index * VOLUTA_AG_SIZE);
 }
 
-static inline size_t nbytes_to_ag_count(loff_t nbytes)
+static inline
+size_t nbytes_to_ag_count(loff_t nbytes)
 {
 	return (size_t)nbytes / VOLUTA_AG_SIZE;
 }
 
-static inline loff_t ag_count_to_nbytes(size_t nags)
+static inline
+loff_t ag_count_to_nbytes(size_t nags)
 {
 	return (loff_t)nags * VOLUTA_AG_SIZE;
 }
 
 
-static inline bool uid_eq(uid_t uid1, uid_t uid2)
+static inline
+bool uid_eq(uid_t uid1, uid_t uid2)
 {
 	return (uid1 == uid2);
 }
 
-static inline bool gid_eq(gid_t gid1, gid_t gid2)
+static inline
+bool gid_eq(gid_t gid1, gid_t gid2)
 {
 	return (gid1 == gid2);
 }
 
-static inline bool uid_isroot(uid_t uid)
+static inline
+bool uid_isroot(uid_t uid)
 {
 	return uid_eq(uid, 0);
 }
 
 
-static inline bool capable_fsetid(const struct voluta_ucred *ucred)
+static inline
+bool capable_fsetid(const struct voluta_ucred *ucred)
 {
 	/* TODO: CAP_SYS_ADMIN */
 	return uid_isroot(ucred->uid);
 }
 
-static inline bool capable_chown(const struct voluta_ucred *ucred)
+static inline
+bool capable_chown(const struct voluta_ucred *ucred)
 {
 	/* TODO: CAP_CHOWN */
 	return uid_isroot(ucred->uid);
 }
 
-static inline bool capable_fowner(const struct voluta_ucred *ucred)
+static inline
+bool capable_fowner(const struct voluta_ucred *ucred)
 {
 	/* TODO: CAP_FOWNER */
 	return uid_isroot(ucred->uid);
 }
 
-static inline bool capable_sys_admin(const struct voluta_ucred *ucred)
+static inline
+bool capable_sys_admin(const struct voluta_ucred *ucred)
 {
 	/* TODO: CAP_SYS_ADMIN */
 	return uid_isroot(ucred->uid);
 }
 
-
-static inline bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
+static inline
+bool ztype_isequal(enum voluta_ztype vt1, enum voluta_ztype vt2)
 {
 	return (vt1 == vt2);
 }
 
-static inline bool vtype_isnone(enum voluta_vtype vtype)
+static inline
+bool ztype_isnone(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_NONE);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_NONE);
 }
 
-static inline bool vtype_ishsmap(enum voluta_vtype vtype)
+static inline
+bool ztype_ishsmap(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_HSMAP);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_HSMAP);
 }
 
-static inline bool vtype_isagmap(enum voluta_vtype vtype)
+static inline
+bool ztype_isagmap(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_AGMAP);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_AGMAP);
 }
 
-static inline bool vtype_isinode(enum voluta_vtype vtype)
+static inline
+bool ztype_isinode(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_INODE);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_INODE);
 }
 
+static inline
+const struct voluta_uaddr *ui_uaddr(const struct voluta_unode_info *ui)
+{
+	return &ui->uba.uaddr;
+}
+
+static inline
+enum voluta_ztype ui_ztype(const struct voluta_unode_info *ui)
+{
+	return (ui != NULL) ? ui_uaddr(ui)->ztype : VOLUTA_ZTYPE_NONE;
+}
 
 static inline
 const struct voluta_vaddr *vi_vaddr(const struct voluta_vnode_info *vi)
@@ -323,82 +384,100 @@ const struct voluta_vaddr *vi_vaddr(const struct voluta_vnode_info *vi)
 	return &vi->vaddr;
 }
 
-static inline enum voluta_vtype vi_vtype(const struct voluta_vnode_info *vi)
+static inline
+enum voluta_ztype vi_ztype(const struct voluta_vnode_info *vi)
 {
-	return (vi != NULL) ? vi_vaddr(vi)->vtype : VOLUTA_VTYPE_NONE;
+	return (vi != NULL) ? vi_vaddr(vi)->ztype : VOLUTA_ZTYPE_NONE;
 }
 
-static inline size_t vi_length(const struct voluta_vnode_info *vi)
+static inline
+size_t vi_length(const struct voluta_vnode_info *vi)
 {
 	return vi_vaddr(vi)->len;
 }
 
-static inline loff_t vi_offset(const struct voluta_vnode_info *vi)
+static inline
+loff_t vi_offset(const struct voluta_vnode_info *vi)
 {
 	return vi_vaddr(vi)->off;
 }
 
-static inline struct voluta_sb_info *
-vi_sbi(const struct voluta_vnode_info *vi)
+static inline
+struct voluta_sb_info *vi_sbi(const struct voluta_vnode_info *vi)
 {
-	return vi->v_sbi;
+	return vi->v_zi.z_sbi;
 }
 
-static inline struct voluta_cache *
-vi_cache(const struct voluta_vnode_info *vi)
+static inline
+const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 {
-	return vi_sbi(vi)->sb_cache;
+	return &vi->v_zi.z_sbi->s_crypto.md;
 }
 
-static inline const struct voluta_mdigest *
-vi_mdigest(const struct voluta_vnode_info *vi)
-{
-	return &vi->v_sbi->sb_vstore->vs_crypto.md;
-}
-
-
-static inline struct voluta_vnode_info *
-hsi_vi(const struct voluta_hspace_info *hsi)
+static inline
+struct voluta_unode_info *hsi_ui(const struct voluta_hsmap_info *hsi)
 {
 	return voluta_likely(hsi != NULL) ?
-	       voluta_unconst(&hsi->hs_vi) : NULL;
+	       voluta_unconst(&hsi->hs_ui) : NULL;
 }
 
-static inline struct voluta_vnode_info *
-agi_vi(const struct voluta_agroup_info *agi)
+static inline
+struct voluta_unode_info *agi_ui(const struct voluta_agmap_info *agi)
 {
 	return voluta_likely(agi != NULL) ?
-	       voluta_unconst(&agi->ag_vi) : NULL;
+	       voluta_unconst(&agi->ag_ui) : NULL;
 }
 
-static inline struct voluta_vnode_info *
-ii_vi(const struct voluta_inode_info *ii)
+
+static inline
+struct voluta_inode_info *ii_unconst(const struct voluta_inode_info *ii)
+{
+	union {
+		const struct voluta_inode_info *p;
+		struct voluta_inode_info *q;
+	} u = {
+		.p = ii
+	};
+	return u.q;
+}
+
+static inline
+struct voluta_vnode_info *ii_to_vi(const struct voluta_inode_info *ii)
 {
 	return voluta_likely(ii != NULL) ?
 	       voluta_unconst(&ii->i_vi) : NULL;
 }
 
-static inline ino_t ii_ino(const struct voluta_inode_info *ii)
+static inline
+ino_t ii_ino(const struct voluta_inode_info *ii)
 {
 	return ii->i_ino;
 }
 
-static inline const struct voluta_vaddr *
-ii_vaddr(const struct voluta_inode_info *ii)
+static inline
+const struct voluta_vaddr *ii_vaddr(const struct voluta_inode_info *ii)
 {
-	return vi_vaddr(ii_vi(ii));
+	return vi_vaddr(ii_to_vi(ii));
 }
 
-static inline struct voluta_bu_info *
-ii_bui(const struct voluta_inode_info *ii)
+static inline
+struct voluta_sb_info *ii_sbi(const struct voluta_inode_info *ii)
 {
-	return ii_vi(ii)->v_bui;
+	return vi_sbi(ii_to_vi(ii));
 }
 
-static inline struct voluta_sb_info *
-ii_sbi(const struct voluta_inode_info *ii)
+
+static inline
+const struct voluta_baddr *hsi_baddr(const struct voluta_hsmap_info *hsi)
 {
-	return vi_sbi(ii_vi(ii));
+	return &hsi->hs_ui.uba.baddr;
+}
+
+
+static inline
+const struct voluta_baddr *agi_baddr(const struct voluta_agmap_info *agi)
+{
+	return &agi->ag_ui.uba.baddr;
 }
 
 #endif /* VOLUTA_PRIVATE_H_ */

@@ -38,11 +38,10 @@ static void ut_rootd_access(struct ut_env *ute)
 
 static void ut_statfs_empty(struct ut_env *ute)
 {
+	loff_t vol_size;
 	size_t fs_size;
 	size_t used_bytes;
 	size_t used_files;
-	const size_t vol_size = (size_t)(ute->args.fs_args.vsize);
-	const size_t ag_size = VOLUTA_AG_SIZE;
 	struct statvfs stv;
 
 	ut_statfs_ok(ute, UT_ROOT_INO, &stv);
@@ -52,10 +51,11 @@ static void ut_statfs_empty(struct ut_env *ute)
 	ut_expect_gt(stv.f_files, stv.f_ffree);
 
 	fs_size = stv.f_frsize * stv.f_blocks;
+	vol_size = ute->args->fs_args.vsize;
 	ut_expect_eq(fs_size, vol_size);
 
 	used_bytes = (stv.f_blocks - stv.f_bfree) * stv.f_frsize;
-	ut_expect_gt(used_bytes, ag_size);
+	ut_expect_gt(used_bytes, VOLUTA_SB_SIZE);
 	ut_expect_lt(used_bytes, vol_size);
 
 	used_files = stv.f_files - stv.f_ffree;

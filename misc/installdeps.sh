@@ -1,12 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 #
 # helper script to install dependencies on local machine, prior to build,
-# either for redhat or debian based systems.
+# either for redhat or debian based systems. Run as privileged user.
 #
+self=$(basename ${BASH_SOURCE[0]})
+msg() { echo "$self: $*" >&2; }
+die() { msg "$*"; exit 1; }
+try() { ( "$@" ) || die "failed: $*"; }
+run() { echo "$self: $@" >&2; try "$@"; }
 
-_install_deb() {
-  echo "# run as privileged user:"
-  echo apt-get install \
+install_deb() {
+  run apt-get install -y \
     gcc \
     git \
     make \
@@ -24,9 +28,8 @@ _install_deb() {
     debhelper
 }
 
-_install_rpm() {
-  echo "# run as privileged user:"
-  echo dnf install \
+install_rpm() {
+  run dnf install -y \
     gcc \
     git \
     make \
@@ -44,10 +47,10 @@ _install_rpm() {
 }
 
 if [[ -f '/etc/redhat-release' ]]; then
-  _install_rpm
+  install_rpm
 elif [[ -f '/etc/debian_version' ]]; then
-  _install_deb
+  install_deb
 else
-  echo "# unknown packaging manager"
+  die "unknown packaging manager"
 fi
 

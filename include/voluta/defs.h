@@ -1,36 +1,35 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_DEFS_H_
 #define VOLUTA_DEFS_H_
 
 #include <stdint.h>
 
-
-/* volume's boot-record marker (ASCII: "@voluta@") */
-#define VOLUTA_BOOT_MARK                (0x406174756C6F7640L)
-
 /* current on-disk format version number */
 #define VOLUTA_FMT_VERSION              (1)
 
-/* file-system fsid magic number (ASCII: '@VLT') */
-#define VOLUTA_SUPER_MAGIC              (0x40564C54U)
+/* volume's root marker (ASCII: "@voluta@") */
+#define VOLUTA_SBROOT_MARK              (0x406174756C6F7640L)
 
-/* magic numbers at meta-objects start (ASCII: '#VLT') */
-#define VOLUTA_VTYPE_MAGIC              (0x23564C54U)
+/* file-system fsid magic number (ASCII: "@VLT") */
+#define VOLUTA_SUPER_MAGIC              (0x544C5640U)
+
+/* magic numbers at meta-objects start (ASCII: "#VLT") */
+#define VOLUTA_ZTYPE_MAGIC              (0x544C5623U)
 
 /* max length of encryption pass-phrase */
 #define VOLUTA_PASSPHRASE_MAX           (255)
@@ -71,16 +70,16 @@
 /* logical block size (64K) */
 #define VOLUTA_BK_SIZE                  (1L << VOLUTA_BK_SHIFT)
 
-/* number of logical blocks within blocks-unit */
-#define VOLUTA_NBK_IN_BU                (4)
+/* number of logical blocks within blocks-section */
+#define VOLUTA_NBK_IN_BKSEC             (4)
 
 /* number of logical blocks within allocation-group */
 #define VOLUTA_NBK_IN_AG                (1024L)
 
 
-/* blocks-unit size (256K) */
-#define VOLUTA_BU_SIZE \
-	(VOLUTA_NBK_IN_BU * VOLUTA_BK_SIZE)
+/* blocks-section size (256K) */
+#define VOLUTA_BKSEC_SIZE \
+	(VOLUTA_NBK_IN_BKSEC * VOLUTA_BK_SIZE)
 
 /* allocation-group size (64M) */
 #define VOLUTA_AG_SIZE \
@@ -88,39 +87,36 @@
 
 
 /* number of allocation-groups per hyper-space */
-#define VOLUTA_NAG_IN_HS                (256)
+#define VOLUTA_NAG_IN_HS                (512)
 
 /* number of logical blocks within hyper-space */
 #define VOLUTA_NBK_IN_HS \
 	(VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG)
 
-/* size of single hyper-space (16G) */
+/* size of single hyper-space (32G) */
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
-/* number of hyper-spaces in uber-space */
+/* number of hyper-spaces in top-level uber-space */
 #define VOLUTA_NHS_IN_US                (512L)
-
-/* maximal number of hyper-spaces */
-#define VOLUTA_NHS_MAX                  VOLUTA_NHS_IN_US
 
 
 /* minimal number of allocation-groups in volume */
 #define VOLUTA_VOLUME_NAG_MIN           (32L)
 
 /* maximal number of allocation-groups in volume */
-#define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_MAX)
+#define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_IN_US)
 
 /* minimal bytes-size of underlying volume (2G) */
 #define VOLUTA_VOLUME_SIZE_MIN \
 	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
-/* maximal bytes-size of underlying volume (8T) */
+/* maximal bytes-size of underlying volume (16T) */
 #define VOLUTA_VOLUME_SIZE_MAX  \
 	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
-/* max path-length (including null) of volume-path */
-#define VOLUTA_VOLUME_PATH_MAX          (2032)
+/* max path-length (including null) of repository-path */
+#define VOLUTA_REPO_PATH_MAX            (2032)
 
 
 /* non-valid ("NIL") logical byte address */
@@ -269,68 +265,50 @@
 #define VOLUTA_IO_SIZE_MAX              (4UL * VOLUTA_UMEGA)
 
 
-/* size in bytes of single archiving blob (16M) */
-#define VOLUTA_AR_BLOB_SIZE             (VOLUTA_AG_SIZE / 4)
+/* size in bytes of binary object identifier */
+#define VOLUTA_BLOBID_LEN               (32)
 
-/* size of archive blob spec entry */
-#define VOLUTA_AR_BLOBREF_SIZE          (64)
-
-/* size in bytes of object identifier */
-#define VOLUTA_OID_LEN                  (32)
-
-
-
-/* zero-LBA meta-block types */
-enum voluta_ztype {
-	VOLUTA_ZTYPE_NONE       = 0,
-	VOLUTA_ZTYPE_VOLUME     = 1,
-	VOLUTA_ZTYPE_ARCHIVE    = 2,
-};
-
-
-/* boot-record control flags */
-enum voluta_brf {
-	VOLUTA_ZBF_NONE         = (1 << 0),
-	VOLUTA_ZBF_ENCRYPTED    = (1 << 1),
-};
 
 enum voluta_endianness {
 	VOLUTA_ENDIANNESS_LE    = 1,
 	VOLUTA_ENDIANNESS_BE    = 2
 };
 
-/* file-system elements types */
-enum voluta_vtype {
-	VOLUTA_VTYPE_NONE       = 0,
-	VOLUTA_VTYPE_DATA1K     = 1,
-	VOLUTA_VTYPE_SUPER      = 3,
-	VOLUTA_VTYPE_DATA4K     = 4,
-	VOLUTA_VTYPE_HSMAP      = 5,
-	VOLUTA_VTYPE_AGMAP      = 7,
-	VOLUTA_VTYPE_ITNODE     = 11,
-	VOLUTA_VTYPE_INODE      = 13,
-	VOLUTA_VTYPE_XANODE     = 17,
-	VOLUTA_VTYPE_HTNODE     = 19,
-	VOLUTA_VTYPE_RTNODE     = 23,
-	VOLUTA_VTYPE_SYMVAL     = 29,
-	VOLUTA_VTYPE_DATABK     = 64,
-	VOLUTA_VTYPE_BLOB       = 127,
+/* file-system complex-elements type-names */
+enum voluta_ztype {
+	VOLUTA_ZTYPE_NONE       = 0,
+	VOLUTA_ZTYPE_DATA1K     = 1,
+	VOLUTA_ZTYPE_SUPER      = 3,
+	VOLUTA_ZTYPE_DATA4K     = 4,
+	VOLUTA_ZTYPE_HSMAP      = 5,
+	VOLUTA_ZTYPE_AGMAP      = 7,
+	VOLUTA_ZTYPE_ITNODE     = 11,
+	VOLUTA_ZTYPE_INODE      = 13,
+	VOLUTA_ZTYPE_XANODE     = 17,
+	VOLUTA_ZTYPE_DTNODE     = 19,
+	VOLUTA_ZTYPE_RTNODE     = 23,
+	VOLUTA_ZTYPE_SYMVAL     = 29,
+	VOLUTA_ZTYPE_DATABK     = 64,
 };
 
-/* hyper-space flags */
-enum voluta_hsf {
-	VOLUTA_HSF_HASNEXT      = (1 << 0),
+/* common-header flags */
+enum voluta_hdrf {
+	VOLUTA_HDRF_CSUM        = (1 << 0),
 };
-
 
 /* allocation-groups flags */
 enum voluta_agf {
 	VOLUTA_AGF_FORMATTED    = (1 << 0),
 	VOLUTA_AGF_FRAGMENTED   = (1 << 1),
-	VOLUTA_AGF_USERDATA     = (1 << 2),
-	VOLUTA_AGF_METADATA     = (1 << 3),
 };
 
+/* allocation-groups sub-type */
+enum voluta_agkind {
+	VOLUTA_AGKIND_NONE      = 0,
+	VOLUTA_AGKIND_META      = 1,
+	VOLUTA_AGKIND_DATABK    = 2,
+	VOLUTA_AGKIND_DATAXK    = 3,
+};
 
 /* inode control flags */
 enum voluta_inodef {
@@ -470,29 +448,29 @@ struct voluta_vaddr56 {
 
 
 struct voluta_vaddr64 {
-	uint64_t off_vtype;
+	uint64_t off_ztype;
 } voluta_packed_aligned8;
 
 
 struct voluta_blobid {
-	uint8_t  oid[VOLUTA_OID_LEN];
+	uint8_t  id[VOLUTA_BLOBID_LEN];
+	uint32_t size;
+	uint32_t reserved;
 } voluta_packed_aligned8;
 
 
 struct voluta_blobspec {
+	struct voluta_blobid    blobid;
 	struct voluta_vaddr64   vaddr;
-	uint32_t                osize; /* blob's raw size */
-	uint32_t                csize; /* compressed size */
 	uint32_t                flags;
 	uint8_t                 reserved[12];
-	struct voluta_blobid    blobid;
 } voluta_packed_aligned8;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_header {
 	uint32_t                h_magic;
-	uint8_t                 h_vtype;
+	uint8_t                 h_ztype;
 	uint8_t                 h_flags;
 	uint16_t                h_reserved;
 	uint32_t                h_size;
@@ -515,71 +493,72 @@ struct voluta_kdf_pair {
 } voluta_packed_aligned32;
 
 
-struct voluta_boot_record {
-	struct voluta_header    br_hdr;
-	uint64_t                br_magic;
-	uint64_t                br_version;
-	uint64_t                br_size;
-	uint32_t                br_type;
-	uint32_t                br_flags;
-	uint8_t                 br_endianness;
-	uint8_t                 br_reserved1[15];
-	uint8_t                 br_sw_version[64];
-	struct voluta_uuid      br_uuid;
-	uint8_t                 br_reserved2[368];
-	struct voluta_kdf_pair  br_kdf_pair;
-	uint32_t                br_chiper_algo;
-	uint32_t                br_chiper_mode;
-	uint8_t                 br_reserved3[472];
-	uint8_t                 br_reserved4[3072];
+struct voluta_sb_root {
+	struct voluta_header    sr_hdr;
+	uint64_t                sr_magic;
+	uint64_t                sr_version;
+	uint32_t                sr_flags;
+	uint8_t                 sr_endianness;
+	uint8_t                 sr_reserved1[27];
+	uint8_t                 sr_sw_version[64];
+	struct voluta_uuid      sr_uuid;
+	uint8_t                 sr_reserved2[368];
+	struct voluta_kdf_pair  sr_kdf_pair;
+	uint32_t                sr_chiper_algo;
+	uint32_t                sr_chiper_mode;
+	uint8_t                 sr_reserved3[472];
+	uint8_t                 sr_reserved4[3072];
 } voluta_packed_aligned64;
 
 
-struct voluta_hash_record {
-	struct voluta_hash512   hr_fill_hash;
-	struct voluta_hash512   hr_pass_hash;
-	uint8_t                 hr_reserved[1920];
-	uint8_t                 hr_fill[2048];
+struct voluta_sb_hash {
+	struct voluta_hash512   sh_fill_hash;
+	struct voluta_hash512   sh_pass_hash;
+	uint8_t                 sh_reserved[1920];
+	uint8_t                 sh_fill[2048];
 } voluta_packed_aligned64;
 
 
-struct voluta_keys_record {
-	uint32_t                kr_cipher_algo;
-	uint32_t                kr_cipher_mode;
-	uint8_t                 kr_reserved1[104];
-	struct voluta_iv        kr_iv[503];
-	struct voluta_key       kr_key[257];
+struct voluta_sb_keys {
+	uint32_t                sk_cipher_algo;
+	uint32_t                sk_cipher_mode;
+	uint8_t                 sk_reserved1[104];
+	struct voluta_iv        sk_iv[503];
+	struct voluta_key       sk_key[257];
 } voluta_packed_aligned64;
 
 
-struct voluta_uspace_map {
-	struct voluta_blobspec  us_hsm_bls[VOLUTA_NHS_MAX];
+struct voluta_sb_uspace_map {
+	struct voluta_blobspec  su_hsm_bls[VOLUTA_NHS_IN_US];
 } voluta_packed_aligned64;
 
 
 struct voluta_super_block {
-	struct voluta_boot_record sb_boot_rec;
-	struct voluta_hash_record sb_hash_rec;
-	uint64_t                  sb_birth_time;
-	uint64_t                  sb_ag_count;
-	struct voluta_vaddr64     sb_self_vaddr;
-	struct voluta_vaddr64     sb_itable_root;
-	uint8_t                   sb_reserved1[224];
-	struct voluta_name        sb_name;
-	uint8_t                   sb_reserved2[7680];
-	struct voluta_keys_record sb_keys;
-	struct voluta_uspace_map  sb_usm;
+	struct voluta_sb_root   sb_boot;
+	struct voluta_sb_hash   sb_hash;
+	uint64_t                sb_birth_time;
+	uint64_t                sb_volume_size;
+	uint64_t                sb_base_address;
+	uint64_t                sb_ag_count;
+	struct voluta_vaddr64   sb_self_vaddr;
+	struct voluta_vaddr64   sb_itable_root;
+	uint8_t                 sb_reserved1[144];
+	struct voluta_blobspec  sb_prev_bls;
+	struct voluta_name      sb_name;
+	uint8_t                 sb_reserved2[7680];
+	struct voluta_sb_keys   sb_keys;
+	struct voluta_sb_uspace_map sb_usm;
 } voluta_packed_aligned64;
 
 
 struct voluta_ag_rec {
-	uint32_t                ag_flags;
+	struct voluta_blobspec  ag_agm_bls;
+	uint16_t                ag_kind;
+	uint16_t                ag_flags;
 	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint8_t                 ag_reserved[96];
-	struct voluta_blobspec  ag_map_bls;
-	struct voluta_blobspec  ag_bks_bls;
+	uint8_t                 ag_reserved[40];
 } voluta_packed_aligned8;
 
 
@@ -597,7 +576,7 @@ struct voluta_hspace_map {
 
 
 struct voluta_bk_rec {
-	uint8_t                 bk_vtype;
+	uint8_t                 bk_ztype;
 	uint8_t                 bk_reserved1[3];
 	uint32_t                bk_flags;
 	uint64_t                bk_allocated;
@@ -610,8 +589,10 @@ struct voluta_bk_rec {
 struct voluta_agroup_map {
 	struct voluta_header    ag_hdr;
 	uint64_t                ag_index;
-	uint8_t                 ag_reserved[4072];
-	uint8_t                 ag_reserved2[4096];
+	uint8_t                 ag_reserved1[40];
+	struct voluta_blobid    ag_bks_blobid;
+	uint8_t                 ag_reserved2[3992];
+	uint8_t                 ag_reserved3[4096];
 	struct voluta_bk_rec    ag_bkr[VOLUTA_NBK_IN_AG];
 } voluta_packed_aligned64;
 
@@ -636,7 +617,7 @@ struct voluta_itable_tnode {
 } voluta_packed_aligned64;
 
 
-struct voluta_iattr_times {
+struct voluta_inode_times {
 	struct voluta_timespec  btime;
 	struct voluta_timespec  atime;
 	struct voluta_timespec  ctime;
@@ -651,39 +632,30 @@ struct voluta_xattr_entry {
 } voluta_packed_aligned8;
 
 
-struct voluta_xattr_ispec {
-	uint16_t                xa_nents;
-	uint8_t                 xa_pad[6];
-	struct voluta_vaddr64   xa_vaddr[5];
-	int64_t                 xa_reserved[2];
-	struct voluta_xattr_entry xe[VOLUTA_XATTR_INENTS];
+struct voluta_inode_xattr {
+	uint16_t                ix_nents;
+	uint8_t                 ix_pad[6];
+	struct voluta_vaddr64   ix_vaddr[4];
+	int64_t                 ix_reserved[3];
+	struct voluta_xattr_entry ixe[VOLUTA_XATTR_INENTS];
 } voluta_packed_aligned64;
 
 
-struct voluta_xattr_node {
-	struct voluta_header    xa_hdr;
-	uint64_t                xa_ino;
-	uint16_t                xa_nents;
-	uint8_t                 xa_reserved[38];
-	struct voluta_xattr_entry xe[VOLUTA_XATTR_NENTS];
-} voluta_packed_aligned64;
-
-
-struct voluta_reg_ispec {
-	struct voluta_vaddr64   r_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
-	struct voluta_vaddr64   r_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
-	struct voluta_vaddr64   r_tree_root;
-	uint8_t                 r_reserved[352];
+struct voluta_inode_reg {
+	struct voluta_vaddr64   ir_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
+	struct voluta_vaddr64   ir_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
+	struct voluta_vaddr64   ir_tree_root;
+	uint8_t                 ir_reserved[352];
 } voluta_packed_aligned8;
 
 
-struct voluta_lnk_ispec {
+struct voluta_inode_lnk {
 	uint8_t                 l_head[VOLUTA_SYMLNK_HEAD_MAX];
 	struct voluta_vaddr64   l_tail[VOLUTA_SYMLNK_NPARTS];
 } voluta_packed_aligned64;
 
 
-struct voluta_dir_ispec {
+struct voluta_inode_dir {
 	int64_t                 d_root;
 	uint64_t                d_ndents;
 	uint32_t                d_last_index;
@@ -692,10 +664,10 @@ struct voluta_dir_ispec {
 } voluta_packed_aligned64;
 
 
-union voluta_iattr_specific {
-	struct voluta_dir_ispec d;
-	struct voluta_reg_ispec r;
-	struct voluta_lnk_ispec l;
+union voluta_inode_specific {
+	struct voluta_inode_dir d;
+	struct voluta_inode_reg r;
+	struct voluta_inode_lnk l;
 	uint8_t                 b[512];
 } voluta_packed_aligned64;
 
@@ -717,9 +689,18 @@ struct voluta_inode {
 	uint32_t                i_rdev_minor;
 	uint64_t                i_revision;
 	uint64_t                i_reserved[3];
-	struct voluta_iattr_times   i_t;
-	struct voluta_xattr_ispec   i_x;
-	union voluta_iattr_specific i_s;
+	struct voluta_inode_times   i_tm;
+	struct voluta_inode_xattr   i_xa;
+	union voluta_inode_specific i_sp;
+} voluta_packed_aligned64;
+
+
+struct voluta_xattr_node {
+	struct voluta_header    xa_hdr;
+	uint64_t                xa_ino;
+	uint16_t                xa_nents;
+	uint8_t                 xa_reserved[38];
+	struct voluta_xattr_entry xe[VOLUTA_XATTR_NENTS];
 } voluta_packed_aligned64;
 
 
@@ -736,12 +717,12 @@ struct voluta_radix_tnode {
 } voluta_packed_aligned64;
 
 
-struct voluta_lnk_value {
-	struct voluta_header    lv_hdr;
-	uint64_t                lv_parent;
-	uint16_t                lv_length;
-	uint8_t                 lv_reserved1[38];
-	uint8_t                 lv_value[VOLUTA_SYMLNK_PART_MAX];
+struct voluta_symlnk_value {
+	struct voluta_header    sy_hdr;
+	uint64_t                sy_parent;
+	uint16_t                sy_length;
+	uint8_t                 sy_reserved1[38];
+	uint8_t                 sy_value[VOLUTA_SYMLNK_PART_MAX];
 } voluta_packed_aligned64;
 
 
@@ -755,7 +736,7 @@ struct voluta_dir_entry {
 } voluta_packed_aligned8;
 
 
-struct voluta_dir_htnode {
+struct voluta_dir_tnode {
 	struct voluta_header    dh_hdr;
 	uint64_t                dh_ino;
 	int64_t                 dh_parent;
@@ -788,6 +769,7 @@ struct voluta_data_block {
 
 /* semantic "view" into 64K block */
 union voluta_block_u {
+	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_data_block        dbk;
@@ -800,80 +782,29 @@ struct voluta_block {
 } voluta_packed_aligned64;
 
 
-struct voluta_blocks_unit {
-	struct voluta_block bk[VOLUTA_NBK_IN_BU];
+/* blocks-section unit */
+struct voluta_blocks_sec {
+	struct voluta_block bk[VOLUTA_NBK_IN_BKSEC];
 } voluta_packed_aligned64;
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* semantic "view" into meta elements */
-union voluta_view_u {
+union voluta_view {
 	struct voluta_header            hdr;
 	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_inode             inode;
-	struct voluta_dir_htnode        htn;
+	struct voluta_dir_tnode         htn;
 	struct voluta_radix_tnode       rtn;
 	struct voluta_xattr_node        xan;
-	struct voluta_lnk_value         lnv;
+	struct voluta_symlnk_value      sym;
 	struct voluta_itable_tnode      itn;
 	struct voluta_data_block1       db1;
 	struct voluta_data_block4       db4;
 	struct voluta_data_block        db;
 } voluta_packed_aligned64;
-
-
-struct voluta_view {
-	union voluta_view_u u;
-} voluta_packed_aligned64;
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-
-struct voluta_meta_block4 {
-	struct voluta_name      sb_name;
-	uint64_t                sb_birth_time;
-	uint64_t                sb_ag_count;
-	uint64_t                sb_ar_nents;
-	uint8_t                 sb_reserved[3808];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blob {
-	uint8_t b[VOLUTA_AR_BLOB_SIZE];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blobref {
-	uint32_t                        br_magic;
-	uint32_t                        br_flags;
-	uint32_t                        br_length;
-	uint16_t                        br_hfunc;
-	uint16_t                        br_xbin;
-	int64_t                         br_voff;
-	uint64_t                        br_reserved2;
-	struct voluta_hash256           br_hash;
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_blobrefs {
-	struct voluta_ar_blobref        ar_bref[1024];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_spec {
-	struct voluta_boot_record       ar_zero;
-	struct voluta_meta_block4       ar_meta;
-	struct voluta_hash_record       ar_rand[14];
-} voluta_packed_aligned64;
-
-
-struct voluta_ar_spec_brefs {
-	struct voluta_ar_spec           spec;
-	struct voluta_ar_blobrefs       brefs;
-} voluta_packed_aligned64;
-
 
 #endif /* VOLUTA_DEFS_H_ */

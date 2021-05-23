@@ -14,10 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #define _GNU_SOURCE 1
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <limits.h>
 #include <errno.h>
-#include "voluta-prog.h"
+#include <voluta/mntd.h>
 
 #define die_illegal_conf(fl_, fmt_, ...) \
 	voluta_die_at(errno, (fl_)->file, (fl_)->line, fmt_, __VA_ARGS__)
@@ -76,10 +83,13 @@ static void ss_copyto(const struct voluta_substr *ss, char *s, size_t n)
 
 static void *zalloc(size_t nbytes)
 {
-	void *ptr;
+	int err;
+	void *ptr = NULL;
 
-	ptr = voluta_zalloc_safe(nbytes);
-	memset(ptr, 0, nbytes);
+	err = voluta_zmalloc(nbytes, &ptr);
+	if (err) {
+		voluta_die(err, "malloc failure: nbytes=%lu", nbytes);
+	}
 	return ptr;
 }
 
@@ -155,8 +165,7 @@ static char *dup_substr(const struct voluta_substr *ss)
 	return s;
 }
 
-static char *realpath_of(const struct voluta_substr *path,
-                         const struct voluta_fileline *cloc)
+static char *realpath_of(const struct voluta_substr *path)
 {
 	char *rpath;
 	char *cpath;
@@ -164,7 +173,7 @@ static char *realpath_of(const struct voluta_substr *path,
 	cpath = dup_substr(path);
 	rpath = realpath(cpath, NULL);
 	if (rpath == NULL) {
-		die_illegal_conf(cloc, "no realpath: '%s'", cpath);
+		return cpath; /* no realpath (now) */
 	}
 	free(cpath);
 	return rpath;
@@ -216,7 +225,7 @@ static void parse_mntconf_rule(const struct voluta_fileline *fl,
 		                 "(max-rules=%lu)", max_rules);
 	}
 	mntr = &mrules->rules[mrules->nrules++];
-	mntr->path = realpath_of(path, fl);
+	mntr->path = realpath_of(path);
 	parse_mntconf_rule_args(fl, args, mntr);
 }
 
@@ -265,7 +274,13 @@ static char *read_mntconf_file(const char *path)
 	struct stat st;
 	const loff_t filesize_maz = VOLUTA_MEGA;
 
-	voluta_stat_reg(path, &st);
+	err = voluta_sys_stat(path, &st);
+	if (err) {
+		voluta_die(err, "stat failure: %s", path);
+	}
+	if (!S_ISREG(st.st_mode)) {
+		voluta_die(0, "not a regular file: %s", path);
+	}
 	if (st.st_size > filesize_maz) {
 		voluta_die(-EFBIG, "illegal mntconf file: %s", path);
 	}
@@ -297,7 +312,8 @@ static struct voluta_mntrules *new_mntrules(void)
 static void del_mnt_conf(struct voluta_mntrules *mrules)
 {
 	for (size_t i = 0; i < mrules->nrules; ++i) {
-		voluta_pfree_string(&mrules->rules[i].path);
+		free(mrules->rules[i].path);
+		mrules->rules[i].path = NULL;
 	}
 	mrules->nrules = 0;
 	free(mrules);

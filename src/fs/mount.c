@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <sys/types.h>
@@ -406,7 +406,7 @@ static void mntmsg_init(struct voluta_mntmsg *mmsg, int cmd)
 
 	voluta_memzero(mmsg, sizeof(*mmsg));
 	mntmsg_set_status(mmsg, 0);
-	mmsg->mn_magic = VOLUTA_VTYPE_MAGIC;
+	mmsg->mn_magic = VOLUTA_ZTYPE_MAGIC;
 	mmsg->mn_version_major = (uint16_t)voluta_version.major;
 	mmsg->mn_version_minor = (uint16_t)voluta_version.minor;
 	mmsg->mn_cmd = (uint32_t)cmd;
@@ -498,7 +498,7 @@ static enum voluta_mntcmd mntmsg_cmd(const struct voluta_mntmsg *mmsg)
 
 static int mntmsg_check(const struct voluta_mntmsg *mmsg)
 {
-	if (mmsg->mn_magic != VOLUTA_VTYPE_MAGIC) {
+	if (mmsg->mn_magic != VOLUTA_ZTYPE_MAGIC) {
 		return -EINVAL;
 	}
 	if (mmsg->mn_version_major != voluta_version.major) {
@@ -1119,7 +1119,7 @@ int voluta_mse_new(struct voluta_ms_env **out_mse)
 	struct voluta_ms_env *mse = NULL;
 	struct voluta_ms_env_obj *mse_obj = NULL;
 
-	err = voluta_zalloc_aligned(sizeof(*mse_obj), &mem);
+	err = voluta_zmalloc(sizeof(*mse_obj), &mem);
 	if (err) {
 		return err;
 	}
@@ -1148,8 +1148,7 @@ void voluta_mse_del(struct voluta_ms_env *mse)
 	struct voluta_ms_env_obj *mse_obj = mse_obj_of(mse);
 
 	mse_fini(mse);
-	memset(mse, 5, sizeof(*mse));
-	free(mse_obj);
+	voluta_zfree(mse_obj, sizeof(*mse_obj));
 	voluta_burnstack();
 }
 

@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <unistd.h>
@@ -24,10 +24,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include <voluta/infra/version.h>
 #include <voluta/infra/logging.h>
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* logging */
+
 #define VOLUTA_LOG_DEFAULT \
 	(VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
 
@@ -136,5 +136,35 @@ void voluta_logf(int flags, const char *file, int line, const char *fmt, ...)
 		log_msg(flags | log_mask, msg, file, line);
 		errno = saved_errno;
 	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_log_mask_by_str(int *log_maskp, const char *mode)
+{
+	const char *modstr = (mode != NULL) ? mode : "0";
+
+	if (!strcmp(modstr, "0")) {
+		*log_maskp &= ~VOLUTA_LOG_DEBUG;
+		*log_maskp &= ~VOLUTA_LOG_INFO;
+		*log_maskp &= ~VOLUTA_LOG_FILINE;
+	} else if (!strcmp(modstr, "1")) {
+		*log_maskp |= VOLUTA_LOG_INFO;
+	} else if (!strcmp(modstr, "2")) {
+		*log_maskp |= VOLUTA_LOG_INFO;
+		*log_maskp |= VOLUTA_LOG_DEBUG;
+	} else if (!strcmp(modstr, "3")) {
+		*log_maskp |= VOLUTA_LOG_DEBUG;
+		*log_maskp |= VOLUTA_LOG_INFO;
+		*log_maskp |= VOLUTA_LOG_FILINE;
+	}
+}
+
+void voluta_log_meta_banner(const char *name, int start)
+{
+	const char *tag = start ? "+++" : "---";
+	const char *vers = voluta_version.string;
+
+	voluta_log_info("%s %s %s %s", tag, name, vers, tag);
 }
 

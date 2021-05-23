@@ -1,36 +1,33 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_CRYPTO_H_
 #define VOLUTA_CRYPTO_H_
 
 
+int voluta_init_gcrypt(void);
 
 int voluta_crypto_init(struct voluta_crypto *crypto);
 
 void voluta_crypto_fini(struct voluta_crypto *crypto);
 
-int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+int voluta_derive_kivam(const struct voluta_crypt_params *zcp,
                         const struct voluta_passphrase *pp,
                         const struct voluta_mdigest *md,
                         struct voluta_kivam *kivam);
-
-int voluta_mdigest_init(struct voluta_mdigest *md);
-
-void voluta_mdigest_fini(struct voluta_mdigest *md);
 
 
 void voluta_blake2s128_of(const struct voluta_mdigest *md,
@@ -73,11 +70,7 @@ void voluta_kivam_fini(struct voluta_kivam *kivam);
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
+void voluta_gcry_randomize(void *buf, size_t len, bool very_strong);
 
-void voluta_krec_setup(struct voluta_keys_record *kr);
-
-void voluta_krec_kivam_of(const struct voluta_keys_record *keys,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_kivam *out_kivam);
 
 #endif /* VOLUTA_CRYPTO_H_ */

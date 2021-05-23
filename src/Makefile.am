@@ -1,1 +1,1 @@
-SUBDIRS = infra fs prog
+SUBDIRS = infra fs cmd mntd

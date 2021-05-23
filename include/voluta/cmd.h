@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef VOLUTA_PROG_H_
-#define VOLUTA_PROG_H_
+#ifndef VOLUTA_CMD_H_
+#define VOLUTA_CMD_H_
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -50,12 +50,10 @@ struct voluta_cmd_info {
 struct voluta_subcmd_mkfs {
 	char   *passphrase;
 	char   *passphrase_file;
-	char   *volume;
-	char   *volume_abs;
+	char   *repodir;
 	char   *name;
 	char   *size;
-	long    volume_size;
-	bool    encrypted;
+	long    fs_size;
 	bool    force;
 };
 
@@ -63,15 +61,10 @@ struct voluta_subcmd_mkfs {
 struct voluta_subcmd_mount {
 	char   *passphrase;
 	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_clone;
-	char   *volume_active;
-	int     volume_fd;
-	char   *point;
-	char   *point_real;
+	char   *repodir;
+	char   *mntpoint;
+	char   *mntpoint_real;
 	char   *options;
-	bool    encrypted;
 	bool    allowother;
 	bool    lazytime;
 	bool    noexec;
@@ -82,65 +75,19 @@ struct voluta_subcmd_mount {
 
 /* arguments for 'umount' sub-command */
 struct voluta_subcmd_umount {
-	char   *point;
-	char   *point_real;
+	char   *mntpoint;
+	char   *mntpoint_real;
 	bool    force;
 	bool    lazy;
 };
 
-/* arguments for 'clone' sub-command */
-struct voluta_subcmd_clone {
-	char   *point;
-	char   *point_real;
+/* arguments for 'snap' sub-command */
+struct voluta_subcmd_snap {
+	char   *mntpoint;
+	char   *mntpoint_real;
 	char   *volume;
 	char   *volume_real;
 	char   *volume_tmp;
-};
-
-/* arguments for 'encrypt' sub-command */
-struct voluta_subcmd_encrypt {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_clone;
-	char   *volume_active;
-};
-
-/* arguments for 'encrypt' sub-command */
-struct voluta_subcmd_decrypt {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_clone;
-	char   *volume_active;
-};
-
-/* arguments for 'export' sub-command */
-struct voluta_subcmd_export {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_dir;
-	char   *volume_name;
-	char   *archive;
-	char   *archive_real;
-	char   *archive_path;
-};
-
-/* arguments for 'import' sub-command */
-struct voluta_subcmd_import {
-	char   *passphrase;
-	char   *passphrase_file;
-	char   *archive;
-	char   *archive_real;
-	char   *archive_dir;
-	char   *archive_name;
-	char   *volume;
-	char   *volume_real;
-	char   *volume_path;
 };
 
 /* arguments for 'show' sub-command */
@@ -153,7 +100,12 @@ struct voluta_subcmd_show {
 
 /* arguments for 'fsck' sub-command */
 struct voluta_subcmd_fsck {
-	char   *volume;
+	char   *repodir;
+};
+
+/* arguments for 'prune' sub-command */
+struct voluta_subcmd_prune {
+	char   *repodir;
 };
 
 /* sub-commands options */
@@ -161,13 +113,20 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_mkfs       mkfs;
 	struct voluta_subcmd_mount      mount;
 	struct voluta_subcmd_umount     umount;
-	struct voluta_subcmd_clone      clone;
-	struct voluta_subcmd_encrypt    encrypt;
-	struct voluta_subcmd_decrypt    decrypt;
-	struct voluta_subcmd_export     export;
-	struct voluta_subcmd_import     import;
+	struct voluta_subcmd_snap       snap;
 	struct voluta_subcmd_show       show;
 	struct voluta_subcmd_fsck       fsck;
+	struct voluta_subcmd_prune      prune;
+};
+
+/* repository parameters */
+struct voluta_repo_info {
+	char   *base_dir;
+	char   *objs_dir;
+	char   *lock_file;
+	int     lock_fd;
+	char   *head_file;
+	bool    rw;
 };
 
 /* global settings */
@@ -206,14 +165,14 @@ struct voluta_globals {
 	/* execution start-time */
 	time_t  start_time;
 
-	/* options for 'mountd' */
-	char   *mountd_confpath;
+	/* repository parameters */
+	struct voluta_repo_info repoi;
 
 	/* sub-commands arguments */
 	union voluta_subcmd_args cmd;
 
 	/* sub-command execution hook */
-	const struct voluta_cmd_info *cmd_info;
+	const struct voluta_cmd_info *cmdi;
 };
 
 extern struct voluta_globals voluta_globals;
@@ -226,36 +185,22 @@ void voluta_execute_mount(void);
 
 void voluta_execute_umount(void);
 
-void voluta_execute_fsck(void);
-
 void voluta_execute_show(void);
 
-void voluta_execute_clone(void);
+void voluta_execute_snap(void);
 
-void voluta_execute_encrypt(void);
+void voluta_execute_fsck(void);
 
-void voluta_execute_decrypt(void);
-
-void voluta_execute_export(void);
-
-void voluta_execute_import(void);
+void voluta_execute_prune(void);
 
 
 /* common utilities */
-__attribute__((__noreturn__))
-void voluta_die(int errnum, const char *fmt, ...);
-
-__attribute__((__noreturn__))
-void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...);
 
 __attribute__((__noreturn__))
 void voluta_die_redundant_arg(const char *s);
 
 __attribute__((__noreturn__))
 void voluta_die_missing_arg(const char *s);
-
-__attribute__((__noreturn__))
-void voluta_die_no_volume_path(void);
 
 __attribute__((__noreturn__))
 void voluta_die_unsupported_opt(void);
@@ -276,19 +221,8 @@ void voluta_die_if_exists(const char *path);
 
 void voluta_die_if_bad_sb(const char *path, const char *pass);
 
-void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-                              bool mustnot_be_enc, bool *out_is_encrypted);
-
-void voluta_die_if_not_lockable(const char *path, bool rw);
-
-void voluta_die_if_not_archive(const char *path);
-
 void voluta_die_if_no_mountd(void);
 
-
-void voluta_open_and_flock(const char *path, bool rw, int *out_fd);
-
-void voluta_funlock_and_close(const char *path, int *pfd);
 
 char *voluta_clone_as_tmppath(const char *path);
 
@@ -326,19 +260,15 @@ loff_t voluta_blkgetsize_ok(const char *path);
 
 char *voluta_realpath_safe(const char *path);
 
-char *voluta_abspath_safe(const char *path);
-
-char *voluta_dirpath_safe(const char *path);
-
 char *voluta_basename_safe(const char *path);
 
 char *voluta_joinpath_safe(const char *path, const char *base);
 
+char *voluta_lockfile_path(const char *dirpath);
+
 void voluta_setup_globals(int argc, char *argv[]);
 
 void voluta_init_process(void);
-
-void voluta_log_meta_banner(bool start);
 
 void voluta_set_verbose_mode(const char *mode);
 
@@ -359,24 +289,12 @@ char *voluta_strndup_safe(const char *s, size_t n);
 
 char *voluta_sprintf_path(const char *fmt, ...);
 
-/* singleton instances */
+/* singleton instance */
 void voluta_create_fse_inst(const struct voluta_fs_args *args);
 
-void voluta_destrpy_fse_inst(void);
+void voluta_destroy_fse_inst(void);
 
 struct voluta_fs_env *voluta_fse_inst(void);
-
-void voluta_create_mse_inst(void);
-
-void voluta_destroy_mse_inst(void);
-
-struct voluta_ms_env *voluta_ms_env_inst(void);
-
-void voluta_create_arc_inst(const struct voluta_ar_args *args);
-
-void voluta_destroy_arc_inst(void);
-
-struct voluta_archiver *voluta_arc_inst(void);
 
 
 /* signal call-back hook */
@@ -391,9 +309,27 @@ char *voluta_getpass2(const char *path);
 
 void voluta_delpass(char **pass);
 
-/* mount-config */
-struct voluta_mntrules *voluta_parse_mntrules(const char *pathname);
 
-void voluta_free_mntrules(struct voluta_mntrules *mnt_conf);
+/* repository */
+void voluta_repo_setup(struct voluta_repo_info *repoi,
+                       const char *base_dir, bool rw);
 
-#endif /* VOLUTA_PROG_H_ */
+void voluta_repo_finalize(struct voluta_repo_info *repoi);
+
+void voluta_repo_create_skel(const struct voluta_repo_info *repoi);
+
+void voluta_repo_require_skel(struct voluta_repo_info *repoi);
+
+void voluta_repo_acquire_lock(struct voluta_repo_info *repoi);
+
+void voluta_repo_release_lock(struct voluta_repo_info *repoi);
+
+void voluta_repo_require_lockable(struct voluta_repo_info *repoi);
+
+void voluta_repo_save_head(const struct voluta_repo_info *repoi,
+                           const char *rootid);
+
+void voluta_repo_load_head(const struct voluta_repo_info *repoi,
+                           char *buf, size_t bsz);
+
+#endif /* VOLUTA_CMD_H_ */

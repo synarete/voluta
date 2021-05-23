@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_IOCTLS_H_
 #define VOLUTA_IOCTLS_H_
@@ -41,13 +41,12 @@ struct voluta_query_version {
 
 struct voluta_query_volume {
 	uint64_t size;
-	char     path[VOLUTA_VOLUME_PATH_MAX];
+	char     path[VOLUTA_REPO_PATH_MAX];
 };
 
 struct voluta_query_fsinfo {
 	int64_t uptime;
 	uint64_t msflags;
-	uint8_t  encrypt;
 };
 
 struct voluta_query_inode {
@@ -91,7 +90,7 @@ struct voluta_ioc_tweak {
 };
 
 
-struct voluta_ioc_clone {
+struct voluta_ioc_snap {
 	int32_t  flags;
 	uint32_t reserved;
 	uint64_t reserved2;
@@ -102,6 +101,6 @@ struct voluta_ioc_clone {
 
 #define VOLUTA_FS_IOC_QUERY   _IOWR('V', 1, struct voluta_ioc_query)
 #define VOLUTA_FS_IOC_TWEAK   _IOWR('V', 2, struct voluta_ioc_tweak)
-#define VOLUTA_FS_IOC_CLONE   _IOWR('V', 3, struct voluta_ioc_clone)
+#define VOLUTA_FS_IOC_SNAP   _IOWR('V', 3, struct voluta_ioc_snap)
 
 #endif /* VOLUTA_IOCTLS_H_ */

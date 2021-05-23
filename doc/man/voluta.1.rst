@@ -25,8 +25,9 @@ SYNOPSIS
 
 DESCRIPTION
 ===========
-**voluta** is an encrypted file-system in user-space, encapsulated within a
-regular file.
+
+**voluta** is a user-space file-system that allows you to easily archive and
+restore a point-in-time snapshot to/from the cloud.
 
 The layout of the underlying volume is arranged as packed archive, which may be
 easily converted to objects representation.
@@ -99,25 +100,12 @@ umount
 
 ..
 
-clone
------
-**voluta clone** [options] *mountpoint* *pathname*
+snap
+----
+**voluta snap** [options] *mountpoint* *pathname*
 
 ..
 
-
-export
-------
-**voluta export** *volume-file* *archive-dir*
-
-..
-
-
-import
--------
-**voluta import** *archive-file* *volume-dir*
-
-..
 
 show
 ------

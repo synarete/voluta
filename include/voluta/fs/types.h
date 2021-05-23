@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_TYPES_H_
 #define VOLUTA_TYPES_H_
@@ -50,7 +50,10 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_cache;
+struct voluta_znode_info;
+struct voluta_unode_info;
 struct voluta_vnode_info;
+struct voluta_inode_info;
 struct voluta_fuseq;
 struct voluta_fuseq_worker;
 struct voluta_fuseq_in;
@@ -63,13 +66,11 @@ struct voluta_rwiter_ctx;
 struct voluta_readdir_ctx;
 struct voluta_readdir_info;
 struct voluta_listxattr_ctx;
-struct voluta_ar_blob_info;
 
 
 /* file-system control flags */
 enum voluta_flags {
-	VOLUTA_F_ENCRYPTED      = VOLUTA_BIT(0),
-	VOLUTA_F_ENCRYPTWR      = VOLUTA_BIT(1),
+	VOLUTA_F_KCOPY          = VOLUTA_BIT(0),
 	VOLUTA_F_SYNC           = VOLUTA_BIT(1),
 	VOLUTA_F_NOW            = VOLUTA_BIT(2),
 	VOLUTA_F_BLKDEV         = VOLUTA_BIT(3),
@@ -81,6 +82,7 @@ enum voluta_flags {
 	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(9),
 	VOLUTA_F_SLUGGISH       = VOLUTA_BIT(10),
 	VOLUTA_F_IDLE           = VOLUTA_BIT(11),
+	VOLUTA_F_SEAL           = VOLUTA_BIT(12),
 };
 
 
@@ -141,14 +143,6 @@ struct voluta_passphrase {
 	size_t passlen;
 };
 
-/* pool-based memory-allocator */
-struct voluta_mpool {
-	struct voluta_qalloc *mp_qal;
-	struct voluta_listq mp_bq;
-	struct voluta_listq mp_vq;
-	struct voluta_listq mp_iq;
-};
-
 /* cryptographic interfaces with libgcrypt */
 struct voluta_mdigest {
 	gcry_md_hd_t md_hd;
@@ -164,8 +158,8 @@ struct voluta_crypto {
 };
 
 
-/* zero-block cryptographic params */
-struct voluta_zcrypt_params {
+/* cryptographic parameters */
+struct voluta_crypt_params {
 	struct voluta_kdf_pair kdf;
 	uint32_t cipher_algo;
 	uint32_t cipher_mode;
@@ -182,6 +176,11 @@ struct voluta_ucred {
 /* space-addressing */
 typedef loff_t          voluta_lba_t;
 typedef uint64_t        voluta_index_t;
+
+struct voluta_index_range {
+	voluta_index_t  beg;
+	voluta_index_t  end;
+};
 
 /* inode's time-stamps (birth, access, modify, change) */
 struct voluta_itimes {
@@ -215,138 +214,96 @@ struct voluta_kivam {
 	unsigned int cipher_mode;
 };
 
-/* logical-address within underlying volume space */
+/* uber-space elements addressing */
+struct voluta_uaddr {
+	loff_t                  off;
+	unsigned int            len;
+	enum voluta_ztype       ztype;
+};
+
+/* file-system elements addressing */
 struct voluta_vaddr {
-	voluta_index_t  hs_index;
-	voluta_index_t  ag_index;
-	voluta_lba_t    lba;
-	loff_t          off;
-	size_t          len;
-	enum voluta_vtype vtype;
+	voluta_index_t          hs_index;
+	voluta_index_t          ag_index;
+	voluta_lba_t            lba;
+	loff_t                  off;
+	unsigned int            len;
+	enum voluta_ztype       ztype;
 };
 
 /* object-address within underlying blobs space */
 struct voluta_baddr {
-	struct voluta_blobid bid;
-	loff_t size;
+	struct voluta_blobid    bid;
+	size_t                  len;
+	loff_t                  off;
+};
+
+/* uberspace-to-object address mapping */
+struct voluta_uba {
+	struct voluta_uaddr     uaddr;
+	struct voluta_baddr     baddr;
+};
+
+/* logical-to-object address mapping */
+struct voluta_vba {
+	struct voluta_vaddr     vaddr;
+	struct voluta_baddr     baddr;
 };
 
 /* inode-address */
 struct voluta_iaddr {
-	struct voluta_vaddr vaddr;
-	ino_t ino;
+	struct voluta_vaddr     vaddr;
+	ino_t                   ino;
+};
+
+/* caching-element's 128-bits key */
+struct voluta_ckey {
+	uint64_t k[2];
+	uint64_t h;
 };
 
 /* caching-elements */
 struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
-	long ce_key;
-	long ce_tick;
+	struct voluta_ckey ce_ckey;
 	int  ce_refcnt;
+	bool ce_dirty;
 	bool ce_mapped;
 	bool ce_forgot;
-	char ce_pad[2];
+	char ce_pad;
 };
 
-/* blocks caching info */
-struct voluta_bu_info {
-	struct voluta_cache_elem        bk_ce;
-	struct voluta_blocks_unit      *bu;
-	uint64_t        bk_mask[VOLUTA_NBK_IN_BU];
-	voluta_lba_t    bk_lba;
+/* cached blocks-section info */
+struct voluta_bksec_info {
+	struct voluta_cache_elem        bks_ce;
+	struct voluta_blocks_sec       *bks;
+	uint64_t        bks_mask[VOLUTA_NBK_IN_BKSEC];
+	voluta_lba_t    bks_lba;
 };
 
-/* vnode */
-union voluta_vnode_u {
-	struct voluta_hspace_map        *hsm;
-	struct voluta_agroup_map        *agm;
-	struct voluta_itable_tnode      *itn;
-	struct voluta_inode             *inode;
-	struct voluta_radix_tnode       *rtn;
-	struct voluta_dir_htnode        *htn;
-	struct voluta_xattr_node        *xan;
-	struct voluta_lnk_value         *lnv;
-	struct voluta_data_block1       *db1;
-	struct voluta_data_block4       *db4;
-	struct voluta_data_block        *db;
-	void *p;
-};
-
-typedef void (*voluta_delete_vnode_fn)(const struct voluta_cache *cache,
-                                       struct voluta_vnode_info *vi);
-
-
-struct voluta_vnode_info {
-	union voluta_vnode_u            vu;
-	struct voluta_view             *view;
-	struct voluta_vaddr             vaddr;
-	struct voluta_sb_info          *v_sbi;
-	struct voluta_bu_info          *v_bui;
-	struct voluta_cache_elem        v_ce;
-	struct voluta_list_head         v_dq_mlh;
-	struct voluta_list_head         v_dq_blh;
-	struct voluta_avl_node          v_ds_an;
-	struct voluta_vnode_info       *v_ds_next;
-	voluta_delete_vnode_fn          v_del_hook;
-	long v_ds_key;
-	int  v_verify;
-	int  v_dirty;
-};
-
-/* space-maps */
-struct voluta_hspace_info {
-	struct voluta_vnode_info        hs_vi;
-	voluta_index_t                  hs_index;
-};
-
-struct voluta_agroup_info {
-	struct voluta_vnode_info        ag_vi;
-	voluta_index_t                  ag_index;
-};
-
-/* inode */
-struct voluta_inode_info {
-	struct voluta_inode            *inode;
-	struct voluta_vnode_info        i_vi;
-	struct timespec                 i_atime_lazy;
-	ino_t  i_ino;
-	long   i_nopen;
-	long   i_nlookup;
-	bool   i_pinned;
-};
-
-/* dirty-queues of cached-elements */
+/* dirty-queue of cached-elements */
 struct voluta_dirtyq {
-	struct voluta_listq             dq_list;
+	struct voluta_listq      dq_list;
 	size_t dq_accum_nbytes;
 };
 
-struct voluta_dirtyqs {
-	struct voluta_qalloc           *dq_qalloc;
-	struct voluta_dirtyq           *dq_bins;
-	struct voluta_dirtyq            dq_main;
-	size_t dq_nbins;
-};
-
-/* caching */
+/* LRU + hash-map */
 struct voluta_lrumap {
 	struct voluta_listq      lru;
 	struct voluta_list_head *htbl;
-	long (*hash_fn)(long);
 	size_t htbl_nelems;
 	size_t htbl_size;
 };
 
+/* cache */
 struct voluta_cache {
-	struct voluta_mpool    *c_mpool;
 	struct voluta_qalloc   *c_qalloc;
-	struct voluta_dirtyqs   c_dqs;
-	struct voluta_lrumap    c_blm;
-	struct voluta_lrumap    c_vlm;
-	struct voluta_lrumap    c_ilm;
+	struct voluta_alloc_if *c_alif;
 	struct voluta_block    *c_nil_bk;
-	long   c_tick;
+	struct voluta_lrumap    c_bsi_lm;
+	struct voluta_lrumap    c_ci_lm;
+	struct voluta_dirtyq    c_dq;
 };
 
 /* space accounting */
@@ -360,54 +317,20 @@ struct voluta_space_stat {
 struct voluta_space_info {
 	struct voluta_space_stat sp_used;
 	loff_t          sp_capcity_size;
-	loff_t          sp_address_space;
+	size_t          sp_ag_count;
 	size_t          sp_hs_count;
 	voluta_index_t  sp_hs_active;
 	voluta_index_t  sp_hs_index_lo;
-	size_t          sp_ag_count;
 };
 
-/* encrypted output buffer */
-struct voluta_encbuf {
-	uint8_t b[VOLUTA_MEGA];
-};
-
-/* persistent-storage controller */
-struct voluta_pstore {
-	int     ps_dfd;
-	int     ps_vfd;
-	int     ps_ctl_flags;
-	int     ps_o_flags;
-	loff_t  ps_size;
-	loff_t  ps_capacity;
-};
-
-/* volume storage controller */
-struct voluta_vstore {
-	struct voluta_pstore            vs_pstore;
-	struct voluta_crypto            vs_crypto;
-	struct voluta_pipe              vs_pipe;
-	struct voluta_qalloc           *vs_qalloc;
-	struct voluta_encbuf           *vs_encbuf;
-	const char *vs_volpath;
-	unsigned long vs_ctl_flags;
-};
-
-/* blob cache-entry */
-struct voluta_blob_info {
-	struct voluta_baddr     bi_baddr;
-	struct voluta_list_head bi_htb_lh;
-	unsigned long           bi_hkey;
-	int                     bi_fd;
-};
-
-/* blobs storage controller */
-struct voluta_repo {
-	struct voluta_list_head re_htbl[1024];
-	struct voluta_qalloc   *re_qalloc;
-	size_t  re_nsubs;
-	size_t  re_hsize;
-	int     re_dfd;
+/* local object-storage device controller (blobs) */
+struct voluta_locosd {
+	struct voluta_list_head lo_htbl[1024];
+	struct voluta_listq     lo_lru;
+	struct voluta_alloc_if *lo_alif;
+	const char             *lo_basedir;
+	size_t  lo_nsubs;
+	int     lo_dfd;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -417,7 +340,7 @@ struct voluta_itcentry {
 };
 
 struct voluta_itcache {
-	struct voluta_qalloc   *itc_qalloc;
+	struct voluta_alloc_if *itc_alif;
 	struct voluta_itcentry *itc_htable;
 	size_t itc_nelems;
 };
@@ -444,30 +367,33 @@ struct voluta_oper_stat {
 /* super-block in-memory info */
 struct voluta_sb_info {
 	struct voluta_super_block      *sb;
-	struct voluta_qalloc           *sb_qalloc;
-	struct voluta_cache            *sb_cache;
-	struct voluta_vstore           *sb_vstore;
-	struct voluta_uuid              sb_fs_uuid;
-	struct voluta_ucred             sb_owner;
-	struct voluta_space_info        sb_spi;
-	struct voluta_itable_info       sb_iti;
-	struct voluta_oper_stat         sb_ops;
-	unsigned long                   sb_ctl_flags;
-	unsigned long                   sb_ms_flags;
-	iconv_t                         sb_iconv;
-	time_t                          sb_mntime;
+	struct voluta_alloc_if         *s_alif;
+	struct voluta_qalloc           *s_qalloc;
+	struct voluta_cache            *s_cache;
+	struct voluta_locosd           *s_locosd;
+	struct voluta_vba               s_vba;
+	struct voluta_uuid              s_fs_uuid;
+	struct voluta_ucred             s_owner;
+	struct voluta_space_info        s_spi;
+	struct voluta_itable_info       s_itbi;
+	struct voluta_oper_stat         s_ops;
+	struct voluta_pipe              s_pipe;
+	struct voluta_nullfd            s_nullnfd;
+	struct voluta_crypto            s_crypto;
+	unsigned long                   s_ctl_flags;
+	unsigned long                   s_ms_flags;
+	iconv_t                         s_iconv;
+	time_t                          s_mntime;
 } voluta_aligned64;
 
-/* de-stage dirty-vnodes set */
+/* dirty-vnodes set */
 typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
-                                   struct voluta_vnode_info *vi);
+                                   struct voluta_znode_info *zi);
 
 struct voluta_dset {
-	struct voluta_cache            *ds_cache;
 	voluta_dset_add_fn              ds_add_fn;
-	struct voluta_vnode_info       *ds_viq;
+	struct voluta_znode_info       *ds_ziq;
 	struct voluta_avl               ds_avl;
-	long ds_key;
 };
 
 /* current operation state */
@@ -509,17 +435,22 @@ struct voluta_fuseq_worker {
 	int idx;
 } voluta_aligned64;
 
+struct voluta_fuseq_workset {
+	struct voluta_fuseq_worker      *fws_worker;
+	short fws_nlimit;
+	short fws_navail;
+	short fws_nactive;
+};
+
 struct voluta_fuseq {
-	struct voluta_fuseq_worker      fq_worker[4];
+	struct voluta_fuseq_workset     fq_ws;
 	struct voluta_fuseq_conn_info   fq_coni;
 	struct voluta_mutex             fq_ch_lock;
 	struct voluta_mutex             fq_fs_lock;
 	struct voluta_sb_info          *fq_sbi;
-	struct voluta_qalloc           *fq_qal;
+	struct voluta_alloc_if         *fq_alif;
 	size_t          fq_nopers;
 	time_t          fq_times;
-	int             fq_nworkers_avail;
-	int             fq_nworkers_active;
 	volatile int    fq_active;
 	volatile int    fq_fuse_fd;
 	bool            fq_got_init;
@@ -530,10 +461,11 @@ struct voluta_fuseq {
 	bool            fq_splice_memfd;
 } voluta_aligned64;
 
-/* file-system arguments */
+/* file-system input arguments */
 struct voluta_fs_args {
-	const char *volume;
-	const char *mountp;
+	const char *objsdir;
+	const char *mntdir;
+	const char *rootid;
 	const char *fsname;
 	const char *passwd;
 	size_t memwant;
@@ -543,9 +475,8 @@ struct voluta_fs_args {
 	pid_t  pid;
 	mode_t umask;
 	bool   with_fuseq;
+	bool   kcopy_mode;
 	bool   pedantic;
-	bool   encrypted;
-	bool   encryptwr;
 	bool   allowother;
 	bool   lazytime;
 	bool   noexec;
@@ -557,15 +488,16 @@ struct voluta_fs_args {
 /* file-system environment context */
 struct voluta_fs_env {
 	struct voluta_fs_args           args;
-	struct voluta_zcrypt_params     zcryp;
+	struct voluta_crypt_params      cryp;
 	struct voluta_passphrase        passph;
 	struct voluta_kivam             kivam;
 	struct voluta_qalloc           *qalloc;
+	struct voluta_alloc_if         *alif;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_vstore           *vstore;
-	struct voluta_super_block      *sb;
+	struct voluta_locosd           *locosd;
 	struct voluta_sb_info          *sbi;
+	struct voluta_super_block      *sb;
 	struct voluta_fuseq            *fuseq;
 	loff_t volume_size;
 	int signum;
@@ -607,42 +539,11 @@ struct voluta_rwiter_ctx {
 };
 
 /* allocation-groups range (beg <= tip <= fin <= end) */
-struct voluta_ag_range {
+struct voluta_ag_span {
 	voluta_index_t beg; /* start ag-index */
 	voluta_index_t tip; /* heuristic of current tip ag-index */
 	voluta_index_t fin; /* one past last ag-index of current span */
 	voluta_index_t end; /* end of hyper-range */
-};
-
-
-/* archiving */
-
-struct voluta_balloc_info {
-	voluta_lba_t lba;
-	size_t bn;
-	size_t kbn[VOLUTA_NKB_IN_BK];
-	size_t cnt;
-	enum voluta_vtype vtype;
-};
-struct voluta_ar_args {
-	const char *passwd;
-	const char *volume;
-	const char *blobsdir;
-	const char *arcname;
-	size_t memwant;
-};
-
-struct voluta_archiver {
-	struct voluta_ar_args           ar_args;
-	struct voluta_kivam             ar_kivam;
-	struct voluta_qalloc           *ar_qalloc;
-	struct voluta_crypto           *ar_crypto;
-	struct voluta_bstore           *ar_bstore;
-	struct voluta_ar_blob_info     *ar_bli;
-	struct voluta_ar_spec          *ar_spec;
-	size_t ar_spec_nents;
-	size_t ar_spec_nents_max;
-	int try_clone;
 };
 
 #endif /* VOLUTA_TYPES_H_ */

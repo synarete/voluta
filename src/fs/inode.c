@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <sys/types.h>
@@ -86,7 +86,7 @@ static void assign_xts(struct statx_timestamp *xts, const struct timespec *ts)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-ino_t voluta_inode_ino(const struct voluta_inode *inode)
+static ino_t inode_ino(const struct voluta_inode *inode)
 {
 	return voluta_cpu_to_ino(inode->i_ino);
 }
@@ -227,46 +227,46 @@ static void inode_set_rdev(struct voluta_inode *inode,
 
 static void inode_btime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.btime, ts);
+	ts_to_cpu(&inode->i_tm.btime, ts);
 }
 
 static void inode_set_btime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.btime);
+	cpu_to_ts(ts, &inode->i_tm.btime);
 }
 
 static void inode_atime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.atime, ts);
+	ts_to_cpu(&inode->i_tm.atime, ts);
 }
 
 static void inode_set_atime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.atime);
+	cpu_to_ts(ts, &inode->i_tm.atime);
 }
 
 static void inode_mtime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.mtime, ts);
+	ts_to_cpu(&inode->i_tm.mtime, ts);
 }
 
 static void inode_set_mtime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.mtime);
+	cpu_to_ts(ts, &inode->i_tm.mtime);
 }
 
 static void inode_ctime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.ctime, ts);
+	ts_to_cpu(&inode->i_tm.ctime, ts);
 }
 
 static void inode_set_ctime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.ctime);
+	cpu_to_ts(ts, &inode->i_tm.ctime);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -360,7 +360,7 @@ bool voluta_ii_issock(const struct voluta_inode_info *ii)
 
 static ino_t rootd_ino(const struct voluta_sb_info *sbi)
 {
-	return sbi->sb_iti.it_rootdir.ino;
+	return sbi->s_itbi.it_rootdir.ino;
 }
 
 bool voluta_ii_isrootd(const struct voluta_inode_info *ii)
@@ -398,6 +398,13 @@ static void voluta_ii_times(const struct voluta_inode_info *ii,
 	inode_atime(inode, &tms->atime);
 	inode_mtime(inode, &tms->mtime);
 	inode_ctime(inode, &tms->ctime);
+}
+
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
+{
+	const struct voluta_znode_info *zi = &ii->i_vi.v_zi;
+
+	return !ii->i_pinned && !ii->i_nopen && voluta_zi_isevictable(zi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -442,7 +449,7 @@ void voluta_setup_inode(struct voluta_inode_info *ii,
                         mode_t mode, dev_t rdev)
 {
 	setup_inode_common(ii->inode, ucred, ii_ino(ii), parent_ino, mode);
-	voluta_setup_xattr(ii);
+	voluta_ii_setup_xattr(ii);
 	if (ii_isdir(ii)) {
 		voluta_setup_dir(ii, parent_mode, 1);
 	} else if (ii_isreg(ii)) {
@@ -534,7 +541,7 @@ static bool has_itype(const struct voluta_inode_info *ii, mode_t mode)
 }
 
 static int check_waccess(const struct voluta_oper *op,
-                         const struct voluta_inode_info *ii)
+                         struct voluta_inode_info *ii)
 {
 	return voluta_do_access(op, ii, W_OK);
 }
@@ -785,7 +792,7 @@ static bool is_utime_omit(const struct timespec *tv)
 }
 
 static int check_utimens(const struct voluta_oper *op,
-                         const struct voluta_inode_info *ii)
+                         struct voluta_inode_info *ii)
 {
 	int err;
 
@@ -1008,8 +1015,7 @@ static int do_getattr(const struct voluta_oper *op,
 }
 
 int voluta_do_getattr(const struct voluta_oper *op,
-                      const struct voluta_inode_info *ii,
-                      struct stat *out_st)
+                      struct voluta_inode_info *ii, struct stat *out_st)
 {
 	int err;
 
@@ -1034,7 +1040,7 @@ static int do_statx(const struct voluta_oper *op,
 }
 
 int voluta_do_statx(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     unsigned int request_mask, struct statx *out_stx)
 {
 	int err;
@@ -1174,10 +1180,10 @@ void voluta_refresh_atime(struct voluta_inode_info *ii, bool to_volatile)
 }
 
 static blkcnt_t recalc_iblocks(const struct voluta_inode_info *ii,
-                               enum voluta_vtype vtype, long dif)
+                               enum voluta_ztype ztype, long dif)
 {
 	blkcnt_t cnt;
-	const size_t nkbs = vtype_nkbs(vtype);
+	const size_t nkbs = ztype_nkbs(ztype);
 	const blkcnt_t blocks = ii_blocks(ii);
 
 	if (dif > 0) {
@@ -1192,12 +1198,12 @@ static blkcnt_t recalc_iblocks(const struct voluta_inode_info *ii,
 
 void voluta_update_iblocks(const struct voluta_oper *op,
                            struct voluta_inode_info *ii,
-                           enum voluta_vtype vtype, long dif)
+                           enum voluta_ztype ztype, long dif)
 {
 	struct voluta_iattr iattr;
 
 	iattr_setup(&iattr, ii_ino(ii));
-	iattr.ia_blocks = recalc_iblocks(ii, vtype, dif);
+	iattr.ia_blocks = recalc_iblocks(ii, ztype, dif);
 	iattr.ia_flags = VOLUTA_IATTR_BLOCKS;
 
 	update_iattrs(op, ii, &iattr);
@@ -1235,7 +1241,7 @@ int voluta_verify_inode(const struct voluta_inode *inode)
 {
 	int err;
 
-	err = voluta_verify_ino(voluta_inode_ino(inode));
+	err = voluta_verify_ino(inode_ino(inode));
 	if (err) {
 		return err;
 	}

@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <unistd.h>
@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <error.h>
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
 
@@ -173,6 +174,8 @@ static void voluta_abort(void)
 	fflush(stdout);
 	fflush(stderr);
 	abort();
+	_exit(EXIT_FAILURE);
+	voluta_unreachable();
 }
 
 __attribute__((__noreturn__))
@@ -181,6 +184,7 @@ voluta_fatal_at(const char *msg, const char *fl, int ln)
 {
 	voluta_panicf(fl, ln, "failure: `%s'", msg);
 	voluta_abort();
+	voluta_unreachable();
 }
 
 __attribute__((__noreturn__))
@@ -300,23 +304,18 @@ void voluta_expect_eqs_(const char *s, const char *z, const char *fl, int ln)
 	}
 }
 
-char voluta_nibble_to_ascii(unsigned int n)
-{
-	const char xdigits[] = "0123456789ABCDEF";
-
-	return xdigits[n & 0xF];
-}
-
 static void mem_to_str(const void *mem, size_t nn, char *str, size_t len)
 {
+	int b;
 	size_t pos = 0;
 	size_t i = 0;
 	const uint8_t *ptr = mem;
 
 	memset(str, 0, len);
 	while ((i < nn) && ((pos + 4) < len)) {
-		str[pos++] = voluta_nibble_to_ascii(ptr[i] >> 4);
-		str[pos++] = voluta_nibble_to_ascii(ptr[i]);
+		b = (int)ptr[i];
+		str[pos++] = voluta_nibble_to_ascii(b >> 4);
+		str[pos++] = voluta_nibble_to_ascii(b);
 		i += 1;
 	}
 	if (i < nn) {
@@ -402,4 +401,37 @@ void voluta_panicf(const char *file, int line, const char *fmt, ...)
 	voluta_dump_backtrace();
 	voluta_dump_addr2line();
 	voluta_abort();
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+__attribute__((__noreturn__))
+void voluta_die(int errnum, const char *fmt, ...)
+{
+	va_list ap;
+	char msg[2048] = "";
+
+	va_start(ap, fmt);
+	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
+	va_end(ap);
+
+	error(EXIT_FAILURE, abs(errnum), "%s", msg);
+	/* never gets here, but makes compiler happy */
+	abort();
+}
+
+__attribute__((__noreturn__))
+void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...)
+{
+	va_list ap;
+	char msg[2048] = "";
+
+	va_start(ap, fmt);
+	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
+	va_end(ap);
+
+	error_at_line(EXIT_FAILURE, abs(errnum), fl,
+	              (unsigned int)ln, "%s", msg);
+	/* never gets here, but makes compiler happy */
+	abort();
 }

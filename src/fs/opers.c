@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <sys/types.h>
@@ -45,12 +45,12 @@ static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
 	int err;
 
-	sbi->sb_ops.op_time = op->xtime.tv_sec;
-	sbi->sb_ops.op_count++;
+	sbi->s_ops.op_time = op->xtime.tv_sec;
+	sbi->s_ops.op_count++;
 
 	err = voluta_flush_dirty(sbi, 0);
 	if (!err) {
-		voluta_cache_relax(sbi->sb_cache, VOLUTA_F_OPSTART);
+		voluta_cache_relax(sbi->s_cache, VOLUTA_F_OPSTART);
 	}
 	return err;
 }
@@ -64,7 +64,7 @@ static int op_finish(struct voluta_sb_info *sbi,
 
 	if ((beg < now) && (dif > 30)) {
 		log_warn("slow-oper: id=%ld code=%d duration=%ld status=%d",
-		         sbi->sb_ops.op_count, op->opcode, dif, err);
+		         sbi->s_ops.op_count, op->opcode, dif, err);
 	}
 	/* TODO: maybe extra flush-relax? */
 	return err;
@@ -889,9 +889,9 @@ int voluta_fs_rdwr_post(struct voluta_sb_info *sbi,
 	struct voluta_inode_info *ii = NULL;
 
 	err = voluta_stage_inode(sbi, ino, &ii);
-	ok_or_goto_out(err);
+	/* special case: do post even if ii is NULL */
 
-	err = voluta_do_rdwr_post(op, ii, fiov, cnt);
+	err = voluta_do_rdwr_post(op, ii, fiov, cnt) || err;
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);
@@ -1137,9 +1137,9 @@ out:
 	return op_finish(sbi, op, err);
 }
 
-int voluta_fs_clone(struct voluta_sb_info *sbi,
-                    const struct voluta_oper *op,
-                    ino_t ino, char *str, size_t lim)
+int voluta_fs_snap(struct voluta_sb_info *sbi,
+                   const struct voluta_oper *op,
+                   ino_t ino, char *str, size_t lim)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1153,7 +1153,7 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
 	err = voluta_fetch_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
-	err = voluta_do_clone(op, ii, str, lim);
+	err = voluta_do_snap(op, ii, str, lim);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);
@@ -1167,6 +1167,6 @@ int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
 	if (err) {
 		return err;
 	}
-	voluta_cache_relax(sbi->sb_cache, flags);
+	voluta_cache_relax(sbi->s_cache, flags);
 	return 0;
 }

@@ -1,601 +1,472 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
+#include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <voluta/fs/address.h>
-#include <voluta/fs/boot.h>
+#include <errno.h>
+#include <limits.h>
+#include <endian.h>
+
+#include <voluta/infra.h>
+#include <voluta/defs.h>
+#include <voluta/ioctls.h>
+#include <voluta/fs/types.h>
 #include <voluta/fs/crypto.h>
-#include <voluta/fs/private.h>
+#include <voluta/fs/boot.h>
+
+#ifndef LINK_MAX
+#define LINK_MAX 127
+#endif
+
+
+#define BITS_SIZE(a)    (CHAR_BIT * sizeof(a))
+
+#define MEMBER_SIZE(type, member) \
+	sizeof(((const type *)NULL)->member)
+
+#define MEMBER_NELEMS(type, member) \
+	VOLUTA_ARRAY_SIZE(((const type *)NULL)->member)
+
+#define MEMBER_NBITS(type, member) \
+	BITS_SIZE(((const type *)NULL)->member)
+
+#define SWORD(a) ((long)(a))
+
+#define REQUIRE_EQ(a, b) \
+	VOLUTA_STATICASSERT_EQ(SWORD(a), SWORD(b))
+
+#define REQUIRE_LT(a, b) \
+	VOLUTA_STATICASSERT_LT(SWORD(a), SWORD(b))
+
+#define REQUIRE_GT(a, b) \
+	VOLUTA_STATICASSERT_GT(SWORD(a), SWORD(b))
+
+#define REQUIRE_GE(a, b) \
+	VOLUTA_STATICASSERT_GE(SWORD(a), SWORD(b))
+
+#define REQUIRE_BK_SIZE(a) \
+	REQUIRE_EQ(a, VOLUTA_BK_SIZE)
+
+#define REQUIRE_SIZEOF(type, size) \
+	REQUIRE_EQ(sizeof(type), size)
+
+#define REQUIRE_SIZEOF_BK(type) \
+	REQUIRE_BK_SIZE(sizeof(type))
+
+#define REQUIRE_SIZEOF_KB(type) \
+	REQUIRE_SIZEOF(type, VOLUTA_KB_SIZE)
+
+#define REQUIRE_SIZEOF_NK(type, nk) \
+	REQUIRE_SIZEOF(type, (nk) * VOLUTA_KILO)
+
+#define REQUIRE_SIZEOF_4K(type) \
+	REQUIRE_SIZEOF_NK(type, 4)
+
+#define REQUIRE_SIZEOF_8K(type) \
+	REQUIRE_SIZEOF_NK(type, 8)
+
+#define REQUIRE_SIZEOF_16K(type) \
+	REQUIRE_SIZEOF_NK(type, 16)
+
+#define REQUIRE_SIZEOF_32K(type) \
+	REQUIRE_SIZEOF_NK(type, 32)
+
+#define REQUIRE_MEMBER_SIZE(type, f, size) \
+	REQUIRE_EQ(MEMBER_SIZE(type, f), size)
+
+#define REQUIRE_NELEMS(type, f, nelems) \
+	REQUIRE_EQ(MEMBER_NELEMS(type, f), nelems)
+
+#define REQUIRE_NBITS(type, f, nbits) \
+	REQUIRE_EQ(MEMBER_NBITS(type, f), nbits)
+
+#define ISALIGNED32(off) \
+	(((off) % 4) == 0)
+
+#define ISALIGNED64(off) \
+	(((off) % 8) == 0)
+
+#define ISOFFSET(type, member, off) \
+	(offsetof(type, member) == (off))
+
+#define REQUIRE_XOFFSET(type, member, off) \
+	VOLUTA_STATICASSERT(ISOFFSET(type, member, off))
+
+#define REQUIRE_AOFFSET(type, member, off) \
+	VOLUTA_STATICASSERT(ISOFFSET(type, member, off) && ISALIGNED32(off))
+
+#define REQUIRE_AOFFSET64(type, member, off) \
+	VOLUTA_STATICASSERT(ISOFFSET(type, member, off) && ISALIGNED64(off))
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void guarantee_fundamental_types_size(void)
+{
+	REQUIRE_SIZEOF(uint8_t, 1);
+	REQUIRE_SIZEOF(uint16_t, 2);
+	REQUIRE_SIZEOF(uint32_t, 4);
+	REQUIRE_SIZEOF(uint64_t, 8);
+	REQUIRE_SIZEOF(int8_t, 1);
+	REQUIRE_SIZEOF(int16_t, 2);
+	REQUIRE_SIZEOF(int32_t, 4);
+	REQUIRE_SIZEOF(int64_t, 8);
+	REQUIRE_SIZEOF(size_t, 8);
+	REQUIRE_SIZEOF(loff_t, 8);
+	REQUIRE_SIZEOF(ino_t, 8);
+}
+
+static void guarantee_persistent_types_size(void)
+{
+	REQUIRE_SIZEOF(struct voluta_vaddr56, 7);
+	REQUIRE_SIZEOF(struct voluta_vaddr64, 8);
+	REQUIRE_SIZEOF(struct voluta_blobid, 40);
+	REQUIRE_SIZEOF(struct voluta_timespec, 16);
+	REQUIRE_SIZEOF(struct voluta_kdf_desc, 16);
+	REQUIRE_SIZEOF(struct voluta_kdf_pair, 32);
+	REQUIRE_SIZEOF(struct voluta_iv, VOLUTA_IV_SIZE);
+	REQUIRE_SIZEOF(struct voluta_key, VOLUTA_KEY_SIZE);
+	REQUIRE_SIZEOF(struct voluta_blobspec, 64);
+	REQUIRE_SIZEOF_4K(struct voluta_data_block4);
+	REQUIRE_SIZEOF(struct voluta_data_block4, VOLUTA_FILE_HEAD2_LEAF_SIZE);
+	REQUIRE_SIZEOF_KB(struct voluta_inode);
+	REQUIRE_SIZEOF_KB(struct voluta_symlnk_value);
+	REQUIRE_SIZEOF_16K(struct voluta_sb_keys);
+	REQUIRE_SIZEOF_32K(struct voluta_sb_uspace_map);
+	REQUIRE_SIZEOF_BK(struct voluta_super_block);
+	REQUIRE_SIZEOF(struct voluta_super_block, VOLUTA_SB_SIZE);
+	REQUIRE_SIZEOF_BK(struct voluta_hspace_map);
+	REQUIRE_SIZEOF_BK(struct voluta_agroup_map);
+	REQUIRE_SIZEOF_16K(struct voluta_itable_tnode);
+	REQUIRE_SIZEOF_8K(struct voluta_xattr_node);
+	REQUIRE_SIZEOF_8K(struct voluta_dir_tnode);
+	REQUIRE_SIZEOF_8K(struct voluta_radix_tnode);
+	REQUIRE_SIZEOF_BK(struct voluta_data_block);
+	REQUIRE_SIZEOF_BK(union voluta_block_u);
+	REQUIRE_SIZEOF_BK(struct voluta_block);
+	REQUIRE_SIZEOF_BK(struct voluta_block);
+	REQUIRE_SIZEOF(struct voluta_header, VOLUTA_HEADER_SIZE);
+	REQUIRE_SIZEOF(struct voluta_uuid, VOLUTA_UUID_SIZE);
+	REQUIRE_SIZEOF(struct voluta_name, VOLUTA_NAME_MAX + 1);
+	REQUIRE_SIZEOF(struct voluta_ag_rec, 120);
+	REQUIRE_SIZEOF(struct voluta_bk_rec, 56);
+	REQUIRE_SIZEOF(struct voluta_itable_entry, 16);
+	REQUIRE_SIZEOF(struct voluta_dir_entry, 16);
+	REQUIRE_SIZEOF(struct voluta_xattr_entry, 8);
+	REQUIRE_SIZEOF(struct voluta_inode_dir, 64);
+	REQUIRE_SIZEOF(struct voluta_inode_reg, 512);
+	REQUIRE_SIZEOF(struct voluta_inode_lnk, 512);
+	REQUIRE_SIZEOF(struct voluta_inode_times, 64);
+	REQUIRE_SIZEOF(struct voluta_inode_xattr, 320);
+	REQUIRE_SIZEOF(union voluta_inode_specific, 512);
+	REQUIRE_SIZEOF(struct voluta_inode, VOLUTA_INODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_symlnk_value, VOLUTA_SYMLNK_VAL_SIZE);
+	REQUIRE_SIZEOF(struct voluta_xattr_node, VOLUTA_XATTR_NODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_radix_tnode, VOLUTA_FILE_RTNODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_itable_tnode, VOLUTA_ITNODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_dir_tnode, VOLUTA_DIR_HTNODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_ioc_query, 2048);
+	REQUIRE_SIZEOF_4K(struct voluta_sb_root);
+	REQUIRE_SIZEOF_4K(struct voluta_sb_hash);
+}
+
+static void guarantee_persistent_types_members(void)
+{
+	REQUIRE_NBITS(struct voluta_header, h_ztype, 8);
+	REQUIRE_NBITS(struct voluta_bk_rec, bk_allocated, VOLUTA_NKB_IN_BK);
+	REQUIRE_NBITS(struct voluta_bk_rec, bk_unwritten, VOLUTA_NKB_IN_BK);
+	REQUIRE_MEMBER_SIZE(struct voluta_itable_tnode, it_child, 1024);
+	REQUIRE_NELEMS(struct voluta_radix_tnode,
+	               r_child, VOLUTA_FILE_TREE_NCHILDS);
+	REQUIRE_NELEMS(struct voluta_dir_tnode,
+	               de, VOLUTA_DIR_HTNODE_NENTS);
+	REQUIRE_NELEMS(struct voluta_dir_tnode,
+	               dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
+	REQUIRE_NBITS(struct voluta_bksec_info, bks_mask,
+	              VOLUTA_NKB_IN_BK * VOLUTA_NBK_IN_BKSEC);
+}
+
+static void guarantee_persistent_types_alignment(void)
+{
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_magic, 16);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_version, 24);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_sw_version, 64);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_kdf_pair, 512);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_boot, 0);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hash, 4096);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_volume_size, 8200);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 8448);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys, 16384);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_usm, 32768);
+	REQUIRE_AOFFSET(struct voluta_hspace_map, hs_hdr, 0);
+	REQUIRE_AOFFSET64(struct voluta_hspace_map, hs_agr, 4096);
+	REQUIRE_AOFFSET(struct voluta_agroup_map, ag_hdr, 0);
+	REQUIRE_AOFFSET64(struct voluta_agroup_map, ag_bks_blobid, 64);
+	REQUIRE_AOFFSET64(struct voluta_agroup_map, ag_bkr, 8192);
+	REQUIRE_AOFFSET64(struct voluta_itable_tnode, ite, 64);
+	REQUIRE_AOFFSET64(struct voluta_itable_tnode, it_child, 15360);
+	REQUIRE_AOFFSET(struct voluta_inode, i_hdr, 0);
+	REQUIRE_AOFFSET(struct voluta_inode, i_ino, 16);
+	REQUIRE_AOFFSET(struct voluta_inode, i_parent, 24);
+	REQUIRE_AOFFSET(struct voluta_inode, i_uid, 32);
+	REQUIRE_AOFFSET(struct voluta_inode, i_gid, 36);
+	REQUIRE_AOFFSET(struct voluta_inode, i_mode, 40);
+	REQUIRE_AOFFSET(struct voluta_inode, i_flags, 44);
+	REQUIRE_AOFFSET(struct voluta_inode, i_size, 48);
+	REQUIRE_AOFFSET(struct voluta_inode, i_span, 56);
+	REQUIRE_AOFFSET(struct voluta_inode, i_blocks, 64);
+	REQUIRE_AOFFSET(struct voluta_inode, i_nlink, 72);
+	REQUIRE_AOFFSET(struct voluta_inode, i_attributes, 80);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_tm, 128);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_xa, 192);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_sp, 512);
+	REQUIRE_AOFFSET(struct voluta_dir_entry, de_ino, 0);
+	REQUIRE_AOFFSET(struct voluta_dir_entry, de_nents, 8);
+	REQUIRE_XOFFSET(struct voluta_dir_entry, de_nprev, 10);
+	REQUIRE_XOFFSET(struct voluta_dir_entry, de_name_len, 12);
+	REQUIRE_XOFFSET(struct voluta_dir_entry, de_dt, 14);
+	REQUIRE_AOFFSET(struct voluta_dir_tnode, dh_hdr, 0);
+	REQUIRE_AOFFSET64(struct voluta_dir_tnode, de, 64);
+	REQUIRE_AOFFSET(struct voluta_radix_tnode, r_hdr, 0);
+	REQUIRE_AOFFSET64(struct voluta_radix_tnode, r_zeros, 64);
+	REQUIRE_AOFFSET64(struct voluta_radix_tnode, r_child, 1024);
+	REQUIRE_AOFFSET(struct voluta_inode_xattr, ix_nents, 0);
+	REQUIRE_AOFFSET(struct voluta_inode_xattr, ix_vaddr, 8);
+	REQUIRE_AOFFSET(struct voluta_xattr_node, xa_hdr, 0);
+	REQUIRE_AOFFSET(struct voluta_xattr_node, xe, 64);
+	REQUIRE_AOFFSET64(struct voluta_symlnk_value, sy_value, 64);
+}
+
+static void guarantee_defs_consistency(void)
+{
+	REQUIRE_EQ(CHAR_BIT, 8);
+	REQUIRE_LT(VOLUTA_DIR_HTREE_DEPTH_MAX, VOLUTA_HASH256_LEN);
+	REQUIRE_LT(VOLUTA_DIR_HTREE_INDEX_MAX, INT32_MAX);
+	REQUIRE_LT(VOLUTA_DIR_HTREE_INDEX_MAX, VOLUTA_DIR_HTREE_INDEX_NULL);
+	REQUIRE_GT(VOLUTA_DIR_ENTRIES_MAX, VOLUTA_LINK_MAX);
+	REQUIRE_LT(VOLUTA_XATTR_VALUE_MAX, VOLUTA_XATTR_NODE_SIZE);
+	REQUIRE_EQ(VOLUTA_FILE_SIZE_MAX, 64 * VOLUTA_TERA - 1);
+	REQUIRE_EQ(VOLUTA_BKSEC_SIZE, 256 * VOLUTA_KILO);
+	REQUIRE_EQ(VOLUTA_AG_SIZE, 64 * VOLUTA_MEGA);
+	REQUIRE_EQ(VOLUTA_HS_SIZE, 32 * VOLUTA_GIGA);
+	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MIN, 2 * VOLUTA_GIGA);
+	REQUIRE_EQ(VOLUTA_VOLUME_SIZE_MAX, 16 * VOLUTA_TERA);
+
+	REQUIRE_EQ(VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES,
+	           VOLUTA_FILE_HEAD2_LEAF_SIZE);
+	REQUIRE_EQ((VOLUTA_FILE_HEAD1_LEAF_SIZE * VOLUTA_FILE_HEAD1_NLEAVES) +
+	           (VOLUTA_FILE_HEAD2_LEAF_SIZE * VOLUTA_FILE_HEAD2_NLEAVES),
+	           VOLUTA_FILE_TREE_LEAF_SIZE);
+}
+
+static void guarantee_external_constants(void)
+{
+	REQUIRE_EQ(VOLUTA_NAME_MAX, NAME_MAX);
+	REQUIRE_EQ(VOLUTA_PATH_MAX, PATH_MAX);
+	REQUIRE_GE(VOLUTA_LINK_MAX, LINK_MAX);
+	REQUIRE_GE(VOLUTA_NAME_MAX, XATTR_NAME_MAX);
+	REQUIRE_GE(VOLUTA_XATTR_VALUE_MAX, XATTR_SIZE_MAX / 16);
+	REQUIRE_EQ(VOLUTA_CIPHER_AES256, GCRY_CIPHER_AES256);
+	REQUIRE_EQ(VOLUTA_CIPHER_MODE_CBC, GCRY_CIPHER_MODE_CBC);
+	REQUIRE_EQ(VOLUTA_CIPHER_MODE_GCM, GCRY_CIPHER_MODE_GCM);
+	REQUIRE_EQ(VOLUTA_MD_SHA256, GCRY_MD_SHA256);
+	REQUIRE_EQ(VOLUTA_MD_SHA3_256, GCRY_MD_SHA3_256);
+	REQUIRE_EQ(VOLUTA_MD_SHA3_512, GCRY_MD_SHA3_512);
+	REQUIRE_EQ(VOLUTA_KDF_PBKDF2, GCRY_KDF_PBKDF2);
+	REQUIRE_EQ(VOLUTA_KDF_SCRYPT, GCRY_KDF_SCRYPT);
+}
+
+static void guarantee_all_sane(void)
+{
+	guarantee_fundamental_types_size();
+	guarantee_persistent_types_size();
+	guarantee_persistent_types_members();
+	guarantee_persistent_types_alignment();
+	guarantee_defs_consistency();
+	guarantee_external_constants();
+}
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-static const struct voluta_zcrypt_params voluta_default_zcrypt = {
-	.kdf = {
-		.kdf_iv = {
-			.kd_iterations = 4096,
-			.kd_algo = VOLUTA_KDF_PBKDF2,
-			.kd_subalgo = VOLUTA_MD_SHA256,
-			.kd_salt_md = VOLUTA_MD_SHA3_256,
-		},
-		.kdf_key = {
-			.kd_iterations = 256,
-			.kd_algo = VOLUTA_KDF_SCRYPT,
-			.kd_subalgo = 8,
-			.kd_salt_md = VOLUTA_MD_SHA3_512,
+
+static int errno_or_errnum(int errnum)
+{
+	return (errno > 0) ? -errno : -abs(errnum);
+}
+
+static int check_endianess32(uint32_t val, const char *str)
+{
+	const uint32_t val_le = htole32(val);
+	char buf[16] = "";
+
+	for (size_t i = 0; i < 4; ++i) {
+		buf[i] = (char)(val_le >> (i * 8));
+	}
+	return !strcmp(buf, str) ? 0 : -EBADE;
+}
+
+static int check_endianess64(uint64_t val, const char *str)
+{
+	const uint64_t val_le = htole64(val);
+	char buf[16] = "";
+
+	for (size_t i = 0; i < 8; ++i) {
+		buf[i] = (char)(val_le >> (i * 8));
+	}
+	return !strcmp(buf, str) ? 0 : -EBADE;
+}
+
+static int check_endianess(void)
+{
+	int err;
+
+	err = check_endianess64(VOLUTA_SBROOT_MARK, "@voluta@");
+	if (err) {
+		return err;
+	}
+	err = check_endianess32(VOLUTA_SUPER_MAGIC, "@VLT");
+	if (err) {
+		return err;
+	}
+	err = check_endianess32(VOLUTA_ZTYPE_MAGIC, "#VLT");
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+static int check_sysconf(void)
+{
+	long val;
+	long page_shift = 0;
+	const long page_size_min = VOLUTA_PAGE_SIZE;
+	const long page_shift_min = VOLUTA_PAGE_SHIFT;
+	const long page_shift_max = VOLUTA_PAGE_SHIFT_MAX;
+	const long cl_size_min = VOLUTA_CACHELINE_SIZE;
+
+	errno = 0;
+	val = (long)voluta_sc_phys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
+	val = (long)voluta_sc_avphys_pages();
+	if (val <= 0) {
+		return errno_or_errnum(ENOMEM);
+	}
+	val = (long)voluta_sc_l1_dcache_linesize();
+	if ((val != cl_size_min) || (val % cl_size_min)) {
+		return errno_or_errnum(EOPNOTSUPP);
+	}
+	val = (long)voluta_sc_page_size();
+	if ((val < page_size_min) || (val % page_size_min)) {
+		return errno_or_errnum(EOPNOTSUPP);
+	}
+	for (long shift = page_shift_min; shift <= page_shift_max; ++shift) {
+		if (val == (1L << shift)) {
+			page_shift = val;
+			break;
 		}
-	},
-	.cipher_algo = VOLUTA_CIPHER_AES256,
-	.cipher_mode = VOLUTA_CIPHER_MODE_GCM,
-};
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void hash512_assign(struct voluta_hash512 *hash,
-                           const struct voluta_hash512 *other)
-{
-	memcpy(hash, other, sizeof(*hash));
-}
-
-static bool hash512_isequal(const struct voluta_hash512 *hash,
-                            const struct voluta_hash512 *other)
-{
-	return (memcmp(hash, other, sizeof(*hash)) == 0);
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void kdf_to_cpu(const struct voluta_kdf_desc *kd_le,
-                       struct voluta_kdf_desc *kd)
-{
-	kd->kd_iterations = voluta_le32_to_cpu(kd_le->kd_iterations);
-	kd->kd_algo = voluta_le32_to_cpu(kd_le->kd_algo);
-	kd->kd_subalgo = voluta_le16_to_cpu(kd_le->kd_subalgo);
-	kd->kd_salt_md = voluta_le16_to_cpu(kd_le->kd_salt_md);
-}
-
-static void cpu_to_kdf(const struct voluta_kdf_desc *kd,
-                       struct voluta_kdf_desc *kd_le)
-{
-	kd_le->kd_iterations = voluta_cpu_to_le32(kd->kd_iterations);
-	kd_le->kd_algo = voluta_cpu_to_le32(kd->kd_algo);
-	kd_le->kd_subalgo = voluta_cpu_to_le16(kd->kd_subalgo);
-	kd_le->kd_salt_md = voluta_cpu_to_le16(kd->kd_salt_md);
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static uint64_t br_magic(const struct voluta_boot_record *br)
-{
-	return voluta_le64_to_cpu(br->br_magic);
-}
-
-static void br_set_magic(struct voluta_boot_record *br, uint64_t magic)
-{
-	br->br_magic = voluta_cpu_to_le64(magic);
-}
-
-static long br_version(const struct voluta_boot_record *br)
-{
-	return (long)voluta_le64_to_cpu(br->br_version);
-}
-
-static void br_set_version(struct voluta_boot_record *br, long version)
-{
-	br->br_version = voluta_cpu_to_le64((uint64_t)version);
-}
-
-enum voluta_ztype voluta_br_type(const struct voluta_boot_record *br)
-{
-	return voluta_le32_to_cpu(br->br_type);
-}
-
-static void br_set_type(struct voluta_boot_record *br,
-                        enum voluta_ztype type)
-{
-	br->br_type = voluta_cpu_to_le32(type);
-}
-
-static enum voluta_brf br_flags(const struct voluta_boot_record *br)
-{
-	const uint32_t flags = voluta_le32_to_cpu(br->br_flags);
-
-	return (enum voluta_brf)flags;
-}
-
-static void br_set_flags(struct voluta_boot_record *br,
-                         enum voluta_brf f)
-{
-	br->br_flags = voluta_cpu_to_le32((uint32_t)f);
-}
-
-static void br_add_flag(struct voluta_boot_record *br, enum voluta_brf f)
-{
-	br_set_flags(br, br_flags(br) | f);
-}
-
-static void br_remove_flag(struct voluta_boot_record *br, enum voluta_brf f)
-{
-	br_set_flags(br, br_flags(br) & ~f);
-}
-
-static bool br_test_flag(const struct voluta_boot_record *br,
-                         enum voluta_brf f)
-{
-	return ((br_flags(br) & f) == f);
-}
-
-void voluta_br_set_encrypted(struct voluta_boot_record *br, bool enc)
-{
-	if (enc) {
-		br_add_flag(br, VOLUTA_ZBF_ENCRYPTED);
-	} else {
-		br_remove_flag(br, VOLUTA_ZBF_ENCRYPTED);
 	}
-}
-
-bool voluta_br_is_encrypted(const struct voluta_boot_record *br)
-{
-	return br_test_flag(br, VOLUTA_ZBF_ENCRYPTED);
-}
-
-enum voluta_brf voluta_br_flags(const struct voluta_boot_record *br)
-{
-	return br_flags(br);
-}
-
-static void br_set_sw_version(struct voluta_boot_record *br,
-                              const char *sw_version)
-{
-	const size_t len = strlen(sw_version);
-	const size_t len_max = ARRAY_SIZE(br->br_sw_version) - 1;
-
-	memcpy(br->br_sw_version, sw_version, min(len, len_max));
-}
-
-static void br_set_uuid(struct voluta_boot_record *br)
-{
-	voluta_uuid_generate(&br->br_uuid);
-}
-
-size_t voluta_br_size(const struct voluta_boot_record *br)
-{
-	return voluta_le64_to_cpu(br->br_size);
-}
-
-void voluta_br_set_size(struct voluta_boot_record *br, size_t size)
-{
-	br->br_size = voluta_cpu_to_le64(size);
-}
-
-static void br_kdf(const struct voluta_boot_record *br,
-                   struct voluta_kdf_pair *kdf)
-{
-	kdf_to_cpu(&br->br_kdf_pair.kdf_iv, &kdf->kdf_iv);
-	kdf_to_cpu(&br->br_kdf_pair.kdf_key, &kdf->kdf_key);
-}
-
-static void br_set_kdf(struct voluta_boot_record *br,
-                       const struct voluta_kdf_pair *kdf)
-{
-	cpu_to_kdf(&kdf->kdf_iv, &br->br_kdf_pair.kdf_iv);
-	cpu_to_kdf(&kdf->kdf_key, &br->br_kdf_pair.kdf_key);
-}
-
-static uint32_t br_chiper_algo(const struct voluta_boot_record *br)
-{
-	return voluta_le32_to_cpu(br->br_chiper_algo);
-}
-
-static uint32_t br_chiper_mode(const struct voluta_boot_record *br)
-{
-	return voluta_le32_to_cpu(br->br_chiper_mode);
-}
-
-static void br_set_cipher(struct voluta_boot_record *br,
-                          uint32_t cipher_algo, uint32_t cipher_mode)
-{
-	br->br_chiper_algo = voluta_cpu_to_le32(cipher_algo);
-	br->br_chiper_mode = voluta_cpu_to_le32(cipher_mode);
-}
-
-void voluta_br_crypt_params(const struct voluta_boot_record *br,
-                            struct voluta_zcrypt_params *zcp)
-{
-	memset(zcp, 0, sizeof(*zcp));
-	br_kdf(br, &zcp->kdf);
-	zcp->cipher_algo = br_chiper_algo(br);
-	zcp->cipher_mode = br_chiper_mode(br);
-}
-
-void voluta_br_init(struct voluta_boot_record *br,
-                    enum voluta_ztype ztype, size_t size)
-{
-	memset(br, 0, sizeof(*br));
-	br_set_magic(br, VOLUTA_BOOT_MARK);
-	br_set_version(br, VOLUTA_FMT_VERSION);
-	br_set_type(br, ztype);
-	br_set_flags(br, VOLUTA_ZBF_NONE);
-	br_set_sw_version(br, voluta_version.string);
-	br_set_uuid(br);
-	voluta_br_set_size(br, size);
-	br_set_kdf(br, &voluta_default_zcrypt.kdf);
-	br_set_cipher(br, voluta_default_zcrypt.cipher_algo,
-	              voluta_default_zcrypt.cipher_mode);
-	br->br_endianness = VOLUTA_ENDIANNESS_LE;
-}
-
-void voluta_br_fini(struct voluta_boot_record *br)
-{
-	memset(br, 0xFF, sizeof(*br));
-	br_set_magic(br, 0);
-	voluta_br_set_size(br, 0);
-}
-
-static int ztype_check(enum voluta_ztype ztype)
-{
-	int err;
-
-	switch (ztype) {
-	case VOLUTA_ZTYPE_VOLUME:
-	case VOLUTA_ZTYPE_ARCHIVE:
-		err = 0;
-		break;
-	case VOLUTA_ZTYPE_NONE:
-	default:
-		err = -EFSCORRUPTED;
-		break;
-	}
-	return err;
-}
-
-int voluta_check_boot_record(const struct voluta_super_block *sb)
-{
-	int err;
-	enum voluta_ztype ztype;
-	const struct voluta_boot_record *br = &sb->sb_boot_rec;
-
-	if (br_magic(br) != VOLUTA_BOOT_MARK) {
-		return -EINVAL;
-	}
-	if (br_version(br) != VOLUTA_FMT_VERSION) {
-		return -EFSCORRUPTED;
-	}
-	ztype = voluta_br_type(br);
-	err = ztype_check(ztype);
-	if (err) {
-		return err;
+	if (page_shift == 0) {
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void hr_set_pass_hash(struct voluta_hash_record *hr,
-                             const struct voluta_hash512 *hash)
+static int check_system_page_size(void)
 {
-	hash512_assign(&hr->hr_pass_hash, hash);
-}
+	long page_size;
+	const size_t page_shift[] = { 12, 13, 14, 16 };
 
-static bool hr_has_pass_hash(const struct voluta_hash_record *hr,
-                             const struct voluta_hash512 *hash)
-{
-	return hash512_isequal(&hr->hr_pass_hash, hash);
-}
-
-static void hr_fill_random(struct voluta_hash_record *hr)
-{
-	voluta_getentropy(hr->hr_fill, sizeof(hr->hr_fill));
-}
-
-static void hr_calc_fill_hash(const struct voluta_hash_record *hr,
-                              const struct voluta_mdigest *md,
-                              struct voluta_hash512 *out_hash)
-{
-	voluta_sha3_512_of(md, hr->hr_fill, sizeof(hr->hr_fill), out_hash);
-}
-
-static void hr_set_fill_hash(struct voluta_hash_record *hr,
-                             const struct voluta_hash512 *hash)
-{
-	hash512_assign(&hr->hr_fill_hash, hash);
-}
-
-static bool hr_has_hash(const struct voluta_hash_record *hr,
-                        const struct voluta_hash512 *hash)
-{
-	return hash512_isequal(&hr->hr_fill_hash, hash);
-}
-
-void voluta_hrec_setup(struct voluta_hash_record *hr,
-                       const struct voluta_mdigest *md)
-{
-	struct voluta_hash512 hash;
-
-	hr_fill_random(hr);
-	hr_calc_fill_hash(hr, md, &hash);
-	hr_set_fill_hash(hr, &hash);
-}
-
-int voluta_hrec_check(const struct voluta_hash_record *hr,
-                      const struct voluta_mdigest *md)
-{
-	struct voluta_hash512 hash;
-
-	hr_calc_fill_hash(hr, md, &hash);
-	return hr_has_hash(hr, &hash) ? 0 : -EFSCORRUPTED;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void sb_init(struct voluta_super_block *sb, enum voluta_ztype ztype)
-{
-	voluta_memzero(sb, sizeof(*sb));
-	voluta_br_init(&sb->sb_boot_rec, ztype, sizeof(*sb));
-}
-
-static void sb_fini(struct voluta_super_block *sb)
-{
-	voluta_br_fini(&sb->sb_boot_rec);
-	voluta_memzero(sb, sizeof(*sb));
-}
-
-struct voluta_super_block *
-voluta_sb_new(struct voluta_qalloc *qal, enum voluta_ztype ztype)
-{
-	struct voluta_super_block *sb;
-
-	sb = voluta_qalloc_malloc(qal, sizeof(*sb));
-	if (sb != NULL) {
-		sb_init(sb, ztype);
+	page_size = voluta_sc_page_size();
+	if (page_size > VOLUTA_BK_SIZE) {
+		return -EOPNOTSUPP;
 	}
-	return sb;
+	for (size_t i = 0; i < VOLUTA_ARRAY_SIZE(page_shift); ++i) {
+		if (page_size == (1L << page_shift[i])) {
+			return 0;
+		}
+	}
+	return -EOPNOTSUPP;
 }
 
-void voluta_sb_del(struct voluta_super_block *sb, struct voluta_qalloc *qal)
-{
-	sb_fini(sb);
-	voluta_qalloc_free(qal, sb, sizeof(*sb));
-}
-
-void voluta_sb_set_pass_hash(struct voluta_super_block *sb,
-                             const struct voluta_hash512 *hash)
-{
-	hr_set_pass_hash(&sb->sb_hash_rec, hash);
-}
-
-static bool sb_has_pass_hash(const struct voluta_super_block *sb,
-                             const struct voluta_hash512 *hash)
-{
-	return hr_has_pass_hash(&sb->sb_hash_rec, hash);
-}
-
-void voluta_sb_set_birth_time(struct voluta_super_block *sb, time_t btime)
-{
-	sb->sb_birth_time = voluta_cpu_to_le64((uint64_t)btime);
-}
-
-void voluta_sb_set_ag_count(struct voluta_super_block *sb, size_t ag_count)
-{
-	sb->sb_ag_count = voluta_cpu_to_le64(ag_count);
-}
-
-void voluta_sb_self_vaddr(const struct voluta_super_block *sb,
-                          struct voluta_vaddr *out_vaddr)
-{
-	voluta_vaddr64_parse(&sb->sb_self_vaddr, out_vaddr);
-}
-
-void voluta_sb_set_self_vaddr(struct voluta_super_block *sb,
-                              const struct voluta_vaddr *vaddr)
-{
-	voluta_vaddr64_set(&sb->sb_self_vaddr, vaddr);
-}
-
-void voluta_sb_itable_root(const struct voluta_super_block *sb,
-                           struct voluta_vaddr *out_vaddr)
-{
-	voluta_vaddr64_parse(&sb->sb_itable_root, out_vaddr);
-}
-
-void voluta_sb_set_itable_root(struct voluta_super_block *sb,
-                               const struct voluta_vaddr *vaddr)
-{
-	voluta_vaddr64_set(&sb->sb_itable_root, vaddr);
-}
-
-void voluta_sb_setup_keys(struct voluta_super_block *sb)
-{
-	voluta_krec_setup(&sb->sb_keys);
-}
-
-void voluta_sb_kivam_of(const struct voluta_super_block *sb,
-                        const struct voluta_vaddr *vaddr,
-                        struct voluta_kivam *out_kivam)
-{
-	return voluta_krec_kivam_of(&sb->sb_keys, vaddr, out_kivam);
-}
-
-void voluta_sb_setup_rand(struct voluta_super_block *sb,
-                          const struct voluta_mdigest *md)
-{
-	voluta_hrec_setup(&sb->sb_hash_rec, md);
-}
-
-int voluta_sb_check_volume(const struct voluta_super_block *sb)
+static int check_proc_rlimits(void)
 {
 	int err;
-	enum voluta_ztype ztype;
+	struct rlimit rlim;
 
-	err = voluta_check_boot_record(sb);
+	err = voluta_sys_getrlimit(RLIMIT_AS, &rlim);
 	if (err) {
 		return err;
 	}
-	ztype = voluta_br_type(&sb->sb_boot_rec);
-	if (ztype != VOLUTA_ZTYPE_VOLUME) {
-		return -EINVAL;
+	if (rlim.rlim_cur < VOLUTA_MEGA) {
+		return -ENOMEM;
+	}
+	err = voluta_sys_getrlimit(RLIMIT_NOFILE, &rlim);
+	if (err) {
+		return err;
+	}
+	if (rlim.rlim_cur < 64) {
+		return -EMFILE;
 	}
 	return 0;
 }
 
-int voluta_sb_check_pass_hash(const struct voluta_super_block *sb,
-                              const struct voluta_hash512 *hash)
-{
-	return sb_has_pass_hash(sb, hash) ? 0 : -EKEYEXPIRED;
-}
 
-int voluta_sb_check_rand(const struct voluta_super_block *sb,
-                         const struct voluta_mdigest *md)
-{
-	return voluta_hrec_check(&sb->sb_hash_rec, md);
-}
+static int g_boot_lib_once;
 
-static void *sb_enc_start(struct voluta_super_block *sb)
-{
-	return &sb->sb_hash_rec;
-}
-
-static size_t sb_enc_length(const struct voluta_super_block *sb)
-{
-	const size_t start_off = offsetof(typeof(*sb), sb_hash_rec);
-
-	return sizeof(*sb) - start_off;
-}
-
-int voluta_sb_encrypt_tail(struct voluta_super_block *sb,
-                           const struct voluta_cipher *ci,
-                           const struct voluta_kivam *kivam)
+int voluta_boot_lib(void)
 {
 	int err;
-	void *enc_buf = sb_enc_start(sb);
-	const size_t enc_len = sb_enc_length(sb);
 
-	err = voluta_encrypt_buf(ci, kivam, enc_buf, enc_buf, enc_len);
-	if (err) {
-		log_err("encrypt super-block failed: err=%d", err);
+	guarantee_all_sane();
+
+	if (g_boot_lib_once) {
+		return 0;
 	}
-	return err;
-}
-
-int voluta_sb_decrypt_tail(struct voluta_super_block *sb,
-                           const struct voluta_cipher *ci,
-                           const struct voluta_kivam *kivam)
-{
-	int err;
-	void *enc_buf = sb_enc_start(sb);
-	const size_t enc_len = sb_enc_length(sb);
-
-	err = voluta_decrypt_buf(ci, kivam, enc_buf, enc_buf, enc_len);
-	if (err) {
-		log_dbg("decrypt super-block failed: err=%d", err);
-	}
-	return err;
-}
-
-int voluta_sb_encrypt(struct voluta_super_block *sb,
-                      const struct voluta_crypto *crypto,
-                      const struct voluta_passphrase *passph)
-{
-	int err;
-	struct voluta_kivam kivam;
-	struct voluta_zcrypt_params zcp;
-
-	voluta_kivam_init(&kivam);
-	voluta_br_crypt_params(&sb->sb_boot_rec, &zcp);
-
-	err = voluta_derive_kivam(&zcp, passph, &crypto->md, &kivam);
-	if (err) {
-		goto out;
-	}
-	/* TODO: use zcp cipher_algo/mode */
-	err = voluta_sb_encrypt_tail(sb, &crypto->ci, &kivam);
-	if (err) {
-		goto out;
-	}
-	voluta_br_set_encrypted(&sb->sb_boot_rec, true);
-out:
-	voluta_kivam_fini(&kivam);
-	return err;
-}
-
-int voluta_sb_decrypt(struct voluta_super_block *sb,
-                      const struct voluta_crypto *crypto,
-                      const struct voluta_passphrase *passph)
-{
-	int err;
-	struct voluta_kivam kivam;
-	struct voluta_zcrypt_params zcp;
-
-	voluta_kivam_init(&kivam);
-	voluta_br_crypt_params(&sb->sb_boot_rec, &zcp);
-
-	err = voluta_derive_kivam(&zcp, passph, &crypto->md, &kivam);
-	if (err) {
-		goto out;
-	}
-	/* TODO: use zcp cipher_algo/mode */
-	err = voluta_sb_decrypt_tail(sb, &crypto->ci, &kivam);
-	if (err) {
-		goto out;
-	}
-out:
-	voluta_kivam_fini(&kivam);
-	return err;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-int voluta_decipher_super_block(struct voluta_super_block *sb,
-                                const char *password)
-{
-	int err;
-	struct voluta_crypto crypto;
-	struct voluta_hash512 hash;
-	struct voluta_passphrase passph;
-
-	err = voluta_crypto_init(&crypto);
+	err = check_endianess();
 	if (err) {
 		return err;
 	}
-	err = voluta_passphrase_setup(&passph, password);
+	err = check_sysconf();
 	if (err) {
-		goto out;
+		return err;
 	}
-	err = voluta_sb_decrypt(sb, &crypto, &passph);
+	err = check_system_page_size();
 	if (err) {
-		goto out;
+		return err;
 	}
-	voluta_sha3_512_of(&crypto.md, passph.pass, passph.passlen, &hash);
-	err = voluta_sb_check_pass_hash(sb, &hash);
+	err = check_proc_rlimits();
 	if (err) {
-		goto out;
+		return err;
 	}
-	err = voluta_sb_check_rand(sb, &crypto.md);
+	err = voluta_init_gcrypt();
 	if (err) {
-		goto out;
+		return err;
 	}
-out:
-	voluta_crypto_fini(&crypto);
-	voluta_passphrase_reset(&passph);
-	return err;
+	voluta_burnstack();
+
+	g_boot_lib_once = 1;
+
+	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -619,7 +490,7 @@ static int getmemlimit(size_t *out_lim)
 	return err;
 }
 
-static int resolve_memsize(size_t mem_want, size_t *out_mem_size)
+int voluta_boot_memsize(size_t mem_want, size_t *out_mem_size)
 {
 	int err;
 	size_t mem_floor;
@@ -646,26 +517,14 @@ static int resolve_memsize(size_t mem_want, size_t *out_mem_size)
 		return -ENOMEM;
 	}
 	mem_glim = 64 * VOLUTA_UGIGA;
-	mem_ceil = min3(mem_glim, mem_rlim, mem_total / 4);
+	mem_ceil = voluta_min3(mem_glim, mem_rlim, mem_total / 4);
 
 	if (mem_want == 0) {
 		mem_want = 2 * VOLUTA_GIGA;
 	}
-	mem_uget = clamp(mem_want, mem_floor, mem_ceil);
+	mem_uget = voluta_clamp(mem_want, mem_floor, mem_ceil);
 
 	*out_mem_size = align_down(mem_uget, VOLUTA_UMEGA);
 	return 0;
-}
-
-int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant)
-{
-	int err;
-	size_t memsize = 0;
-
-	err = resolve_memsize(memwant, &memsize);
-	if (!err) {
-		err = voluta_qalloc_init(qal, memsize);
-	}
-	return err;
 }
 

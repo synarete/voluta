@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_INODE_H_
 #define VOLUTA_INODE_H_
@@ -20,9 +20,6 @@
 #include <unistd.h>
 #include <voluta/fs/types.h>
 
-ino_t voluta_inode_ino(const struct voluta_inode *inode);
-
-ino_t voluta_ino_of(const struct voluta_inode_info *ii);
 
 ino_t voluta_ii_parent(const struct voluta_inode_info *ii);
 
@@ -56,16 +53,18 @@ bool voluta_ii_isrootd(const struct voluta_inode_info *ii);
 
 bool voluta_is_rootdir(const struct voluta_inode_info *ii);
 
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
+
+
 void voluta_fixup_rootdir(struct voluta_inode_info *ii);
 
 enum voluta_inodef voluta_ii_flags(const struct voluta_inode_info *ii);
 
 int voluta_do_getattr(const struct voluta_oper *op,
-                      const struct voluta_inode_info *ii,
-                      struct stat *out_st);
+                      struct voluta_inode_info *ii, struct stat *out_st);
 
 int voluta_do_statx(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     unsigned int request_mask, struct statx *out_stx);
 
 int voluta_do_chmod(const struct voluta_oper *op,
@@ -88,7 +87,7 @@ void voluta_update_itimes(const struct voluta_oper *op,
 
 void voluta_update_iblocks(const struct voluta_oper *op,
                            struct voluta_inode_info *ii,
-                           enum voluta_vtype vtype, long dif);
+                           enum voluta_ztype ztype, long dif);
 
 void voluta_update_isize(const struct voluta_oper *op,
                          struct voluta_inode_info *ii, loff_t size);
@@ -106,8 +105,8 @@ void voluta_setup_inode(struct voluta_inode_info *ii,
                         ino_t parent_ino, mode_t parent_mode,
                         mode_t mode, dev_t rdev);
 
-void voluta_clone_inode(struct voluta_inode_info *ii,
-                        const struct voluta_inode_info *ii_other);
+void voluta_snap_inode(struct voluta_inode_info *ii,
+                       const struct voluta_inode_info *ii_other);
 
 void voluta_stat_of(const struct voluta_inode_info *ii, struct stat *st);
 

@@ -1432,8 +1432,7 @@ void ut_drop_caches_fully(struct ut_env *ute)
 	ut_sync_drop(ute);
 	voluta_fse_stats(ute->fse, &st);
 	ut_expect_eq(st.ncache_blocks, 0);
-	ut_expect_eq(st.ncache_vnodes, 0);
-	ut_expect_eq(st.ncache_inodes, 0);
+	ut_expect_eq(st.ncache_znodes, 0);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1504,74 +1503,3 @@ void ut_reload_ok(struct ut_env *ute, ino_t ino)
 	ut_expect_statvfs(&stv[0], &stv[1]);
 	ut_expect_eq_stat(&st[0], &st[1]);
 }
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static void ut_flip_encrypted(struct ut_env *ute)
-{
-	const unsigned long mask = VOLUTA_F_ENCRYPTED;
-	const bool encrypted = ute->args.fs_args.encrypted;
-
-	if (encrypted) {
-		ute->fse->sbi->sb_ctl_flags &= ~mask;
-		ute->fse->vstore->vs_ctl_flags &= ~mask;
-	} else {
-		ute->fse->sbi->sb_ctl_flags |= mask;
-		ute->fse->vstore->vs_ctl_flags |= mask;
-	}
-	ute->args.fs_args.encrypted = !encrypted;
-}
-
-static void ut_flip_encryptwr(struct ut_env *ute)
-{
-	const unsigned long mask = VOLUTA_F_ENCRYPTWR;
-	const bool encryptwr = ute->args.fs_args.encryptwr;
-
-	if (encryptwr) {
-		ute->fse->sbi->sb_ctl_flags &= ~mask;
-		ute->fse->vstore->vs_ctl_flags &= ~mask;
-	} else {
-		ute->fse->sbi->sb_ctl_flags |= mask;
-		ute->fse->vstore->vs_ctl_flags |= mask;
-	}
-	ute->args.fs_args.encryptwr = !encryptwr;
-}
-
-static void ut_traverse_flip_crypt(struct ut_env *ute)
-{
-	int err;
-
-	ut_drop_caches_fully(ute);
-
-	err = voluta_fse_term(ute->fse);
-	ut_expect_ok(err);
-
-	ut_flip_encryptwr(ute);
-
-	err = voluta_fse_traverse(ute->fse);
-	ut_expect_ok(err);
-
-	err = voluta_fse_term(ute->fse);
-	ut_expect_ok(err);
-
-	ut_flip_encrypted(ute);
-
-	err = voluta_fse_reload(ute->fse);
-	ut_expect_ok(err);
-}
-
-void ut_recrypt_flip_ok(struct ut_env *ute, ino_t ino)
-{
-	struct stat st[2];
-	struct statvfs stv[2];
-
-	ut_statfs_ok(ute, ino, &stv[0]);
-	ut_getattr_ok(ute, ino, &st[0]);
-	ut_traverse_flip_crypt(ute);
-	ut_statfs_ok(ute, ino, &stv[1]);
-	ut_getattr_ok(ute, ino, &st[1]);
-
-	ut_expect_statvfs(&stv[0], &stv[1]);
-	ut_expect_eq_stat(&st[0], &st[1]);
-}
-

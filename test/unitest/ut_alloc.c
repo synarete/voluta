@@ -182,7 +182,7 @@ static void ut_qalloc_free_nbks(struct ut_env *ute)
 	struct voluta_list_head lst;
 	struct voluta_list_head *lnk;
 	const size_t bk_size =  UT_BK_SIZE;
-	struct voluta_qastat qast;
+	struct voluta_alloc_stat qast;
 
 	voluta_list_init(&lst);
 	qal = ut_new_qalloc(ute, 32 * UT_UMEGA);
@@ -435,28 +435,34 @@ static void ut_mpool_simple_(struct ut_env *ute, size_t nbks)
 {
 	size_t nbytes;
 	struct voluta_mpool *mpool = NULL;
-	struct voluta_bu_info **bui_arr = NULL;
+	struct voluta_alloc_if *alif = NULL;
+	struct voluta_bksec_info *bsi = NULL;
+	struct voluta_bksec_info **bsi_arr = NULL;
 
 	mpool = ut_new_mpool(ute);
+	alif = &mpool->mp_alif;
 
-	nbytes = nbks * sizeof(struct voluta_bu_info *);
-	bui_arr = voluta_qalloc_malloc(mpool->mp_qal, nbytes);
-	ut_expect_not_null(bui_arr);
+	nbytes = nbks * sizeof(struct voluta_bksec_info *);
+	bsi_arr = voluta_allocate(alif, nbytes);
+	ut_expect_not_null(bsi_arr);
 
 	for (size_t i = 0; i < nbks; ++i) {
-		bui_arr[i] = voluta_malloc_bui(mpool);
-		ut_expect_not_null(bui_arr[i]);
+		bsi = voluta_allocate(alif, sizeof(*bsi));
+		ut_expect_not_null(bsi);
+		bsi_arr[i] = bsi;
 	}
 	for (size_t i = 1; i < nbks; i += 2) {
-		voluta_free_bui(mpool, bui_arr[i]);
-		bui_arr[i] = NULL;
+		bsi = bsi_arr[i];
+		voluta_deallocate(alif, bsi, sizeof(*bsi));
+		bsi_arr[i] = NULL;
 	}
 	for (size_t i = 0; i < nbks; i += 2) {
-		voluta_free_bui(mpool, bui_arr[i]);
-		bui_arr[i] = NULL;
+		bsi = bsi_arr[i];
+		voluta_deallocate(alif, bsi, sizeof(*bsi));
+		bsi_arr[i] = NULL;
 	}
 
-	voluta_qalloc_free(mpool->mp_qal, bui_arr, nbytes);
+	voluta_deallocate(alif, bsi_arr, nbytes);
 	ut_del_mpool(mpool);
 }
 

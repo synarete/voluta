@@ -22,7 +22,6 @@ nobase_include_HEADERS += voluta/infra/version.h
 nobase_include_HEADERS += voluta/infra.h
 
 nobase_include_HEADERS += voluta/fs/address.h
-nobase_include_HEADERS += voluta/fs/archive.h
 nobase_include_HEADERS += voluta/fs/boot.h
 nobase_include_HEADERS += voluta/fs/cache.h
 nobase_include_HEADERS += voluta/fs/crypto.h
@@ -30,26 +29,27 @@ nobase_include_HEADERS += voluta/fs/dir.h
 nobase_include_HEADERS += voluta/fs/exec.h
 nobase_include_HEADERS += voluta/fs/file.h
 nobase_include_HEADERS += voluta/fs/fuseq.h
-nobase_include_HEADERS += voluta/fs/init.h
 nobase_include_HEADERS += voluta/fs/inode.h
 nobase_include_HEADERS += voluta/fs/itable.h
+nobase_include_HEADERS += voluta/fs/locosd.h
 nobase_include_HEADERS += voluta/fs/mount.h
 nobase_include_HEADERS += voluta/fs/mpool.h
 nobase_include_HEADERS += voluta/fs/namei.h
+nobase_include_HEADERS += voluta/fs/nodes.h
 nobase_include_HEADERS += voluta/fs/opers.h
 nobase_include_HEADERS += voluta/fs/private.h
-nobase_include_HEADERS += voluta/fs/pstore.h
-nobase_include_HEADERS += voluta/fs/repo.h
 nobase_include_HEADERS += voluta/fs/spmaps.h
+nobase_include_HEADERS += voluta/fs/superb.h
 nobase_include_HEADERS += voluta/fs/super.h
 nobase_include_HEADERS += voluta/fs/symlink.h
 nobase_include_HEADERS += voluta/fs/types.h
-nobase_include_HEADERS += voluta/fs/vstore.h
 nobase_include_HEADERS += voluta/fs/xattr.h
 nobase_include_HEADERS += voluta/fs.h
 
 nobase_include_HEADERS += voluta/defs.h
 nobase_include_HEADERS += voluta/ioctls.h
+nobase_include_HEADERS += voluta/cmd.h
+nobase_include_HEADERS += voluta/mntd.h
 
 noinst_HEADERS = config.h
 

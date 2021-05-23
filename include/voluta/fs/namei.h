@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_NAMEI_H_
 #define VOLUTA_NAMEI_H_
@@ -37,7 +37,7 @@ int voluta_do_statvfs(const struct voluta_oper *op,
                       struct statvfs *out_stvfs);
 
 int voluta_do_access(const struct voluta_oper *op,
-                     const struct voluta_inode_info *ii, int mode);
+                     struct voluta_inode_info *ii, int mode);
 
 int voluta_do_open(const struct voluta_oper *op,
                    struct voluta_inode_info *ii, int flags);
@@ -86,7 +86,7 @@ int voluta_do_mknod(const struct voluta_oper *op,
                     struct voluta_inode_info **out_ii);
 
 int voluta_do_lookup(const struct voluta_oper *op,
-                     const struct voluta_inode_info *dir_ii,
+                     struct voluta_inode_info *dir_ii,
                      const struct voluta_namestr *name,
                      struct voluta_inode_info **out_ii);
 
@@ -106,11 +106,11 @@ int voluta_do_flush(const struct voluta_oper *op,
                     struct voluta_inode_info *ii);
 
 int voluta_do_query(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii,
+                    struct voluta_inode_info *ii,
                     struct voluta_ioc_query *out_qry);
 
-int voluta_do_clone(const struct voluta_oper *op,
-                    const struct voluta_inode_info *ii, char *str, size_t lim);
+int voluta_do_snap(const struct voluta_oper *op,
+                   struct voluta_inode_info *ii, char *str, size_t lim);
 
 int voluta_check_name(const char *name);
 

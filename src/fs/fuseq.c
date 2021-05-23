@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -1433,7 +1433,7 @@ static int do_init(struct voluta_fuseq_worker *fqw, ino_t ino,
 	setup_cap_want(coni, FUSE_SPLICE_WRITE);
 
 	/* TODO: let super do his private stuff on init */
-	fqw->sbi->sb_mntime = voluta_time_now();
+	fqw->sbi->s_mntime = voluta_time_now();
 
 	return fuseq_reply_init(fqw, 0);
 }
@@ -2189,7 +2189,9 @@ static int do_read_iter(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 	ret = fuseq_reply_read_iter(fqw, fq_rdi->nrd,
 	                            fq_rdi->fiov, fq_rdi->cnt, err);
-
+	if (!fq_rdi->cnt) {
+		return ret;
+	}
 	fuseq_lock_fs(fqw);
 	voluta_fs_rdwr_post(fqw->sbi, fqw->op, ino,
 	                    fq_rdi->fiov, fq_rdi->cnt);
@@ -2429,15 +2431,15 @@ out:
 	return fuseq_reply_ioctl(fqw, 0, &query, sizeof(query), err);
 }
 
-static int do_ioc_clone(struct voluta_fuseq_worker *fqw, ino_t ino,
-                        const struct voluta_fuseq_in *in)
+static int do_ioc_snap(struct voluta_fuseq_worker *fqw, ino_t ino,
+                       const struct voluta_fuseq_in *in)
 {
 	int err;
 	int flags;
 	size_t bsz_in;
 	size_t bsz_out;
 	const void *buf_in;
-	struct voluta_ioc_clone clone = {
+	struct voluta_ioc_snap snap = {
 		.flags = 0
 	};
 
@@ -2448,17 +2450,17 @@ static int do_ioc_clone(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 	if (!bsz_out && (flags | FUSE_IOCTL_RETRY)) {
 		err = -ENOSYS;
-	} else if (bsz_in < sizeof(clone.flags)) {
+	} else if (bsz_in < sizeof(snap.flags)) {
 		err = -EINVAL;
 	} else {
-		clone.flags = ((const struct voluta_ioc_clone *)buf_in)->flags;
+		snap.flags = ((const struct voluta_ioc_snap *)buf_in)->flags;
 
 		fuseq_lock_fs(fqw);
-		err = voluta_fs_clone(fqw->sbi, fqw->op, ino,
-		                      clone.name, sizeof(clone.name));
+		err = voluta_fs_snap(fqw->sbi, fqw->op, ino,
+		                     snap.name, sizeof(snap.name));
 		fuseq_unlock_fs(fqw);
 	}
-	return fuseq_reply_ioctl(fqw, 0, &clone, sizeof(clone), err);
+	return fuseq_reply_ioctl(fqw, 0, &snap, sizeof(snap), err);
 }
 
 static int check_ioctl_flags(int flags)
@@ -2504,8 +2506,8 @@ static int do_ioctl(struct voluta_fuseq_worker *fqw, ino_t ino,
 		case VOLUTA_FS_IOC_QUERY:
 			ret = do_ioc_query(fqw, ino, in);
 			break;
-		case VOLUTA_FS_IOC_CLONE:
-			ret = do_ioc_clone(fqw, ino, in);
+		case VOLUTA_FS_IOC_SNAP:
+			ret = do_ioc_snap(fqw, ino, in);
 			break;
 		default:
 			ret = do_ioc_notimpl(fqw, ino, in);
@@ -2602,7 +2604,7 @@ static int fuseq_resolve_opdesc(struct voluta_fuseq_worker *fqw,
 
 static int fuseq_check_perm(const struct voluta_fuseq_worker *fqw, uid_t opuid)
 {
-	const uid_t owner = fqw->sbi->sb_owner.uid;
+	const uid_t owner = fqw->sbi->s_owner.uid;
 
 	if (!fqw->fq->fq_deny_others) {
 		return 0;
@@ -2875,6 +2877,11 @@ static int fuseq_recv_in_locked(struct voluta_fuseq_worker *fqw)
 				err = fuseq_recv_in(fqw);
 			}
 		}
+
+		if (err == -ENODEV) {
+			/* umount case: set non-active under channel-lock */
+			fqw->fq->fq_active = 0;
+		}
 	}
 	fuseq_unlock_ch(fqw);
 	return err;
@@ -2915,7 +2922,7 @@ static int fuseq_read_or_splice_request(struct voluta_fuseq_worker *fqw)
 static int fuseq_prep_request(struct voluta_fuseq_worker *fqw)
 {
 	fuseq_reset_inhdr(fqw);
-	return voluta_pipe_purge(&fqw->pipe, &fqw->nfd);
+	return voluta_pipe_dispose(&fqw->pipe, &fqw->nfd);
 }
 
 static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)
@@ -2935,44 +2942,54 @@ static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_fuseq_inb *inb_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_inb *inb_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_inb *inb;
 
-	return voluta_qalloc_zmalloc(qal, sizeof(*inb));
+	inb = voluta_allocate(alif, sizeof(*inb));
+	if (inb != NULL) {
+		voluta_memzero(inb, sizeof(*inb));
+	}
+	return inb;
 }
 
-static void inb_del(struct voluta_fuseq_inb *inb, struct voluta_qalloc *qal)
+static void inb_del(struct voluta_fuseq_inb *inb, struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, inb, sizeof(*inb));
+	voluta_deallocate(alif, inb, sizeof(*inb));
 }
 
-static struct voluta_fuseq_outb *outb_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_outb *outb_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_outb *outb;
 
-	outb = voluta_qalloc_zmalloc(qal, sizeof(*outb));
+	outb = voluta_allocate(alif, sizeof(*outb));
+	if (outb != NULL) {
+		voluta_memzero(outb, sizeof(*outb));
+	}
 	return outb;
 }
 
-static void outb_del(struct voluta_fuseq_outb *outb, struct voluta_qalloc *qal)
+static void outb_del(struct voluta_fuseq_outb *outb,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, outb, sizeof(*outb));
+	voluta_deallocate(alif, outb, sizeof(*outb));
 }
 
-
-static struct voluta_fuseq_rw_iter *rwi_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_rw_iter *rwi_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_rw_iter *rwi;
 
-	rwi = voluta_qalloc_zmalloc(qal, sizeof(*rwi));
+	rwi = voluta_allocate(alif, sizeof(*rwi));
+	if (rwi != NULL) {
+		voluta_memzero(rwi, sizeof(*rwi));
+	}
 	return rwi;
 }
 
 static void rwi_del(struct voluta_fuseq_rw_iter *rwi,
-                    struct voluta_qalloc *qal)
+                    struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, rwi, sizeof(*rwi));
+	voluta_deallocate(alif, rwi, sizeof(*rwi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -2993,7 +3010,7 @@ static int pipe_max_size(size_t *out_size)
 
 static size_t fuseq_bufsize_max(const struct voluta_fuseq *fq)
 {
-	const struct voluta_fuseq_worker *fqw = &fq->fq_worker[0];
+	const struct voluta_fuseq_worker *fqw = &fq->fq_ws.fws_worker[0];
 	const size_t inbuf_max = sizeof(*fqw->inb);
 	const size_t outbuf_max = sizeof(*fqw->outb);
 
@@ -3083,15 +3100,15 @@ static void fuseq_fini_nullfd(struct voluta_fuseq_worker *fqw)
 
 static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)
 {
-	struct voluta_qalloc *qal = fqw->fq->fq_qal;
+	struct voluta_alloc_if *alif = fqw->fq->fq_alif;
 
-	fqw->inb = inb_new(qal);
+	fqw->inb = inb_new(alif);
 	if (fqw->inb == NULL) {
 		return -ENOMEM;
 	}
-	fqw->outb = outb_new(qal);
+	fqw->outb = outb_new(alif);
 	if (fqw->outb == NULL) {
-		inb_del(fqw->inb, qal);
+		inb_del(fqw->inb, alif);
 		fqw->inb = NULL;
 		return -ENOMEM;
 	}
@@ -3100,24 +3117,24 @@ static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)
 
 static void fuseq_fini_bufs(struct voluta_fuseq_worker *fqw)
 {
-	struct voluta_qalloc *qal = fqw->fq->fq_qal;
+	struct voluta_alloc_if *alif = fqw->fq->fq_alif;
 
-	outb_del(fqw->outb, qal);
-	inb_del(fqw->inb, qal);
+	outb_del(fqw->outb, alif);
+	inb_del(fqw->inb, alif);
 	fqw->inb = NULL;
 	fqw->outb = NULL;
 }
 
 static int fuseq_init_rwi(struct voluta_fuseq_worker *fqw)
 {
-	fqw->rwi = rwi_new(fqw->fq->fq_qal);
+	fqw->rwi = rwi_new(fqw->fq->fq_alif);
 	return (fqw->rwi != NULL) ? 0 : -ENOMEM;
 }
 
 static void fuseq_fini_rwi(struct voluta_fuseq_worker *fqw)
 {
 	if (fqw->rwi != NULL) {
-		rwi_del(fqw->rwi, fqw->fq->fq_qal);
+		rwi_del(fqw->rwi, fqw->fq->fq_alif);
 		fqw->rwi = NULL;
 	}
 }
@@ -3176,39 +3193,54 @@ static void fuseq_fini_worker(struct voluta_fuseq_worker *fqw)
 	fqw->op = NULL;
 }
 
-static int32_t min32(int32_t x, int32_t y)
+static int32_t clamp32(int32_t x, int32_t x_min, int32_t x_max)
 {
-	return (x < y) ? x : y;
+	return voluta_max32(voluta_min32(x, x_max), x_min);
 }
 
 static int fuseq_init_workers(struct voluta_fuseq *fq)
 {
 	int err;
 	int nprocs;
-	int nworkers;
-	const int nworkers_max = (int)ARRAY_SIZE(fq->fq_worker);
+	int nlimit;
+	size_t mem_size;
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
 
 	nprocs = get_nprocs_conf();
-	nworkers = min32(nprocs, nworkers_max);
+	nlimit = clamp32(nprocs, 1, 64);
+	log_info("init fuseq workers: nprocs=%d workers=%d", nprocs, nlimit);
 
-	log_dbg("init fuseq workers: nprocs=%d nworkers=%d", nprocs, nworkers);
-
-	fq->fq_nworkers_avail = 0;
-	fq->fq_nworkers_active = 0;
-	for (int i = 0; i < nworkers; ++i) {
-		err = fuseq_init_worker(&fq->fq_worker[i], fq, i);
+	mem_size = (size_t)nlimit * sizeof(*fws->fws_worker);
+	fws->fws_worker = voluta_allocate(fq->fq_alif, mem_size);
+	if (fws->fws_worker == NULL) {
+		return -ENOMEM;
+	}
+	fws->fws_nlimit = (short)nlimit;
+	fws->fws_navail = 0;
+	fws->fws_nactive = 0;
+	for (int i = 0; i < nlimit; ++i) {
+		err = fuseq_init_worker(&fws->fws_worker[i], fq, i);
 		if (err) {
 			return err;
 		}
-		fq->fq_nworkers_avail++;
+		fws->fws_navail++;
 	}
 	return 0;
 }
 
 static void fuseq_fini_workers(struct voluta_fuseq *fq)
 {
-	for (int i = 0; i < fq->fq_nworkers_avail; ++i) {
-		fuseq_fini_worker(&fq->fq_worker[i]);
+	size_t mem_size;
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
+
+	if (fws->fws_worker != NULL) {
+		for (int i = 0; i < fws->fws_navail; ++i) {
+			fuseq_fini_worker(&fws->fws_worker[i]);
+		}
+		mem_size = (size_t)fws->fws_nlimit * sizeof(*fws->fws_worker);
+		voluta_deallocate(fq->fq_alif, fws->fws_worker, mem_size);
+		fws->fws_worker = NULL;
+		fws->fws_nlimit = 0;
 	}
 }
 
@@ -3239,10 +3271,8 @@ static void fuseq_init_common(struct voluta_fuseq *fq,
 {
 	fq->fq_times = 0;
 	fq->fq_sbi = sbi;
-	fq->fq_qal = sbi->sb_qalloc;
+	fq->fq_alif = sbi->s_alif;
 	fq->fq_nopers = 0;
-	fq->fq_nworkers_avail = 0;
-	fq->fq_nworkers_active = 0;
 	fq->fq_fuse_fd = -1;
 	fq->fq_got_init = false;
 	fq->fq_got_destroy = false;
@@ -3271,7 +3301,7 @@ int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
 	if (err) {
 		goto out;
 	}
-	sbi->sb_ctl_flags |= VOLUTA_F_NLOOKUP;
+	sbi->s_ctl_flags |= VOLUTA_F_NLOOKUP;
 out:
 	if (err) {
 		fuseq_fini_workers(fq);
@@ -3294,7 +3324,7 @@ void voluta_fuseq_fini(struct voluta_fuseq *fq)
 	fuseq_fini_workers(fq);
 	fuseq_fini_locks(fq);
 
-	fq->fq_qal = NULL;
+	fq->fq_alif = NULL;
 	fq->fq_sbi = NULL;
 }
 
@@ -3304,10 +3334,10 @@ int voluta_fuseq_mount(struct voluta_fuseq *fq, const char *path)
 	int fd = -1;
 	bool allow_other;
 	const struct voluta_sb_info *sbi = fq->fq_sbi;
-	const uid_t uid = sbi->sb_owner.uid;
-	const gid_t gid = sbi->sb_owner.gid;
-	const uint64_t ms_flags = sbi->sb_ms_flags;
-	const uint64_t ctl_flags = sbi->sb_ctl_flags;
+	const uid_t uid = sbi->s_owner.uid;
+	const gid_t gid = sbi->s_owner.gid;
+	const uint64_t ms_flags = sbi->s_ms_flags;
+	const uint64_t ctl_flags = sbi->s_ctl_flags;
 	const size_t max_read = fq->fq_coni.buffsize;
 	const char *sock = VOLUTA_MNTSOCK_NAME;
 
@@ -3504,24 +3534,27 @@ static void fuseq_suspend_while_active(const struct voluta_fuseq *fq)
 static int fuseq_start_workers(struct voluta_fuseq *fq)
 {
 	int err;
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
 
 	fq->fq_active = 1;
-	fq->fq_nworkers_active = 0;
-	for (int i = 0; i < fq->fq_nworkers_avail; ++i) {
-		err = fuseq_exec_thread(&fq->fq_worker[i]);
+	fws->fws_nactive = 0;
+	for (int i = 0; i < fws->fws_navail; ++i) {
+		err = fuseq_exec_thread(&fws->fws_worker[i]);
 		if (err) {
 			return err;
 		}
-		fq->fq_nworkers_active++;
+		fws->fws_nactive++;
 	}
 	return 0;
 }
 
 static void fuseq_finish_workers(struct voluta_fuseq *fq)
 {
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
+
 	fq->fq_active = 0;
-	for (int i = 0; i < fq->fq_nworkers_active; ++i) {
-		fuseq_join_thread(&fq->fq_worker[i]);
+	for (int i = 0; i < fws->fws_nactive; ++i) {
+		fuseq_join_thread(&fws->fws_worker[i]);
 	}
 }
 

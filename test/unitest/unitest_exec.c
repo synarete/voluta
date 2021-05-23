@@ -48,9 +48,7 @@ static struct ut_tgroup const g_ut_tgroups[] = {
 	UT_DEFTGRP(ut_test_file_fiemap),
 	UT_DEFTGRP(ut_test_file_copy_range),
 	UT_DEFTGRP(ut_test_reload),
-	UT_DEFTGRP(ut_test_recrypt),
 	UT_DEFTGRP(ut_test_fillfs),
-	/* UT_DEFTGRP(ut_test_archive), XXX */
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -69,11 +67,10 @@ static void *ut_malloc_safe(size_t size)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void ute_init(struct ut_env *ute, const struct ut_args *args)
+static void ute_init(struct ut_env *ute, struct ut_args *args)
 {
 	memset(ute, 0, sizeof(*ute));
-	memcpy(&ute->args, args, sizeof(ute->args));
-
+	ute->args = args;
 	ute->malloc_list = NULL;
 	ute->nbytes_alloc = 0;
 	ute->unique_opid = 1;
@@ -81,10 +78,6 @@ static void ute_init(struct ut_env *ute, const struct ut_args *args)
 
 static void ute_cleanup(struct ut_env *ute)
 {
-	if (ute->arc != NULL) {
-		voluta_archiver_del(ute->arc);
-		ute->arc = NULL;
-	}
 	if (ute->fse != NULL) {
 		voluta_fse_term(ute->fse);
 		voluta_fse_del(ute->fse);
@@ -103,14 +96,11 @@ static void ute_setup(struct ut_env *ute)
 {
 	int err;
 
-	err = voluta_fse_new(&ute->args.fs_args, &ute->fse);
-	voluta_assert_ok(err);
-
-	err = voluta_archiver_new(&ute->args.ar_args, &ute->arc);
+	err = voluta_fse_new(&ute->args->fs_args, &ute->fse);
 	voluta_assert_ok(err);
 }
 
-static struct ut_env *ute_new(const struct ut_args *args)
+static struct ut_env *ute_new(struct ut_args *args)
 {
 	struct ut_env *ute;
 
@@ -213,8 +203,12 @@ static void ut_exec_tests(struct ut_env *ute)
 static void ut_prep_tests(struct ut_env *ute)
 {
 	int err;
+	struct voluta_namebuf *rootid = &ute->args->rootid;
 
 	err = voluta_fse_format(ute->fse);
+	voluta_assert_ok(err);
+
+	err = voluta_fse_rootid(ute->fse, rootid->name, sizeof(rootid->name));
 	voluta_assert_ok(err);
 
 	err = voluta_fse_sync_drop(ute->fse);
@@ -235,40 +229,16 @@ static void ut_done_tests(struct ut_env *ute)
 	voluta_assert_ok(err);
 }
 
-static char *ut_joinpath(const char *path, const char *base)
-{
-	char *rpath;
-	const size_t plen = strlen(path);
-	const size_t blen = strlen(base);
-	const size_t len = plen + blen + 2;
-
-	rpath = ut_malloc_safe(len);
-	memcpy(rpath, path, plen);
-	rpath[plen] = '/';
-	memcpy(rpath + plen + 1, base, blen);
-	rpath[plen + 1 + blen] = '\0';
-
-	return rpath;
-}
-
-static void ut_removepath(char **path)
-{
-	voluta_sys_unlink(*path);
-	free(*path);
-	*path = NULL;
-}
-
 static const char *ut_make_passwd(struct voluta_passphrase *pp)
 {
 	voluta_memzero(pp, sizeof(*pp));
 
 	pp->passlen = sizeof(pp->pass) - 1;
 	voluta_random_ascii((char *)pp->pass, pp->passlen);
-
 	return (const char *)(pp->pass);
 }
 
-static void ut_execute_tests_cycle(const struct ut_args *args)
+static void ut_execute_tests_cycle(struct ut_args *args)
 {
 	struct ut_env *ute;
 
@@ -284,53 +254,39 @@ static void ut_execute_tests_cycle(const struct ut_args *args)
 
 static void ut_print_tests_start(const struct ut_args *args)
 {
-	printf("  %s %s encrypt=%d\n", args->program, args->version,
-	       (int)args->fs_args.encrypted);
+	printf("  %s %s kcopy=%d\n", args->program, args->version,
+	       (int)args->fs_args.kcopy_mode);
 }
 
 void ut_execute_tests(void)
 {
-	char *testdir = NULL;
-	char *volpath = NULL;
-	bool encryptwr = false;
+	const bool kcopy_mode = true;
 	struct ut_args args = {
 		.fs_args = {
 			.uid = getuid(),
 			.gid = getgid(),
 			.pid = getpid(),
 			.umask = 0002,
-			.mountp = "/",
-			.volume = NULL,
+			.mntdir = "/",
+			.objsdir = NULL,
 			.fsname = "unitests",
 			.vsize = UT_VOLUME_SIZE,
 			.memwant = UT_GIGA,
 			.pedantic = false /* TODO: make me a knob (true) */
 		},
-		.ar_args = {
-			.arcname = "unitests-archive.voluta",
-			.memwant = UT_GIGA,
-		},
 		.program = ut_globals.program,
 		.version = ut_globals.version
 	};
-	struct voluta_passphrase passph;
+	args.fs_args.rootid = args.rootid.name;
+	args.fs_args.objsdir = ut_globals.test_dir_real;
 
-	testdir = ut_globals.test_dir_real;
-	volpath = ut_joinpath(testdir, "unitests.voluta");
-	args.fs_args.volume = volpath;
-	args.ar_args.volume = volpath;
-	args.ar_args.blobsdir = testdir;
-
-	args.fs_args.passwd = args.ar_args.passwd = ut_make_passwd(&passph);
-	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;
+	args.fs_args.passwd = ut_make_passwd(&args.passph);
+	args.fs_args.kcopy_mode = kcopy_mode;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
-
-	args.fs_args.encrypted = args.fs_args.encryptwr = !encryptwr;
+	args.fs_args.kcopy_mode = !kcopy_mode;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
-
-	ut_removepath(&volpath);
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/

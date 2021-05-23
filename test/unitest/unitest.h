@@ -41,7 +41,7 @@
 #include <voluta/ioctls.h>
 
 
-#define VOLUTA_LIBPRIVATE 1
+#define VOLUTA_USE_PRIVATE 1
 #include <voluta/fs/private.h>
 
 #ifndef VOLUTA_UNITEST
@@ -98,16 +98,16 @@ struct ut_malloc_chunk {
 };
 
 struct ut_args {
-	struct voluta_fs_args fs_args;
-	struct voluta_ar_args ar_args;
+	struct voluta_fs_args    fs_args;
+	struct voluta_namebuf    rootid;
+	struct voluta_passphrase passph;
 	const char *program;
 	const char *version;
 };
 
 struct ut_env {
-	struct ut_args           args;
+	struct ut_args          *args;
 	struct voluta_fs_env    *fse;
-	struct voluta_archiver  *arc;
 	struct voluta_oper       oper;
 	struct timespec          ts_start;
 	struct statvfs           stvfs_start;
@@ -179,9 +179,7 @@ extern const struct ut_tests ut_test_file_fiemap;
 extern const struct ut_tests ut_test_file_lseek;
 extern const struct ut_tests ut_test_file_copy_range;
 extern const struct ut_tests ut_test_reload;
-extern const struct ut_tests ut_test_recrypt;
 extern const struct ut_tests ut_test_fillfs;
-extern const struct ut_tests ut_test_archive;
 
 
 /* exec */
@@ -453,8 +451,6 @@ void ut_sync_drop(struct ut_env *ute);
 void ut_drop_caches_fully(struct ut_env *ute);
 
 void ut_reload_ok(struct ut_env *ute, ino_t ino);
-
-void ut_recrypt_flip_ok(struct ut_env *ute, ino_t ino);
 
 /* utilities */
 void ut_prandom_shuffle(long *arr, size_t len);

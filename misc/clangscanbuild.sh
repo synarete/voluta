@@ -52,7 +52,7 @@ _clang_scan_build() {
 
   run scan-build \
     --use-analyzer=${analyzer} \
-    -maxloop 100 -k -v -o ${outdir} \
+    -maxloop 256 -k -v -o ${outdir} \
     $(_clang_analyzer_checkers_args) \
     make all
 }

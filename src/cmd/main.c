@@ -18,7 +18,6 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
 #define _GNU_SOURCE 1
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -28,7 +27,7 @@
 #include <error.h>
 #include <locale.h>
 #include <time.h>
-#include "voluta-prog.h"
+#include <voluta/cmd.h>
 
 
 /* Local functions forward declarations */
@@ -86,11 +85,7 @@ static const struct voluta_cmd_info g_cmd_info[] = {
 	DEFCMD(umount),
 	DEFCMD(fsck),
 	DEFCMD(show),
-	DEFCMD(clone),
-	DEFCMD(encrypt),
-	DEFCMD(decrypt),
-	DEFCMD(export),
-	DEFCMD(import),
+	DEFCMD(snap),
 };
 
 static const struct voluta_cmd_info *cmt_info_of(const char *cmd_name)
@@ -139,16 +134,16 @@ static void voluta_parse_global_args(void)
 	if (equals2(cmd_name, "-h", "--help")) {
 		show_main_help_and_exit(0);
 	}
-	voluta_globals.cmd_info = cmt_info_of(cmd_name);
+	voluta_globals.cmdi = cmt_info_of(cmd_name);
 }
 
 static void voluta_exec_subcmd(void)
 {
-	const struct voluta_cmd_info *cmd_info = voluta_globals.cmd_info;
+	const struct voluta_cmd_info *cmdi = voluta_globals.cmdi;
 
-	if (cmd_info == NULL) {
+	if (cmdi == NULL) {
 		show_main_help_and_exit(1);
-	} else if (cmd_info->action_hook != NULL) {
-		cmd_info->action_hook();
+	} else if (cmdi->action_hook != NULL) {
+		cmdi->action_hook();
 	}
 }

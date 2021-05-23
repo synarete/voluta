@@ -1,18 +1,18 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
 #include <sys/types.h>
@@ -344,173 +344,163 @@ static int xan_verify(const struct voluta_xattr_node *xan)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_xattr_ispec *
-xattr_ispec_of(const struct voluta_inode *inode)
+static struct voluta_inode_xattr *
+inode_xattr_of(const struct voluta_inode *inode)
 {
-	const struct voluta_xattr_ispec *xai = &inode->i_x;
+	const struct voluta_inode_xattr *ixa = &inode->i_xa;
 
-	return unconst(xai);
+	return unconst(ixa);
 }
 
-static struct voluta_xattr_ispec *xai_of(const struct voluta_inode_info *ii)
+static struct voluta_inode_xattr *ixa_of(const struct voluta_inode_info *ii)
 {
-	return xattr_ispec_of(ii->inode);
+	return inode_xattr_of(ii->inode);
 }
 
-static size_t xai_nents(const struct voluta_xattr_ispec *xai)
+static size_t ixa_nents(const struct voluta_inode_xattr *ixa)
 {
-	return voluta_le16_to_cpu(xai->xa_nents);
+	return voluta_le16_to_cpu(ixa->ix_nents);
 }
 
-static void xai_set_nents(struct voluta_xattr_ispec *xai, size_t n)
+static void ixa_set_nents(struct voluta_inode_xattr *ixa, size_t n)
 {
-	xai->xa_nents = voluta_cpu_to_le16((uint16_t)n);
+	ixa->ix_nents = voluta_cpu_to_le16((uint16_t)n);
 }
 
-static void xai_inc_nents(struct voluta_xattr_ispec *xai, size_t n)
+static void ixa_inc_nents(struct voluta_inode_xattr *ixa, size_t n)
 {
-	xai_set_nents(xai, xai_nents(xai) + n);
+	ixa_set_nents(ixa, ixa_nents(ixa) + n);
 }
 
-static void xai_dec_nents(struct voluta_xattr_ispec *xai, size_t n)
+static void ixa_dec_nents(struct voluta_inode_xattr *ixa, size_t n)
 {
-	xai_set_nents(xai, xai_nents(xai) - n);
+	ixa_set_nents(ixa, ixa_nents(ixa) - n);
 }
 
-static void xai_vaddr(const struct voluta_xattr_ispec *xai, size_t slot,
+static void ixa_vaddr(const struct voluta_inode_xattr *ixa, size_t slot,
                       struct voluta_vaddr *out_vaddr)
 {
-	voluta_vaddr64_parse(&xai->xa_vaddr[slot], out_vaddr);
+	voluta_vaddr64_parse(&ixa->ix_vaddr[slot], out_vaddr);
 }
 
-static void xai_set_vaddr(struct voluta_xattr_ispec *xai, size_t slot,
+static void ixa_set_vaddr(struct voluta_inode_xattr *ixa, size_t slot,
                           const struct voluta_vaddr *vaddr)
 {
-	voluta_vaddr64_set(&xai->xa_vaddr[slot], vaddr);
+	voluta_vaddr64_set(&ixa->ix_vaddr[slot], vaddr);
 }
 
-static void xai_reset_vaddr(struct voluta_xattr_ispec *xai, size_t slot)
+static void ixa_reset_vaddr(struct voluta_inode_xattr *ixa, size_t slot)
 {
-	xai_set_vaddr(xai, slot, vaddr_none());
+	ixa_set_vaddr(ixa, slot, vaddr_none());
 }
 
-static size_t xai_nslots_max(const struct voluta_xattr_ispec *xai)
+static size_t ixa_nslots_max(const struct voluta_inode_xattr *ixa)
 {
-	return ARRAY_SIZE(xai->xa_vaddr);
+	return ARRAY_SIZE(ixa->ix_vaddr);
 }
 
-static void xai_reset_slots(struct voluta_xattr_ispec *xai)
+static void ixa_reset_slots(struct voluta_inode_xattr *ixa)
 {
-	const size_t nslots = xai_nslots_max(xai);
+	const size_t nslots = ixa_nslots_max(ixa);
 
 	for (size_t slot = 0; slot < nslots; ++slot) {
-		xai_reset_vaddr(xai, slot);
+		ixa_reset_vaddr(ixa, slot);
 	}
 }
 
-static void xai_setup(struct voluta_xattr_ispec *xai)
+static void ixa_setup(struct voluta_inode_xattr *ixa)
 {
-	xai_set_nents(xai, 0);
-	xai_reset_slots(xai);
-	xe_reset_arr(xai->xe, ARRAY_SIZE(xai->xe));
+	ixa_set_nents(ixa, 0);
+	ixa_reset_slots(ixa);
+	xe_reset_arr(ixa->ixe, ARRAY_SIZE(ixa->ixe));
 }
 
 static struct voluta_xattr_entry *
-xai_begin(const struct voluta_xattr_ispec *xai)
+ixa_begin(const struct voluta_inode_xattr *ixa)
 {
-	return xe_unconst(xai->xe);
+	return xe_unconst(ixa->ixe);
 }
 
 static const struct voluta_xattr_entry *
-xai_end(const struct voluta_xattr_ispec *xai)
+ixa_end(const struct voluta_inode_xattr *ixa)
 {
-	return xai->xe + ARRAY_SIZE(xai->xe);
+	return ixa->ixe + ARRAY_SIZE(ixa->ixe);
 }
 
 static struct voluta_xattr_entry *
-xai_last(const struct voluta_xattr_ispec *xai)
+ixa_last(const struct voluta_inode_xattr *ixa)
 {
-	return xe_unconst(xai->xe) + xai_nents(xai);
+	return xe_unconst(ixa->ixe) + ixa_nents(ixa);
 }
 
 static struct voluta_xattr_entry *
-xai_search(const struct voluta_xattr_ispec *xai,
+ixa_search(const struct voluta_inode_xattr *ixa,
            const struct voluta_str *str)
 {
 	struct voluta_xattr_entry *xe = NULL;
 	const size_t nmin = xe_calc_nents(str->len, 0);
 
-	if (xai_nents(xai) >= nmin) {
-		xe = xe_search(xai_begin(xai), xai_last(xai), str);
+	if (ixa_nents(ixa) >= nmin) {
+		xe = xe_search(ixa_begin(ixa), ixa_last(ixa), str);
 	}
 	return xe;
 }
 
 static struct voluta_xattr_entry *
-xai_insert(struct voluta_xattr_ispec *xai,
+ixa_insert(struct voluta_inode_xattr *ixa,
            const struct voluta_str *name,
            const struct voluta_slice *value)
 {
 	struct voluta_xattr_entry *xe;
 
-	xe = xe_append(xai_last(xai), xai_end(xai), name, value);
+	xe = xe_append(ixa_last(ixa), ixa_end(ixa), name, value);
 	if (xe != NULL) {
-		xai_inc_nents(xai, xe_nents(xe));
+		ixa_inc_nents(ixa, xe_nents(xe));
 	}
 	return xe;
 }
 
-static void xai_remove(struct voluta_xattr_ispec *xai,
+static void ixa_remove(struct voluta_inode_xattr *ixa,
                        struct voluta_xattr_entry *xe)
 {
 	const size_t nents = xe_nents(xe);
 
-	xe_squeeze(xe, xai_last(xai));
-	xai_dec_nents(xai, nents);
+	xe_squeeze(xe, ixa_last(ixa));
+	ixa_dec_nents(ixa, nents);
 }
 
-static int xai_verify(const struct voluta_xattr_ispec *xai)
+static int ixa_verify(const struct voluta_inode_xattr *ixa)
 {
-	return xe_verify(xai_begin(xai), xai_end(xai));
+	return xe_verify(ixa_begin(ixa), ixa_end(ixa));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_xattr_node *xan_of(const struct voluta_vnode_info *vi)
+static size_t ii_xa_nslots_max(const struct voluta_inode_info *ii)
 {
-	return vi->vu.xan;
+	return ixa_nslots_max(ixa_of(ii));
 }
 
-static ino_t xa_ino_of(const struct voluta_vnode_info *vi)
+static void ii_xa_unset_at(struct voluta_inode_info *ii, size_t sloti)
 {
-	return xan_ino(xan_of(vi));
+	ixa_reset_vaddr(ixa_of(ii), sloti);
 }
 
-static size_t xa_nslots_max(const struct voluta_inode_info *ii)
+static void ii_xa_get_at(const struct voluta_inode_info *ii, size_t sloti,
+                         struct voluta_vaddr *out_vaddr)
 {
-	return xai_nslots_max(xai_of(ii));
+	ixa_vaddr(ixa_of(ii), sloti, out_vaddr);
 }
 
-static void xa_unset_at(struct voluta_inode_info *ii, size_t sloti)
+static void ii_xa_set_at(const struct voluta_inode_info *ii, size_t sloti,
+                         const struct voluta_vaddr *vaddr)
 {
-	xai_reset_vaddr(xai_of(ii), sloti);
+	ixa_set_vaddr(ixa_of(ii), sloti, vaddr);
 }
 
-static void xa_get_at(const struct voluta_inode_info *ii, size_t sloti,
-                      struct voluta_vaddr *out_vaddr)
+void voluta_ii_setup_xattr(struct voluta_inode_info *ii)
 {
-	xai_vaddr(xai_of(ii), sloti, out_vaddr);
-}
-
-static void xa_set_at(const struct voluta_inode_info *ii, size_t sloti,
-                      const struct voluta_vaddr *vaddr)
-{
-	xai_set_vaddr(xai_of(ii), sloti, vaddr);
-}
-
-void voluta_setup_xattr(struct voluta_inode_info *ii)
-{
-	xai_setup(xai_of(ii));
+	ixa_setup(ixa_of(ii));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -528,37 +518,61 @@ struct voluta_xattr_ctx {
 };
 
 struct voluta_xentry_info {
-	struct voluta_inode_info *ii;
-	struct voluta_vnode_info *xan_vi;
+	struct voluta_inode_info  *ii;
+	struct voluta_xanode_info *xai;
 	struct voluta_xattr_entry *xe;
 };
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void setup_xanode(struct voluta_vnode_info *xan_vi, ino_t ino)
+static const struct voluta_vaddr *
+xai_vaddr(const struct voluta_xanode_info *xai)
 {
-	xan_setup(xan_vi->vu.xan, ino);
+	return vi_vaddr(&xai->xa_vi);
+}
+
+static void xai_dirtify(struct voluta_xanode_info *xai)
+{
+	vi_dirtify(&xai->xa_vi);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static int check_staged_xanode(const struct voluta_xattr_ctx *xa_ctx,
+                               const struct voluta_xanode_info *xai)
+{
+	const ino_t ino = ii_ino(xa_ctx->ii);
+	const ino_t xa_ino = xan_ino(xai->xan);
+
+	if (ino != xa_ino) {
+		log_err("bad xanode ino: ino=%lu xa_ino=%lu", ino, xa_ino);
+		return -EFSCORRUPTED;
+	}
+	return 0;
 }
 
 static int stage_xanode(const struct voluta_xattr_ctx *xa_ctx,
                         const struct voluta_vaddr *vaddr,
-                        struct voluta_vnode_info **out_vi)
+                        struct voluta_xanode_info **out_xai)
 {
 	int err;
-	ino_t xattr_ino;
 	struct voluta_vnode_info *vi = NULL;
-	const ino_t ino = ii_ino(xa_ctx->ii);
 
+	err = voluta_stage_cached_vnode(xa_ctx->sbi, vaddr, &vi);
+	if (!err) {
+		*out_xai = voluta_xai_from_vi(vi);
+		return 0;
+	}
 	err = voluta_stage_vnode(xa_ctx->sbi, vaddr, xa_ctx->ii, &vi);
 	if (err) {
 		return err;
 	}
-	xattr_ino = xa_ino_of(vi);
-	if (ino != xattr_ino) {
-		return -EFSCORRUPTED;
+	*out_xai = voluta_xai_from_vi_rebind(vi);
+	err = check_staged_xanode(xa_ctx, *out_xai);
+	if (err) {
+		return err;
 	}
-	*out_vi = vi;
 	return 0;
 }
 
@@ -609,7 +623,7 @@ static int check_xattr_name(const struct voluta_namestr *name)
 static int check_xattr(const struct voluta_xattr_ctx *xa_ctx, int access_mode)
 {
 	int err;
-	const struct voluta_inode_info *ii = xa_ctx->ii;
+	struct voluta_inode_info *ii = xa_ctx->ii;
 
 	if (!ii_isreg(ii) && !ii_isdir(ii) && !ii_islnk(ii)) {
 		return -EINVAL;
@@ -636,21 +650,21 @@ static int lookup_xentry_in_xan(const struct voluta_xattr_ctx *xa_ctx,
                                 struct voluta_xentry_info *xei)
 {
 	int err;
-	struct voluta_xattr_entry *xe;
-	struct voluta_vnode_info *xan_vi;
+	struct voluta_xattr_entry *xe = NULL;
+	struct voluta_xanode_info *xai = NULL;
 
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = stage_xanode(xa_ctx, vaddr, &xan_vi);
+	err = stage_xanode(xa_ctx, vaddr, &xai);
 	if (err) {
 		return err;
 	}
-	xe = xan_search(xan_vi->vu.xan, &xa_ctx->name->str);
+	xe = xan_search(xai->xan, &xa_ctx->name->str);
 	if (xe == NULL) {
 		return -ENOENT;
 	}
-	xei->xan_vi = xan_vi;
+	xei->xai = xai;
 	xei->xe = xe;
 	return 0;
 }
@@ -662,8 +676,8 @@ static int lookup_xentry_at_xan(struct voluta_xattr_ctx *xa_ctx,
 	struct voluta_vaddr vaddr;
 	const struct voluta_inode_info *ii = xa_ctx->ii;
 
-	for (size_t sloti = 0; sloti < xa_nslots_max(ii); ++sloti) {
-		xa_get_at(ii, sloti, &vaddr);
+	for (size_t sloti = 0; sloti < ii_xa_nslots_max(ii); ++sloti) {
+		ii_xa_get_at(ii, sloti, &vaddr);
 		err = lookup_xentry_in_xan(xa_ctx, &vaddr, xei);
 		if (err != -ENOENT) {
 			break;
@@ -672,13 +686,13 @@ static int lookup_xentry_at_xan(struct voluta_xattr_ctx *xa_ctx,
 	return err;
 }
 
-static int lookup_xentry_at_xai(struct voluta_xattr_ctx *xa_ctx,
+static int lookup_xentry_at_ixa(struct voluta_xattr_ctx *xa_ctx,
                                 struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 	struct voluta_inode_info *ii = xa_ctx->ii;
 
-	xe = xai_search(xai_of(ii), &xa_ctx->name->str);
+	xe = ixa_search(ixa_of(ii), &xa_ctx->name->str);
 	if (xe == NULL) {
 		return -ENOENT;
 	}
@@ -692,7 +706,7 @@ static int lookup_xentry(struct voluta_xattr_ctx *xa_ctx,
 {
 	int err;
 
-	err = lookup_xentry_at_xai(xa_ctx, xei);
+	err = lookup_xentry_at_ixa(xa_ctx, xei);
 	if (err != -ENOENT) {
 		goto out;
 	}
@@ -756,77 +770,90 @@ int voluta_do_getxattr(const struct voluta_oper *op,
 static void discard_xentry(const struct voluta_xentry_info *xei)
 {
 	struct voluta_inode_info *ii = xei->ii;
-	struct voluta_vnode_info *vi = xei->xan_vi;
+	struct voluta_xanode_info *xai = xei->xai;
 
 	if (ii != NULL) {
-		xai_remove(xai_of(ii), xei->xe);
+		ixa_remove(ixa_of(ii), xei->xe);
 		ii_dirtify(ii);
-	} else if (vi != NULL) {
-		xan_remove(vi->vu.xan, xei->xe);
-		vi_dirtify(vi);
+	} else if (xai != NULL) {
+		xan_remove(xai->xan, xei->xe);
+		xai_dirtify(xai);
 	}
 }
 
-static int new_xanode(const struct voluta_xattr_ctx *xa_ctx,
-                      struct voluta_vnode_info **out_vi)
+static int spawn_xanode(const struct voluta_xattr_ctx *xa_ctx,
+                        struct voluta_xanode_info **out_xai)
 {
-	return voluta_create_vnode(xa_ctx->sbi, xa_ctx->ii,
-	                           VOLUTA_VTYPE_XANODE, out_vi);
+	int err;
+	struct voluta_vnode_info *vi = NULL;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_XANODE;
+
+	err = voluta_spawn_vnode(xa_ctx->sbi, xa_ctx->ii, ztype, &vi);
+	if (err) {
+		return err;
+	}
+	*out_xai = voluta_xai_from_vi_rebind(vi);
+	return 0;
 }
 
-static int del_xanode_at(const struct voluta_xattr_ctx *xa_ctx,
-                         const struct voluta_vaddr *vaddr)
+static void setup_xanode(struct voluta_xanode_info *xai, ino_t ino)
 {
-	return voluta_remove_vnode_at(xa_ctx->sbi, vaddr);
+	xan_setup(xai->xan, ino);
 }
 
 static int create_xanode(const struct voluta_xattr_ctx *xa_ctx,
-                         size_t sloti, struct voluta_vnode_info **out_vi)
+                         size_t sloti, struct voluta_xanode_info **out_xai)
 {
 	int err;
 	struct voluta_inode_info *ii = xa_ctx->ii;
 
-	err = new_xanode(xa_ctx, out_vi);
+	err = spawn_xanode(xa_ctx, out_xai);
 	if (err) {
 		return err;
 	}
-	setup_xanode(*out_vi, ii_ino(ii));
+	setup_xanode(*out_xai, ii_ino(ii));
 
-	xa_set_at(ii, sloti, vi_vaddr(*out_vi));
+	ii_xa_set_at(ii, sloti, xai_vaddr(*out_xai));
 	ii_dirtify(ii);
-
 	return 0;
 }
 
-static int stage_or_create_xanode(const struct voluta_xattr_ctx *xa_ctx,
-                                  size_t sloti, struct voluta_vnode_info **out)
+static int remove_xanode_at(const struct voluta_xattr_ctx *xa_ctx,
+                            const struct voluta_vaddr *vaddr)
+{
+	return voluta_remove_vnode_at(xa_ctx->sbi, vaddr);
+}
+
+static int
+stage_or_create_xanode(const struct voluta_xattr_ctx *xa_ctx,
+                       size_t sloti, struct voluta_xanode_info **out_xai)
 {
 	int err;
 	struct voluta_vaddr vaddr;
 	struct voluta_inode_info *ii = xa_ctx->ii;
 
-	xa_get_at(ii, sloti, &vaddr);
+	ii_xa_get_at(ii, sloti, &vaddr);
 	if (!vaddr_isnull(&vaddr)) {
-		err = stage_xanode(xa_ctx, &vaddr, out);
+		err = stage_xanode(xa_ctx, &vaddr, out_xai);
 	} else {
-		err = create_xanode(xa_ctx, sloti, out);
+		err = create_xanode(xa_ctx, sloti, out_xai);
 	}
 	return err;
 }
 
 static int try_insert_at(const struct voluta_xattr_ctx *xa_ctx,
-                         struct voluta_vnode_info *xan_vi,
+                         struct voluta_xanode_info *xai,
                          struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 
-	xe = xan_insert(xan_vi->vu.xan, &xa_ctx->name->str, &xa_ctx->value);
+	xe = xan_insert(xai->xan, &xa_ctx->name->str, &xa_ctx->value);
 	if (xe == NULL) {
 		return -ENOSPC;
 	}
-	xei->xan_vi = xan_vi;
+	xei->xai = xai;
 	xei->xe = xe;
-	vi_dirtify(xan_vi);
+	xai_dirtify(xai);
 	return 0;
 }
 
@@ -834,15 +861,15 @@ static int try_insert_at_xan(const struct voluta_xattr_ctx *xa_ctx,
                              struct voluta_xentry_info *xei)
 {
 	int err;
-	struct voluta_vnode_info *vi;
-	const size_t nslots_max = xa_nslots_max(xa_ctx->ii);
+	struct voluta_xanode_info *xai = NULL;
+	const size_t nslots_max = ii_xa_nslots_max(xa_ctx->ii);
 
 	for (size_t sloti = 0; sloti < nslots_max; ++sloti) {
-		err = stage_or_create_xanode(xa_ctx, sloti, &vi);
+		err = stage_or_create_xanode(xa_ctx, sloti, &xai);
 		if (err) {
 			break;
 		}
-		err = try_insert_at(xa_ctx, vi, xei);
+		err = try_insert_at(xa_ctx, xai, xei);
 		if (!err) {
 			break;
 		}
@@ -850,13 +877,13 @@ static int try_insert_at_xan(const struct voluta_xattr_ctx *xa_ctx,
 	return err;
 }
 
-static int try_insert_at_xai(const struct voluta_xattr_ctx *xa_ctx,
+static int try_insert_at_ixa(const struct voluta_xattr_ctx *xa_ctx,
                              struct voluta_xentry_info *xei)
 {
 	struct voluta_xattr_entry *xe;
 	struct voluta_inode_info *ii = xa_ctx->ii;
 
-	xe = xai_insert(xai_of(ii), &xa_ctx->name->str, &xa_ctx->value);
+	xe = ixa_insert(ixa_of(ii), &xa_ctx->name->str, &xa_ctx->value);
 	if (xe == NULL) {
 		return -ENOSPC;
 	}
@@ -874,7 +901,7 @@ static int setxattr_create(struct voluta_xattr_ctx *xa_ctx,
 	if ((xa_ctx->flags == XATTR_CREATE) && xei->xe) {
 		return -EEXIST;
 	}
-	err = try_insert_at_xai(xa_ctx, xei);
+	err = try_insert_at_ixa(xa_ctx, xei);
 	if (err != -ENOSPC) {
 		return err;
 	}
@@ -895,7 +922,7 @@ static int setxattr_replace(struct voluta_xattr_ctx *xa_ctx,
 {
 	int err;
 	struct voluta_xentry_info xei_cur = {
-		.xan_vi = xei->xan_vi,
+		.xai = xei->xai,
 		.ii = xei->ii,
 		.xe = xei->xe
 	};
@@ -1044,36 +1071,34 @@ static int emit_range(struct voluta_xattr_ctx *xa_ctx,
 	return err;
 }
 
-static int emit_xai(struct voluta_xattr_ctx *xa_ctx)
+static int emit_ixa(struct voluta_xattr_ctx *xa_ctx)
 {
-	const struct voluta_xattr_ispec *xai = xai_of(xa_ctx->ii);
+	const struct voluta_inode_xattr *ixa = ixa_of(xa_ctx->ii);
 
-	return emit_range(xa_ctx, xai_begin(xai), xai_last(xai));
+	return emit_range(xa_ctx, ixa_begin(ixa), ixa_last(ixa));
 }
 
 static int emit_xan(struct voluta_xattr_ctx *xa_ctx,
-                    const struct voluta_vnode_info *xan_vi)
+                    const struct voluta_xanode_info *xai)
 {
-	const struct voluta_xattr_node *xan = xan_vi->vu.xan;
-
-	return emit_range(xa_ctx, xan_begin(xan), xan_last(xan));
+	return emit_range(xa_ctx, xan_begin(xai->xan), xan_last(xai->xan));
 }
 
 static int emit_xan_at(struct voluta_xattr_ctx *xa_ctx, size_t sloti)
 {
 	int err;
 	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *vi;
+	struct voluta_xanode_info *xai = NULL;
 
-	xa_get_at(xa_ctx->ii, sloti, &vaddr);
+	ii_xa_get_at(xa_ctx->ii, sloti, &vaddr);
 	if (vaddr_isnull(&vaddr)) {
 		return 0;
 	}
-	err = stage_xanode(xa_ctx, &vaddr, &vi);
+	err = stage_xanode(xa_ctx, &vaddr, &xai);
 	if (err) {
 		return err;
 	}
-	err = emit_xan(xa_ctx, vi);
+	err = emit_xan(xa_ctx, xai);
 	if (err) {
 		return err;
 	}
@@ -1083,7 +1108,7 @@ static int emit_xan_at(struct voluta_xattr_ctx *xa_ctx, size_t sloti)
 static int emit_by_xan(struct voluta_xattr_ctx *xa_ctx)
 {
 	int err = 0;
-	const size_t nslots_max = xa_nslots_max(xa_ctx->ii);
+	const size_t nslots_max = ii_xa_nslots_max(xa_ctx->ii);
 
 	for (size_t sloti = 0; sloti < nslots_max; ++sloti) {
 		err = emit_xan_at(xa_ctx, sloti);
@@ -1094,16 +1119,16 @@ static int emit_by_xan(struct voluta_xattr_ctx *xa_ctx)
 	return err;
 }
 
-static int emit_by_xai(struct voluta_xattr_ctx *xa_ctx)
+static int emit_by_ixa(struct voluta_xattr_ctx *xa_ctx)
 {
-	return emit_xai(xa_ctx);
+	return emit_ixa(xa_ctx);
 }
 
 static int emit_xattr_names(struct voluta_xattr_ctx *xa_ctx)
 {
 	int err;
 
-	err = emit_by_xai(xa_ctx);
+	err = emit_by_ixa(xa_ctx);
 	if (err) {
 		return err;
 	}
@@ -1155,22 +1180,22 @@ static int drop_xan_at(struct voluta_xattr_ctx *xa_ctx, size_t sloti)
 	int err;
 	struct voluta_vaddr vaddr;
 
-	xa_get_at(xa_ctx->ii, sloti, &vaddr);
+	ii_xa_get_at(xa_ctx->ii, sloti, &vaddr);
 	if (vaddr_isnull(&vaddr)) {
 		return 0;
 	}
-	err = del_xanode_at(xa_ctx, &vaddr);
+	err = remove_xanode_at(xa_ctx, &vaddr);
 	if (err) {
 		return err;
 	}
-	xa_unset_at(xa_ctx->ii, sloti);
+	ii_xa_unset_at(xa_ctx->ii, sloti);
 	return 0;
 }
 
 static int drop_xattr_slots(struct voluta_xattr_ctx *xa_ctx)
 {
 	int err = 0;
-	const size_t nslots_max = xa_nslots_max(xa_ctx->ii);
+	const size_t nslots_max = ii_xa_nslots_max(xa_ctx->ii);
 
 	for (size_t i = 0; (i < nslots_max) && !err; ++i) {
 		err = drop_xan_at(xa_ctx, i);
@@ -1196,11 +1221,11 @@ int voluta_drop_xattr(struct voluta_inode_info *ii)
 
 int voluta_verify_inode_xattr(const struct voluta_inode *inode)
 {
-	const struct voluta_xattr_ispec *xai = xattr_ispec_of(inode);
+	const struct voluta_inode_xattr *ixa = inode_xattr_of(inode);
 
 	/* TODO: check nodes offsets */
 
-	return xai_verify(xai);
+	return ixa_verify(ixa);
 }
 
 int voluta_verify_xattr_node(const struct voluta_xattr_node *xan)

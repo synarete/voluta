@@ -1,29 +1,30 @@
-/* SPDX-License-Identifier: LGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /*
- * This file is part of libvoluta
+ * This file is part of voluta.
  *
  * Copyright (C) 2020-2021 Shachar Sharon
  *
- * Libvoluta is free software: you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * Voluta is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Libvoluta is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * Voluta is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
+ * GNU General Public License for more details.
  */
 #ifndef VOLUTA_ITABLE_H_
 #define VOLUTA_ITABLE_H_
 
 #include <unistd.h>
 
-int voluta_iti_init(struct voluta_itable_info *iti, struct voluta_qalloc *qal);
+int voluta_itbi_init(struct voluta_itable_info *iti,
+                     struct voluta_alloc_if *alif);
 
-void voluta_iti_reinit(struct voluta_itable_info *iti);
+void voluta_itbi_reinit(struct voluta_itable_info *iti);
 
-void voluta_iti_fini(struct voluta_itable_info *iti);
+void voluta_itbi_fini(struct voluta_itable_info *iti);
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
                        const struct voluta_vaddr *vaddr,

@@ -84,7 +84,6 @@
 #define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
 #define baddr_reset(ba)                 voluta_baddr_reset(ba)
-#define baddr_create(ba, sz)            voluta_baddr_create(ba, sz)
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
 
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
@@ -402,6 +401,32 @@ static inline struct voluta_sb_info *
 ii_sbi(const struct voluta_inode_info *ii)
 {
 	return vi_sbi(ii_vi(ii));
+}
+
+
+static inline const struct voluta_vaddr *
+hsi_vaddr(const struct voluta_hspace_info *hsi)
+{
+	return vi_vaddr(hsi_vi(hsi));
+}
+
+static inline const struct voluta_baddr *
+hsi_baddr(const struct voluta_hspace_info *hsi)
+{
+	return &hsi->hs_baddr;
+}
+
+
+static inline const struct voluta_vaddr *
+agi_vaddr(const struct voluta_agroup_info *agi)
+{
+	return vi_vaddr(agi_vi(agi));
+}
+
+static inline const struct voluta_baddr *
+agi_baddr(const struct voluta_agroup_info *agi)
+{
+	return &agi->ag_baddr;
 }
 
 #endif /* VOLUTA_PRIVATE_H_ */

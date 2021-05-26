@@ -72,7 +72,5 @@ int voluta_vstore_fiovec(const struct voluta_vstore *vstore,
 int voluta_vstore_flush(struct voluta_vstore *vstore,
                         const struct voluta_cache *cache, long ds_key);
 
-int voluta_vstore_clear_bk(struct voluta_vstore *vstore, voluta_lba_t lba);
-
 
 #endif /* VOLUTA_VSTORE_H_ */

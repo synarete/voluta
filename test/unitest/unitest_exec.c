@@ -279,9 +279,19 @@ static void ut_print_tests_start(const struct ut_args *args)
 	       (int)args->fs_args.encrypted);
 }
 
-static const char ut_super_id[] = \
-                                  "FFFFFFFFFFFFFFFF0000000000000000" \
-                                  "FFFFFFFFFFFFFFFF0000000000000000";
+static void ut_make_super_id(struct voluta_namebuf *nb)
+{
+	int err;
+	size_t len = 0;
+	const size_t nmax = sizeof(nb->name) - 1;
+	struct voluta_baddr baddr;
+
+	voluta_baddr_make_for_super(&baddr);
+	err = voluta_baddr_to_name(&baddr, nb->name, nmax, &len);
+	ut_expect_ok(err);
+	ut_expect_lt(len, nmax);
+	nb->name[len] = '\0';
+}
 
 void ut_execute_tests(void)
 {
@@ -290,7 +300,6 @@ void ut_execute_tests(void)
 	bool encryptwr = false;
 	struct ut_args args = {
 		.fs_args = {
-			.superid = ut_super_id,
 			.uid = getuid(),
 			.gid = getgid(),
 			.pid = getpid(),
@@ -306,6 +315,10 @@ void ut_execute_tests(void)
 		.version = ut_globals.version
 	};
 	struct voluta_passphrase passph;
+	struct voluta_namebuf super_id;
+
+	ut_make_super_id(&super_id);
+	args.fs_args.superid = super_id.name;
 
 	testdir = ut_globals.test_dir_real;
 	volpath = ut_joinpath(testdir, "unitests.voluta");
@@ -317,9 +330,11 @@ void ut_execute_tests(void)
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 
+#if 0
 	args.fs_args.encrypted = args.fs_args.encryptwr = !encryptwr;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
+#endif
 
 	ut_removepath(&volpath);
 }

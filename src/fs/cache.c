@@ -23,6 +23,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/mpool.h>
 #include <voluta/fs/cache.h>
+#include <voluta/fs/spmaps.h>
 #include <voluta/fs/vstore.h>
 #include <voluta/fs/private.h>
 
@@ -538,27 +539,18 @@ static bool vi_has_tick(const struct voluta_vnode_info *vi, long ctick)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-struct voluta_hspace_info *
-voluta_hsi_from_vi(const struct voluta_vnode_info *vi)
-{
-	const struct voluta_hspace_info *hsi = NULL;
-
-	if (likely(vi != NULL)) {
-		hsi = container_of2(vi, struct voluta_hspace_info, hs_vi);
-	}
-	return unconst(hsi);
-}
-
 static void hsi_init(struct voluta_hspace_info *hsi,
                      voluta_delete_vnode_fn del_hook)
 {
 	vi_init(&hsi->hs_vi, del_hook);
+	baddr_reset(&hsi->hs_baddr);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
 static void hsi_fini(struct voluta_hspace_info *hsi)
 {
 	vi_fini(&hsi->hs_vi);
+	baddr_reset(&hsi->hs_baddr);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
@@ -579,12 +571,14 @@ static void agi_init(struct voluta_agroup_info *agi,
                      voluta_delete_vnode_fn del_hook)
 {
 	vi_init(&agi->ag_vi, del_hook);
+	baddr_reset(&agi->ag_baddr);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
 static void agi_fini(struct voluta_agroup_info *agi)
 {
 	vi_fini(&agi->ag_vi);
+	baddr_reset(&agi->ag_baddr);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 

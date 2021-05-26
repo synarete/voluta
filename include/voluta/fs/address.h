@@ -87,9 +87,10 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
 
 const struct voluta_baddr *voluta_baddr_none(void);
 
-void voluta_baddr_reset(struct voluta_baddr *baddr);
+void voluta_baddr_assign(struct voluta_baddr *baddr,
+                         const struct voluta_blobid *bid, size_t size);
 
-void voluta_baddr_create(struct voluta_baddr *baddr, loff_t size);
+void voluta_baddr_reset(struct voluta_baddr *baddr);
 
 void voluta_baddr_copyto(const struct voluta_baddr *baddr,
                          struct voluta_baddr *other);
@@ -106,12 +107,26 @@ int voluta_baddr_to_name(const struct voluta_baddr *baddr,
 int voluta_baddr_from_name(struct voluta_baddr *baddr,
                            const char *name, size_t len);
 
+int voluta_baddr_by_name(struct voluta_baddr *baddr,
+                         enum voluta_vtype vtype, const char *name);
+
+void voluta_baddr_make_for_super(struct voluta_baddr *baddr);
+
+void voluta_baddr_make_for_hsmap(struct voluta_baddr *baddr);
+
+void voluta_baddr_make_for_agmap(struct voluta_baddr *baddr);
+
+
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
                           struct voluta_blobid *other);
 
 bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
                            const struct voluta_blobid *other);
 
+
+void voluta_vba_setup(struct voluta_vba *vba,
+                      const struct voluta_vaddr *vaddr,
+                      const struct voluta_baddr *baddr);
 
 void voluta_vba_reset(struct voluta_vba *vba);
 

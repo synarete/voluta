@@ -84,19 +84,6 @@ static void vaddr_of_super(struct voluta_vaddr *vaddr)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_SUPER, off);
 }
 
-static void baddr_of_super(struct voluta_baddr *baddr, const char *name)
-{
-	int err;
-
-	if (name != NULL) {
-		err = voluta_baddr_from_name(baddr, name, strlen(name));
-		voluta_assert_ok(err);
-		baddr->size = VOLUTA_SB_SIZE;
-	} else {
-		baddr_create(baddr, VOLUTA_SB_SIZE);
-	}
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fse_init_commons(struct voluta_fs_env *fse)
@@ -1143,6 +1130,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	struct voluta_super_block *sb = fse->sb;
 	const time_t birth_time = op->xtime.tv_sec;
 	const size_t vsize = (size_t)fse->args.vsize;
+	int err;
 
 	voluta_sb_setup_new(sb, birth_time, vsize);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
@@ -1151,7 +1139,11 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 
 	vaddr_of_super(&vba.vaddr);
-	baddr_of_super(&vba.baddr, fse->args.superid);
+	err = voluta_baddr_by_name(&vba.baddr, VOLUTA_VTYPE_SUPER,
+	                           fse->args.superid);
+	if (err) {
+		return err;
+	}
 	voluta_sbi_bind_sb(fse->sbi, sb, &vba);
 	return 0;
 }

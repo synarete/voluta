@@ -228,7 +228,7 @@ struct voluta_vaddr {
 /* object-address within underlying blobs space */
 struct voluta_baddr {
 	struct voluta_blobid bid;
-	loff_t size;
+	size_t size;
 };
 
 /* logical-to-object address mapping */
@@ -302,11 +302,13 @@ struct voluta_vnode_info {
 /* space-maps */
 struct voluta_hspace_info {
 	struct voluta_vnode_info        hs_vi;
+	struct voluta_baddr             hs_baddr;
 	voluta_index_t                  hs_index;
 };
 
 struct voluta_agroup_info {
 	struct voluta_vnode_info        ag_vi;
+	struct voluta_baddr             ag_baddr;
 	voluta_index_t                  ag_index;
 };
 

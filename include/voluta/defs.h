@@ -472,12 +472,11 @@ struct voluta_blobid {
 
 
 struct voluta_blobspec {
-	struct voluta_vaddr64   vaddr;
-	uint32_t                osize; /* blob's raw size */
-	uint32_t                csize; /* compressed size */
-	uint32_t                flags;
-	uint8_t                 reserved[12];
 	struct voluta_blobid    blobid;
+	struct voluta_vaddr64   vaddr;
+	uint32_t                size;
+	uint32_t                flags;
+	uint8_t                 reserved[16];
 } voluta_packed_aligned8;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -570,7 +569,7 @@ struct voluta_ag_rec {
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
 	uint8_t                 ag_reserved[96];
-	struct voluta_blobspec  ag_map_bls;
+	struct voluta_blobspec  ag_agm_bls;
 	struct voluta_blobspec  ag_bks_bls;
 } voluta_packed_aligned8;
 

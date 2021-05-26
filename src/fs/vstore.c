@@ -21,6 +21,7 @@
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/vstore.h>
+#include <voluta/fs/repo.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
@@ -613,11 +614,14 @@ static int sgv_append(struct voluta_sgvec *sgv,
 }
 
 static int sgv_populate(struct voluta_sgvec *sgv,
-                        struct voluta_vnode_info **viq)
+                        struct voluta_vnode_info **viq,
+                        struct voluta_vnode_info **vi_last)
 {
 	int err;
+	enum voluta_vtype vtype;
 	struct voluta_vnode_info *vi;
 
+	*vi_last = NULL;
 	while (*viq != NULL) {
 		vi = *viq;
 		if (!sgv_isappendable(sgv, vi)) {
@@ -628,6 +632,14 @@ static int sgv_populate(struct voluta_sgvec *sgv,
 			return err;
 		}
 		*viq = vi->v_ds_next;
+
+		/* XXX */
+		*vi_last = vi;
+		vtype = vi_vtype(vi);
+		if ((vtype == VOLUTA_VTYPE_HSMAP) ||
+		    (vtype == VOLUTA_VTYPE_AGMAP)) {
+			break;
+		}
 	}
 	return 0;
 }
@@ -639,20 +651,49 @@ static int sgv_destage(const struct voluta_sgvec *sgv,
 	                            sgv->len, sgv->iov, sgv->cnt);
 }
 
+static int sgv_destage_into_blob(const struct voluta_vnode_info *vi)
+{
+	int err = 0;
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+	const struct voluta_agroup_info *agi = NULL;
+	const struct voluta_hspace_info *hsi = NULL;
+	const struct voluta_sb_info *sbi = vi->v_sbi;
+
+	if (vaddr->vtype == VOLUTA_VTYPE_HSMAP) {
+		hsi = voluta_hsi_from_vi(vi);
+		voluta_assert_eq(hsi->hs_baddr.size, vaddr->len);
+
+		err = voluta_repo_save_blob(sbi->sb_repo, hsi_baddr(hsi),
+		                            vi->view, vaddr->off, vaddr->len);
+	} else if (vaddr->vtype == VOLUTA_VTYPE_AGMAP) {
+		agi = voluta_agi_from_vi(vi);
+		voluta_assert_eq(agi->ag_baddr.size, vaddr->len);
+
+		err = voluta_repo_save_blob(sbi->sb_repo, agi_baddr(agi),
+		                            vi->view, vaddr->off, vaddr->len);
+	}
+	return err;
+}
+
 static int sgv_flush_dset(struct voluta_sgvec *sgv,
                           const struct voluta_dset *dset,
                           struct voluta_vstore *vstore)
 {
 	int err;
+	struct voluta_vnode_info *vi_last = NULL;
 	struct voluta_vnode_info *viq = dset->ds_viq;
 
 	while (viq != NULL) {
 		sgv_setup(sgv);
-		err = sgv_populate(sgv, &viq);
+		err = sgv_populate(sgv, &viq, &vi_last);
 		if (err) {
 			return err;
 		}
 		err = sgv_destage(sgv, vstore);
+		if (err) {
+			return err;
+		}
+		err = sgv_destage_into_blob(vi_last);
 		if (err) {
 			return err;
 		}
@@ -930,34 +971,3 @@ int voluta_vstore_flush(struct voluta_vstore *vstore,
 	dset_fini(&dset);
 	return err;
 }
-
-int voluta_vstore_clear_bk(struct voluta_vstore *vstore, voluta_lba_t lba)
-{
-	int err;
-	void *zeros_bk = NULL;
-	const loff_t off = lba_to_off(lba);
-	const size_t len = VOLUTA_BK_SIZE;
-	struct voluta_pstore *pstore = &vstore->vs_pstore;
-
-	voluta_assert_eq(off % (long)len, 0);
-
-	/* fast-case: just do fallocate zero-range */
-	err = voluta_pstore_zero_range(pstore, off, len);
-	if (!err || (err != -EOPNOTSUPP)) {
-		return err;
-	}
-	/* standard-case: do fallocate punch-hole (releases block) */
-	err = voluta_pstore_punch_hole(pstore, off, len);
-	if (!err || (err != -EOPNOTSUPP)) {
-		return err;
-	}
-	/* slow-case: explicit overwrite with zeros */
-	zeros_bk = voluta_qalloc_zmalloc(vstore->vs_qalloc, len);
-	if (zeros_bk == NULL) {
-		return -ENOMEM;
-	}
-	err = voluta_pstore_write(pstore, off, len, zeros_bk);
-	voluta_qalloc_free(vstore->vs_qalloc, zeros_bk, len);
-	return err;
-}
-

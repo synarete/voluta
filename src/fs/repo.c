@@ -37,9 +37,9 @@ struct voluta_blob_info {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static loff_t off_start_of(loff_t off, loff_t bsize)
+static loff_t off_start_of(loff_t off, size_t bsize)
 {
-	return (off / bsize) * bsize;
+	return (loff_t)(((size_t)off / bsize) * bsize);
 }
 
 static voluta_index_t baddr_to_index(const struct voluta_baddr *baddr,
@@ -459,7 +459,7 @@ static int repo_create_blob(const struct voluta_repo *repo,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_ftruncate(fd, baddr->size);
+	err = voluta_sys_ftruncate(fd, (loff_t)baddr->size);
 	if (err) {
 		goto out_err;
 	}
@@ -511,8 +511,8 @@ static int repo_open_blob(const struct voluta_repo *repo,
 	if (err) {
 		return err;
 	}
-	if (st.st_size != baddr->size) {
-		log_warn("blob-size mismatch: %s size=%ld st_size=%ld",
+	if (st.st_size != (loff_t)baddr->size) {
+		log_warn("blob-size mismatch: %s size=%lu st_size=%ld",
 		         nb.name, baddr->size, st.st_size);
 		err = -ENOENT;
 		return err;
@@ -565,8 +565,8 @@ static void repo_del_bi(const struct voluta_repo *repo,
 	bi_del(bi, repo->re_qalloc);
 }
 
-int voluta_repo_create_blob(struct voluta_repo *repo, loff_t off,
-                            const struct voluta_baddr *baddr)
+int voluta_repo_prep_blob(struct voluta_repo *repo, loff_t off,
+                          const struct voluta_baddr *baddr)
 {
 	int err;
 	int fd = -1;
@@ -650,6 +650,14 @@ int voluta_repo_close(struct voluta_repo *repo)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+int voluta_repo_stage_blob(struct voluta_repo *repo, loff_t off,
+                           const struct voluta_baddr *baddr)
+{
+	struct voluta_blob_info *bi = NULL;
+
+	return repo_stage_blob(repo, off, baddr, &bi);
+}
 
 int voluta_repo_save_blob(struct voluta_repo *repo,
                           const struct voluta_baddr *baddr,

@@ -382,6 +382,11 @@ static uint64_t uint64_at(const void *p)
 	return *(const uint64_t *)p;
 }
 
+static void blobid_generate(struct voluta_blobid *blobid)
+{
+	voluta_getentropy(blobid->oid, sizeof(blobid->oid));
+}
+
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
                           struct voluta_blobid *other)
 {
@@ -404,6 +409,79 @@ static uint64_t blobid_hkey(const struct voluta_blobid *blobid)
 	       uint64_at(oid + 16) ^ uint64_at(oid + 24);
 }
 
+static void byte_to_ascii(unsigned int byte, char *a1, char *a2)
+{
+	*a1 = voluta_nibble_to_ascii((int)(byte >> 4));
+	*a2 = voluta_nibble_to_ascii((int)byte);
+}
+
+static int blobid_to_name(const struct voluta_blobid *blobid,
+                          char *name, size_t nmax, size_t *out_len)
+{
+	unsigned int byte;
+	size_t len = 0;
+	const size_t oid_size = ARRAY_SIZE(blobid->oid);
+
+	if (nmax < (2 * oid_size)) {
+		return -EINVAL;
+	}
+	for (size_t i = 0; i < oid_size; ++i) {
+		byte = (int)(blobid->oid[i]);
+		byte_to_ascii(byte, &name[len], &name[len + 1]);
+		len += 2;
+	}
+	*out_len = len;
+	return 0;
+}
+
+static int ascii_to_nibble(char a, unsigned int *out_nib)
+{
+	int ret;
+
+	ret = voluta_ascii_to_nibble(a);
+	if (ret < 0) {
+		return ret;
+	}
+	*out_nib = (uint8_t)ret;
+	return 0;
+}
+
+static int ascii_to_byte(char a1, char a2, uint8_t *out_byte)
+{
+	int err;
+	unsigned int nib[2];
+
+	err = ascii_to_nibble(a1, &nib[0]);
+	if (err) {
+		return err;
+	}
+	err = ascii_to_nibble(a2, &nib[1]);
+	if (err) {
+		return err;
+	}
+	*out_byte = (uint8_t)(nib[0] << 4 | nib[1]);
+	return 0;
+}
+
+static int blobid_from_name(struct voluta_blobid *blobid,
+                            const char *name, size_t len)
+{
+	int err = 0;
+	uint8_t *byte;
+	const size_t oid_size = ARRAY_SIZE(blobid->oid);
+
+	if (len < (2 * oid_size)) {
+		return -EINVAL;
+	}
+	for (size_t i = 0; i < oid_size; ++i) {
+		byte = &blobid->oid[i];
+		err = ascii_to_byte(name[2 * i], name[(2 * i) + 1], byte);
+		if (err) {
+			return err;
+		}
+	}
+	return 0;
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -416,16 +494,17 @@ const struct voluta_baddr *voluta_baddr_none(void)
 	return &s_baddr_none;
 }
 
+void voluta_baddr_assign(struct voluta_baddr *baddr,
+                         const struct voluta_blobid *bid, size_t size)
+{
+	voluta_blobid_copyto(bid, &baddr->bid);
+	baddr->size = size;
+}
+
 void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
 	memset(baddr->bid.oid, 0, sizeof(baddr->bid.oid));
 	baddr->size = 0;
-}
-
-void voluta_baddr_create(struct voluta_baddr *baddr, loff_t size)
-{
-	voluta_getentropy(baddr->bid.oid, sizeof(baddr->bid.oid));
-	baddr->size = size;
 }
 
 void voluta_baddr_copyto(const struct voluta_baddr *baddr,
@@ -450,50 +529,62 @@ uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr)
 int voluta_baddr_to_name(const struct voluta_baddr *baddr,
                          char *name, size_t nmax, size_t *out_len)
 {
-	int byte;
-	size_t len = 0;
-	const size_t oid_size = ARRAY_SIZE(baddr->bid.oid);
-
-	if (nmax < (2 * oid_size)) {
-		return -EINVAL;
-	}
-	for (size_t i = 0; i < oid_size; ++i) {
-		byte = (int)(baddr->bid.oid[i]);
-		name[len] = voluta_nibble_to_ascii(byte >> 4);
-		name[len + 1] = voluta_nibble_to_ascii(byte);
-		len += 2;
-	}
-	*out_len = len;
-	return 0;
+	return blobid_to_name(&baddr->bid, name, nmax, out_len);
 }
 
 int voluta_baddr_from_name(struct voluta_baddr *baddr,
                            const char *name, size_t len)
 {
-	int err = 0;
-	int nib[2];
-	const size_t oid_size = ARRAY_SIZE(baddr->bid.oid);
+	return blobid_from_name(&baddr->bid, name, len);
+}
 
-	if (len < (2 * oid_size)) {
+int voluta_baddr_by_name(struct voluta_baddr *baddr,
+                         enum voluta_vtype vtype, const char *name)
+{
+	int err;
+
+	baddr->size = vtype_size(vtype);
+	voluta_assert_gt(baddr->size, 0);
+	if (!baddr->size) {
 		return -EINVAL;
 	}
-	for (size_t i = 0; i < oid_size; ++i) {
-		nib[0] = voluta_ascii_to_nibble(name[2 * i]);
-		if (nib[0] < 0) {
-			err = nib[0];
-			break;
-		}
-		nib[1] = voluta_ascii_to_nibble(name[(2 * i) + 1]);
-		if (nib[1] < 0) {
-			err = nib[1];
-			break;
-		}
-		baddr->bid.oid[i] = (uint8_t)((nib[0] << 4) | nib[1]);
+	err = voluta_baddr_from_name(baddr, name, strlen(name));
+	if (err) {
+		return err;
 	}
-	return err;
+	return 0;
+}
+
+static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
+{
+	blobid_generate(&baddr->bid);
+	baddr->size = vtype_size(vtype);
+}
+
+void voluta_baddr_make_for_super(struct voluta_baddr *baddr)
+{
+	baddr_make_for(baddr, VOLUTA_VTYPE_SUPER);
+}
+
+void voluta_baddr_make_for_hsmap(struct voluta_baddr *baddr)
+{
+	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
+}
+
+void voluta_baddr_make_for_agmap(struct voluta_baddr *baddr)
+{
+	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_vba_setup(struct voluta_vba *vba,
+                      const struct voluta_vaddr *vaddr,
+                      const struct voluta_baddr *baddr)
+{
+	voluta_vaddr_copyto(vaddr, &vba->vaddr);
+	voluta_baddr_copyto(baddr, &vba->baddr);
+}
 
 void voluta_vba_reset(struct voluta_vba *vba)
 {

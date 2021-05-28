@@ -16,7 +16,7 @@
  */
 #define _GNU_SOURCE 1
 #include <sys/mount.h>
-#include "voluta-prog.h"
+#include "voluta-cmd.h"
 
 
 static const char *show_usage[] = {

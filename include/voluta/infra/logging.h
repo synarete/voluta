@@ -49,4 +49,9 @@ void voluta_set_logmaskp(const int *log_maskp);
 
 void voluta_logf(int flags, const char *file, int line, const char *fmt, ...);
 
+
+void voluta_log_mask_by_str(int *log_maskp, const char *mode);
+
+void voluta_log_meta_banner(const char *name, int start);
+
 #endif /* VOLUTA_LOGGING_H_ */

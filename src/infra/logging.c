@@ -24,10 +24,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include <voluta/infra/version.h>
 #include <voluta/infra/logging.h>
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-/* logging */
+
 #define VOLUTA_LOG_DEFAULT \
 	(VOLUTA_LOG_ERROR | VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)
 
@@ -136,5 +136,35 @@ void voluta_logf(int flags, const char *file, int line, const char *fmt, ...)
 		log_msg(flags | log_mask, msg, file, line);
 		errno = saved_errno;
 	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_log_mask_by_str(int *log_maskp, const char *mode)
+{
+	const char *modstr = (mode != NULL) ? mode : "0";
+
+	if (!strcmp(modstr, "0")) {
+		*log_maskp &= ~VOLUTA_LOG_DEBUG;
+		*log_maskp &= ~VOLUTA_LOG_INFO;
+		*log_maskp &= ~VOLUTA_LOG_FILINE;
+	} else if (!strcmp(modstr, "1")) {
+		*log_maskp |= VOLUTA_LOG_INFO;
+	} else if (!strcmp(modstr, "2")) {
+		*log_maskp |= VOLUTA_LOG_INFO;
+		*log_maskp |= VOLUTA_LOG_DEBUG;
+	} else if (!strcmp(modstr, "3")) {
+		*log_maskp |= VOLUTA_LOG_DEBUG;
+		*log_maskp |= VOLUTA_LOG_INFO;
+		*log_maskp |= VOLUTA_LOG_FILINE;
+	}
+}
+
+void voluta_log_meta_banner(const char *name, int start)
+{
+	const char *tag = start ? "+++" : "---";
+	const char *vers = voluta_version.string;
+
+	voluta_log_info("%s %s %s %s", tag, name, vers, tag);
 }
 

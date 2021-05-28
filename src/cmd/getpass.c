@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include "voluta-prog.h"
+#include "voluta-cmd.h"
 
 static void write_stdout(const char *msg)
 {

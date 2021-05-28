@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <time.h>
-#include "voluta-prog.h"
+#include "voluta-cmd.h"
 
 
 static const char *mount_usage[] = {
@@ -314,7 +314,7 @@ static void mount_verify_fs_env(void)
  */
 static void mount_trace_start(void)
 {
-	voluta_log_meta_banner(true);
+	voluta_log_meta_banner(voluta_globals.name, 1);
 	voluta_log_info("executable: %s", voluta_globals.prog);
 	voluta_log_info("mountpoint: %s", voluta_globals.cmd.mount.point_real);
 	voluta_log_info("volume: %s", voluta_globals.cmd.mount.volume);
@@ -333,7 +333,7 @@ static void mount_trace_finish(void)
 
 	voluta_log_info("mount done: %s", voluta_globals.cmd.mount.point_real);
 	voluta_log_info("execution time: %ld seconds", exec_time);
-	voluta_log_meta_banner(false);
+	voluta_log_meta_banner(voluta_globals.name, 0);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

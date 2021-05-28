@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <error.h>
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
 
@@ -397,4 +398,37 @@ void voluta_panicf(const char *file, int line, const char *fmt, ...)
 	voluta_dump_backtrace();
 	voluta_dump_addr2line();
 	voluta_abort();
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+__attribute__((__noreturn__))
+void voluta_die(int errnum, const char *fmt, ...)
+{
+	va_list ap;
+	char msg[2048] = "";
+
+	va_start(ap, fmt);
+	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
+	va_end(ap);
+
+	error(EXIT_FAILURE, abs(errnum), "%s", msg);
+	/* never gets here, but makes compiler happy */
+	abort();
+}
+
+__attribute__((__noreturn__))
+void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...)
+{
+	va_list ap;
+	char msg[2048] = "";
+
+	va_start(ap, fmt);
+	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
+	va_end(ap);
+
+	error_at_line(EXIT_FAILURE, abs(errnum), fl,
+	              (unsigned int)ln, "%s", msg);
+	/* never gets here, but makes compiler happy */
+	abort();
 }

@@ -28,7 +28,7 @@
 #include <error.h>
 #include <locale.h>
 #include <time.h>
-#include "voluta-prog.h"
+#include "voluta-cmd.h"
 
 
 /* Local functions forward declarations */

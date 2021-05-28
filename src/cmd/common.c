@@ -45,7 +45,7 @@
 #include <dirent.h>
 #include <locale.h>
 #include <getopt.h>
-#include "voluta-prog.h"
+#include "voluta-cmd.h"
 
 #define VOLUTA_LOG_DEFAULT  \
 	(VOLUTA_LOG_WARN  | \
@@ -56,37 +56,6 @@
 /* Global process' variables */
 struct voluta_globals voluta_globals;
 
-
-__attribute__((__noreturn__))
-void voluta_die(int errnum, const char *fmt, ...)
-{
-	va_list ap;
-	char msg[2048] = "";
-
-	va_start(ap, fmt);
-	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
-	va_end(ap);
-
-	error(EXIT_FAILURE, abs(errnum), "%s", msg);
-	/* never gets here, but makes compiler happy */
-	abort();
-}
-
-__attribute__((__noreturn__))
-void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...)
-{
-	va_list ap;
-	char msg[2048] = "";
-
-	va_start(ap, fmt);
-	vsnprintf(msg, sizeof(msg) - 1, fmt, ap);
-	va_end(ap);
-
-	error_at_line(EXIT_FAILURE, abs(errnum), fl,
-	              (unsigned int)ln, "%s", msg);
-	/* never gets here, but makes compiler happy */
-	abort();
-}
 
 __attribute__((__noreturn__))
 void voluta_die_redundant_arg(const char *s)
@@ -1048,9 +1017,8 @@ char *voluta_sprintf_path(const char *fmt, ...)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-/* Singleton instances */
+/* Singleton instance */
 static struct voluta_fs_env *g_fs_env_inst;
-static struct voluta_ms_env *g_ms_env_inst;
 
 static void voluta_require_no_inst(const void *inst)
 {
@@ -1081,30 +1049,6 @@ void voluta_destrpy_fse_inst(void)
 struct voluta_fs_env *voluta_fse_inst(void)
 {
 	return g_fs_env_inst;
-}
-
-void voluta_create_mse_inst(void)
-{
-	int err;
-
-	voluta_require_no_inst(g_ms_env_inst);
-	err = voluta_mse_new(&g_ms_env_inst);
-	if (err) {
-		voluta_die(err, "failed to create instance");
-	}
-}
-
-void voluta_destroy_mse_inst(void)
-{
-	if (g_ms_env_inst) {
-		voluta_mse_del(g_ms_env_inst);
-		g_ms_env_inst = NULL;
-	}
-}
-
-struct voluta_ms_env *voluta_ms_env_inst(void)
-{
-	return g_ms_env_inst;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1225,33 +1169,8 @@ void voluta_init_process(void)
 
 void voluta_set_verbose_mode(const char *mode)
 {
-	const char *modstr = (mode != NULL) ? mode : "0";
-
-	if (!strcmp(modstr, "0")) {
-		voluta_globals.log_mask &= ~VOLUTA_LOG_DEBUG;
-		voluta_globals.log_mask &= ~VOLUTA_LOG_INFO;
-		voluta_globals.log_mask &= ~VOLUTA_LOG_FILINE;
-	} else if (!strcmp(modstr, "1")) {
-		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
-	} else if (!strcmp(modstr, "2")) {
-		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
-		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
-	} else if (!strcmp(modstr, "3")) {
-		voluta_globals.log_mask |= VOLUTA_LOG_DEBUG;
-		voluta_globals.log_mask |= VOLUTA_LOG_INFO;
-		voluta_globals.log_mask |= VOLUTA_LOG_FILINE;
-	}
+	voluta_log_mask_by_str(&voluta_globals.log_mask, mode);
 }
-
-void voluta_log_meta_banner(bool start)
-{
-	const char *tag = start ? "+++" : "---";
-	const char *name = voluta_globals.name;
-	const char *vers = voluta_globals.version;
-
-	voluta_log_info("%s %s %s %s", tag, name, vers, tag);
-}
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

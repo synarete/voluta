@@ -113,6 +113,13 @@ void voluta_expect_eqm_(const void *p, const void *q,
 __attribute__((__noreturn__))
 void voluta_panicf(const char *file, int line, const char *fmt, ...);
 
+/* die */
+__attribute__((__noreturn__))
+void voluta_die(int errnum, const char *fmt, ...);
+
+__attribute__((__noreturn__))
+void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...);
+
 /* backtrace */
 void voluta_backtrace(void);
 

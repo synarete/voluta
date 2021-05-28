@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef VOLUTA_PROG_H_
-#define VOLUTA_PROG_H_
+#ifndef VOLUTA_CMD_H_
+#define VOLUTA_CMD_H_
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -156,9 +156,6 @@ struct voluta_globals {
 	/* execution start-time */
 	time_t  start_time;
 
-	/* options for 'mountd' */
-	char   *mountd_confpath;
-
 	/* sub-commands arguments */
 	union voluta_subcmd_args cmd;
 
@@ -188,11 +185,6 @@ void voluta_execute_decrypt(void);
 
 
 /* common utilities */
-__attribute__((__noreturn__))
-void voluta_die(int errnum, const char *fmt, ...);
-
-__attribute__((__noreturn__))
-void voluta_die_at(int errnum, const char *fl, int ln, const char *fmt, ...);
 
 __attribute__((__noreturn__))
 void voluta_die_redundant_arg(const char *s);
@@ -282,8 +274,6 @@ void voluta_setup_globals(int argc, char *argv[]);
 
 void voluta_init_process(void);
 
-void voluta_log_meta_banner(bool start);
-
 void voluta_set_verbose_mode(const char *mode);
 
 void voluta_show_help_and_exit(const char **help_strings);
@@ -303,18 +293,12 @@ char *voluta_strndup_safe(const char *s, size_t n);
 
 char *voluta_sprintf_path(const char *fmt, ...);
 
-/* singleton instances */
+/* singleton instance */
 void voluta_create_fse_inst(const struct voluta_fs_args *args);
 
 void voluta_destrpy_fse_inst(void);
 
 struct voluta_fs_env *voluta_fse_inst(void);
-
-void voluta_create_mse_inst(void);
-
-void voluta_destroy_mse_inst(void);
-
-struct voluta_ms_env *voluta_ms_env_inst(void);
 
 
 /* signal call-back hook */
@@ -329,9 +313,4 @@ char *voluta_getpass2(const char *path);
 
 void voluta_delpass(char **pass);
 
-/* mount-config */
-struct voluta_mntrules *voluta_parse_mntrules(const char *pathname);
-
-void voluta_free_mntrules(struct voluta_mntrules *mnt_conf);
-
-#endif /* VOLUTA_PROG_H_ */
+#endif /* VOLUTA_CMD_H_ */

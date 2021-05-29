@@ -60,8 +60,8 @@ void voluta_hsi_space_stat_of(const struct voluta_hspace_info *hsi,
                               struct voluta_space_stat *sp_st);
 
 void voluta_hsi_set_formatted_ag(struct voluta_hspace_info *hsi,
-                                 const struct voluta_vba *agm_vba,
-                                 const struct voluta_vba *bks_vba);
+                                 voluta_index_t ag_index,
+                                 const struct voluta_vba *agm_vba);
 
 bool voluta_hsi_has_formatted_ag(const struct voluta_hspace_info *hsi,
                                  voluta_index_t ag_index);
@@ -87,10 +87,13 @@ int voluta_hsi_check_cap_alloc(const struct voluta_hspace_info *hsi,
 
 void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
                        voluta_index_t ag_index,
-                       struct voluta_vba *out_agm_vba,
-                       struct voluta_vba *out_bks_vba);
+                       struct voluta_vba *out_agm_vba);
 
 int voluta_hsi_prep_blob(const struct voluta_hspace_info *hsi);
+
+int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
+                               const struct voluta_index_range *range,
+                               enum voluta_vtype vtype, voluta_index_t *out);
 
 
 void voluta_agi_assign(struct voluta_agroup_info *agi,
@@ -104,10 +107,11 @@ void voluta_agi_setup(struct voluta_agroup_info *agi,
 void voluta_agi_vba(const struct voluta_agroup_info *agi,
                     struct voluta_vba *out_vba);
 
-int voluta_search_avail_ag(const struct voluta_hspace_info *hsi,
-                           voluta_index_t ag_index_first,
-                           voluta_index_t ag_index_last,
-                           enum voluta_vtype vtype, size_t *out_ag_index);
+void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
+                        struct voluta_vba *out_vba);
+
+void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
+                            const struct voluta_vba *vba);
 
 int voluta_search_free_space(const struct voluta_hspace_info *hsi,
                              const struct voluta_agroup_info *agi,
@@ -142,6 +146,8 @@ bool voluta_agi_is_allocated_with(const struct voluta_agroup_info *agi,
                                   const struct voluta_vaddr *vaddr);
 
 int voluta_agi_prep_blob(const struct voluta_agroup_info *agi);
+
+int voluta_agi_prep_bks_blob(const struct voluta_agroup_info *agi);
 
 
 int voluta_verify_hspace_map(const struct voluta_hspace_map *hsm);

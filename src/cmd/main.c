@@ -18,7 +18,6 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
 #define _GNU_SOURCE 1
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -28,7 +27,7 @@
 #include <error.h>
 #include <locale.h>
 #include <time.h>
-#include "voluta-cmd.h"
+#include <voluta/cmd.h>
 
 
 /* Local functions forward declarations */

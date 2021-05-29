@@ -429,4 +429,10 @@ agi_baddr(const struct voluta_agroup_info *agi)
 	return &agi->ag_baddr;
 }
 
+static inline struct voluta_sb_info *
+agi_sbi(const struct voluta_agroup_info *agi)
+{
+	return vi_sbi(agi_vi(agi));
+}
+
 #endif /* VOLUTA_PRIVATE_H_ */

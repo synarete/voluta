@@ -42,6 +42,11 @@ static bool vtype_ismeta(enum voluta_vtype vtype)
 	return !vtype_isdata(vtype) && !vtype_isnone(vtype);
 }
 
+static bool vtype_isdatabk(enum voluta_vtype vtype)
+{
+	return vtype_isequal(vtype, VOLUTA_VTYPE_DATABK);
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -332,7 +337,6 @@ static void agr_init(struct voluta_ag_rec *agr)
 	agr_set_nfiles(agr, 0);
 	agr_set_flags(agr, 0);
 	bls_init(&agr->ag_agm_bls);
-	bls_init(&agr->ag_bks_bls);
 	memset(agr->ag_reserved, 0, sizeof(agr->ag_reserved));
 }
 
@@ -408,18 +412,6 @@ static void agr_set_agm_vba(struct voluta_ag_rec *agr,
                             const struct voluta_vba *vba)
 {
 	bls_set_vba(&agr->ag_agm_bls, vba);
-}
-
-static void agr_bks_vba(const struct voluta_ag_rec *agr,
-                        struct voluta_vba *out_vba)
-{
-	bls_vba(&agr->ag_bks_bls, out_vba);
-}
-
-static void agr_set_bks_vba(struct voluta_ag_rec *agr,
-                            const struct voluta_vba *vba)
-{
-	bls_set_vba(&agr->ag_bks_bls, vba);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -568,23 +560,6 @@ static void hsm_set_agm_vba_of(struct voluta_hspace_map *hsm,
 	agr_set_agm_vba(agr, vba);
 }
 
-static void hsm_agm_bks_of(const struct voluta_hspace_map *hsm,
-                           voluta_index_t ag_index, struct voluta_vba *out_vba)
-{
-	struct voluta_ag_rec *agr = hsm_ag_rec_of(hsm, ag_index);
-
-	agr_bks_vba(agr, out_vba);
-}
-
-static void hsm_set_bks_vba_of(struct voluta_hspace_map *hsm,
-                               voluta_index_t ag_index,
-                               const struct voluta_vba *vba)
-{
-	struct voluta_ag_rec *agr = hsm_ag_rec_of(hsm, ag_index);
-
-	agr_set_bks_vba(agr, vba);
-}
-
 static void hsm_accum_stats_of(struct voluta_hspace_map *hsm,
                                struct voluta_ag_rec *agr,
                                const struct voluta_space_stat *sp_st)
@@ -703,8 +678,7 @@ hsm_used_space_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 
 static voluta_index_t
 hsm_find_avail(const struct voluta_hspace_map *hsm,
-               voluta_index_t ag_index_from,
-               voluta_index_t ag_index_last,
+               const struct voluta_index_range *range,
                enum voluta_vtype vtype)
 {
 	size_t nags_iter;
@@ -712,9 +686,9 @@ hsm_find_avail(const struct voluta_hspace_map *hsm,
 	const struct voluta_ag_rec *agr = NULL;
 	const size_t nags_span = hsm_nags_span(hsm);
 
-	ag_index = ag_index_from;
-	nags_iter = min(nags_span, ag_index_last - ag_index_from);
-	while ((ag_index < ag_index_last) && nags_iter--) {
+	ag_index = range->beg;
+	nags_iter = min(nags_span, range->end - range->beg);
+	while ((ag_index < range->end) && nags_iter--) {
 		agr = hsm_ag_rec_of(hsm, ag_index);
 		if (!agr_is_formatted(agr)) {
 			break;
@@ -970,7 +944,20 @@ static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 	STATICASSERT_EQ(sizeof(*agm), VOLUTA_BK_SIZE);
 
 	agm_set_index(agm, ag_index);
+	bls_init(&agm->ag_bks_bls);
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
+}
+
+static void agm_bks_vba(const struct voluta_agroup_map *agm,
+                        struct voluta_vba *out_vba)
+{
+	bls_vba(&agm->ag_bks_bls, out_vba);
+}
+
+static void agm_set_bks_vba(struct voluta_agroup_map *agm,
+                            const struct voluta_vba *vba)
+{
+	bls_set_vba(&agm->ag_bks_bls, vba);
 }
 
 static struct voluta_bk_rec *
@@ -1243,18 +1230,14 @@ nused_bks_at(const struct voluta_hspace_info *hsi, size_t ag_index)
 	return nused_bytes / VOLUTA_BK_SIZE;
 }
 
-int voluta_search_avail_ag(const struct voluta_hspace_info *hsi,
-                           voluta_index_t ag_index_first,
-                           voluta_index_t ag_index_last,
-                           enum voluta_vtype vtype,
-                           voluta_index_t *out_ag_index)
+int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
+                               const struct voluta_index_range *range,
+                               enum voluta_vtype vtype, voluta_index_t *out)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
-	*out_ag_index =
-	        hsm_find_avail(hsm, ag_index_first, ag_index_last, vtype);
-
-	return ag_index_isnull(*out_ag_index) ? -ENOSPC : 0;
+	*out = hsm_find_avail(hsm, range, vtype);
+	return ag_index_isnull(*out) ? -ENOSPC : 0;
 }
 
 void voluta_mark_with_next(struct voluta_hspace_info *hsi)
@@ -1302,17 +1285,15 @@ void voluta_hsi_space_stat_of(const struct voluta_hspace_info *hsi,
 }
 
 void voluta_hsi_set_formatted_ag(struct voluta_hspace_info *hsi,
-                                 const struct voluta_vba *agm_vba,
-                                 const struct voluta_vba *bks_vba)
+                                 voluta_index_t ag_index,
+                                 const struct voluta_vba *agm_vba)
 {
-	const voluta_index_t ag_index = bks_vba->vaddr.ag_index;
 	struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
 	voluta_assert_lt(agm_vba->vaddr.ag_index, ag_index);
 	voluta_assert(!hsm_is_formatted(hsm, ag_index));
 
 	hsm_set_agm_vba_of(hsm, ag_index, agm_vba);
-	hsm_set_bks_vba_of(hsm, ag_index, agm_vba);
 	hsm_set_formatted(hsm, ag_index);
 	hsm_inc_nags_form(hsm);
 	hsi_dirtify(hsi);
@@ -1377,14 +1358,11 @@ int voluta_hsi_check_cap_alloc(const struct voluta_hspace_info *hsi,
 }
 
 void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
-                       voluta_index_t ag_index,
-                       struct voluta_vba *out_agm_vba,
-                       struct voluta_vba *out_bks_vba)
+                       voluta_index_t ag_index, struct voluta_vba *out_agm_vba)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
 	hsm_agm_vba_of(hsm, ag_index, out_agm_vba);
-	hsm_agm_bks_of(hsm, ag_index, out_bks_vba);
 }
 
 int voluta_hsi_prep_blob(const struct voluta_hspace_info *hsi)
@@ -1443,9 +1421,20 @@ static voluta_index_t ag_index_of(const struct voluta_agroup_info *agi)
 	return agi->ag_index;
 }
 
-static bool vtype_isdatabk(enum voluta_vtype vtype)
+void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
+                        struct voluta_vba *out_vba)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_DATABK);
+	const struct voluta_agroup_map *agm = agroup_map_of(agi);
+
+	agm_bks_vba(agm, out_vba);
+}
+
+void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
+                            const struct voluta_vba *vba)
+{
+	struct voluta_agroup_map *agm = agroup_map_of(agi);
+
+	agm_set_bks_vba(agm, vba);
 }
 
 static size_t start_bn_of(const struct voluta_hspace_info *hsi,
@@ -1572,9 +1561,19 @@ int voluta_agi_prep_blob(const struct voluta_agroup_info *agi)
 {
 	const struct voluta_vaddr *vaddr = agi_vaddr(agi);
 	const struct voluta_baddr *baddr = agi_baddr(agi);
-	const struct voluta_sb_info *sbi = agi->ag_vi.v_sbi;
+	const struct voluta_sb_info *sbi = agi_sbi(agi);
 
 	return voluta_repo_prep_blob(sbi->sb_repo, vaddr->off, baddr);
+}
+
+int voluta_agi_prep_bks_blob(const struct voluta_agroup_info *agi)
+{
+	struct voluta_vba vba;
+	const struct voluta_agroup_map *agm = agroup_map_of(agi);
+	const struct voluta_sb_info *sbi = agi_sbi(agi);
+
+	agm_bks_vba(agm, &vba);
+	return voluta_repo_prep_blob(sbi->sb_repo, vba.vaddr.off, &vba.baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

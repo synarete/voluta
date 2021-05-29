@@ -15,7 +15,8 @@
  * GNU General Public License for more details.
  */
 #define _GNU_SOURCE 1
-#include "voluta-cmd.h"
+#include <stdlib.h>
+#include <voluta/cmd.h>
 
 
 static const char *mkfs_usage[] = {

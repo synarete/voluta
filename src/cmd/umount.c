@@ -18,7 +18,7 @@
 #include <sys/vfs.h>
 #include <sys/statvfs.h>
 #include <sys/mount.h>
-#include "voluta-cmd.h"
+#include <voluta/cmd.h>
 
 
 static const char *umount_usage[] = {

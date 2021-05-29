@@ -554,13 +554,17 @@ static int find_free_space_at(struct voluta_sb_info *sbi,
 	vaddr_copyto(&vaddr, &spa->vaddr);
 	spa->agi = agi;
 	spa->first_alloc = is_first_alloc(agi, &vaddr);
-
 	return 0;
 }
 
 static bool is_sub_bk(enum voluta_vtype vtype)
 {
 	return (vtype_size(vtype) < VOLUTA_BK_SIZE);
+}
+
+static bool irange_is_empty(const struct voluta_index_range *range)
+{
+	return (range->beg >= range->end);
 }
 
 static int find_free_space_within(struct voluta_sb_info *sbi,
@@ -570,12 +574,14 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 {
 	int err;
 	voluta_index_t ag_index;
+	struct voluta_index_range range = {
+		.beg = ag_index_first,
+		.end = ag_index_last
+	};
 
-	ag_index = ag_index_first;
-	while (ag_index < ag_index_last) {
-		err = voluta_search_avail_ag(spa->hsi, ag_index,
-		                             ag_index_last, spa->vtype,
-		                             &ag_index);
+	while (!irange_is_empty(&range)) {
+		err = voluta_hsi_search_avail_ag(spa->hsi, &range,
+		                                 spa->vtype, &ag_index);
 		if (err) {
 			return err;
 		}
@@ -586,7 +592,7 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 		if ((err == -ENOSPC) && is_sub_bk(spa->vtype)) {
 			voluta_mark_fragmented(spa->hsi, ag_index);
 		}
-		ag_index++;
+		range.beg = ag_index + 1;
 	}
 	return -ENOSPC;
 }
@@ -1331,16 +1337,11 @@ static void bind_agmap(struct voluta_hspace_info *hsi,
                        struct voluta_agroup_info *agi)
 {
 	struct voluta_vba agm_vba;
-	struct voluta_vba bks_vba = {
-		.baddr.size = 0 /* XXX */
-	};
 
 	voluta_assert_gt(agi->ag_index, 0);
 
 	voluta_agi_vba(agi, &agm_vba);
-	voluta_vaddr_of_blob(&bks_vba.vaddr, agi->ag_index);
-
-	voluta_hsi_set_formatted_ag(hsi, &agm_vba, &bks_vba);
+	voluta_hsi_set_formatted_ag(hsi, agi->ag_index, &agm_vba);
 }
 
 static int do_format_agmap(struct voluta_sb_info *sbi,
@@ -1861,7 +1862,6 @@ static int resolve_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 {
 	int err;
 	voluta_index_t hs_index;
-	struct voluta_vba bks_vba;
 	struct voluta_hspace_info *hsi = NULL;
 
 	hs_index = voluta_hs_index_of_ag(ag_index);
@@ -1869,7 +1869,7 @@ static int resolve_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (err) {
 		return err;
 	}
-	voluta_resolve_ag(hsi, ag_index, out_agm_vba, &bks_vba);
+	voluta_resolve_ag(hsi, ag_index, out_agm_vba);
 	if (vaddr_isnull(&out_agm_vba->vaddr)) {
 		return -ENOENT;
 	}

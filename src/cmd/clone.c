@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <error.h>
 #include <getopt.h>
-#include "voluta-cmd.h"
+#include <voluta/cmd.h>
 
 
 static const char *clone_usage[] = {

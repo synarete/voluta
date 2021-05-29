@@ -34,7 +34,7 @@
 #include <locale.h>
 #include <getopt.h>
 #include <signal.h>
-#include "mountd.h"
+#include <voluta/mntd.h>
 
 #define MOUNTD_LOG_MASK (VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
                          VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT)

@@ -14,12 +14,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#define _GNU_SOURCE 1
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
+#define _GNU_SOURCE 1
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/vfs.h>
@@ -45,7 +43,8 @@
 #include <dirent.h>
 #include <locale.h>
 #include <getopt.h>
-#include "voluta-cmd.h"
+#include <voluta/cmd.h>
+
 
 #define VOLUTA_LOG_DEFAULT  \
 	(VOLUTA_LOG_WARN  | \

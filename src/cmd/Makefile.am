@@ -28,5 +28,4 @@ voluta_SOURCES += mkfs.c
 voluta_SOURCES += mount.c
 voluta_SOURCES += show.c
 voluta_SOURCES += umount.c
-voluta_SOURCES += voluta-cmd.h
 

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef VOLUTA_MOUNTD_H_
-#define VOLUTA_MOUNTD_H_
+#ifndef VOLUTA_MNTD_H_
+#define VOLUTA_MNTD_H_
 
 #include <voluta/infra.h>
 #include <voluta/defs.h>
@@ -25,4 +25,4 @@ struct voluta_mntrules *voluta_parse_mntrules(const char *pathname);
 
 void voluta_free_mntrules(struct voluta_mntrules *mnt_conf);
 
-#endif /* VOLUTA_MOUNTD_H_ */
+#endif /* VOLUTA_MNTD_H_ */

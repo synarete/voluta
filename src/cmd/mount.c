@@ -26,7 +26,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <time.h>
-#include "voluta-cmd.h"
+#include <voluta/cmd.h>
 
 
 static const char *mount_usage[] = {

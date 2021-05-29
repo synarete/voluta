@@ -88,13 +88,13 @@
 
 
 /* number of allocation-groups per hyper-space */
-#define VOLUTA_NAG_IN_HS                (256)
+#define VOLUTA_NAG_IN_HS                (512)
 
 /* number of logical blocks within hyper-space */
 #define VOLUTA_NBK_IN_HS \
 	(VOLUTA_NAG_IN_HS * VOLUTA_NBK_IN_AG)
 
-/* size of single hyper-space (16G) */
+/* size of single hyper-space (32G) */
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
@@ -115,7 +115,7 @@
 #define VOLUTA_VOLUME_SIZE_MIN \
 	(VOLUTA_VOLUME_NAG_MIN * VOLUTA_AG_SIZE)
 
-/* maximal bytes-size of underlying volume (8T) */
+/* maximal bytes-size of underlying volume (16T) */
 #define VOLUTA_VOLUME_SIZE_MAX  \
 	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
@@ -564,13 +564,12 @@ struct voluta_super_block {
 
 
 struct voluta_ag_rec {
+	struct voluta_blobspec  ag_agm_bls;
 	uint32_t                ag_flags;
 	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;
-	uint8_t                 ag_reserved[96];
-	struct voluta_blobspec  ag_agm_bls;
-	struct voluta_blobspec  ag_bks_bls;
+	uint8_t                 ag_reserved[40];
 } voluta_packed_aligned8;
 
 
@@ -601,8 +600,10 @@ struct voluta_bk_rec {
 struct voluta_agroup_map {
 	struct voluta_header    ag_hdr;
 	uint64_t                ag_index;
-	uint8_t                 ag_reserved[4072];
-	uint8_t                 ag_reserved2[4096];
+	uint8_t                 ag_reserved1[40];
+	struct voluta_blobspec  ag_bks_bls;
+	uint8_t                 ag_reserved2[3968];
+	uint8_t                 ag_reserved3[4096];
 	struct voluta_bk_rec    ag_bkr[VOLUTA_NBK_IN_AG];
 } voluta_packed_aligned64;
 

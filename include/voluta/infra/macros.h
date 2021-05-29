@@ -57,7 +57,7 @@
 #define VOLUTA_ROUND_TO(n, k)           (VOLUTA_DIV_ROUND_UP(n, k) * k)
 #define VOLUTA_BIT(n)                   (1 << n)
 
-/* branch-redictor helpers */
+/* branch-predictor helpers */
 #define voluta_likely(x_)               __builtin_expect(!!(x_), 1)
 #define voluta_unlikely(x_)             __builtin_expect(!!(x_), 0)
 

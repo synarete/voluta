@@ -17,7 +17,6 @@ voluta_mountd_LDADD += $(LIBGCRYPT_LIBS)
 voluta_mountd_SOURCES = $(NULL)
 voluta_mountd_SOURCES += mntconf.c
 voluta_mountd_SOURCES += mountd.c
-voluta_mountd_SOURCES += mountd.h
 
 EXTRA_DIST = mountd.conf.in
 CLEANFILES = $(voluta_mountd_conf_DATA)

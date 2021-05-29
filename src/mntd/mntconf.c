@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
-#include "mountd.h"
+#include <voluta/mntd.h>
 
 #define die_illegal_conf(fl_, fmt_, ...) \
 	voluta_die_at(errno, (fl_)->file, (fl_)->line, fmt_, __VA_ARGS__)

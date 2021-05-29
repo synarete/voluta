@@ -49,6 +49,8 @@ nobase_include_HEADERS += voluta/fs.h
 
 nobase_include_HEADERS += voluta/defs.h
 nobase_include_HEADERS += voluta/ioctls.h
+nobase_include_HEADERS += voluta/cmd.h
+nobase_include_HEADERS += voluta/mntd.h
 
 noinst_HEADERS = config.h
 

@@ -183,6 +183,11 @@ struct voluta_ucred {
 typedef loff_t          voluta_lba_t;
 typedef uint64_t        voluta_index_t;
 
+struct voluta_index_range {
+	voluta_index_t  beg;
+	voluta_index_t  end;
+};
+
 /* inode's time-stamps (birth, access, modify, change) */
 struct voluta_itimes {
 	struct timespec btime;

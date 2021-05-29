@@ -1,1 +1,1 @@
-SUBDIRS = infra fs cmd mountd
+SUBDIRS = infra fs cmd mntd

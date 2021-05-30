@@ -19,6 +19,16 @@
 
 #include <voluta/fs/types.h>
 
+/* pool-based memory-allocator */
+struct voluta_mpool {
+	struct voluta_qalloc *mp_qal;
+	struct voluta_listq mp_bq;
+	struct voluta_listq mp_vq;
+	struct voluta_listq mp_iq;
+	struct voluta_alloc_if mp_aif;
+};
+
+
 void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);
 
 void voluta_mpool_fini(struct voluta_mpool *mpool);

@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <voluta/fs/types.h>
+#include <voluta/fs/nodes.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/private.h>
 

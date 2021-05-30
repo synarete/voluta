@@ -33,10 +33,6 @@ void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
 
 
-struct voluta_hspace_info *
-voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
-
-
 void voluta_hsi_assign(struct voluta_hspace_info *hsi,
                        const struct voluta_baddr *baddr,
                        voluta_index_t hs_index);

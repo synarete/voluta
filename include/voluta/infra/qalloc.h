@@ -19,6 +19,12 @@
 
 struct voluta_fiovec;
 
+/* allocator interface */
+struct voluta_alloc_if {
+	void *(*malloc_fn)(struct voluta_alloc_if *aif, size_t nbytes);
+	void (*free_fn)(struct voluta_alloc_if *aif, void *ptr, size_t nbytes);
+};
+
 /* quick memory allocator */
 struct voluta_qastat {
 	size_t memsz_data;
@@ -46,6 +52,7 @@ struct voluta_qalloc {
 	struct voluta_qastat st;
 	struct voluta_list_head free_list;
 	struct voluta_slab slabs[8];
+	struct voluta_alloc_if aif;
 };
 
 

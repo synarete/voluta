@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <voluta/fs/address.h>
+#include <voluta/fs/nodes.h>
 #include <voluta/fs/boot.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/spmaps.h>

@@ -25,6 +25,7 @@ libvoluta_fs_la_SOURCES += itable.c
 libvoluta_fs_la_SOURCES += mount.c
 libvoluta_fs_la_SOURCES += mpool.c
 libvoluta_fs_la_SOURCES += namei.c
+libvoluta_fs_la_SOURCES += nodes.c
 libvoluta_fs_la_SOURCES += opers.c
 libvoluta_fs_la_SOURCES += pstore.c
 libvoluta_fs_la_SOURCES += repo.c

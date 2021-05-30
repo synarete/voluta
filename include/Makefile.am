@@ -35,6 +35,7 @@ nobase_include_HEADERS += voluta/fs/itable.h
 nobase_include_HEADERS += voluta/fs/mount.h
 nobase_include_HEADERS += voluta/fs/mpool.h
 nobase_include_HEADERS += voluta/fs/namei.h
+nobase_include_HEADERS += voluta/fs/nodes.h
 nobase_include_HEADERS += voluta/fs/opers.h
 nobase_include_HEADERS += voluta/fs/private.h
 nobase_include_HEADERS += voluta/fs/pstore.h

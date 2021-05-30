@@ -24,6 +24,7 @@
 #include <voluta/infra.h>
 #include <voluta/defs.h>
 #include <voluta/fs/types.h>
+#include <voluta/fs/nodes.h>
 
 
 /* error-codes borrowed from XFS */

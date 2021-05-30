@@ -18,6 +18,7 @@
 #include <voluta/infra.h>
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
+#include <voluta/fs/nodes.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/vstore.h>

@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
+#include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/repo.h>
 #include <voluta/fs/spmaps.h>
@@ -1176,17 +1177,6 @@ hspace_map_of(const struct voluta_hspace_info *hsi)
 static void hsi_dirtify(struct voluta_hspace_info *hsi)
 {
 	vi_dirtify(hsi_vi(hsi));
-}
-
-struct voluta_hspace_info *
-voluta_hsi_from_vi(const struct voluta_vnode_info *vi)
-{
-	const struct voluta_hspace_info *hsi = NULL;
-
-	if (likely(vi != NULL)) {
-		hsi = container_of2(vi, struct voluta_hspace_info, hs_vi);
-	}
-	return unconst(hsi);
 }
 
 void voluta_hsi_assign(struct voluta_hspace_info *hsi,

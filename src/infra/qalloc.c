@@ -110,10 +110,30 @@ static void static_assert_alloc_sizes(void)
 	STATICASSERT_EQ(VOLUTA_ARRAY_SIZE(qal->slabs), QALLOC_NSLABS);
 }
 
-static void do_memzero(void *s, size_t n)
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static struct voluta_qalloc *aif_to_qal(struct voluta_alloc_if *aif)
 {
-	memset(s, 0, n);
+	struct voluta_qalloc *qal;
+
+	qal = voluta_container_of(aif, struct voluta_qalloc, aif);
+	return qal;
 }
+
+static void *qal_malloc(struct voluta_alloc_if *aif, size_t nbytes)
+{
+	struct voluta_qalloc *qal = aif_to_qal(aif);
+
+	return voluta_qalloc_malloc(qal, nbytes);
+}
+
+static void qal_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
+{
+	struct voluta_qalloc *qal = aif_to_qal(aif);
+
+	voluta_qalloc_free(qal, ptr, nbytes);
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -532,6 +552,12 @@ static int check_memsize(size_t memsize)
 	return 0;
 }
 
+static void qalloc_init_interface(struct voluta_qalloc *qal)
+{
+	qal->aif.malloc_fn = qal_malloc;
+	qal->aif.free_fn = qal_free;
+}
+
 int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize)
 {
 	int err;
@@ -554,6 +580,7 @@ int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize)
 	}
 	qalloc_init_pages(qal);
 	qalloc_init_slabs(qal);
+	qalloc_init_interface(qal);
 	return 0;
 }
 
@@ -860,7 +887,7 @@ void *voluta_qalloc_zmalloc(struct voluta_qalloc *qal, size_t nbytes)
 
 	ptr = voluta_qalloc_malloc(qal, nbytes);
 	if (ptr != NULL) {
-		do_memzero(ptr, nbytes);
+		memset(ptr, 0, nbytes);
 	}
 	return ptr;
 }
@@ -1118,7 +1145,7 @@ void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
 void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes)
 {
 	if (ptr != NULL) {
-		do_memzero(ptr, nbytes);
+		memset(ptr, 0, nbytes);
 		voluta_qalloc_free(qal, ptr, nbytes);
 	}
 }
@@ -1184,7 +1211,7 @@ void voluta_qalloc_stat(const struct voluta_qalloc *qal,
 
 void voluta_memzero(void *s, size_t n)
 {
-	do_memzero(s, n);
+	memset(s, 0, n);
 }
 
 static size_t alignment_of(size_t sz)
@@ -1209,7 +1236,7 @@ int voluta_zmalloc(size_t sz, void **out_mem)
 
 	err = posix_memalign(out_mem, alignment_of(sz), sz);
 	if (!err) {
-		do_memzero(*out_mem, sz);
+		voluta_memzero(*out_mem, sz);
 	}
 	return err;
 }

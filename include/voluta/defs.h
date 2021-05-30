@@ -306,7 +306,7 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_RTNODE     = 23,
 	VOLUTA_VTYPE_SYMVAL     = 29,
 	VOLUTA_VTYPE_DATABK     = 64,
-	VOLUTA_VTYPE_BLOB       = 127,
+	VOLUTA_VTYPE_AGBKS      = 127,
 };
 
 /* hyper-space flags */

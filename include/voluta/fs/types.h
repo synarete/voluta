@@ -617,7 +617,7 @@ struct voluta_rwiter_ctx {
 };
 
 /* allocation-groups range (beg <= tip <= fin <= end) */
-struct voluta_ag_range {
+struct voluta_ag_span {
 	voluta_index_t beg; /* start ag-index */
 	voluta_index_t tip; /* heuristic of current tip ag-index */
 	voluta_index_t fin; /* one past last ag-index of current span */

@@ -1307,15 +1307,15 @@ bool voluta_hsi_has_formatted_ag(const struct voluta_hspace_info *hsi,
 	return hsm_is_formatted(hsm, ag_index);
 }
 
-void voluta_hsi_ag_range_of(const struct voluta_hspace_info *hsi,
-                            struct voluta_ag_range *ag_range)
+void voluta_hsi_ag_span_of(const struct voluta_hspace_info *hsi,
+                           struct voluta_ag_span *ag_span)
 {
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
-	ag_range->beg = hsm_ag_index_beg(hsm);
-	ag_range->tip = hsm_ag_index_tip(hsm);
-	ag_range->fin = hsm_ag_index_fin(hsm);
-	ag_range->end = hsm_ag_index_end(hsm);
+	ag_span->beg = hsm_ag_index_beg(hsm);
+	ag_span->tip = hsm_ag_index_tip(hsm);
+	ag_span->fin = hsm_ag_index_fin(hsm);
+	ag_span->end = hsm_ag_index_end(hsm);
 }
 
 void voluta_mark_fragmented(struct voluta_hspace_info *hsi,
@@ -1594,7 +1594,7 @@ static int verify_vtype(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
 		return 0;
 	default:
 		break;

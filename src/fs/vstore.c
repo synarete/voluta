@@ -224,7 +224,7 @@ static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
 		err = 0;
 		break;
 	case VOLUTA_VTYPE_NONE:

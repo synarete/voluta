@@ -66,8 +66,8 @@ void voluta_hsi_set_formatted_ag(struct voluta_hspace_info *hsi,
 bool voluta_hsi_has_formatted_ag(const struct voluta_hspace_info *hsi,
                                  voluta_index_t ag_index);
 
-void voluta_hsi_ag_range_of(const struct voluta_hspace_info *hsi,
-                            struct voluta_ag_range *ag_range);
+void voluta_hsi_ag_span_of(const struct voluta_hspace_info *hsi,
+                           struct voluta_ag_span *ag_span);
 
 void voluta_mark_fragmented(struct voluta_hspace_info *hsi,
                             voluta_index_t ag_index);

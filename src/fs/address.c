@@ -116,7 +116,7 @@ bool voluta_vtype_isspmap(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		ret = false;
@@ -144,7 +144,7 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		ret = false;
@@ -194,7 +194,9 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATABK:
 		sz = sizeof(struct voluta_data_block);
 		break;
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
+		sz = VOLUTA_AG_SIZE;
+		break;
 	case VOLUTA_VTYPE_NONE:
 	default:
 		sz = 0;
@@ -300,11 +302,11 @@ void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }
 
-void voluta_vaddr_of_blob(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
+void voluta_vaddr_of_agbks(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
 	const loff_t off = ag_index_to_off(ag_index);
 
-	vaddr_setup(vaddr, VOLUTA_VTYPE_BLOB, off);
+	vaddr_setup(vaddr, VOLUTA_VTYPE_AGBKS, off);
 }
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
@@ -532,33 +534,33 @@ int voluta_baddr_to_name(const struct voluta_baddr *baddr,
 	return blobid_to_name(&baddr->bid, name, nmax, out_len);
 }
 
-int voluta_baddr_from_name(struct voluta_baddr *baddr,
-                           const char *name, size_t len)
-{
-	return blobid_from_name(&baddr->bid, name, len);
-}
-
 int voluta_baddr_by_name(struct voluta_baddr *baddr,
                          enum voluta_vtype vtype, const char *name)
 {
 	int err;
+	const size_t len = strlen(name);
 
 	baddr->size = vtype_size(vtype);
 	voluta_assert_gt(baddr->size, 0);
 	if (!baddr->size) {
 		return -EINVAL;
 	}
-	err = voluta_baddr_from_name(baddr, name, strlen(name));
+	err = blobid_from_name(&baddr->bid, name, len);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
+static void baddr_make(struct voluta_baddr *baddr, size_t size)
 {
 	blobid_generate(&baddr->bid);
-	baddr->size = vtype_size(vtype);
+	baddr->size = size;
+}
+
+static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
+{
+	baddr_make(baddr, vtype_size(vtype));
 }
 
 void voluta_baddr_make_for_super(struct voluta_baddr *baddr)
@@ -574,6 +576,11 @@ void voluta_baddr_make_for_hsmap(struct voluta_baddr *baddr)
 void voluta_baddr_make_for_agmap(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
+}
+
+void voluta_baddr_make_for_agbks(struct voluta_baddr *baddr)
+{
+	baddr_make(baddr, VOLUTA_AG_SIZE);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -32,8 +32,11 @@ struct voluta_blob_info {
 	struct voluta_list_head b_lru_lh;
 	unsigned long           b_hkey;
 	loff_t                  b_beg;
+	int                     b_refcnt;
 	int                     b_fd;
 };
+
+typedef bool (*voluta_bi_pred_fn)(const struct voluta_blob_info *);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -112,6 +115,7 @@ static void bi_init(struct voluta_blob_info *bi, loff_t off_start,
 	list_head_init(&bi->b_htb_lh);
 	list_head_init(&bi->b_lru_lh);
 	bi->b_hkey = voluta_baddr_hkey(baddr);
+	bi->b_refcnt = 0;
 	bi->b_fd = fd;
 	bi->b_beg = off_start;
 }
@@ -121,6 +125,7 @@ static void bi_fini(struct voluta_blob_info *bi)
 	baddr_reset(&bi->b_baddr);
 	list_head_fini(&bi->b_htb_lh);
 	list_head_fini(&bi->b_lru_lh);
+	bi->b_refcnt = -1;
 	bi->b_fd = -1;
 	bi->b_beg = -1;
 }
@@ -188,6 +193,13 @@ static int bi_resolve_fiovec(const struct voluta_blob_info *bi,
 	fiov->fv_base = NULL;
 	fiov->fv_fd = bi->b_fd;
 	return 0;
+}
+
+static bool bi_is_evictable(const struct voluta_blob_info *bi)
+{
+	voluta_assert_ge(bi->b_refcnt, 0);
+
+	return (bi->b_refcnt == 0);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -285,6 +297,24 @@ static struct voluta_blob_info *repo_lru_front(const struct voluta_repo *repo)
 	return bi_from_lru_lh(lh);
 }
 
+static struct voluta_blob_info *
+repo_cahce_rfind(const struct voluta_repo *repo, voluta_bi_pred_fn fn)
+{
+	const struct voluta_blob_info *bi;
+	const struct voluta_list_head *lh;
+	const struct voluta_listq *lru = &repo->re_lru;
+
+	lh = listq_back(lru);
+	while (lh != &lru->ls) {
+		bi = bi_from_lru_lh(lh);
+		if (fn(bi)) {
+			return bi_unconst(bi);
+		}
+		lh = lh->prev;
+	}
+	return NULL;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void repo_cache_init(struct voluta_repo *repo)
@@ -337,6 +367,13 @@ repo_cache_front(const struct voluta_repo *repo)
 {
 	return repo_lru_front(repo);
 }
+
+static struct voluta_blob_info *
+repo_cache_find_evictable(const struct voluta_repo *repo)
+{
+	return repo_cahce_rfind(repo, bi_is_evictable);
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -547,6 +584,8 @@ static int repo_close_blob_of(const struct voluta_repo *repo,
                               struct voluta_blob_info *bi)
 {
 	voluta_assert_gt(bi->b_fd, 0);
+	voluta_assert_eq(bi->b_refcnt, 0);
+
 	return repo_close_blob(repo, &bi->b_baddr, &bi->b_fd);
 }
 
@@ -565,6 +604,47 @@ static void repo_del_bi(const struct voluta_repo *repo,
 	bi_del(bi, repo->re_qalloc);
 }
 
+static void repo_forget_blob(struct voluta_repo *repo,
+                             struct voluta_blob_info *bi)
+{
+	repo_close_blob_of(repo, bi);
+	repo_cache_remove(repo, bi);
+	repo_del_bi(repo, bi);
+}
+
+static void repo_forget_all(struct voluta_repo *repo)
+{
+	struct voluta_blob_info *bi;
+
+	bi = repo_cache_front(repo);
+	while (bi != NULL) {
+		repo_forget_blob(repo, bi);
+		bi = repo_cache_front(repo);
+	}
+}
+
+int voluta_repo_close(struct voluta_repo *repo)
+{
+	repo_forget_all(repo);
+	return voluta_sys_closefd(&repo->re_dfd);
+}
+
+static int repo_relax_once(struct voluta_repo *repo)
+{
+	struct voluta_blob_info *bi = NULL;
+	const size_t ncached = repo->re_lru.sz;
+
+	if (!ncached || (ncached < 512)) { /* XXX make upper bound tweak */
+		return 0;
+	}
+	bi = repo_cache_find_evictable(repo);
+	if (bi == NULL) {
+		return -ENOENT;
+	}
+	repo_forget_blob(repo, bi);
+	return 0;
+}
+
 int voluta_repo_prep_blob(struct voluta_repo *repo, loff_t off,
                           const struct voluta_baddr *baddr)
 {
@@ -574,6 +654,10 @@ int voluta_repo_prep_blob(struct voluta_repo *repo, loff_t off,
 
 	voluta_assert_gt(baddr->size, 0);
 
+	err = repo_relax_once(repo);
+	if (err) {
+		return err;
+	}
 	err = repo_create_blob(repo, baddr, &fd);
 	if (err) {
 		return err;
@@ -594,6 +678,10 @@ static int repo_open_blob_of(struct voluta_repo *repo, loff_t off,
 	int err;
 	int fd = -1;
 
+	err = repo_relax_once(repo);
+	if (err) {
+		return err;
+	}
 	err = repo_open_blob(repo, baddr, &fd);
 	if (err) {
 		return err;
@@ -622,31 +710,6 @@ static int repo_stage_blob(struct voluta_repo *repo, loff_t off,
 	}
 	repo_cache_insert(repo, *out_bi);
 	return 0;
-}
-
-static void repo_forget_blob(struct voluta_repo *repo,
-                             struct voluta_blob_info *bi)
-{
-	repo_close_blob_of(repo, bi);
-	repo_cache_remove(repo, bi);
-	repo_del_bi(repo, bi);
-}
-
-static void repo_forget_all(struct voluta_repo *repo)
-{
-	struct voluta_blob_info *bi;
-
-	bi = repo_cache_front(repo);
-	while (bi != NULL) {
-		repo_forget_blob(repo, bi);
-		bi = repo_cache_front(repo);
-	}
-}
-
-int voluta_repo_close(struct voluta_repo *repo)
-{
-	repo_forget_all(repo);
-	return voluta_sys_closefd(&repo->re_dfd);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

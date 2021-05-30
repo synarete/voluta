@@ -562,25 +562,20 @@ static bool is_sub_bk(enum voluta_vtype vtype)
 	return (vtype_size(vtype) < VOLUTA_BK_SIZE);
 }
 
-static bool irange_is_empty(const struct voluta_index_range *range)
+static bool range_is_empty(const struct voluta_index_range *range)
 {
 	return (range->beg >= range->end);
 }
 
 static int find_free_space_within(struct voluta_sb_info *sbi,
                                   struct voluta_spalloc_ctx *spa,
-                                  voluta_index_t ag_index_first,
-                                  voluta_index_t ag_index_last)
+                                  struct voluta_index_range *ag_range)
 {
 	int err;
 	voluta_index_t ag_index;
-	struct voluta_index_range range = {
-		.beg = ag_index_first,
-		.end = ag_index_last
-	};
 
-	while (!irange_is_empty(&range)) {
-		err = voluta_hsi_search_avail_ag(spa->hsi, &range,
+	while (!range_is_empty(ag_range)) {
+		err = voluta_hsi_search_avail_ag(spa->hsi, ag_range,
 		                                 spa->vtype, &ag_index);
 		if (err) {
 			return err;
@@ -592,7 +587,7 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 		if ((err == -ENOSPC) && is_sub_bk(spa->vtype)) {
 			voluta_mark_fragmented(spa->hsi, ag_index);
 		}
-		range.beg = ag_index + 1;
+		ag_range->beg = ag_index + 1;
 	}
 	return -ENOSPC;
 }
@@ -602,17 +597,22 @@ static int find_free_space_for(struct voluta_sb_info *sbi,
                                struct voluta_spalloc_ctx *spa)
 {
 	int err;
-	struct voluta_ag_range ag_range = { .beg = 0, .end = 0 };
+	struct voluta_ag_span ag_span;
+	struct voluta_index_range ag_range;
 
-	voluta_hsi_ag_range_of(spa->hsi, &ag_range);
+	voluta_hsi_ag_span_of(spa->hsi, &ag_span);
 
 	/* fast search */
-	err = find_free_space_within(sbi, spa, ag_range.tip, ag_range.fin);
+	ag_range.beg = ag_span.tip;
+	ag_range.end = ag_span.fin;
+	err = find_free_space_within(sbi, spa, &ag_range);
 	if (err != -ENOSPC) {
 		return err;
 	}
 	/* slow search */
-	err = find_free_space_within(sbi, spa, ag_range.beg, ag_range.tip);
+	ag_range.beg = ag_span.beg;
+	ag_range.end = ag_span.tip;
+	err = find_free_space_within(sbi, spa, &ag_range);
 	if (err != -ENOSPC) {
 		return err;
 	}
@@ -770,7 +770,7 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 		vi->vu.db4 = &view->u.db4;
 		break;
 	case VOLUTA_VTYPE_DATABK:
-	case VOLUTA_VTYPE_BLOB:
+	case VOLUTA_VTYPE_AGBKS:
 		vi->vu.db = &view->u.db;
 		break;
 	case VOLUTA_VTYPE_SUPER:
@@ -1327,9 +1327,29 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 
 	agi = voluta_agi_from_vi(vi);
 	voluta_agi_setup(agi, &vba.baddr, ag_index);
+
 	vi_dirtify(vi);
 
 	*out_agi = agi;
+	return 0;
+}
+
+static int format_agbks_of(struct voluta_sb_info *sbi,
+                           struct voluta_agroup_info *agi)
+{
+	int err;
+	struct voluta_vba vba;
+	const voluta_index_t ag_index = agi->ag_index;
+
+	voluta_unused(sbi);
+	voluta_vaddr_of_agbks(&vba.vaddr, ag_index);
+	voluta_baddr_make_for_agbks(&vba.baddr);
+
+	voluta_agi_set_bks_vba(agi, &vba);
+	err = voluta_agi_prep_bks_blob(agi);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
@@ -1359,6 +1379,10 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
+	err = format_agbks_of(sbi, agi);
+	if (err) {
+		return err;
+	}
 	bind_agmap(hsi, agi);
 	update_spi_on_agm(sbi);
 	return 0;
@@ -1379,12 +1403,12 @@ static int format_agmap(struct voluta_sb_info *sbi,
 static int next_unformatted_ag(const struct voluta_hspace_info *hsi,
                                voluta_index_t *out_ag_index)
 {
-	struct voluta_ag_range ag_range;
+	struct voluta_ag_span ag_span;
 
-	voluta_hsi_ag_range_of(hsi, &ag_range);
-	*out_ag_index = ag_range.fin;
+	voluta_hsi_ag_span_of(hsi, &ag_span);
+	*out_ag_index = ag_span.fin;
 
-	return (*out_ag_index < ag_range.end) ? 0 : -ENOSPC;
+	return (*out_ag_index < ag_span.end) ? 0 : -ENOSPC;
 }
 
 static int format_next_agmap(struct voluta_sb_info *sbi,
@@ -1448,11 +1472,11 @@ static int load_first_agmap_of(struct voluta_sb_info *sbi,
                                struct voluta_hspace_info *hsi)
 {
 	int err;
-	struct voluta_ag_range ag_range = { .beg = 0 };
+	struct voluta_ag_span ag_span = { .beg = 0 };
 
-	voluta_hsi_ag_range_of(hsi, &ag_range);
+	voluta_hsi_ag_span_of(hsi, &ag_span);
 	hsi_incref(hsi);
-	err = load_agmap_of(sbi, hsi, ag_range.beg);
+	err = load_agmap_of(sbi, hsi, ag_span.beg);
 	hsi_decref(hsi);
 	return err;
 }
@@ -1918,6 +1942,28 @@ static int verify_agmap(struct voluta_sb_info *sbi,
 	return 0;
 }
 
+static int stage_agm_from_blob(struct voluta_sb_info *sbi,
+                               struct voluta_agroup_info *agi)
+{
+	int err;
+	struct voluta_view *view = agi->ag_vi.view;
+	const struct voluta_vaddr *vaddr = agi_vaddr(agi);
+	const struct voluta_baddr *baddr = agi_baddr(agi);
+
+	err = voluta_repo_load_blob(sbi->sb_repo, baddr, view,
+	                            vaddr->off, vaddr->len);
+	voluta_assert_ok(err);
+	if (err) {
+		return err;
+	}
+	err = verify_agmap(sbi, agi);
+	voluta_assert_ok(err);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
 static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
                        struct voluta_agroup_info **out_agi)
 {
@@ -1946,6 +1992,12 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 		/* TODO: cleanups */
 		return err;
 	}
+
+	err = stage_agm_from_blob(sbi, agi);
+	if (err) {
+		return err;
+	}
+
 	*out_agi = agi;
 	return 0;
 }

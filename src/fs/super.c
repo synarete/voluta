@@ -926,7 +926,7 @@ static int spawn_ii_now(struct voluta_sb_info *sbi,
 {
 	struct voluta_cache *cache = cache_of(sbi);
 
-	*out_ii = voluta_cache_spawn_ii(cache, iaddr);
+	*out_ii = voluta_cache_spawn_ii(cache, &iaddr->vaddr, iaddr->ino);
 	return (*out_ii == NULL) ? -ENOMEM : 0;
 }
 
@@ -2030,7 +2030,7 @@ static int find_cached_ii(const struct voluta_sb_info *sbi,
 {
 	struct voluta_cache *cache = cache_of(sbi);
 
-	*out_ii = voluta_cache_lookup_ii(cache, iaddr);
+	*out_ii = voluta_cache_lookup_ii(cache, &iaddr->vaddr);
 	return (*out_ii != NULL) ? 0 : -ENOENT;
 }
 

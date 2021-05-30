@@ -643,10 +643,10 @@ static void ii_fini(struct voluta_inode_info *ii)
 }
 
 static void ii_assign(struct voluta_inode_info *ii,
-                      const struct voluta_iaddr *iaddr)
+                      const struct voluta_vaddr *vaddr, ino_t ino)
 {
-	vi_assign(&ii->i_vi, &iaddr->vaddr);
-	ii->i_ino = iaddr->ino;
+	vi_assign(&ii->i_vi, vaddr);
+	ii->i_ino = ino;
 }
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
@@ -1790,12 +1790,12 @@ static void cache_fini_ilm(struct voluta_cache *cache)
 }
 
 static struct voluta_inode_info *
-cache_find_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
+cache_find_ii(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 {
 	struct voluta_cache_elem *ce;
 	struct voluta_inode_info *ii = NULL;
 
-	ce = lrumap_find(&cache->c_ilm, (long)(iaddr->vaddr.off));
+	ce = lrumap_find(&cache->c_ilm, (long)(vaddr->off));
 	if (ce != NULL) {
 		ii = ii_from_ce(ce);
 	}
@@ -1823,11 +1823,11 @@ static void cache_promote_lru_ii(struct voluta_cache *cache,
 }
 
 static struct voluta_inode_info *
-cache_lookup_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
+cache_lookup_ii(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 {
 	struct voluta_inode_info *ii;
 
-	ii = cache_find_ii(cache, iaddr);
+	ii = cache_find_ii(cache, vaddr);
 	if (ii != NULL) {
 		cache_promote_lru_ii(cache, ii);
 		cache_promote_lru_bsi(cache, ii->i_vi.v_bsi);
@@ -1837,17 +1837,17 @@ cache_lookup_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
 
 struct voluta_inode_info *
 voluta_cache_lookup_ii(struct voluta_cache *cache,
-                       const struct voluta_iaddr *iaddr)
+                       const struct voluta_vaddr *vaddr)
 {
-	return cache_lookup_ii(cache, iaddr);
+	return cache_lookup_ii(cache, vaddr);
 }
 
 static void cache_store_ii(struct voluta_cache *cache,
                            struct voluta_inode_info *ii,
-                           const struct voluta_iaddr *iaddr)
+                           const struct voluta_vaddr *vaddr, ino_t ino)
 {
-	ii_assign(ii, iaddr);
-	lrumap_store(&cache->c_ilm, ii_ce(ii), (long)(iaddr->vaddr.off));
+	ii_assign(ii, vaddr, ino);
+	lrumap_store(&cache->c_ilm, ii_ce(ii), (long)(vaddr->off));
 }
 
 static int visit_evictable_ii(struct voluta_cache_elem *ce, void *arg)
@@ -1879,7 +1879,8 @@ cache_find_evictable_ii(struct voluta_cache *cache)
 }
 
 static struct voluta_inode_info *
-cache_spawn_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
+cache_spawn_ii(struct voluta_cache *cache,
+               const struct voluta_vaddr *vaddr, ino_t ino)
 {
 	struct voluta_inode_info *ii;
 
@@ -1887,28 +1888,29 @@ cache_spawn_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
 	if (ii == NULL) {
 		return NULL;
 	}
-	cache_store_ii(cache, ii, iaddr);
+	cache_store_ii(cache, ii, vaddr, ino);
 	return ii;
 }
 
 static struct voluta_inode_info *
-cache_require_ii(struct voluta_cache *cache, const struct voluta_iaddr *iaddr)
+cache_require_ii(struct voluta_cache *cache,
+                 const struct voluta_vaddr *vaddr, ino_t ino)
 {
 	struct voluta_inode_info *ii = NULL;
 
-	ii = cache_spawn_ii(cache, iaddr);
+	ii = cache_spawn_ii(cache, vaddr, ino);
 	if (ii == NULL) {
 		cache_evict_some(cache);
-		ii = cache_spawn_ii(cache, iaddr);
+		ii = cache_spawn_ii(cache, vaddr, ino);
 	}
 	return ii;
 }
 
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
-                      const struct voluta_iaddr *iaddr)
+                      const struct voluta_vaddr *vaddr, ino_t ino)
 {
-	return cache_require_ii(cache, iaddr);
+	return cache_require_ii(cache, vaddr, ino);
 }
 
 void voulta_cache_forget_ii(struct voluta_cache *cache,

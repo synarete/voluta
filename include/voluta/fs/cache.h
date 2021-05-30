@@ -49,14 +49,14 @@ void voluta_cache_forget_bsi(struct voluta_cache *cache,
 
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
-                      const struct voluta_iaddr *iaddr);
+                      const struct voluta_vaddr *vaddr, ino_t ino);
 
 void voulta_cache_forget_ii(struct voluta_cache *cache,
                             struct voluta_inode_info *ii);
 
 struct voluta_inode_info *
 voluta_cache_lookup_ii(struct voluta_cache *cache,
-                       const struct voluta_iaddr *iaddr);
+                       const struct voluta_vaddr *vaddr);
 
 struct voluta_vnode_info *
 voluta_cache_lookup_vi(struct voluta_cache *cache,

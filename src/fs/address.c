@@ -67,11 +67,6 @@ static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
 	return agm_lba;
 }
 
-voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn)
-{
-	return lba_within_ag(ag_index, bn);
-}
-
 static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
 	const size_t nbk_in_bu = VOLUTA_NBK_IN_BSEC;
@@ -92,6 +87,17 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index)
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot)
 {
 	return (hs_index * VOLUTA_NAG_IN_HS) + ag_slot;
+}
+
+
+loff_t voluta_off_in_blob(loff_t off, size_t blob_size)
+{
+	const size_t uoff = (size_t)off;
+
+	voluta_assert_ge(off, 0);
+	voluta_assert(!off_isnull(off));
+
+	return (loff_t)((uoff / blob_size) * blob_size);
 }
 
 
@@ -563,22 +569,22 @@ static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
 	baddr_make(baddr, vtype_size(vtype));
 }
 
-void voluta_baddr_make_for_super(struct voluta_baddr *baddr)
+void voluta_baddr_for_super(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_SUPER);
 }
 
-void voluta_baddr_make_for_hsmap(struct voluta_baddr *baddr)
+static void voluta_baddr_for_hsmap(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
-void voluta_baddr_make_for_agmap(struct voluta_baddr *baddr)
+static void voluta_baddr_for_agmap(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
-void voluta_baddr_make_for_agbks(struct voluta_baddr *baddr)
+void voluta_baddr_for_agbks(struct voluta_baddr *baddr)
 {
 	baddr_make(baddr, VOLUTA_AG_SIZE);
 }
@@ -603,6 +609,18 @@ void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other)
 {
 	voluta_vaddr_copyto(&vba->vaddr, &other->vaddr);
 	voluta_baddr_copyto(&vba->baddr, &other->baddr);
+}
+
+void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index)
+{
+	voluta_vaddr_of_hsmap(&vba->vaddr, hs_index);
+	voluta_baddr_for_hsmap(&vba->baddr);
+}
+
+void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index)
+{
+	voluta_vaddr_of_agmap(&vba->vaddr, ag_index);
+	voluta_baddr_for_agmap(&vba->baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

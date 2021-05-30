@@ -50,7 +50,9 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_cache;
+struct voluta_bnode_info;
 struct voluta_vnode_info;
+struct voluta_inode_info;
 struct voluta_fuseq;
 struct voluta_fuseq_worker;
 struct voluta_fuseq_in;
@@ -63,7 +65,6 @@ struct voluta_rwiter_ctx;
 struct voluta_readdir_ctx;
 struct voluta_readdir_info;
 struct voluta_listxattr_ctx;
-struct voluta_ar_blob_info;
 
 
 /* file-system control flags */
@@ -226,7 +227,7 @@ struct voluta_vaddr {
 	voluta_index_t  ag_index;
 	voluta_lba_t    lba;
 	loff_t          off;
-	size_t          len;
+	uint32_t        len;
 	enum voluta_vtype vtype;
 };
 
@@ -268,6 +269,12 @@ struct voluta_bksec_info {
 	voluta_lba_t    bs_lba;
 };
 
+/* bnode */
+struct voluta_bnode_info {
+	struct voluta_baddr             baddr;
+	void *bp;
+};
+
 /* vnode */
 union voluta_vnode_u {
 	struct voluta_hspace_map        *hsm;
@@ -288,6 +295,7 @@ typedef void (*voluta_delete_vnode_fn)(const struct voluta_cache *cache,
                                        struct voluta_vnode_info *vi);
 
 struct voluta_vnode_info {
+	struct voluta_bnode_info        v_bi;
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
@@ -319,8 +327,8 @@ struct voluta_agroup_info {
 
 /* inode */
 struct voluta_inode_info {
-	struct voluta_inode            *inode;
 	struct voluta_vnode_info        i_vi;
+	struct voluta_inode            *inode;
 	struct timespec                 i_atime_lazy;
 	ino_t  i_ino;
 	long   i_nopen;

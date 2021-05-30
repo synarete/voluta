@@ -409,6 +409,20 @@ static bool bsi_is_evictable(const struct voluta_bksec_info *bsi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static void bi_init(struct voluta_bnode_info *bi)
+{
+	baddr_reset(&bi->baddr);
+	bi->bp = NULL;
+}
+
+static void bi_fini(struct voluta_bnode_info *bi)
+{
+	baddr_reset(&bi->baddr);
+	bi->bp = NULL;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static struct voluta_vnode_info *vi_from_ce(const struct voluta_cache_elem *ce)
 {
 	const struct voluta_vnode_info *vi = NULL;
@@ -429,11 +443,12 @@ static struct voluta_cache_elem *vi_ce(const struct voluta_vnode_info *vi)
 static void vi_init(struct voluta_vnode_info *vi,
                     voluta_delete_vnode_fn del_hook)
 {
-	vaddr_reset(&vi->vaddr);
+	bi_init(&vi->v_bi);
 	ce_init(vi_ce(vi));
 	lh_init(&vi->v_dq_blh);
 	lh_init(&vi->v_dq_mlh);
 	an_init(&vi->v_ds_an);
+	vaddr_reset(&vi->vaddr);
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
@@ -447,11 +462,12 @@ static void vi_init(struct voluta_vnode_info *vi,
 
 static void vi_fini(struct voluta_vnode_info *vi)
 {
-	vaddr_reset(&vi->vaddr);
+	bi_fini(&vi->v_bi);
 	ce_fini(vi_ce(vi));
 	lh_fini(&vi->v_dq_blh);
 	lh_fini(&vi->v_dq_mlh);
 	an_fini(&vi->v_ds_an);
+	vaddr_reset(&vi->vaddr);
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
@@ -524,6 +540,7 @@ static void vi_detach_bk(struct voluta_vnode_info *vi)
 		vi->v_bsi = NULL;
 		vi->view = NULL;
 		vi->vu.p = NULL;
+		vi->v_bi.bp = NULL;
 	}
 }
 

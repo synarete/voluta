@@ -30,7 +30,7 @@ voluta_index_t voluta_hs_index_of_ag(voluta_index_t ag_index);
 
 voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 
-voluta_lba_t voluta_lba_by_ag(voluta_index_t ag_index, size_t bn);
+loff_t voluta_off_in_blob(loff_t off, size_t blob_size);
 
 
 bool voluta_vtype_isspmap(enum voluta_vtype vtype);
@@ -108,13 +108,9 @@ int voluta_baddr_to_name(const struct voluta_baddr *baddr,
 int voluta_baddr_by_name(struct voluta_baddr *baddr,
                          enum voluta_vtype vtype, const char *name);
 
-void voluta_baddr_make_for_super(struct voluta_baddr *baddr);
+void voluta_baddr_for_super(struct voluta_baddr *baddr);
 
-void voluta_baddr_make_for_hsmap(struct voluta_baddr *baddr);
-
-void voluta_baddr_make_for_agmap(struct voluta_baddr *baddr);
-
-void voluta_baddr_make_for_agbks(struct voluta_baddr *baddr);
+void voluta_baddr_for_agbks(struct voluta_baddr *baddr);
 
 
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
@@ -131,6 +127,10 @@ void voluta_vba_setup(struct voluta_vba *vba,
 void voluta_vba_reset(struct voluta_vba *vba);
 
 void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other);
+
+void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index);
+
+void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index);
 
 
 void voluta_uuid_generate(struct voluta_uuid *uu);

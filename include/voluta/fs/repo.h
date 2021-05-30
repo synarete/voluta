@@ -22,7 +22,7 @@
 struct voluta_repo;
 struct voluta_qalloc;
 struct voluta_baddr;
-struct voluta_blob_info;
+struct voluta_bref_info;
 struct voluta_fiovec;
 
 int voluta_repo_init(struct voluta_repo *repo,

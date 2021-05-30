@@ -286,7 +286,7 @@ static void ut_make_super_id(struct voluta_namebuf *nb)
 	const size_t nmax = sizeof(nb->name) - 1;
 	struct voluta_baddr baddr;
 
-	voluta_baddr_make_for_super(&baddr);
+	voluta_baddr_for_super(&baddr);
 	err = voluta_baddr_to_name(&baddr, nb->name, nmax, &len);
 	ut_expect_ok(err);
 	ut_expect_lt(len, nmax);

@@ -111,61 +111,66 @@ static long bk_lba_to_bu_lba(long lba)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void *malloc_nelems(struct voluta_qalloc *qal,
+static void *malloc_nelems(struct voluta_alloc_if *alif,
                            size_t elemsz, size_t nelems)
 {
-	return voluta_qalloc_malloc(qal, elemsz * nelems);
+	return voluta_allocate(alif, elemsz * nelems);
 }
 
 
-static void free_nelems(struct voluta_qalloc *qal,
+static void free_nelems(struct voluta_alloc_if *alif,
                         void *ptr, size_t elemsz, size_t nelems)
 {
-	voluta_qalloc_free(qal, ptr, elemsz * nelems);
+	voluta_deallocate(alif, ptr, elemsz * nelems);
 }
 
 static struct voluta_list_head *
-new_htbl(struct voluta_qalloc *qal, size_t nelems)
+new_htbl(struct voluta_alloc_if *alif, size_t nelems)
 {
 	struct voluta_list_head *htbl;
 
-	htbl = malloc_nelems(qal, sizeof(*htbl), nelems);
+	htbl = malloc_nelems(alif, sizeof(*htbl), nelems);
 	if (htbl != NULL) {
 		list_head_initn(htbl, nelems);
 	}
 	return htbl;
 }
 
-static void del_htbl(struct voluta_qalloc *qal,
+static void del_htbl(struct voluta_alloc_if *alif,
                      struct voluta_list_head *htbl, size_t nelems)
 {
 	list_head_finin(htbl, nelems);
-	free_nelems(qal, htbl, sizeof(*htbl), nelems);
+	free_nelems(alif, htbl, sizeof(*htbl), nelems);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_blocks_sec *malloc_bsec(struct voluta_qalloc *qal)
+static struct voluta_blocks_sec *bsec_malloc(struct voluta_alloc_if *alif)
 {
 	struct voluta_blocks_sec *bs;
 
-	bs = voluta_qalloc_malloc(qal, sizeof(*bs));
+	bs = voluta_allocate(alif, sizeof(*bs));
 	return bs;
 }
 
-static void free_bsec(struct voluta_qalloc *qal, struct voluta_blocks_sec *bs)
+static void bsec_free(struct voluta_blocks_sec *bs,
+                      struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_free(qal, bs, sizeof(*bs));
+	voluta_deallocate(alif, bs, sizeof(*bs));
 }
 
-static struct voluta_bksec_info *malloc_bsi(struct voluta_mpool *mpool)
+static struct voluta_bksec_info *bsi_malloc(struct voluta_alloc_if *alif)
 {
-	return voluta_malloc_bsi(mpool);
+	struct voluta_bksec_info *bsi;
+
+	bsi = voluta_allocate(alif, sizeof(*bsi));
+	return bsi;
 }
 
-static void free_bsi(struct voluta_mpool *mpool, struct voluta_bksec_info *bsi)
+static void bsi_free(struct voluta_bksec_info *bsi,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_free_bsi(mpool, bsi);
+	voluta_deallocate(alif, bsi, sizeof(*bsi));
 }
 
 
@@ -525,12 +530,12 @@ static bool bsi_is_visible_at(struct voluta_bksec_info *bsi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int lrumap_init(struct voluta_lrumap *lm, struct voluta_qalloc *qal,
+static int lrumap_init(struct voluta_lrumap *lm, struct voluta_alloc_if *alif,
                        size_t htbl_size, long (*hash_fn)(long))
 {
 	struct voluta_list_head *htbl;
 
-	htbl = new_htbl(qal, htbl_size);
+	htbl = new_htbl(alif, htbl_size);
 	if (htbl == NULL) {
 		return -ENOMEM;
 	}
@@ -542,10 +547,10 @@ static int lrumap_init(struct voluta_lrumap *lm, struct voluta_qalloc *qal,
 	return 0;
 }
 
-static void lrumap_fini(struct voluta_lrumap *lm, struct voluta_qalloc *qal)
+static void lrumap_fini(struct voluta_lrumap *lm, struct voluta_alloc_if *alif)
 {
 	if (lm->htbl != NULL) {
-		del_htbl(qal, lm->htbl, lm->htbl_nelems);
+		del_htbl(alif, lm->htbl, lm->htbl_nelems);
 		listq_fini(&lm->lru);
 		lm->htbl = NULL;
 		lm->hash_fn = NULL;
@@ -903,13 +908,13 @@ cache_new_bsi(const struct voluta_cache *cache)
 	struct voluta_blocks_sec *bs;
 	struct voluta_bksec_info *bsi;
 
-	bs = malloc_bsec(cache->c_qalloc);
+	bs = bsec_malloc(cache->c_alif);
 	if (bs == NULL) {
 		return NULL;
 	}
-	bsi = malloc_bsi(cache->c_mpool);
+	bsi = bsi_malloc(cache->c_alif);
 	if (bsi == NULL) {
-		free_bsec(cache->c_qalloc, bs);
+		bsec_free(bs, cache->c_alif);
 		return NULL;
 	}
 	bsi_init(bsi, bs);
@@ -919,11 +924,11 @@ cache_new_bsi(const struct voluta_cache *cache)
 static void cache_del_bsi(const struct voluta_cache *cache,
                           struct voluta_bksec_info *bsi)
 {
-	struct voluta_blocks_sec *bu = bsi->bs;
+	struct voluta_blocks_sec *bs = bsi->bs;
 
 	bsi_fini(bsi);
-	free_bsec(cache->c_qalloc, bu);
-	free_bsi(cache->c_mpool, bsi);
+	bsec_free(bs, cache->c_alif);
+	bsi_free(bsi, cache->c_alif);
 }
 
 static int cache_init_dirtyqs(struct voluta_cache *cache)
@@ -938,13 +943,12 @@ static void cache_fini_dirtyqs(struct voluta_cache *cache)
 
 static int cache_init_blm(struct voluta_cache *cache, size_t htbl_size)
 {
-	return lrumap_init(&cache->c_blm, cache->c_qalloc,
-	                   htbl_size, lba_hash);
+	return lrumap_init(&cache->c_blm, cache->c_alif, htbl_size, lba_hash);
 }
 
 static void cache_fini_blm(struct voluta_cache *cache)
 {
-	lrumap_fini(&cache->c_blm, cache->c_qalloc);
+	lrumap_fini(&cache->c_blm, cache->c_alif);
 }
 
 static struct voluta_bksec_info *
@@ -1173,18 +1177,17 @@ static size_t cache_shrink_or_relru_bks(struct voluta_cache *cache, size_t cnt)
 
 static struct voluta_vnode_info *cache_new_vi(const struct voluta_cache *cache)
 {
-	return voluta_vi_new(cache->c_mpool);
+	return voluta_vi_new(cache->c_alif);
 }
 
 static int cache_init_vlm(struct voluta_cache *cache, size_t htbl_size)
 {
-	return lrumap_init(&cache->c_vlm, cache->c_qalloc,
-	                   htbl_size, off_hash);
+	return lrumap_init(&cache->c_vlm, cache->c_alif, htbl_size, off_hash);
 }
 
 static void cache_fini_vlm(struct voluta_cache *cache)
 {
-	lrumap_fini(&cache->c_vlm, cache->c_qalloc);
+	lrumap_fini(&cache->c_vlm, cache->c_alif);
 }
 
 static struct voluta_vnode_info *
@@ -1226,7 +1229,7 @@ static void cache_evict_vi(struct voluta_cache *cache,
 
 	cache_remove_vi(cache, vi);
 	vi_detach_bk(vi);
-	delete_fn(vi, cache->c_mpool);
+	delete_fn(vi, cache->c_alif);
 }
 
 static void cache_promote_lru_vi(struct voluta_cache *cache,
@@ -1422,7 +1425,7 @@ static size_t cache_shrink_or_relru_vis(struct voluta_cache *cache, size_t cnt)
 static struct voluta_hspace_info *
 cache_new_hsi(const struct voluta_cache *cache)
 {
-	return voluta_hsi_new(cache->c_mpool);
+	return voluta_hsi_new(cache->c_alif);
 }
 
 static struct voluta_hspace_info *
@@ -1458,7 +1461,7 @@ cache_require_hsi(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 static struct voluta_agroup_info *
 cache_new_agi(const struct voluta_cache *cache)
 {
-	return voluta_agi_new(cache->c_mpool);
+	return voluta_agi_new(cache->c_alif);
 }
 
 static struct voluta_agroup_info *
@@ -1512,18 +1515,17 @@ voluta_cache_spawn_vi(struct voluta_cache *cache,
 
 static struct voluta_inode_info *cache_new_ii(const struct voluta_cache *cache)
 {
-	return voluta_ii_new(cache->c_mpool);
+	return voluta_ii_new(cache->c_alif);
 }
 
 static int cache_init_ilm(struct voluta_cache *cache, size_t htbl_size)
 {
-	return lrumap_init(&cache->c_ilm, cache->c_qalloc,
-	                   htbl_size, off_hash);
+	return lrumap_init(&cache->c_ilm, cache->c_alif, htbl_size, off_hash);
 }
 
 static void cache_fini_ilm(struct voluta_cache *cache)
 {
-	lrumap_fini(&cache->c_ilm, cache->c_qalloc);
+	lrumap_fini(&cache->c_ilm, cache->c_alif);
 }
 
 static struct voluta_inode_info *
@@ -1547,7 +1549,7 @@ static void cache_evict_ii(struct voluta_cache *cache,
 
 	lrumap_remove(&cache->c_ilm, ii_ce(ii));
 	vi_detach_bk(vi);
-	delete_fn(vi, cache->c_mpool);
+	delete_fn(vi, cache->c_alif);
 }
 
 static void cache_promote_lru_ii(struct voluta_cache *cache,
@@ -1949,20 +1951,23 @@ static void cache_evict_some(struct voluta_cache *cache)
 
 static int cache_init_nil_bk(struct voluta_cache *cache)
 {
-	struct voluta_qalloc *qal = cache->c_qalloc;
-	const size_t bk_size = sizeof(*cache->c_nil_bk);
+	struct voluta_block *nil_bk;
 
-	cache->c_nil_bk = voluta_qalloc_zmalloc(qal, bk_size);
-	return (cache->c_nil_bk != NULL) ? 0 : -ENOMEM;
+	nil_bk = voluta_allocate(cache->c_alif, sizeof(*nil_bk));
+	if (nil_bk == NULL) {
+		return -ENOMEM;
+	}
+	voluta_memzero(nil_bk, sizeof(*nil_bk));
+	cache->c_nil_bk = nil_bk;
+	return 0;
 }
 
 static void cache_fini_nil_bk(struct voluta_cache *cache)
 {
-	struct voluta_qalloc *qal = cache->c_qalloc;
-	const size_t bk_size = sizeof(*cache->c_nil_bk);
+	struct voluta_block *nil_bk = cache->c_nil_bk;
 
-	if (cache->c_nil_bk != NULL) {
-		voluta_qalloc_free(qal, cache->c_nil_bk, bk_size);
+	if (nil_bk != NULL) {
+		voluta_deallocate(cache->c_alif, nil_bk, sizeof(*nil_bk));
 		cache->c_nil_bk = NULL;
 	}
 }
@@ -2010,14 +2015,16 @@ out:
 	return 0;
 }
 
-int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool)
+int voluta_cache_init(struct voluta_cache *cache,
+                      struct voluta_qalloc *qalloc,
+                      struct voluta_alloc_if *alif)
 {
 	int err;
 
 	voluta_memzero(cache, sizeof(*cache));
 	cache->c_tick = 1;
-	cache->c_mpool = mpool;
-	cache->c_qalloc = mpool->mp_qal;
+	cache->c_qalloc = qalloc;
+	cache->c_alif = alif;
 
 	err = cache_init_nil_bk(cache);
 	if (err) {
@@ -2046,7 +2053,7 @@ void voluta_cache_fini(struct voluta_cache *cache)
 	cache_fini_dirtyqs(cache);
 	cache_fini_nil_bk(cache);
 	cache->c_qalloc = NULL;
-	cache->c_mpool = NULL;
+	cache->c_alif = NULL;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

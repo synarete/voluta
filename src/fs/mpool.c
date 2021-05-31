@@ -133,6 +133,7 @@ void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal)
 
 void voluta_mpool_fini(struct voluta_mpool *mpool)
 {
+	mpool_fini_alloc_if(mpool);
 	listq_fini(&mpool->mp_iq);
 	listq_fini(&mpool->mp_vq);
 	listq_fini(&mpool->mp_bq);
@@ -566,7 +567,7 @@ static void mpool_free_ii(struct voluta_mpool *mpool,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-struct voluta_bksec_info *voluta_malloc_bsi(struct voluta_mpool *mpool)
+static struct voluta_bksec_info *mpool_malloc_bsi(struct voluta_mpool *mpool)
 {
 	int err;
 	struct voluta_bksec_info *bsi;
@@ -586,13 +587,7 @@ struct voluta_bksec_info *voluta_malloc_bsi(struct voluta_mpool *mpool)
 	return bsi;
 }
 
-void voluta_free_bsi(struct voluta_mpool *mpool, struct voluta_bksec_info *bsi)
-{
-	mpool_free_bsi(mpool, bsi);
-}
-
-
-struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool)
+static struct voluta_vnode_info *mpool_malloc_vi(struct voluta_mpool *mpool)
 {
 	int err;
 	struct voluta_vnode_info *vi;
@@ -612,13 +607,7 @@ struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool)
 	return vi;
 }
 
-void voluta_free_vi(struct voluta_mpool *mpool, struct voluta_vnode_info *vi)
-{
-	mpool_free_vi(mpool, vi);
-}
-
-
-struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool)
+static struct voluta_inode_info *mpool_malloc_ii(struct voluta_mpool *mpool)
 {
 	int err;
 	struct voluta_inode_info *ii;
@@ -638,18 +627,13 @@ struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool)
 	return ii;
 }
 
-void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii)
-{
-	mpool_free_ii(mpool, ii);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_mpool *aif_to_mpool(struct voluta_alloc_if *aif)
 {
 	struct voluta_mpool *mpool;
 
-	mpool = voluta_container_of(aif, struct voluta_mpool, mp_aif);
+	mpool = voluta_container_of(aif, struct voluta_mpool, mp_alif);
 	return mpool;
 }
 
@@ -660,13 +644,13 @@ static void *mpool_malloc(struct voluta_alloc_if *aif, size_t nbytes)
 
 	switch (nbytes) {
 	case sizeof(struct voluta_bksec_info):
-		ptr = voluta_malloc_bsi(mpool);
+		ptr = mpool_malloc_bsi(mpool);
 		break;
 	case sizeof(struct voluta_vnode_info):
-		ptr = voluta_malloc_vi(mpool);
+		ptr = mpool_malloc_vi(mpool);
 		break;
 	case sizeof(struct voluta_inode_info):
-		ptr = voluta_malloc_ii(mpool);
+		ptr = mpool_malloc_ii(mpool);
 		break;
 	default:
 		ptr = voluta_qalloc_malloc(mpool->mp_qal, nbytes);
@@ -681,13 +665,13 @@ static void mpool_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
 
 	switch (nbytes) {
 	case sizeof(struct voluta_bksec_info):
-		voluta_free_bsi(mpool, ptr);
+		mpool_free_bsi(mpool, ptr);
 		break;
 	case sizeof(struct voluta_vnode_info):
-		voluta_free_vi(mpool, ptr);
+		mpool_free_vi(mpool, ptr);
 		break;
 	case sizeof(struct voluta_inode_info):
-		voluta_free_ii(mpool, ptr);
+		mpool_free_ii(mpool, ptr);
 		break;
 	default:
 		voluta_qalloc_free(mpool->mp_qal, ptr, nbytes);
@@ -697,12 +681,12 @@ static void mpool_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
 
 static void mpool_init_alloc_if(struct voluta_mpool *mpool)
 {
-	mpool->mp_aif.malloc_fn = mpool_malloc;
-	mpool->mp_aif.free_fn = mpool_free;
+	mpool->mp_alif.malloc_fn = mpool_malloc;
+	mpool->mp_alif.free_fn = mpool_free;
 }
 
 static void mpool_fini_alloc_if(struct voluta_mpool *mpool)
 {
-	mpool->mp_aif.malloc_fn = NULL;
-	mpool->mp_aif.free_fn = NULL;
+	mpool->mp_alif.malloc_fn = NULL;
+	mpool->mp_alif.free_fn = NULL;
 }

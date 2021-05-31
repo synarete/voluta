@@ -284,8 +284,8 @@ struct voluta_lrumap {
 };
 
 struct voluta_cache {
-	struct voluta_mpool    *c_mpool;
 	struct voluta_qalloc   *c_qalloc;
+	struct voluta_alloc_if *c_alif;
 	struct voluta_dirtyqs   c_dqs;
 	struct voluta_lrumap    c_blm;
 	struct voluta_lrumap    c_vlm;

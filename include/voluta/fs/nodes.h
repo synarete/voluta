@@ -22,7 +22,7 @@ struct voluta_mpool;
 
 
 typedef void (*voluta_vi_delete_fn)(struct voluta_vnode_info *vi,
-                                    struct voluta_mpool *mpool);
+                                    struct voluta_alloc_if *alif);
 
 
 /* bnode */
@@ -92,19 +92,19 @@ struct voluta_inode_info {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_vnode_info *
-voluta_vi_new(struct voluta_mpool *mpool);
+voluta_vi_new(struct voluta_alloc_if *alif);
 
 struct voluta_hspace_info *
-voluta_hsi_new(struct voluta_mpool *mpool);
+voluta_hsi_new(struct voluta_alloc_if *alif);
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
 
 struct voluta_agroup_info *
-voluta_agi_new(struct voluta_mpool *mpool);
+voluta_agi_new(struct voluta_alloc_if *alif);
 
 struct voluta_inode_info *
-voluta_ii_new(struct voluta_mpool *mpool);
+voluta_ii_new(struct voluta_alloc_if *alif);
 
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);

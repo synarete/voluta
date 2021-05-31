@@ -21,30 +21,15 @@
 
 /* pool-based memory-allocator */
 struct voluta_mpool {
-	struct voluta_qalloc *mp_qal;
-	struct voluta_listq mp_bq;
-	struct voluta_listq mp_vq;
-	struct voluta_listq mp_iq;
-	struct voluta_alloc_if mp_aif;
+	struct voluta_qalloc   *mp_qal;
+	struct voluta_listq     mp_bq;
+	struct voluta_listq     mp_vq;
+	struct voluta_listq     mp_iq;
+	struct voluta_alloc_if  mp_alif;
 };
-
 
 void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);
 
 void voluta_mpool_fini(struct voluta_mpool *mpool);
-
-struct voluta_bksec_info *voluta_malloc_bsi(struct voluta_mpool *mpool);
-
-void voluta_free_bsi(struct voluta_mpool *mpool,
-                     struct voluta_bksec_info *bsi);
-
-struct voluta_vnode_info *voluta_malloc_vi(struct voluta_mpool *mpool);
-
-void voluta_free_vi(struct voluta_mpool *mpool, struct voluta_vnode_info *vi);
-
-struct voluta_inode_info *voluta_malloc_ii(struct voluta_mpool *mpool);
-
-void voluta_free_ii(struct voluta_mpool *mpool, struct voluta_inode_info *ii);
-
 
 #endif /* VOLUTA_MPOOL_H_ */

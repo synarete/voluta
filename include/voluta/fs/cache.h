@@ -26,7 +26,9 @@ void voluta_ce_init(struct voluta_cache_elem *ce);
 void voluta_ce_fini(struct voluta_cache_elem *ce);
 
 
-int voluta_cache_init(struct voluta_cache *cache, struct voluta_mpool *mpool);
+int voluta_cache_init(struct voluta_cache *cache,
+                      struct voluta_qalloc *qalloc,
+                      struct voluta_alloc_if *alif);
 
 void voluta_cache_fini(struct voluta_cache *cache);
 

@@ -144,7 +144,7 @@ static int fse_init_cache(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_cache *cache = &fse_obj_of(fse)->fs_core.c.cache;
 
-	err = voluta_cache_init(cache, fse->mpool);
+	err = voluta_cache_init(cache, fse->qalloc, &fse->mpool->mp_alif);
 	if (!err) {
 		fse->cache = cache;
 	}

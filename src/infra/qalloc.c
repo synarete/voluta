@@ -112,28 +112,38 @@ static void static_assert_alloc_sizes(void)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_qalloc *aif_to_qal(struct voluta_alloc_if *aif)
+static struct voluta_qalloc *alif_to_qal(struct voluta_alloc_if *alif)
 {
 	struct voluta_qalloc *qal;
 
-	qal = voluta_container_of(aif, struct voluta_qalloc, aif);
+	qal = voluta_container_of(alif, struct voluta_qalloc, alif);
 	return qal;
 }
 
 static void *qal_malloc(struct voluta_alloc_if *aif, size_t nbytes)
 {
-	struct voluta_qalloc *qal = aif_to_qal(aif);
+	struct voluta_qalloc *qal = alif_to_qal(aif);
 
 	return voluta_qalloc_malloc(qal, nbytes);
 }
 
 static void qal_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
 {
-	struct voluta_qalloc *qal = aif_to_qal(aif);
+	struct voluta_qalloc *qal = alif_to_qal(aif);
 
 	voluta_qalloc_free(qal, ptr, nbytes);
 }
 
+
+void *voluta_allocate(struct voluta_alloc_if *alif, size_t size)
+{
+	return alif->malloc_fn(alif, size);
+}
+
+void voluta_deallocate(struct voluta_alloc_if *alif, void *ptr, size_t size)
+{
+	return alif->free_fn(alif, ptr, size);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -554,8 +564,8 @@ static int check_memsize(size_t memsize)
 
 static void qalloc_init_interface(struct voluta_qalloc *qal)
 {
-	qal->aif.malloc_fn = qal_malloc;
-	qal->aif.free_fn = qal_free;
+	qal->alif.malloc_fn = qal_malloc;
+	qal->alif.free_fn = qal_free;
 }
 
 int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize)

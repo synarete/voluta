@@ -33,12 +33,10 @@ void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
 
 
-void voluta_hsi_assign(struct voluta_hspace_info *hsi,
-                       const struct voluta_baddr *baddr,
-                       voluta_index_t hs_index);
+void voluta_hsi_set_index(struct voluta_hspace_info *hsi,
+                          voluta_index_t hs_index);
 
 void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      const struct voluta_baddr *baddr,
                       voluta_index_t hs_index, size_t nags_span);
 
 void voluta_hsi_vba(const struct voluta_hspace_info *hsi,
@@ -92,12 +90,10 @@ int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                enum voluta_vtype vtype, voluta_index_t *out);
 
 
-void voluta_agi_assign(struct voluta_agroup_info *agi,
-                       const struct voluta_baddr *baddr,
-                       voluta_index_t ag_index);
+void voluta_agi_set_index(struct voluta_agroup_info *agi,
+                          voluta_index_t ag_index);
 
 void voluta_agi_setup(struct voluta_agroup_info *agi,
-                      const struct voluta_baddr *baddr,
                       voluta_index_t ag_index);
 
 void voluta_agi_vba(const struct voluta_agroup_info *agi,

@@ -662,13 +662,13 @@ static int sgv_destage_into_blob(const struct voluta_vnode_info *vi)
 
 	if (vaddr->vtype == VOLUTA_VTYPE_HSMAP) {
 		hsi = voluta_hsi_from_vi(vi);
-		voluta_assert_eq(hsi->hs_baddr.size, vaddr->len);
+		voluta_assert_eq(hsi_baddr(hsi)->size, vaddr->len);
 
 		err = voluta_repo_save_blob(sbi->sb_repo, hsi_baddr(hsi),
 		                            vi->view, vaddr->off, vaddr->len);
 	} else if (vaddr->vtype == VOLUTA_VTYPE_AGMAP) {
 		agi = voluta_agi_from_vi(vi);
-		voluta_assert_eq(agi->ag_baddr.size, vaddr->len);
+		voluta_assert_eq(agi_baddr(agi)->size, vaddr->len);
 
 		err = voluta_repo_save_blob(sbi->sb_repo, agi_baddr(agi),
 		                            vi->view, vaddr->off, vaddr->len);

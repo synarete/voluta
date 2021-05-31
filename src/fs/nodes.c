@@ -49,9 +49,10 @@ static void an_fini(struct voluta_avl_node *an)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bi_init(struct voluta_bnode_info *bi)
+static void bi_init(struct voluta_bnode_info *bi,
+                    const struct voluta_baddr *baddr)
 {
-	baddr_reset(&bi->baddr);
+	baddr_copyto(baddr, &bi->baddr);
 	bi->bp = NULL;
 }
 
@@ -61,17 +62,24 @@ static void bi_fini(struct voluta_bnode_info *bi)
 	bi->bp = NULL;
 }
 
+static inline void bi_assign(struct voluta_bnode_info *bi,
+                             const struct voluta_baddr *baddr)
+{
+	baddr_copyto(baddr, &bi->baddr);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void vi_init(struct voluta_vnode_info *vi,
+                    const struct voluta_vba *vba,
                     voluta_vi_delete_fn del_hook)
 {
-	bi_init(&vi->v_bi);
+	bi_init(&vi->v_bi, &vba->baddr);
 	voluta_ce_init(&vi->v_ce);
 	lh_init(&vi->v_dq_blh);
 	lh_init(&vi->v_dq_mlh);
 	an_init(&vi->v_ds_an);
-	vaddr_reset(&vi->vaddr);
+	vaddr_copyto(&vba->vaddr, &vi->vaddr);
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
@@ -121,13 +129,14 @@ static void vi_delete(struct voluta_vnode_info *vi,
 	vi_free(vi, alif);
 }
 
-struct voluta_vnode_info *voluta_vi_new(struct voluta_alloc_if *alif)
+struct voluta_vnode_info *voluta_vi_new(struct voluta_alloc_if *alif,
+                                        const struct voluta_vba *vba)
 {
 	struct voluta_vnode_info *vi;
 
 	vi = vi_malloc(alif);
 	if (vi != NULL) {
-		vi_init(vi, vi_delete);
+		vi_init(vi, vba, vi_delete);
 	}
 	return vi;
 }
@@ -146,17 +155,16 @@ voluta_hsi_from_vi(const struct voluta_vnode_info *vi)
 }
 
 static void hsi_init(struct voluta_hspace_info *hsi,
+                     const struct voluta_vba *vba,
                      voluta_vi_delete_fn del_hook)
 {
-	vi_init(&hsi->hs_vi, del_hook);
-	baddr_reset(&hsi->hs_baddr);
+	vi_init(&hsi->hs_vi, vba, del_hook);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
 static void hsi_fini(struct voluta_hspace_info *hsi)
 {
 	vi_fini(&hsi->hs_vi);
-	baddr_reset(&hsi->hs_baddr);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
@@ -187,13 +195,14 @@ static void hsi_delete_by(struct voluta_vnode_info *vi,
 	hsi_delete(voluta_hsi_from_vi(vi), alif);
 }
 
-struct voluta_hspace_info *voluta_hsi_new(struct voluta_alloc_if *alif)
+struct voluta_hspace_info *
+voluta_hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_hspace_info *hsi;
 
 	hsi = hsi_malloc(alif);
 	if (hsi != NULL) {
-		hsi_init(hsi, hsi_delete_by);
+		hsi_init(hsi, vba, hsi_delete_by);
 	}
 	return hsi;
 }
@@ -212,17 +221,16 @@ voluta_agi_from_vi(const struct voluta_vnode_info *vi)
 }
 
 static void agi_init(struct voluta_agroup_info *agi,
+                     const struct voluta_vba *vba,
                      voluta_vi_delete_fn del_hook)
 {
-	vi_init(&agi->ag_vi, del_hook);
-	baddr_reset(&agi->ag_baddr);
+	vi_init(&agi->ag_vi, vba, del_hook);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
 static void agi_fini(struct voluta_agroup_info *agi)
 {
 	vi_fini(&agi->ag_vi);
-	baddr_reset(&agi->ag_baddr);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
@@ -253,13 +261,14 @@ static void agi_delete_by(struct voluta_vnode_info *vi,
 	agi_delete(voluta_agi_from_vi(vi), alif);
 }
 
-struct voluta_agroup_info *voluta_agi_new(struct voluta_alloc_if *alif)
+struct voluta_agroup_info *
+voluta_agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_agroup_info *agi;
 
 	agi = agi_malloc(alif);
 	if (agi != NULL) {
-		agi_init(agi, agi_delete_by);
+		agi_init(agi, vba, agi_delete_by);
 	}
 	return agi;
 }
@@ -277,11 +286,12 @@ struct voluta_inode_info *voluta_ii_from_vi(const struct voluta_vnode_info *vi)
 }
 
 static void ii_init(struct voluta_inode_info *ii,
+                    const struct voluta_vba *vba, ino_t ino,
                     voluta_vi_delete_fn del_hook)
 {
-	vi_init(&ii->i_vi, del_hook);
+	vi_init(&ii->i_vi, vba, del_hook);
 	ii->inode = NULL;
-	ii->i_ino = VOLUTA_INO_NULL;
+	ii->i_ino = ino;
 	ii->i_nopen = 0;
 	ii->i_nlookup = 0;
 	ii->i_pinned = false;
@@ -324,13 +334,15 @@ static void ii_delete_by(struct voluta_vnode_info *vi,
 	ii_delete(voluta_ii_from_vi(vi), alif);
 }
 
-struct voluta_inode_info *voluta_ii_new(struct voluta_alloc_if *alif)
+struct voluta_inode_info *
+voluta_ii_new(struct voluta_alloc_if *alif,
+              const struct voluta_vba *vba, ino_t ino)
 {
 	struct voluta_inode_info *ii;
 
 	ii = ii_malloc(alif);
 	if (ii != NULL) {
-		ii_init(ii, ii_delete_by);
+		ii_init(ii, vba, ino, ii_delete_by);
 	}
 	return ii;
 }

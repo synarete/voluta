@@ -1179,22 +1179,19 @@ static void hsi_dirtify(struct voluta_hspace_info *hsi)
 	vi_dirtify(hsi_vi(hsi));
 }
 
-void voluta_hsi_assign(struct voluta_hspace_info *hsi,
-                       const struct voluta_baddr *baddr,
-                       voluta_index_t hs_index)
+void voluta_hsi_set_index(struct voluta_hspace_info *hsi,
+                          voluta_index_t hs_index)
 {
 	voluta_assert_gt(hs_index, 0);
-	baddr_copyto(baddr, &hsi->hs_baddr);
 	hsi->hs_index = hs_index;
 }
 
 void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      const struct voluta_baddr *baddr,
                       voluta_index_t hs_index, size_t nags_span)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
-	voluta_hsi_assign(hsi, baddr, hs_index);
+	voluta_hsi_set_index(hsi, hs_index);
 	hsm_init(hsm, hs_index, nags_span);
 }
 
@@ -1377,22 +1374,19 @@ static void agi_dirtify(struct voluta_agroup_info *agi)
 	vi_dirtify(agi_vi(agi));
 }
 
-void voluta_agi_assign(struct voluta_agroup_info *agi,
-                       const struct voluta_baddr *baddr,
-                       voluta_index_t ag_index)
+void voluta_agi_set_index(struct voluta_agroup_info *agi,
+                          voluta_index_t ag_index)
 {
 	voluta_assert_gt(ag_index, 0);
-	baddr_copyto(baddr, &agi->ag_baddr);
 	agi->ag_index = ag_index;
 }
 
 void voluta_agi_setup(struct voluta_agroup_info *agi,
-                      const struct voluta_baddr *baddr,
                       voluta_index_t ag_index)
 {
 	struct voluta_agroup_map *agm = agroup_map_of(agi);
 
-	voluta_agi_assign(agi, baddr, ag_index);
+	voluta_agi_set_index(agi, ag_index);
 	agm_init(agm, ag_index);
 }
 

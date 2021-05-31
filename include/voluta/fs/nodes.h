@@ -68,13 +68,11 @@ struct voluta_vnode_info {
 /* space-maps */
 struct voluta_hspace_info {
 	struct voluta_vnode_info        hs_vi;
-	struct voluta_baddr             hs_baddr;
 	voluta_index_t                  hs_index;
 };
 
 struct voluta_agroup_info {
 	struct voluta_vnode_info        ag_vi;
-	struct voluta_baddr             ag_baddr;
 	voluta_index_t                  ag_index;
 };
 
@@ -92,19 +90,20 @@ struct voluta_inode_info {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_vnode_info *
-voluta_vi_new(struct voluta_alloc_if *alif);
+voluta_vi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
 
 struct voluta_hspace_info *
-voluta_hsi_new(struct voluta_alloc_if *alif);
+voluta_hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
+
+struct voluta_agroup_info *
+voluta_agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
+
+struct voluta_inode_info *
+voluta_ii_new(struct voluta_alloc_if *alif,
+              const struct voluta_vba *vba, ino_t ino);
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
-
-struct voluta_agroup_info *
-voluta_agi_new(struct voluta_alloc_if *alif);
-
-struct voluta_inode_info *
-voluta_ii_new(struct voluta_alloc_if *alif);
 
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);

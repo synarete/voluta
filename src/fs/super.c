@@ -839,21 +839,21 @@ static int find_cached_vi(struct voluta_sb_info *sbi,
 }
 
 static int try_spawn_vi(struct voluta_sb_info *sbi,
-                        const struct voluta_vaddr *vaddr,
+                        const struct voluta_vba *vba,
                         struct voluta_vnode_info **out_vi)
 {
-	*out_vi = voluta_cache_spawn_vi(cache_of(sbi), vaddr);
+	*out_vi = voluta_cache_spawn_vi(cache_of(sbi), vba);
 	return (*out_vi == NULL) ? -ENOMEM : 0;
 }
 
 static int spawn_vi(struct voluta_sb_info *sbi,
-                    const struct voluta_vaddr *vaddr,
+                    const struct voluta_vba *vba,
                     struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_cache *cache = cache_of(sbi);
 
-	err = try_spawn_vi(sbi, vaddr, out_vi);
+	err = try_spawn_vi(sbi, vba, out_vi);
 	if (!err) {
 		return 0;
 	}
@@ -861,7 +861,7 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = try_spawn_vi(sbi, vaddr, out_vi);
+	err = try_spawn_vi(sbi, vba, out_vi);
 	if (err) {
 		log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
 		        cache->c_vlm.htbl_size, total_dirty_size(sbi));
@@ -871,17 +871,17 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 }
 
 static int spawn_bind_vi(struct voluta_sb_info *sbi,
-                         const struct voluta_vaddr *vaddr, bool dont_reload,
+                         const struct voluta_vba *vba, bool dont_reload,
                          struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_bksec_info *bsi = NULL;
 
-	err = stage_parents_of(sbi, vaddr, dont_reload, &bsi);
+	err = stage_parents_of(sbi, &vba->vaddr, dont_reload, &bsi);
 	if (err) {
 		return err;
 	}
-	err = spawn_vi(sbi, vaddr, out_vi);
+	err = spawn_vi(sbi, vba, out_vi);
 	if (err) {
 		return err;
 	}
@@ -903,7 +903,7 @@ static int spawn_bind_spmap_vi(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi(sbi, &vba->vaddr, out_vi);
+	err = spawn_vi(sbi, vba, out_vi);
 	if (err) {
 		return err;
 	}
@@ -921,13 +921,13 @@ static void forget_cached_vi(struct voluta_vnode_info *vi)
 	}
 }
 
-static int spawn_ii_now(struct voluta_sb_info *sbi,
-                        const struct voluta_iaddr *iaddr,
+static int try_spawn_ii(struct voluta_sb_info *sbi,
+                        const struct voluta_vba *vba, ino_t ino,
                         struct voluta_inode_info **out_ii)
 {
 	struct voluta_cache *cache = cache_of(sbi);
 
-	*out_ii = voluta_cache_spawn_ii(cache, &iaddr->vaddr, iaddr->ino);
+	*out_ii = voluta_cache_spawn_ii(cache, vba, ino);
 	return (*out_ii == NULL) ? -ENOMEM : 0;
 }
 
@@ -936,9 +936,11 @@ static int spawn_ii(struct voluta_sb_info *sbi,
                     struct voluta_inode_info **out_ii)
 {
 	int err;
+	struct voluta_vba vba = { .baddr.size = 0 };
 	const struct voluta_cache *cache = cache_of(sbi);
 
-	err = spawn_ii_now(sbi, iaddr, out_ii);
+	vaddr_copyto(&iaddr->vaddr, &vba.vaddr);
+	err = try_spawn_ii(sbi, &vba, iaddr->ino, out_ii);
 	if (!err) {
 		return 0;
 	}
@@ -946,7 +948,7 @@ static int spawn_ii(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_ii_now(sbi, iaddr, out_ii);
+	err = try_spawn_ii(sbi, &vba, iaddr->ino, out_ii);
 	if (err) {
 		log_dbg("can not spawn ii: nii=%lu dirty=%lu",
 		        cache->c_ilm.htbl_size, total_dirty_size(sbi));
@@ -1045,17 +1047,17 @@ static int decrypt_review_vnode(struct voluta_sb_info *sbi,
 }
 
 static int stage_vnode(struct voluta_sb_info *sbi,
-                       const struct voluta_vaddr *vaddr,
+                       const struct voluta_vba *vba,
                        struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
-	err = find_cached_vi(sbi, vaddr, out_vi);
+	err = find_cached_vi(sbi, &vba->vaddr, out_vi);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bind_vi(sbi, vaddr, false, &vi);
+	err = spawn_bind_vi(sbi, vba, false, &vi);
 	if (err) {
 		goto out_err;
 	}
@@ -1180,7 +1182,7 @@ static int spawn_hsmap_of(struct voluta_sb_info *sbi,
 	vi_stamp_view(vi);
 
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_setup(hsi, &vba.baddr, hs_index, nags_span);
+	voluta_hsi_setup(hsi, hs_index, nags_span);
 	vi_dirtify(vi);
 
 	*out_hsi = hsi;
@@ -1349,7 +1351,7 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	vi_stamp_view(vi);
 
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_setup(agi, &vba.baddr, ag_index);
+	voluta_agi_setup(agi, ag_index);
 
 	vi_dirtify(vi);
 
@@ -1853,12 +1855,12 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = stage_vnode(sbi, &vba.vaddr, &vi);
+	err = stage_vnode(sbi, &vba, &vi);
 	if (err) {
 		return err;
 	}
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_assign(hsi, &vba.baddr, hs_index);
+	voluta_hsi_set_index(hsi, hs_index);
 
 	/* XXX */
 	err = stage_hsm_from_blob(sbi, hsi);
@@ -2006,12 +2008,12 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = stage_vnode(sbi, &vba.vaddr, &vi);
+	err = stage_vnode(sbi, &vba, &vi);
 	if (err) {
 		return err;
 	}
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_assign(agi, &vba.baddr, ag_index);
+	voluta_agi_set_index(agi, ag_index);
 
 	err = verify_agmap(sbi, agi);
 	if (err) {
@@ -2167,8 +2169,10 @@ static int stage_normal(struct voluta_sb_info *sbi,
                         struct voluta_vnode_info **out_vi)
 {
 	int err;
+	struct voluta_vba vba = { .baddr.size = vaddr->len };
 
-	err = stage_vnode(sbi, vaddr, out_vi);
+	vaddr_copyto(vaddr, &vba.vaddr);
+	err = stage_vnode(sbi, &vba, out_vi);
 	if (err) {
 		return err;
 	}
@@ -2354,6 +2358,7 @@ static int create_vnode(struct voluta_sb_info *sbi,
                         struct voluta_vnode_info **out_vi)
 {
 	int err;
+	struct voluta_vba vba = { .baddr.size = vtype_size(vtype) };
 	struct voluta_spalloc_ctx spa = {
 		.vtype = vtype,
 		.first_alloc = false
@@ -2363,7 +2368,8 @@ static int create_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_vi(sbi, &spa.vaddr, spa.first_alloc, out_vi);
+	vaddr_copyto(&spa.vaddr, &vba.vaddr);
+	err = spawn_bind_vi(sbi, &vba, spa.first_alloc, out_vi);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;

@@ -57,7 +57,7 @@ void voluta_cache_forget_bsi(struct voluta_cache *cache,
 
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
-                      const struct voluta_vaddr *vaddr, ino_t ino);
+                      const struct voluta_vba *vba, ino_t ino);
 
 void voulta_cache_forget_ii(struct voluta_cache *cache,
                             struct voluta_inode_info *ii);
@@ -72,7 +72,7 @@ voluta_cache_lookup_vi(struct voluta_cache *cache,
 
 struct voluta_vnode_info *
 voluta_cache_spawn_vi(struct voluta_cache *cache,
-                      const struct voluta_vaddr *vaddr);
+                      const struct voluta_vba *vba);
 
 void voulta_cache_forget_vi(struct voluta_cache *cache,
                             struct voluta_vnode_info *vi);

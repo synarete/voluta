@@ -1748,9 +1748,11 @@ static bool cache_has_overpop(const struct voluta_cache *cache)
 
 static uint64_t cache_memory_pressure(const struct voluta_cache *cache)
 {
-	const uint64_t npages_used = cache->c_qalloc->st.npages_used;
-	const uint64_t npages_tota = cache->c_qalloc->st.npages;
-	const uint64_t nbits = ((61UL * npages_used) / npages_tota);
+	uint64_t nbits;
+	struct voluta_alloc_stat st;
+
+	voluta_allocstat(cache->c_alif, &st);
+	nbits = ((61UL * st.npages_used) / st.npages_tota);
 
 	/* returns memory-pressure represented as bit-mask */
 	return ((1UL << nbits) - 1);

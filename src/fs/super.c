@@ -1534,7 +1534,10 @@ int voluta_reload_spmaps(struct voluta_sb_info *sbi)
 
 static size_t calc_iopen_limit(const struct voluta_cache *cache)
 {
-	return (cache->c_qalloc->st.memsz_data / (2 * VOLUTA_BK_SIZE));
+	struct voluta_alloc_stat st;
+
+	voluta_allocstat(cache->c_alif, &st);
+	return (st.memsz_data / (2 * VOLUTA_BK_SIZE));
 }
 
 static void sbi_init_commons(struct voluta_sb_info *sbi)

@@ -19,22 +19,25 @@
 
 struct voluta_fiovec;
 
-/* allocator interface */
-struct voluta_alloc_if {
-	void *(*malloc_fn)(struct voluta_alloc_if *alif, size_t nbytes);
-	void (*free_fn)(struct voluta_alloc_if *alif,
-	                void *ptr, size_t nbytes);
-};
-
-/* quick memory allocator */
-struct voluta_qastat {
+/* allocator stats */
+struct voluta_alloc_stat {
+	size_t page_size;
 	size_t memsz_data;
 	size_t memsz_meta;
-	size_t npages;
+	size_t npages_tota;
 	size_t npages_used;
 	size_t nbytes_used;
 };
 
+/* allocator interface */
+struct voluta_alloc_if {
+	void *(*malloc_fn)(struct voluta_alloc_if *alif, size_t size);
+	void (*free_fn)(struct voluta_alloc_if *alif, void *ptr, size_t size);
+	void (*stat_fn)(const struct voluta_alloc_if *alif,
+	                struct voluta_alloc_stat *out_stat);
+};
+
+/* quick memory allocator */
 struct voluta_slab {
 	struct voluta_list_head free_list;
 	size_t sindex;
@@ -50,7 +53,7 @@ struct voluta_qalloc {
 	int memfd_meta;
 	void *mem_data;
 	void *mem_meta;
-	struct voluta_qastat st;
+	struct voluta_alloc_stat st;
 	struct voluta_list_head free_list;
 	struct voluta_slab slabs[8];
 	struct voluta_alloc_if alif;
@@ -61,6 +64,9 @@ struct voluta_qalloc {
 void *voluta_allocate(struct voluta_alloc_if *alif, size_t size);
 
 void voluta_deallocate(struct voluta_alloc_if *alif, void *ptr, size_t size);
+
+void voluta_allocstat(const struct voluta_alloc_if *alif,
+                      struct voluta_alloc_stat *out_stat);
 
 /* quick allocator */
 int voluta_qalloc_init(struct voluta_qalloc *qal, size_t memsize);
@@ -76,7 +82,7 @@ void voluta_qalloc_free(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 void voluta_qalloc_zfree(struct voluta_qalloc *qal, void *ptr, size_t nbytes);
 
 void voluta_qalloc_stat(const struct voluta_qalloc *qal,
-                        struct voluta_qastat *qast);
+                        struct voluta_alloc_stat *out_stat);
 
 int voluta_qalloc_fiovec(const struct voluta_qalloc *qal, void *ptr,
                          size_t len, struct voluta_fiovec *fiov);

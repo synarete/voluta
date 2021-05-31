@@ -752,9 +752,11 @@ int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 void voluta_fse_stats(const struct voluta_fs_env *fse,
                       struct voluta_fs_stats *st)
 {
+	struct voluta_alloc_stat alloc_stat;
 	const struct voluta_cache *cache = fse->cache;
 
-	st->nalloc_bytes = cache->c_qalloc->st.nbytes_used;
+	voluta_qalloc_stat(fse->qalloc, &alloc_stat);
+	st->nalloc_bytes = alloc_stat.nbytes_used;
 	st->ncache_blocks = cache->c_blm.htbl_size;
 	st->ncache_inodes = cache->c_ilm.htbl_size;
 	st->ncache_vnodes = cache->c_vlm.htbl_size;

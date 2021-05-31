@@ -182,7 +182,7 @@ static void ut_qalloc_free_nbks(struct ut_env *ute)
 	struct voluta_list_head lst;
 	struct voluta_list_head *lnk;
 	const size_t bk_size =  UT_BK_SIZE;
-	struct voluta_qastat qast;
+	struct voluta_alloc_stat qast;
 
 	voluta_list_init(&lst);
 	qal = ut_new_qalloc(ute, 32 * UT_UMEGA);

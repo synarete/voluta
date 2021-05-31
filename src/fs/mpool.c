@@ -629,18 +629,18 @@ static struct voluta_inode_info *mpool_malloc_ii(struct voluta_mpool *mpool)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_mpool *aif_to_mpool(struct voluta_alloc_if *aif)
+static struct voluta_mpool *aif_to_mpool(const struct voluta_alloc_if *aif)
 {
-	struct voluta_mpool *mpool;
+	const struct voluta_mpool *mpool;
 
-	mpool = voluta_container_of(aif, struct voluta_mpool, mp_alif);
-	return mpool;
+	mpool = voluta_container_of2(aif, struct voluta_mpool, mp_alif);
+	return voluta_unconst(mpool);
 }
 
-static void *mpool_malloc(struct voluta_alloc_if *aif, size_t nbytes)
+static void *mpool_malloc(struct voluta_alloc_if *alif, size_t nbytes)
 {
 	void *ptr;
-	struct voluta_mpool *mpool = aif_to_mpool(aif);
+	struct voluta_mpool *mpool = aif_to_mpool(alif);
 
 	switch (nbytes) {
 	case sizeof(struct voluta_bksec_info):
@@ -659,9 +659,9 @@ static void *mpool_malloc(struct voluta_alloc_if *aif, size_t nbytes)
 	return ptr;
 }
 
-static void mpool_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
+static void mpool_free(struct voluta_alloc_if *alif, void *ptr, size_t nbytes)
 {
-	struct voluta_mpool *mpool = aif_to_mpool(aif);
+	struct voluta_mpool *mpool = aif_to_mpool(alif);
 
 	switch (nbytes) {
 	case sizeof(struct voluta_bksec_info):
@@ -679,14 +679,24 @@ static void mpool_free(struct voluta_alloc_if *aif, void *ptr, size_t nbytes)
 	}
 }
 
+static void mpool_stat(const struct voluta_alloc_if *alif,
+                       struct voluta_alloc_stat *out_stat)
+{
+	const struct voluta_mpool *mpool = aif_to_mpool(alif);
+
+	voluta_qalloc_stat(mpool->mp_qal, out_stat);
+}
+
 static void mpool_init_alloc_if(struct voluta_mpool *mpool)
 {
 	mpool->mp_alif.malloc_fn = mpool_malloc;
 	mpool->mp_alif.free_fn = mpool_free;
+	mpool->mp_alif.stat_fn = mpool_stat;
 }
 
 static void mpool_fini_alloc_if(struct voluta_mpool *mpool)
 {
 	mpool->mp_alif.malloc_fn = NULL;
 	mpool->mp_alif.free_fn = NULL;
+	mpool->mp_alif.stat_fn = NULL;
 }

@@ -85,8 +85,9 @@ void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
 
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
-                               enum voluta_vtype vtype, voluta_index_t *out);
-
+                               enum voluta_vtype vtype,
+                               voluta_index_t *out_ag_index,
+                               size_t *out_bn_within_ag);
 
 void voluta_agi_set_index(struct voluta_agroup_info *agi,
                           voluta_index_t ag_index);
@@ -103,10 +104,9 @@ void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
 void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
                             const struct voluta_vba *vba);
 
-int voluta_search_free_space(const struct voluta_hspace_info *hsi,
-                             const struct voluta_agroup_info *agi,
-                             enum voluta_vtype vtype,
-                             struct voluta_vaddr *out_vaddr);
+int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
+                               enum voluta_vtype vtype, size_t bn_start_hint,
+                               struct voluta_vba *out_vba);
 
 void voluta_agi_mark_allocated_space(struct voluta_agroup_info *agi,
                                      const struct voluta_vaddr *vaddr);

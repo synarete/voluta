@@ -62,12 +62,6 @@ static void bi_fini(struct voluta_bnode_info *bi)
 	bi->bp = NULL;
 }
 
-static inline void bi_assign(struct voluta_bnode_info *bi,
-                             const struct voluta_baddr *baddr)
-{
-	baddr_copyto(baddr, &bi->baddr);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void vi_init(struct voluta_vnode_info *vi,
@@ -146,7 +140,6 @@ void voluta_vi_vba(const struct voluta_vnode_info *vi,
 {
 	voluta_vba_setup(out_vba, vi_vaddr(vi), bi_baddr(&vi->v_bi));
 }
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

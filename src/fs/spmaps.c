@@ -949,6 +949,19 @@ static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }
 
+static void agm_bks_baddr_of(const struct voluta_agroup_map *agm,
+                             enum voluta_vtype vtype,
+                             struct voluta_baddr *out_baddr)
+{
+	const size_t vsize = vtype_size(vtype);
+
+	bls_baddr(&agm->ag_bks_bls, out_baddr);
+
+	voluta_assert_le(vsize, out_baddr->size);
+
+	out_baddr->size = vtype_size(vtype);
+}
+
 static void agm_bks_vba(const struct voluta_agroup_map *agm,
                         struct voluta_vba *out_vba)
 {
@@ -1217,14 +1230,38 @@ nused_bks_at(const struct voluta_hspace_info *hsi, size_t ag_index)
 	return nused_bytes / VOLUTA_BK_SIZE;
 }
 
+static size_t start_bn_of(const struct voluta_hspace_info *hsi,
+                          voluta_index_t ag_index, enum voluta_vtype vtype)
+{
+	size_t bn;
+	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
+
+	/* Heuristic for mostly append pattern */
+	bn = nused_bks_at(hsi, ag_index);
+
+	/* In case of full data-block align to higher */
+	if (bn && vtype_isdatabk(vtype)) {
+		bn = voluta_min(bn + 1, nbk_in_ag - 1);
+	}
+	return bn;
+}
+
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
-                               enum voluta_vtype vtype, voluta_index_t *out)
+                               enum voluta_vtype vtype,
+                               voluta_index_t *out_ag_index,
+                               size_t *out_bn_within_ag)
 {
+	size_t ag_index;
 	const struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
-	*out = hsm_find_avail(hsm, range, vtype);
-	return ag_index_isnull(*out) ? -ENOSPC : 0;
+	ag_index = hsm_find_avail(hsm, range, vtype);
+	if (ag_index_isnull(ag_index)) {
+		return -ENOSPC;
+	}
+	*out_ag_index = ag_index;
+	*out_bn_within_ag = start_bn_of(hsi, ag_index, vtype);
+	return 0;
 }
 
 void voluta_mark_with_next(struct voluta_hspace_info *hsi)
@@ -1387,15 +1424,6 @@ void voluta_agi_vba(const struct voluta_agroup_info *agi,
 	voluta_vba_setup(out_vba, agi_vaddr(agi), agi_baddr(agi));
 }
 
-static voluta_index_t ag_index_of(const struct voluta_agroup_info *agi)
-{
-	const struct voluta_agroup_map *agm = agroup_map_of(agi);
-
-	voluta_assert_eq(agm_index(agm), agi->ag_index);
-
-	return agi->ag_index;
-}
-
 void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
                         struct voluta_vba *out_vba)
 {
@@ -1412,36 +1440,19 @@ void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
 	agm_set_bks_vba(agm, vba);
 }
 
-static size_t start_bn_of(const struct voluta_hspace_info *hsi,
-                          const struct voluta_agroup_info *agi,
-                          enum voluta_vtype vtype)
+int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
+                               enum voluta_vtype vtype, size_t bn_start_hint,
+                               struct voluta_vba *out_vba)
 {
-	size_t bn;
-	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
-	const voluta_index_t ag_index = ag_index_of(agi);
-
-	/* Heuristic for mostly append pattern */
-	bn = nused_bks_at(hsi, ag_index);
-
-	/* In case of full data-block align to higher */
-	if (bn && vtype_isdatabk(vtype)) {
-		bn = voluta_min(bn + 1, nbk_in_ag - 1);
-	}
-	return bn;
-}
-
-int voluta_search_free_space(const struct voluta_hspace_info *hsi,
-                             const struct voluta_agroup_info *agi,
-                             enum voluta_vtype vtype,
-                             struct voluta_vaddr *out_vaddr)
-{
-	const size_t start_bn = start_bn_of(hsi, agi, vtype);
+	int err;
 	const struct voluta_agroup_map *agm = agroup_map_of(agi);
 
-	voluta_assert_le(start_bn, VOLUTA_NBK_IN_AG);
-	voluta_assert(hsm_is_formatted(hspace_map_of(hsi), agm_index(agm)));
-
-	return agm_find_free_space(agm, vtype, start_bn, out_vaddr);
+	err = agm_find_free_space(agm, vtype, bn_start_hint, &out_vba->vaddr);
+	if (err) {
+		return err;
+	}
+	agm_bks_baddr_of(agm, vtype, &out_vba->baddr);
+	return 0;
 }
 
 void voluta_agi_mark_allocated_space(struct voluta_agroup_info *agi,

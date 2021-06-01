@@ -661,7 +661,7 @@ static int sgv_destage_into_blob(const struct voluta_vnode_info *vi)
 	vi_vba(vi, &vba);
 	if ((vba.vaddr.vtype == VOLUTA_VTYPE_HSMAP) ||
 	    (vba.vaddr.vtype == VOLUTA_VTYPE_AGMAP)) {
-		err = voluta_repo_save_into(sbi->sb_repo, &vba, vi->view);
+		err = voluta_repo_save_blob(sbi->sb_repo, &vba, vi->view);
 	}
 	return err;
 }

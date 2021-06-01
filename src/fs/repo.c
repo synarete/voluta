@@ -646,15 +646,16 @@ static int repo_relax_once(struct voluta_repo *repo)
 	return 0;
 }
 
-int voluta_repo_prep_blob(struct voluta_repo *repo, loff_t off,
-                          const struct voluta_baddr *baddr)
+int voluta_repo_prep_blob(struct voluta_repo *repo,
+                          const struct voluta_vba *vba)
 {
 	int err;
 	int fd = -1;
+	const loff_t off = vba->vaddr.off;
+	const struct voluta_baddr *baddr = &vba->baddr;
 	struct voluta_bref_info *bri = NULL;
 
 	voluta_assert_gt(baddr->size, 0);
-
 	err = repo_relax_once(repo);
 	if (err) {
 		return err;
@@ -715,14 +716,6 @@ static int repo_stage_blob(struct voluta_repo *repo, loff_t off,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_repo_stage_blob(struct voluta_repo *repo, loff_t off,
-                           const struct voluta_baddr *baddr)
-{
-	struct voluta_bref_info *bri = NULL;
-
-	return repo_stage_blob(repo, off, baddr, &bri);
-}
-
 int voluta_repo_save_blob(struct voluta_repo *repo,
                           const struct voluta_baddr *baddr,
                           const void *blob, loff_t off, size_t len)
@@ -744,6 +737,16 @@ int voluta_repo_save_blob(struct voluta_repo *repo,
 		return err;
 	}
 	return 0;
+}
+
+int voluta_repo_save_into(struct voluta_repo *repo,
+                          const struct voluta_vba *vba, const void *blob)
+{
+	voluta_assert_gt(vba->vaddr.len, 0);
+	voluta_assert_eq(vba->vaddr.len, vba->baddr.size);
+
+	return voluta_repo_save_blob(repo, &vba->baddr, blob,
+	                             vba->vaddr.off, vba->vaddr.len);
 }
 
 int voluta_repo_load_blob(struct voluta_repo *repo,

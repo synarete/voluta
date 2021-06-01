@@ -392,9 +392,10 @@ static int spawn_bsi(struct voluta_sb_info *sbi, voluta_lba_t lba,
                      struct voluta_bksec_info **out_bsi)
 {
 	int err;
+	int retry = 4;
 	struct voluta_cache *cache = cache_of(sbi);
 
-	for (size_t retry = 0; retry < 4; ++retry) {
+	while (retry-- > 0) {
 		*out_bsi = voluta_cache_spawn_bsi(cache, lba);
 		if (*out_bsi != NULL) {
 			return 0;
@@ -1075,15 +1076,18 @@ out_err:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static int prepare_blob(const struct voluta_sb_info *sbi,
+                        const struct voluta_vba *vba)
+{
+	return voluta_repo_prep_blob(sbi->sb_repo, vba);
+}
+
 int voluta_format_super(struct voluta_sb_info *sbi)
 {
 	int err;
-	loff_t voff;
-	struct voluta_repo *repo = sbi->sb_repo;
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
-	voff = vba->vaddr.off;
-	err = voluta_repo_prep_blob(repo, voff, &vba->baddr);
+	err = prepare_blob(sbi, vba);
 	if (err) {
 		return err;
 	}
@@ -1107,10 +1111,8 @@ int voluta_shut_super(struct voluta_sb_info *sbi)
 int voluta_save_super(struct voluta_sb_info *sbi)
 {
 	const struct voluta_vba *vba = &sbi->sb_vba;
-	const struct voluta_super_block *sb = sbi->sb;
 
-	return voluta_repo_save_blob(sbi->sb_repo, &vba->baddr,
-	                             sb, vba->vaddr.off, sizeof(*sb));
+	return voluta_repo_save_into(sbi->sb_repo, vba, sbi->sb);
 }
 
 int voluta_load_super(struct voluta_sb_info *sbi)
@@ -1166,16 +1168,15 @@ static void update_spi_on_agm(struct voluta_sb_info *sbi)
 }
 
 static int spawn_hsmap_of(struct voluta_sb_info *sbi,
+                          const struct voluta_vba *vba,
                           voluta_index_t hs_index, size_t nags_span,
                           struct voluta_hspace_info **out_hsi)
 {
 	int err;
-	struct voluta_vba vba;
-	struct voluta_hspace_info *hsi = NULL;
 	struct voluta_vnode_info *vi = NULL;
+	struct voluta_hspace_info *hsi = NULL;
 
-	voluta_vba_for_hsmap(&vba, hs_index);
-	err = spawn_spmap(sbi, &vba, &vi);
+	err = spawn_spmap(sbi, vba, &vi);
 	if (err) {
 		return err;
 	}
@@ -1204,13 +1205,15 @@ static int format_hsmap(struct voluta_sb_info *sbi,
                         struct voluta_hspace_info **out_hsi)
 {
 	int err;
+	struct voluta_vba vba;
 	struct voluta_hspace_info *hsi = NULL;
 
-	err = spawn_hsmap_of(sbi, hs_index, nags_span, &hsi);
+	voluta_vba_for_hsmap(&vba, hs_index);
+	err = spawn_hsmap_of(sbi, &vba, hs_index, nags_span, &hsi);
 	if (err) {
 		return err;
 	}
-	err = voluta_hsi_prep_blob(hsi);
+	err = prepare_blob(sbi, &vba);
 	if (err) {
 		return err;
 	}
@@ -1335,16 +1338,16 @@ static int unlimit_agmap_on_pstore(struct voluta_sb_info *sbi,
 	return voluta_vstore_expand(vstore, cap);
 }
 
-static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
+static int spawn_agmap_of(struct voluta_sb_info *sbi,
+                          const struct voluta_vba *vba,
+                          voluta_index_t ag_index,
                           struct voluta_agroup_info **out_agi)
 {
 	int err;
-	struct voluta_vba vba;
 	struct voluta_agroup_info *agi = NULL;
 	struct voluta_vnode_info *vi = NULL;
 
-	voluta_vba_for_agmap(&vba, ag_index);
-	err = spawn_spmap(sbi, &vba, &vi);
+	err = spawn_spmap(sbi, vba, &vi);
 	if (err) {
 		return err;
 	}
@@ -1352,7 +1355,6 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 
 	agi = voluta_agi_from_vi(vi);
 	voluta_agi_setup(agi, ag_index);
-
 	vi_dirtify(vi);
 
 	*out_agi = agi;
@@ -1364,17 +1366,13 @@ static int format_agbks_of(struct voluta_sb_info *sbi,
 {
 	int err;
 	struct voluta_vba vba;
-	const voluta_index_t ag_index = agi->ag_index;
 
-	voluta_unused(sbi);
-	voluta_vaddr_of_agbks(&vba.vaddr, ag_index);
-	voluta_baddr_for_agbks(&vba.baddr);
-
-	voluta_agi_set_bks_vba(agi, &vba);
-	err = voluta_agi_prep_bks_blob(agi);
+	voluta_vba_for_agbks(&vba, agi->ag_index);
+	err = prepare_blob(sbi, &vba);
 	if (err) {
 		return err;
 	}
+	voluta_agi_set_bks_vba(agi, &vba);
 	return 0;
 }
 
@@ -1394,13 +1392,15 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
                            voluta_index_t ag_index)
 {
 	int err;
+	struct voluta_vba vba;
 	struct voluta_agroup_info *agi;
 
-	err = spawn_agmap_of(sbi, ag_index, &agi);
+	voluta_vba_for_agmap(&vba, ag_index);
+	err = spawn_agmap_of(sbi, &vba, ag_index, &agi);
 	if (err) {
 		return err;
 	}
-	err = voluta_agi_prep_blob(agi);
+	err = prepare_blob(sbi, &vba);
 	if (err) {
 		return err;
 	}

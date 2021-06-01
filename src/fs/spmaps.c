@@ -1352,15 +1352,6 @@ void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
 	hsm_agm_vba_of(hsm, ag_index, out_agm_vba);
 }
 
-int voluta_hsi_prep_blob(const struct voluta_hspace_info *hsi)
-{
-	const struct voluta_vaddr *vaddr = hsi_vaddr(hsi);
-	const struct voluta_baddr *baddr = hsi_baddr(hsi);
-	const struct voluta_sb_info *sbi = hsi->hs_vi.v_sbi;
-
-	return voluta_repo_prep_blob(sbi->sb_repo, vaddr->off, baddr);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_agroup_map *
@@ -1539,25 +1530,6 @@ void voluta_agi_mark_unwritten_at(struct voluta_agroup_info *agi,
 		agm_set_unwritten_at(agm, vaddr);
 		agi_dirtify(agi);
 	}
-}
-
-int voluta_agi_prep_blob(const struct voluta_agroup_info *agi)
-{
-	const struct voluta_vaddr *vaddr = agi_vaddr(agi);
-	const struct voluta_baddr *baddr = agi_baddr(agi);
-	const struct voluta_sb_info *sbi = agi_sbi(agi);
-
-	return voluta_repo_prep_blob(sbi->sb_repo, vaddr->off, baddr);
-}
-
-int voluta_agi_prep_bks_blob(const struct voluta_agroup_info *agi)
-{
-	struct voluta_vba vba;
-	const struct voluta_agroup_map *agm = agroup_map_of(agi);
-	const struct voluta_sb_info *sbi = agi_sbi(agi);
-
-	agm_bks_vba(agm, &vba);
-	return voluta_repo_prep_blob(sbi->sb_repo, vba.vaddr.off, &vba.baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

@@ -309,7 +309,7 @@ void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
 }
 
-void voluta_vaddr_of_agbks(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
+static void vaddr_of_agbks(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
 	const loff_t off = ag_index_to_off(ag_index);
 
@@ -575,17 +575,17 @@ void voluta_baddr_for_super(struct voluta_baddr *baddr)
 	baddr_make_for(baddr, VOLUTA_VTYPE_SUPER);
 }
 
-static void voluta_baddr_for_hsmap(struct voluta_baddr *baddr)
+static void baddr_for_hsmap(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
-static void voluta_baddr_for_agmap(struct voluta_baddr *baddr)
+static void baddr_for_agmap(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
-void voluta_baddr_for_agbks(struct voluta_baddr *baddr)
+static void baddr_for_agbks(struct voluta_baddr *baddr)
 {
 	baddr_make(baddr, VOLUTA_AG_SIZE);
 }
@@ -615,13 +615,19 @@ void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other)
 void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index)
 {
 	voluta_vaddr_of_hsmap(&vba->vaddr, hs_index);
-	voluta_baddr_for_hsmap(&vba->baddr);
+	baddr_for_hsmap(&vba->baddr);
 }
 
 void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index)
 {
 	voluta_vaddr_of_agmap(&vba->vaddr, ag_index);
-	voluta_baddr_for_agmap(&vba->baddr);
+	baddr_for_agmap(&vba->baddr);
+}
+
+void voluta_vba_for_agbks(struct voluta_vba *vba, voluta_index_t ag_index)
+{
+	vaddr_of_agbks(&vba->vaddr, ag_index);
+	baddr_for_agbks(&vba->baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

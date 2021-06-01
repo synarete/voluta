@@ -655,23 +655,13 @@ static int sgv_destage(const struct voluta_sgvec *sgv,
 static int sgv_destage_into_blob(const struct voluta_vnode_info *vi)
 {
 	int err = 0;
-	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-	const struct voluta_agroup_info *agi = NULL;
-	const struct voluta_hspace_info *hsi = NULL;
+	struct voluta_vba vba;
 	const struct voluta_sb_info *sbi = vi->v_sbi;
 
-	if (vaddr->vtype == VOLUTA_VTYPE_HSMAP) {
-		hsi = voluta_hsi_from_vi(vi);
-		voluta_assert_eq(hsi_baddr(hsi)->size, vaddr->len);
-
-		err = voluta_repo_save_blob(sbi->sb_repo, hsi_baddr(hsi),
-		                            vi->view, vaddr->off, vaddr->len);
-	} else if (vaddr->vtype == VOLUTA_VTYPE_AGMAP) {
-		agi = voluta_agi_from_vi(vi);
-		voluta_assert_eq(agi_baddr(agi)->size, vaddr->len);
-
-		err = voluta_repo_save_blob(sbi->sb_repo, agi_baddr(agi),
-		                            vi->view, vaddr->off, vaddr->len);
+	vi_vba(vi, &vba);
+	if ((vba.vaddr.vtype == VOLUTA_VTYPE_HSMAP) ||
+	    (vba.vaddr.vtype == VOLUTA_VTYPE_AGMAP)) {
+		err = voluta_repo_save_into(sbi->sb_repo, &vba, vi->view);
 	}
 	return err;
 }

@@ -36,15 +36,15 @@ int voluta_repo_close(struct voluta_repo *repo);
 
 int voluta_repo_format(struct voluta_repo *repo);
 
-int voluta_repo_prep_blob(struct voluta_repo *repo, loff_t off,
-                          const struct voluta_baddr *baddr);
+int voluta_repo_prep_blob(struct voluta_repo *repo,
+                          const struct voluta_vba *vba);
 
 int voluta_repo_save_blob(struct voluta_repo *repo,
                           const struct voluta_baddr *baddr,
                           const void *blob, loff_t voff, size_t len);
 
-int voluta_repo_stage_blob(struct voluta_repo *repo, loff_t off,
-                           const struct voluta_baddr *baddr);
+int voluta_repo_save_into(struct voluta_repo *repo,
+                          const struct voluta_vba *vba, const void *blob);
 
 int voluta_repo_load_blob(struct voluta_repo *repo,
                           const struct voluta_baddr *baddr,

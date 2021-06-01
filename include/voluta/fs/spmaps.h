@@ -83,8 +83,6 @@ void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
                        voluta_index_t ag_index,
                        struct voluta_vba *out_agm_vba);
 
-int voluta_hsi_prep_blob(const struct voluta_hspace_info *hsi);
-
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
                                enum voluta_vtype vtype, voluta_index_t *out);
@@ -136,10 +134,6 @@ void voluta_agi_mark_unwritten_at(struct voluta_agroup_info *agi,
 
 bool voluta_agi_is_allocated_with(const struct voluta_agroup_info *agi,
                                   const struct voluta_vaddr *vaddr);
-
-int voluta_agi_prep_blob(const struct voluta_agroup_info *agi);
-
-int voluta_agi_prep_bks_blob(const struct voluta_agroup_info *agi);
 
 
 int voluta_verify_hspace_map(const struct voluta_hspace_map *hsm);

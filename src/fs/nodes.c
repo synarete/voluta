@@ -141,6 +141,13 @@ struct voluta_vnode_info *voluta_vi_new(struct voluta_alloc_if *alif,
 	return vi;
 }
 
+void voluta_vi_vba(const struct voluta_vnode_info *vi,
+                   struct voluta_vba *out_vba)
+{
+	voluta_vba_setup(out_vba, vi_vaddr(vi), bi_baddr(&vi->v_bi));
+}
+
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_hspace_info *

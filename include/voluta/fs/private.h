@@ -87,6 +87,7 @@
 #define baddr_reset(ba)                 voluta_baddr_reset(ba)
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
 
+#define vi_vba(vi, vba)                 voluta_vi_vba(vi, vba)
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)
 #define vi_decref(vi)                   voluta_vi_decref(vi)

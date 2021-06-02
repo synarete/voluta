@@ -180,8 +180,8 @@ static int new_inode(const struct voluta_oper *op,
 	const mode_t parent_mode = ii_mode(parent_dir_ii);
 	struct voluta_sb_info *sbi = ii_sbi(parent_dir_ii);
 
-	return voluta_create_inode(sbi, op, parent_ino, parent_mode,
-	                           mode, rdev, out_ii);
+	return voluta_spawn_inode(sbi, op, parent_ino, parent_mode,
+	                          mode, rdev, out_ii);
 }
 
 static int new_dir_inode(const struct voluta_oper *op,

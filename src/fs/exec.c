@@ -1079,7 +1079,7 @@ static int fse_format_rootdir(const struct voluta_fs_env *fse,
 	struct voluta_sb_info *sbi = fse->sbi;
 	const ino_t parent_ino = VOLUTA_INO_NULL;
 
-	err = voluta_create_inode(sbi, op, parent_ino, 0, mode, 0, &root_ii);
+	err = voluta_spawn_inode(sbi, op, parent_ino, 0, mode, 0, &root_ii);
 	if (err) {
 		return err;
 	}
@@ -1128,12 +1128,12 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 static int fse_setup_sb(struct voluta_fs_env *fse,
                         const struct voluta_oper *op)
 {
+	int err;
 	struct voluta_vba vba;
 	struct voluta_hash512 pass_hash;
 	struct voluta_super_block *sb = fse->sb;
 	const time_t birth_time = op->xtime.tv_sec;
 	const size_t vsize = (size_t)fse->args.vsize;
-	int err;
 
 	voluta_sb_setup_new(sb, birth_time, vsize);
 	voluta_sb_setup_rand(sb, fse_mdigest(fse));
@@ -1142,8 +1142,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse,
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 
 	vaddr_of_super(&vba.vaddr);
-	err = voluta_baddr_by_name(&vba.baddr, VOLUTA_VTYPE_SUPER,
-	                           fse->args.superid);
+	err = voluta_baddr_parse_super(&vba.baddr, fse->args.superid);
 	if (err) {
 		return err;
 	}

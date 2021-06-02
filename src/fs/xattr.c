@@ -770,8 +770,8 @@ static void discard_xentry(const struct voluta_xentry_info *xei)
 static int new_xanode(const struct voluta_xattr_ctx *xa_ctx,
                       struct voluta_vnode_info **out_vi)
 {
-	return voluta_create_vnode(xa_ctx->sbi, xa_ctx->ii,
-	                           VOLUTA_VTYPE_XANODE, out_vi);
+	return voluta_spawn_vnode(xa_ctx->sbi, xa_ctx->ii,
+	                          VOLUTA_VTYPE_XANODE, out_vi);
 }
 
 static int del_xanode_at(const struct voluta_xattr_ctx *xa_ctx,

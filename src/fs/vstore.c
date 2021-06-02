@@ -619,7 +619,6 @@ static int sgv_populate(struct voluta_sgvec *sgv,
                         struct voluta_vnode_info **vi_last)
 {
 	int err;
-	enum voluta_vtype vtype;
 	struct voluta_vnode_info *vi;
 
 	*vi_last = NULL;
@@ -636,11 +635,7 @@ static int sgv_populate(struct voluta_sgvec *sgv,
 
 		/* XXX */
 		*vi_last = vi;
-		vtype = vi_vtype(vi);
-		if ((vtype == VOLUTA_VTYPE_HSMAP) ||
-		    (vtype == VOLUTA_VTYPE_AGMAP)) {
-			break;
-		}
+		break;
 	}
 	return 0;
 }
@@ -656,13 +651,17 @@ static int sgv_destage_into_blob(const struct voluta_vnode_info *vi)
 {
 	int err = 0;
 	struct voluta_vba vba;
-	const struct voluta_sb_info *sbi = vi->v_sbi;
 
-	vi_vba(vi, &vba);
-	if ((vba.vaddr.vtype == VOLUTA_VTYPE_HSMAP) ||
-	    (vba.vaddr.vtype == VOLUTA_VTYPE_AGMAP)) {
-		err = voluta_repo_save_blob(sbi->sb_repo, &vba, vi->view);
+	if (vi == NULL) {
+		return 0;
 	}
+	vi_vba(vi, &vba);
+
+	voluta_assert_gt(vba.baddr.len, 0);
+	voluta_assert_eq(vba.vaddr.len, vba.baddr.len);
+
+	err = voluta_repo_save_blob(vi->v_sbi->sb_repo, &vba.baddr, vi->view);
+	voluta_assert_ok(err);
 	return err;
 }
 

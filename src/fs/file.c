@@ -1954,8 +1954,8 @@ static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
 static int new_rtnode(const struct voluta_file_ctx *f_ctx,
                       struct voluta_vnode_info **out_vi)
 {
-	return voluta_create_vnode(f_ctx->sbi, f_ctx->ii,
-	                           VOLUTA_VTYPE_RTNODE, out_vi);
+	return voluta_spawn_vnode(f_ctx->sbi, f_ctx->ii,
+	                          VOLUTA_VTYPE_RTNODE, out_vi);
 }
 
 static int del_rtnode(const struct voluta_file_ctx *f_ctx,

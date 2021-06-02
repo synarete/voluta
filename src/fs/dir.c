@@ -997,8 +997,8 @@ static int stage_child_by_name(const struct voluta_dir_ctx *d_ctx,
 static int new_htnode(const struct voluta_dir_ctx *d_ctx,
                       struct voluta_vnode_info **out_vi)
 {
-	return voluta_create_vnode(d_ctx->sbi, d_ctx->dir_ii,
-	                           VOLUTA_VTYPE_HTNODE, out_vi);
+	return voluta_spawn_vnode(d_ctx->sbi, d_ctx->dir_ii,
+	                          VOLUTA_VTYPE_HTNODE, out_vi);
 }
 
 static int del_htnode(const struct voluta_dir_ctx *d_ctx,

@@ -105,7 +105,7 @@ static long off_hash(long off)
 
 static long bk_lba_to_bu_lba(long lba)
 {
-	const long nbk_in_bu = VOLUTA_NBK_IN_BSEC;
+	const long nbk_in_bu = VOLUTA_NBK_IN_BKSEC;
 
 	return (lba / nbk_in_bu) * nbk_in_bu;
 }
@@ -311,7 +311,7 @@ static struct voluta_cache_elem *bsi_ce(const struct voluta_bksec_info *bsi)
 static void bsi_set_lba(struct voluta_bksec_info *bsi, voluta_lba_t lba_start)
 {
 	voluta_assert(lba_isnull(lba_start) ||
-	              !(lba_start % VOLUTA_NBK_IN_BSEC));
+	              !(lba_start % VOLUTA_NBK_IN_BKSEC));
 
 	bsi->bs_lba = lba_start;
 }

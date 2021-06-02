@@ -72,15 +72,15 @@
 #define VOLUTA_BK_SIZE                  (1L << VOLUTA_BK_SHIFT)
 
 /* number of logical blocks within blocks-section */
-#define VOLUTA_NBK_IN_BSEC              (4)
+#define VOLUTA_NBK_IN_BKSEC             (4)
 
 /* number of logical blocks within allocation-group */
 #define VOLUTA_NBK_IN_AG                (1024L)
 
 
-/* blocks-unit size (256K) */
-#define VOLUTA_BU_SIZE \
-	(VOLUTA_NBK_IN_BSEC * VOLUTA_BK_SIZE)
+/* blocks-section size (256K) */
+#define VOLUTA_BKSEC_SIZE \
+	(VOLUTA_NBK_IN_BKSEC * VOLUTA_BK_SIZE)
 
 /* allocation-group size (64M) */
 #define VOLUTA_AG_SIZE \
@@ -468,15 +468,16 @@ struct voluta_vaddr64 {
 
 struct voluta_blobid {
 	uint8_t  oid[VOLUTA_OID_LEN];
+	uint32_t size;
+	uint32_t reserved;
 } voluta_packed_aligned8;
 
 
 struct voluta_blobspec {
 	struct voluta_blobid    blobid;
 	struct voluta_vaddr64   vaddr;
-	uint32_t                size;
 	uint32_t                flags;
-	uint8_t                 reserved[16];
+	uint8_t                 reserved[12];
 } voluta_packed_aligned8;
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -601,8 +602,8 @@ struct voluta_agroup_map {
 	struct voluta_header    ag_hdr;
 	uint64_t                ag_index;
 	uint8_t                 ag_reserved1[40];
-	struct voluta_blobspec  ag_bks_bls;
-	uint8_t                 ag_reserved2[3968];
+	struct voluta_blobid    ag_bks_blobid;
+	uint8_t                 ag_reserved2[3992];
 	uint8_t                 ag_reserved3[4096];
 	struct voluta_bk_rec    ag_bkr[VOLUTA_NBK_IN_AG];
 } voluta_packed_aligned64;
@@ -795,7 +796,7 @@ struct voluta_block {
 
 /* blocks-section unit */
 struct voluta_blocks_sec {
-	struct voluta_block bk[VOLUTA_NBK_IN_BSEC];
+	struct voluta_block bk[VOLUTA_NBK_IN_BKSEC];
 } voluta_packed_aligned64;
 
 

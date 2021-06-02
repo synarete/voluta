@@ -70,10 +70,10 @@ static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
 
 static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
-	const size_t nbk_in_bu = VOLUTA_NBK_IN_BSEC;
+	const size_t nbk_in_bu = VOLUTA_NBK_IN_BKSEC;
 	const voluta_lba_t hsm_lba = (voluta_lba_t)(nbk_in_bu + hs_index);
 
-	voluta_assert_gt(VOLUTA_NBK_IN_BSEC, VOLUTA_LBA_SB);
+	voluta_assert_gt(VOLUTA_NBK_IN_BKSEC, VOLUTA_LBA_SB);
 
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
@@ -90,7 +90,6 @@ voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot)
 	return (hs_index * VOLUTA_NAG_IN_HS) + ag_slot;
 }
 
-
 loff_t voluta_off_in_blob(loff_t off, size_t blob_size)
 {
 	const size_t uoff = (size_t)off;
@@ -98,9 +97,8 @@ loff_t voluta_off_in_blob(loff_t off, size_t blob_size)
 	voluta_assert_ge(off, 0);
 	voluta_assert(!off_isnull(off));
 
-	return (loff_t)((uoff / blob_size) * blob_size);
+	return (loff_t)(uoff % blob_size);
 }
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -391,30 +389,61 @@ static uint64_t uint64_at(const void *p)
 	return *(const uint64_t *)p;
 }
 
-static void blobid_generate(struct voluta_blobid *blobid)
+size_t voluta_blobid_size(const struct voluta_blobid *blobid)
+{
+	return voluta_le32_to_cpu(blobid->size);
+}
+
+static void blobid_set_size(struct voluta_blobid *blobid, size_t size)
+{
+	blobid->size = voluta_cpu_to_le32((uint32_t)size);
+}
+
+static loff_t blobid_off_within(const struct voluta_blobid *blobid, loff_t off)
+{
+	return voluta_off_in_blob(off, voluta_blobid_size(blobid));
+}
+
+void voluta_blobid_reset(struct voluta_blobid *blobid)
+{
+	memset(blobid->oid, 0, sizeof(blobid->oid));
+	blobid_set_size(blobid, 0);
+}
+
+static void blobid_generate_oid(struct voluta_blobid *blobid)
 {
 	voluta_getentropy(blobid->oid, sizeof(blobid->oid));
+}
+
+static void blodid_make(struct voluta_blobid *blobid, size_t size)
+{
+	blobid_generate_oid(blobid);
+	blobid_set_size(blobid, size);
 }
 
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
                           struct voluta_blobid *other)
 {
 	memcpy(other->oid, blobid->oid, sizeof(other->oid));
+	blobid_set_size(other, voluta_blobid_size(blobid));
+	other->reserved = 0;
 }
 
 bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
                            const struct voluta_blobid *other)
 {
-	return memcmp(blobid->oid, other->oid, sizeof(blobid->oid)) == 0;
+	return (voluta_blobid_size(blobid) == voluta_blobid_size(other)) &&
+	       (memcmp(blobid->oid, other->oid, sizeof(blobid->oid)) == 0);
 }
 
-static uint64_t blobid_hkey(const struct voluta_blobid *blobid)
+uint64_t voluta_blobid_hkey(const struct voluta_blobid *blobid)
 {
 	const uint8_t *oid = blobid->oid;
+	const uint64_t size = voluta_blobid_size(blobid);
 
 	STATICASSERT_SIZEOF(blobid->oid, 32);
 
-	return uint64_at(oid) ^ uint64_at(oid + 8) ^
+	return size ^ uint64_at(oid) ^ uint64_at(oid + 8) ^
 	       uint64_at(oid + 16) ^ uint64_at(oid + 24);
 }
 
@@ -424,7 +453,7 @@ static void byte_to_ascii(unsigned int byte, char *a1, char *a2)
 	*a2 = voluta_nibble_to_ascii((int)byte);
 }
 
-static int blobid_to_name(const struct voluta_blobid *blobid,
+int voluta_blobid_to_name(const struct voluta_blobid *blobid,
                           char *name, size_t nmax, size_t *out_len)
 {
 	unsigned int byte;
@@ -472,7 +501,7 @@ static int ascii_to_byte(char a1, char a2, uint8_t *out_byte)
 	return 0;
 }
 
-static int blobid_from_name(struct voluta_blobid *blobid,
+int voluta_blobid_from_name(struct voluta_blobid *blobid,
                             const char *name, size_t len)
 {
 	int err = 0;
@@ -495,7 +524,8 @@ static int blobid_from_name(struct voluta_blobid *blobid,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_baddr s_baddr_none = {
-	.size = 0,
+	.len = 0,
+	.off = 0,
 };
 
 const struct voluta_baddr *voluta_baddr_none(void)
@@ -503,66 +533,48 @@ const struct voluta_baddr *voluta_baddr_none(void)
 	return &s_baddr_none;
 }
 
-void voluta_baddr_assign(struct voluta_baddr *baddr,
-                         const struct voluta_blobid *bid, size_t size)
+void voluta_baddr_setup(struct voluta_baddr *baddr,
+                        const struct voluta_blobid *bid,
+                        size_t size, loff_t off)
 {
 	voluta_blobid_copyto(bid, &baddr->bid);
-	baddr->size = size;
+	baddr->len = size;
+	baddr->off = blobid_off_within(bid, off);
+}
+
+void voluta_baddr_assign(struct voluta_baddr *baddr,
+                         const struct voluta_blobid *bid)
+{
+	voluta_baddr_setup(baddr, bid, voluta_blobid_size(bid), 0);
 }
 
 void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
 	memset(baddr->bid.oid, 0, sizeof(baddr->bid.oid));
-	baddr->size = 0;
+	baddr->len = 0;
+	baddr->off = 0;
 }
 
 void voluta_baddr_copyto(const struct voluta_baddr *baddr,
                          struct voluta_baddr *other)
 {
 	voluta_blobid_copyto(&baddr->bid, &other->bid);
-	other->size = baddr->size;
+	other->len = baddr->len;
+	other->off = baddr->off;
 }
 
 bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
                           const struct voluta_baddr *other)
 {
-	return (baddr->size == other->size) &&
+	return (baddr->len == other->len) && (baddr->off == other->off) &&
 	       voluta_blobid_isequal(&baddr->bid, &other->bid);
-}
-
-uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr)
-{
-	return (uint64_t)(baddr->size) ^ blobid_hkey(&baddr->bid);
-}
-
-int voluta_baddr_to_name(const struct voluta_baddr *baddr,
-                         char *name, size_t nmax, size_t *out_len)
-{
-	return blobid_to_name(&baddr->bid, name, nmax, out_len);
-}
-
-int voluta_baddr_by_name(struct voluta_baddr *baddr,
-                         enum voluta_vtype vtype, const char *name)
-{
-	int err;
-	const size_t len = strlen(name);
-
-	baddr->size = vtype_size(vtype);
-	voluta_assert_gt(baddr->size, 0);
-	if (!baddr->size) {
-		return -EINVAL;
-	}
-	err = blobid_from_name(&baddr->bid, name, len);
-	if (err) {
-		return err;
-	}
-	return 0;
 }
 
 static void baddr_make(struct voluta_baddr *baddr, size_t size)
 {
-	blobid_generate(&baddr->bid);
-	baddr->size = size;
+	blodid_make(&baddr->bid, size);
+	baddr->len = size;
+	baddr->off = 0;
 }
 
 static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
@@ -589,6 +601,23 @@ static void baddr_for_agbks(struct voluta_baddr *baddr)
 {
 	baddr_make(baddr, VOLUTA_AG_SIZE);
 }
+
+int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name)
+{
+	int err;
+	const size_t sb_size = VOLUTA_SB_SIZE;
+	struct voluta_blobid *blobid = &baddr->bid;
+
+	err = voluta_blobid_from_name(blobid, name, strlen(name));
+	if (err) {
+		return err;
+	}
+	blobid_set_size(blobid, sb_size);
+	baddr->len = sb_size;
+	baddr->off = 0;
+	return 0;
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -711,58 +740,6 @@ void voluta_uuid_name(const struct voluta_uuid *uu, struct voluta_namebuf *nb)
 		s++;
 	}
 	*t = '\0';
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-uint16_t voluta_cpu_to_le16(uint16_t n)
-{
-	return htole16(n);
-}
-
-uint16_t voluta_le16_to_cpu(uint16_t n)
-{
-	return le16toh(n);
-}
-
-uint32_t voluta_cpu_to_le32(uint32_t n)
-{
-	return htole32(n);
-}
-
-uint32_t voluta_le32_to_cpu(uint32_t n)
-{
-	return le32toh(n);
-}
-
-uint64_t voluta_cpu_to_le64(uint64_t n)
-{
-	return htole64(n);
-}
-
-uint64_t voluta_le64_to_cpu(uint64_t n)
-{
-	return le64toh(n);
-}
-
-uint64_t voluta_cpu_to_ino(ino_t ino)
-{
-	return voluta_cpu_to_le64(ino);
-}
-
-ino_t voluta_ino_to_cpu(uint64_t ino)
-{
-	return (ino_t)voluta_le64_to_cpu(ino);
-}
-
-int64_t voluta_cpu_to_off(loff_t off)
-{
-	return (int64_t)voluta_cpu_to_le64((uint64_t)off);
-}
-
-loff_t voluta_off_to_cpu(int64_t off)
-{
-	return (loff_t)voluta_le64_to_cpu((uint64_t)off);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

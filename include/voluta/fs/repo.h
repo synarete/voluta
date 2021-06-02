@@ -37,12 +37,12 @@ int voluta_repo_close(struct voluta_repo *repo);
 int voluta_repo_format(struct voluta_repo *repo);
 
 int voluta_repo_prep_blob(struct voluta_repo *repo,
-                          const struct voluta_vba *vba);
+                          const struct voluta_blobid *bid);
 
 int voluta_repo_save_blob(struct voluta_repo *repo,
-                          const struct voluta_vba *vba, const void *blob);
+                          const struct voluta_baddr *baddr, const void *blob);
 
 int voluta_repo_load_blob(struct voluta_repo *repo,
-                          const struct voluta_vba *vba, void *blob);
+                          const struct voluta_baddr *baddr, void *blob);
 
 #endif /* VOLUTA_REPO_H_ */

@@ -331,8 +331,8 @@ int voluta_do_readlink(const struct voluta_oper *op,
 static int new_symval(const struct voluta_symlnk_ctx *sl_ctx,
                       struct voluta_vnode_info **out_vi)
 {
-	return voluta_create_vnode(sl_ctx->sbi, sl_ctx->lnk_ii,
-	                           VOLUTA_VTYPE_SYMVAL, out_vi);
+	return voluta_spawn_vnode(sl_ctx->sbi, sl_ctx->lnk_ii,
+	                          VOLUTA_VTYPE_SYMVAL, out_vi);
 }
 
 static int del_symval_node_at(const struct voluta_symlnk_ctx *sl_ctx,

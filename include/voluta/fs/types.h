@@ -219,14 +219,15 @@ struct voluta_vaddr {
 	voluta_index_t  ag_index;
 	voluta_lba_t    lba;
 	loff_t          off;
-	uint32_t        len;
+	unsigned int    len;
 	enum voluta_vtype vtype;
 };
 
 /* object-address within underlying blobs space */
 struct voluta_baddr {
 	struct voluta_blobid bid;
-	size_t size;
+	size_t len;
+	loff_t off;
 };
 
 /* logical-to-object address mapping */
@@ -257,7 +258,7 @@ struct voluta_cache_elem {
 struct voluta_bksec_info {
 	struct voluta_cache_elem        bs_ce;
 	struct voluta_blocks_sec       *bs;
-	uint64_t        bs_mask[VOLUTA_NBK_IN_BSEC];
+	uint64_t        bs_mask[VOLUTA_NBK_IN_BKSEC];
 	voluta_lba_t    bs_lba;
 };
 

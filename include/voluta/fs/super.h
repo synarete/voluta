@@ -84,16 +84,16 @@ int voluta_stage_data(struct voluta_sb_info *sbi,
                       struct voluta_inode_info *pii,
                       struct voluta_vnode_info **out_vi);
 
-int voluta_create_inode(struct voluta_sb_info *sbi,
-                        const struct voluta_oper *op,
-                        ino_t parent_ino, mode_t parent_mode,
-                        mode_t mode, dev_t rdev,
-                        struct voluta_inode_info **out_ii);
+int voluta_spawn_inode(struct voluta_sb_info *sbi,
+                       const struct voluta_oper *op,
+                       ino_t parent_ino, mode_t parent_mode,
+                       mode_t mode, dev_t rdev,
+                       struct voluta_inode_info **out_ii);
 
-int voluta_create_vnode(struct voluta_sb_info *sbi,
-                        struct voluta_inode_info *pii,
-                        enum voluta_vtype vtype,
-                        struct voluta_vnode_info **out_vi);
+int voluta_spawn_vnode(struct voluta_sb_info *sbi,
+                       struct voluta_inode_info *pii,
+                       enum voluta_vtype vtype,
+                       struct voluta_vnode_info **out_vi);
 
 int voluta_allocate_space(struct voluta_sb_info *sbi,
                           enum voluta_vtype vtype,

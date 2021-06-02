@@ -663,7 +663,7 @@ static void unbind_child(struct voluta_vnode_info *parent_vi, ino_t ino)
 static int create_itnode(struct voluta_sb_info *sbi,
                          struct voluta_vnode_info **out_vi)
 {
-	return voluta_create_vnode(sbi, NULL, VOLUTA_VTYPE_ITNODE, out_vi);
+	return voluta_spawn_vnode(sbi, NULL, VOLUTA_VTYPE_ITNODE, out_vi);
 }
 
 static int new_itnode(struct voluta_sb_info *sbi,

@@ -129,41 +129,36 @@ static void bls_set_vaddr(struct voluta_blobspec *bls,
 	voluta_vaddr64_set(&bls->vaddr, vaddr);
 }
 
-static size_t bls_size(const struct voluta_blobspec *bls)
+static void bls_set_blobid(struct voluta_blobspec *bls,
+                           const struct voluta_blobid *bid)
 {
-	return voluta_le32_to_cpu(bls->size);
+	voluta_blobid_copyto(bid, &bls->blobid);
 }
 
-static void bls_set_size(struct voluta_blobspec *bls, size_t size)
+static void bls_to_baddr(const struct voluta_blobspec *bls,
+                         struct voluta_baddr *out_baddr)
 {
-	bls->size = voluta_cpu_to_le32((uint32_t)size);
+	voluta_baddr_assign(out_baddr, &bls->blobid);
 }
 
-static void bls_baddr(const struct voluta_blobspec *bls,
-                      struct voluta_baddr *baddr)
+static void bls_set_from_baddr(struct voluta_blobspec *bls,
+                               const struct voluta_baddr *baddr)
 {
-	voluta_baddr_assign(baddr, &bls->blobid, bls_size(bls));
-}
-
-static void bls_set_baddr(struct voluta_blobspec *bls,
-                          const struct voluta_baddr *baddr)
-{
-	voluta_blobid_copyto(&baddr->bid, &bls->blobid);
-	bls_set_size(bls, baddr->size);
+	bls_set_blobid(bls, &baddr->bid);
 }
 
 static void bls_vba(const struct voluta_blobspec *bls,
                     struct voluta_vba *out_vba)
 {
 	bls_vaddr(bls, &out_vba->vaddr);
-	bls_baddr(bls, &out_vba->baddr);
+	bls_to_baddr(bls, &out_vba->baddr);
 }
 
 static void bls_set_vba(struct voluta_blobspec *bls,
                         const struct voluta_vba *vba)
 {
 	bls_set_vaddr(bls, &vba->vaddr);
-	bls_set_baddr(bls, &vba->baddr);
+	bls_set_from_baddr(bls, &vba->baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -200,8 +195,7 @@ void voluta_usm_vba(const struct voluta_uspace_map *usm,
 {
 	const struct voluta_blobspec *bls = usm_blobspec_of(usm, hs_index);
 
-	bls_vaddr(bls, &out_vba->vaddr);
-	bls_baddr(bls, &out_vba->baddr);
+	bls_vba(bls, out_vba);
 }
 
 void voluta_usm_set_vba(struct voluta_uspace_map *usm,
@@ -945,33 +939,26 @@ static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 	STATICASSERT_EQ(sizeof(*agm), VOLUTA_BK_SIZE);
 
 	agm_set_index(agm, ag_index);
-	bls_init(&agm->ag_bks_bls);
+	voluta_blobid_reset(&agm->ag_bks_blobid);
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }
 
 static void agm_bks_baddr_of(const struct voluta_agroup_map *agm,
-                             enum voluta_vtype vtype,
+                             enum voluta_vtype vtype, loff_t off,
                              struct voluta_baddr *out_baddr)
 {
 	const size_t vsize = vtype_size(vtype);
 
-	bls_baddr(&agm->ag_bks_bls, out_baddr);
+	voluta_baddr_setup(out_baddr, &agm->ag_bks_blobid, vsize, off);
 
-	voluta_assert_le(vsize, out_baddr->size);
-
-	out_baddr->size = vtype_size(vtype);
+	voluta_assert_le(off_end(out_baddr->off, out_baddr->len),
+	                 voluta_blobid_size(&out_baddr->bid));
 }
 
-static void agm_bks_vba(const struct voluta_agroup_map *agm,
-                        struct voluta_vba *out_vba)
+static void agm_set_bks_blobid(struct voluta_agroup_map *agm,
+                               const struct voluta_blobid *bid)
 {
-	bls_vba(&agm->ag_bks_bls, out_vba);
-}
-
-static void agm_set_bks_vba(struct voluta_agroup_map *agm,
-                            const struct voluta_vba *vba)
-{
-	bls_set_vba(&agm->ag_bks_bls, vba);
+	voluta_blobid_copyto(bid, &agm->ag_bks_blobid);
 }
 
 static struct voluta_bk_rec *
@@ -1342,8 +1329,8 @@ void voluta_hsi_ag_span_of(const struct voluta_hspace_info *hsi,
 	ag_span->end = hsm_ag_index_end(hsm);
 }
 
-void voluta_mark_fragmented(struct voluta_hspace_info *hsi,
-                            voluta_index_t ag_index)
+void voluta_hsi_mark_fragmented_at(struct voluta_hspace_info *hsi,
+                                   voluta_index_t ag_index)
 {
 	struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
@@ -1351,16 +1338,22 @@ void voluta_mark_fragmented(struct voluta_hspace_info *hsi,
 	hsi_dirtify(hsi);
 }
 
-void voluta_clear_fragmented_at(struct voluta_hspace_info *hsi,
-                                const struct voluta_vaddr *vaddr)
+void voluta_hsi_clear_fragmented_at(struct voluta_hspace_info *hsi,
+                                    voluta_index_t ag_index)
+{
+	struct voluta_hspace_map *hsm = hspace_map_of(hsi);
+
+	hsm_clear_fragmented(hsm, ag_index);
+	hsi_dirtify(hsi);
+}
+
+bool voluta_hsi_fragmented_by(const struct voluta_hspace_info *hsi,
+                              const struct voluta_vaddr *vaddr)
 {
 	const voluta_index_t ag_index = vaddr->ag_index;
 	struct voluta_hspace_map *hsm = hspace_map_of(hsi);
 
-	if (hsm_is_fragmented(hsm, ag_index) && (nkb_of(vaddr) > 1)) {
-		hsm_clear_fragmented(hsm, ag_index);
-		hsi_dirtify(hsi);
-	}
+	return (hsm_is_fragmented(hsm, ag_index) && (nkb_of(vaddr) > 1));
 }
 
 void voluta_hsi_bind_to_kindof(struct voluta_hspace_info *hsi,
@@ -1424,20 +1417,22 @@ void voluta_agi_vba(const struct voluta_agroup_info *agi,
 	voluta_vba_setup(out_vba, agi_vaddr(agi), agi_baddr(agi));
 }
 
-void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
-                        struct voluta_vba *out_vba)
-{
-	const struct voluta_agroup_map *agm = agroup_map_of(agi);
-
-	agm_bks_vba(agm, out_vba);
-}
-
-void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
-                            const struct voluta_vba *vba)
+void voluta_agi_set_bks_blobid(struct voluta_agroup_info *agi,
+                               const struct voluta_blobid *bid)
 {
 	struct voluta_agroup_map *agm = agroup_map_of(agi);
 
-	agm_set_bks_vba(agm, vba);
+	agm_set_bks_blobid(agm, bid);
+}
+
+void voluta_agi_resolve_vba(const struct voluta_agroup_info *agi,
+                            const struct voluta_vaddr *vaddr,
+                            struct voluta_vba *out_vba)
+{
+	const struct voluta_agroup_map *agm = agroup_map_of(agi);
+
+	vaddr_copyto(vaddr, &out_vba->vaddr);
+	agm_bks_baddr_of(agm, vaddr->vtype, vaddr->off, &out_vba->baddr);
 }
 
 int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
@@ -1445,13 +1440,14 @@ int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
                                struct voluta_vba *out_vba)
 {
 	int err;
+	struct voluta_vaddr vaddr;
 	const struct voluta_agroup_map *agm = agroup_map_of(agi);
 
-	err = agm_find_free_space(agm, vtype, bn_start_hint, &out_vba->vaddr);
+	err = agm_find_free_space(agm, vtype, bn_start_hint, &vaddr);
 	if (err) {
 		return err;
 	}
-	agm_bks_baddr_of(agm, vtype, &out_vba->baddr);
+	voluta_agi_resolve_vba(agi, &vaddr, out_vba);
 	return 0;
 }
 

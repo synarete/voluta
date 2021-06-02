@@ -18,6 +18,7 @@
 #define VOLUTA_ADDRESS_H_
 
 #include <stdint.h>
+#include <endian.h>
 #include <voluta/fs/types.h>
 
 /* non-valid ("NIL") allocation-group index */
@@ -83,10 +84,33 @@ void voluta_vaddr64_parse(const struct voluta_vaddr64 *va,
                           struct voluta_vaddr *vaddr);
 
 
+size_t voluta_blobid_size(const struct voluta_blobid *blobid);
+
+void voluta_blobid_reset(struct voluta_blobid *blobid);
+
+void voluta_blobid_copyto(const struct voluta_blobid *blobid,
+                          struct voluta_blobid *other);
+
+bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
+                           const struct voluta_blobid *other);
+
+uint64_t voluta_blobid_hkey(const struct voluta_blobid *blobid);
+
+int voluta_blobid_to_name(const struct voluta_blobid *blobid,
+                          char *name, size_t nmax, size_t *out_len);
+
+int voluta_blobid_from_name(struct voluta_blobid *blobid,
+                            const char *name, size_t len);
+
+
 const struct voluta_baddr *voluta_baddr_none(void);
 
+void voluta_baddr_setup(struct voluta_baddr *baddr,
+                        const struct voluta_blobid *bid,
+                        size_t size, loff_t off);
+
 void voluta_baddr_assign(struct voluta_baddr *baddr,
-                         const struct voluta_blobid *bid, size_t size);
+                         const struct voluta_blobid *bid);
 
 void voluta_baddr_reset(struct voluta_baddr *baddr);
 
@@ -96,24 +120,10 @@ void voluta_baddr_copyto(const struct voluta_baddr *baddr,
 bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
                           const struct voluta_baddr *other);
 
-uint64_t voluta_baddr_hkey(const struct voluta_baddr *baddr);
-
-
-int voluta_baddr_to_name(const struct voluta_baddr *baddr,
-                         char *name, size_t nmax, size_t *out_len);
-
-int voluta_baddr_by_name(struct voluta_baddr *baddr,
-                         enum voluta_vtype vtype, const char *name);
 
 void voluta_baddr_for_super(struct voluta_baddr *baddr);
 
-
-
-void voluta_blobid_copyto(const struct voluta_blobid *blobid,
-                          struct voluta_blobid *other);
-
-bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
-                           const struct voluta_blobid *other);
+int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name);
 
 
 void voluta_vba_setup(struct voluta_vba *vba,
@@ -147,29 +157,61 @@ int voluta_calc_volume_space(loff_t volume_capacity,
                              loff_t *out_address_space);
 
 
-uint16_t voluta_cpu_to_le16(uint16_t n);
-
-uint16_t voluta_le16_to_cpu(uint16_t n);
-
-uint32_t voluta_cpu_to_le32(uint32_t n);
-
-uint32_t voluta_le32_to_cpu(uint32_t n);
-
-uint64_t voluta_cpu_to_le64(uint64_t n);
-
-uint64_t voluta_le64_to_cpu(uint64_t n);
-
-uint64_t voluta_cpu_to_ino(ino_t ino);
-
-ino_t voluta_ino_to_cpu(uint64_t ino);
-
-int64_t voluta_cpu_to_off(loff_t off);
-
-loff_t voluta_off_to_cpu(int64_t off);
-
-
 int voluta_verify_ino(ino_t ino);
 
 int voluta_verify_off(loff_t off);
+
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static inline uint16_t voluta_cpu_to_le16(uint16_t n)
+{
+	return htole16(n);
+}
+
+static inline uint16_t voluta_le16_to_cpu(uint16_t n)
+{
+	return le16toh(n);
+}
+
+static inline uint32_t voluta_cpu_to_le32(uint32_t n)
+{
+	return htole32(n);
+}
+
+static inline uint32_t voluta_le32_to_cpu(uint32_t n)
+{
+	return le32toh(n);
+}
+
+static inline uint64_t voluta_cpu_to_le64(uint64_t n)
+{
+	return htole64(n);
+}
+
+static inline uint64_t voluta_le64_to_cpu(uint64_t n)
+{
+	return le64toh(n);
+}
+
+static inline uint64_t voluta_cpu_to_ino(ino_t ino)
+{
+	return voluta_cpu_to_le64(ino);
+}
+
+static inline ino_t voluta_ino_to_cpu(uint64_t ino)
+{
+	return (ino_t)voluta_le64_to_cpu(ino);
+}
+
+static inline int64_t voluta_cpu_to_off(loff_t off)
+{
+	return (int64_t)voluta_cpu_to_le64((uint64_t)off);
+}
+
+static inline loff_t voluta_off_to_cpu(int64_t off)
+{
+	return (loff_t)voluta_le64_to_cpu((uint64_t)off);
+}
 
 #endif /* VOLUTA_ADDRESS_H_ */

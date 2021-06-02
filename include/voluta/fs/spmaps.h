@@ -63,11 +63,15 @@ bool voluta_hsi_has_formatted_ag(const struct voluta_hspace_info *hsi,
 void voluta_hsi_ag_span_of(const struct voluta_hspace_info *hsi,
                            struct voluta_ag_span *ag_span);
 
-void voluta_mark_fragmented(struct voluta_hspace_info *hsi,
-                            voluta_index_t ag_index);
+void voluta_hsi_mark_fragmented_at(struct voluta_hspace_info *hsi,
+                                   voluta_index_t ag_index);
 
-void voluta_clear_fragmented_at(struct voluta_hspace_info *hsi,
-                                const struct voluta_vaddr *vaddr);
+void voluta_hsi_clear_fragmented_at(struct voluta_hspace_info *hsi,
+                                    voluta_index_t ag_index);
+
+bool voluta_hsi_fragmented_by(const struct voluta_hspace_info *hsi,
+                              const struct voluta_vaddr *vaddr);
+
 
 void voluta_mark_with_next(struct voluta_hspace_info *hsi);
 
@@ -98,11 +102,12 @@ void voluta_agi_setup(struct voluta_agroup_info *agi,
 void voluta_agi_vba(const struct voluta_agroup_info *agi,
                     struct voluta_vba *out_vba);
 
-void voluta_agi_bks_vba(const struct voluta_agroup_info *agi,
-                        struct voluta_vba *out_vba);
+void voluta_agi_set_bks_blobid(struct voluta_agroup_info *agi,
+                               const struct voluta_blobid *bid);
 
-void voluta_agi_set_bks_vba(struct voluta_agroup_info *agi,
-                            const struct voluta_vba *vba);
+void voluta_agi_resolve_vba(const struct voluta_agroup_info *agi,
+                            const struct voluta_vaddr *vaddr,
+                            struct voluta_vba *out_vba);
 
 int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
                                enum voluta_vtype vtype, size_t bn_start_hint,

@@ -538,10 +538,10 @@ const struct voluta_baddr *voluta_baddr_none(void)
 
 void voluta_baddr_setup(struct voluta_baddr *baddr,
                         const struct voluta_blobid *bid,
-                        size_t size, loff_t off)
+                        size_t len, loff_t off)
 {
 	voluta_blobid_copyto(bid, &baddr->bid);
-	baddr->len = size;
+	baddr->len = len;
 	baddr->off = blobid_off_within(bid, off);
 }
 
@@ -630,6 +630,16 @@ void voluta_vba_setup(struct voluta_vba *vba,
 {
 	voluta_vaddr_copyto(vaddr, &vba->vaddr);
 	voluta_baddr_copyto(baddr, &vba->baddr);
+}
+
+void voluta_vba_setup_by(struct voluta_vba *vba,
+                         const struct voluta_vaddr *vaddr,
+                         const struct voluta_blobid *bid)
+{
+	struct voluta_baddr baddr;
+
+	voluta_baddr_setup(&baddr, bid, vaddr->len, vaddr->off);
+	voluta_vba_setup(vba, vaddr, &baddr);
 }
 
 void voluta_vba_reset(struct voluta_vba *vba)

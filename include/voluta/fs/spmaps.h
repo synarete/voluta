@@ -93,6 +93,9 @@ int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                voluta_index_t *out_ag_index,
                                size_t *out_bn_within_ag);
 
+
+void voluta_agi_dirtify(struct voluta_agroup_info *agi);
+
 void voluta_agi_set_index(struct voluta_agroup_info *agi,
                           voluta_index_t ag_index);
 

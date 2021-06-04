@@ -943,16 +943,10 @@ static void agm_init(struct voluta_agroup_map *agm, voluta_index_t ag_index)
 	bkr_init_arr(agm->ag_bkr, ARRAY_SIZE(agm->ag_bkr));
 }
 
-static void agm_bks_baddr_of(const struct voluta_agroup_map *agm,
-                             enum voluta_vtype vtype, loff_t off,
-                             struct voluta_baddr *out_baddr)
+static void agm_bks_blobid(const struct voluta_agroup_map *agm,
+                           struct voluta_blobid *out_blobid)
 {
-	const size_t vsize = vtype_size(vtype);
-
-	voluta_baddr_setup(out_baddr, &agm->ag_bks_blobid, vsize, off);
-
-	voluta_assert_le(off_end(out_baddr->off, out_baddr->len),
-	                 blobid_size(&out_baddr->bid));
+	blobid_copyto(&agm->ag_bks_blobid, out_blobid);
 }
 
 static void agm_set_bks_blobid(struct voluta_agroup_map *agm,
@@ -1390,7 +1384,7 @@ agroup_map_of(const struct voluta_agroup_info *agi)
 	return agi->ag_vi.vu.agm;
 }
 
-static void agi_dirtify(struct voluta_agroup_info *agi)
+void voluta_agi_dirtify(struct voluta_agroup_info *agi)
 {
 	vi_dirtify(agi_vi(agi));
 }
@@ -1429,10 +1423,11 @@ void voluta_agi_resolve_vba(const struct voluta_agroup_info *agi,
                             const struct voluta_vaddr *vaddr,
                             struct voluta_vba *out_vba)
 {
+	struct voluta_blobid bid;
 	const struct voluta_agroup_map *agm = agroup_map_of(agi);
 
-	vaddr_copyto(vaddr, &out_vba->vaddr);
-	agm_bks_baddr_of(agm, vaddr->vtype, vaddr->off, &out_vba->baddr);
+	agm_bks_blobid(agm, &bid);
+	voluta_vba_setup_by(out_vba, vaddr, &bid);
 }
 
 int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,

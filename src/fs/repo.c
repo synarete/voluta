@@ -27,7 +27,6 @@
 /* blob-reference cache-entry */
 struct voluta_bref_info {
 	struct voluta_blobid    bid;
-	struct voluta_repo     *b_repo;
 	struct voluta_list_head b_htb_lh;
 	struct voluta_list_head b_lru_lh;
 	unsigned long           b_hkey;
@@ -719,8 +718,16 @@ static int repo_stage_blob(struct voluta_repo *repo, bool may_create,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_repo_store(struct voluta_repo *repo,
-                      const struct voluta_baddr *baddr, const void *blob)
+int voluta_repo_create_blob(struct voluta_repo *repo,
+                            const struct voluta_blobid *bid)
+{
+	struct voluta_bref_info *bri = NULL;
+
+	return repo_stage_blob(repo, true, bid, &bri);
+}
+
+int voluta_repo_store_blob(struct voluta_repo *repo,
+                           const struct voluta_baddr *baddr, const void *blob)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
@@ -757,9 +764,9 @@ static int check_baddr_iovec(const struct voluta_baddr *baddr,
 	return (iovec_length(iov, cnt) == baddr->len) ? 0 : -EINVAL;
 }
 
-int voluta_repo_storev(struct voluta_repo *repo,
-                       const struct voluta_baddr *baddr,
-                       const struct iovec *iov, size_t cnt)
+int voluta_repo_storev_blob(struct voluta_repo *repo,
+                            const struct voluta_baddr *baddr,
+                            const struct iovec *iov, size_t cnt)
 {
 	int err;
 	size_t nwr = 0;
@@ -790,8 +797,8 @@ int voluta_repo_storev(struct voluta_repo *repo,
 	return 0;
 }
 
-int voluta_repo_load(struct voluta_repo *repo,
-                     const struct voluta_baddr *baddr, void *blob)
+int voluta_repo_load_blob(struct voluta_repo *repo,
+                          const struct voluta_baddr *baddr, void *blob)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;

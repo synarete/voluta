@@ -123,8 +123,8 @@
 #define ii_isfifo(ii)                   voluta_ii_isfifo(ii)
 #define ii_issock(ii)                   voluta_ii_issock(ii)
 #define ii_isevictable(ii)              voluta_ii_isevictable(ii)
-#define bli_incref(bli)                 voluta_bli_incref(bli)
-#define bli_decref(bli)                 voluta_bli_decref(bli)
+
+#define agi_dirtify(agi)                voluta_agi_dirtify(agi)
 
 #define ts_copy(dst, src)               voluta_ts_copy(dst, src)
 #define iattr_setup(ia, ino)            voluta_iattr_setup(ia, ino)

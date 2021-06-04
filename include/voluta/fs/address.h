@@ -107,7 +107,7 @@ const struct voluta_baddr *voluta_baddr_none(void);
 
 void voluta_baddr_setup(struct voluta_baddr *baddr,
                         const struct voluta_blobid *bid,
-                        size_t size, loff_t off);
+                        size_t len, loff_t off);
 
 void voluta_baddr_assign(struct voluta_baddr *baddr,
                          const struct voluta_blobid *bid);
@@ -129,6 +129,10 @@ int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name);
 void voluta_vba_setup(struct voluta_vba *vba,
                       const struct voluta_vaddr *vaddr,
                       const struct voluta_baddr *baddr);
+
+void voluta_vba_setup_by(struct voluta_vba *vba,
+                         const struct voluta_vaddr *vaddr,
+                         const struct voluta_blobid *bid);
 
 void voluta_vba_reset(struct voluta_vba *vba);
 

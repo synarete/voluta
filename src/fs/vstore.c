@@ -562,10 +562,8 @@ static bool vstore_encryptwr(const struct voluta_vstore *vstore)
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
 struct voluta_sgvec {
-	struct voluta_blobid bid;
-	const struct voluta_vnode_info *vi[VOLUTA_NKB_IN_BK]; /* XXX rm */
-
 	struct iovec iov[VOLUTA_NKB_IN_BK];
+	struct voluta_blobid bid;
 	loff_t off;
 	size_t len;
 	size_t cnt;
@@ -586,7 +584,6 @@ static bool sgv_isappendable(const struct voluta_sgvec *sgv,
 {
 	loff_t off;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-	const struct voluta_blobid *bid = vi_blobid(vi);
 
 	voluta_assert_lt(vaddr->len, sgv->lim);
 
@@ -603,12 +600,9 @@ static bool sgv_isappendable(const struct voluta_sgvec *sgv,
 	if ((sgv->len + vaddr->len) > sgv->lim) {
 		return false;
 	}
-	if (!blobid_isequal(bid, &sgv->bid)) {
+	if (!blobid_isequal(vi_blobid(vi), &sgv->bid)) {
 		return false;
 	}
-
-	voluta_assert_gt(vi->vaddr.off, sgv->vi[sgv->cnt - 1]->vaddr.off);
-
 	return true;
 }
 
@@ -627,10 +621,6 @@ static int sgv_append(struct voluta_sgvec *sgv,
 	sgv->iov[idx].iov_len = len;
 	sgv->len += len;
 	sgv->cnt += 1;
-
-	/* XXX */
-	sgv->vi[idx] = vi;
-
 	return 0;
 }
 
@@ -650,9 +640,6 @@ static int sgv_populate(struct voluta_sgvec *sgv,
 			return err;
 		}
 		*viq = vi->v_ds_next;
-
-		/* XXX */
-		break;
 	}
 	return 0;
 }
@@ -671,7 +658,7 @@ static int sgv_destage_into_blob(const struct voluta_sgvec *sgv,
 
 	voluta_assert_gt(sgv->cnt, 0);
 	baddr_setup(&baddr, &sgv->bid, sgv->len, sgv->off);
-	return voluta_repo_storev(repo, &baddr, sgv->iov, sgv->cnt);
+	return voluta_repo_storev_blob(repo, &baddr, sgv->iov, sgv->cnt);
 }
 
 static int sgv_flush_dset(struct voluta_sgvec *sgv,

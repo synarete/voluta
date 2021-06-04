@@ -132,7 +132,7 @@ static void bls_set_vaddr(struct voluta_blobspec *bls,
 static void bls_set_blobid(struct voluta_blobspec *bls,
                            const struct voluta_blobid *bid)
 {
-	voluta_blobid_copyto(bid, &bls->blobid);
+	blobid_copyto(bid, &bls->blobid);
 }
 
 static void bls_to_baddr(const struct voluta_blobspec *bls,
@@ -952,13 +952,13 @@ static void agm_bks_baddr_of(const struct voluta_agroup_map *agm,
 	voluta_baddr_setup(out_baddr, &agm->ag_bks_blobid, vsize, off);
 
 	voluta_assert_le(off_end(out_baddr->off, out_baddr->len),
-	                 voluta_blobid_size(&out_baddr->bid));
+	                 blobid_size(&out_baddr->bid));
 }
 
 static void agm_set_bks_blobid(struct voluta_agroup_map *agm,
                                const struct voluta_blobid *bid)
 {
-	voluta_blobid_copyto(bid, &agm->ag_bks_blobid);
+	blobid_copyto(bid, &agm->ag_bks_blobid);
 }
 
 static struct voluta_bk_rec *

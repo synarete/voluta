@@ -19,18 +19,17 @@
 
 #include <stdint.h>
 
+/* current on-disk format version number */
+#define VOLUTA_FMT_VERSION              (1)
 
 /* volume's boot-record marker (ASCII: "@voluta@") */
 #define VOLUTA_BOOT_MARK                (0x406174756C6F7640L)
 
-/* current on-disk format version number */
-#define VOLUTA_FMT_VERSION              (1)
+/* file-system fsid magic number (ASCII: "@VLT") */
+#define VOLUTA_SUPER_MAGIC              (0x544C5640U)
 
-/* file-system fsid magic number (ASCII: '@VLT') */
-#define VOLUTA_SUPER_MAGIC              (0x40564C54U)
-
-/* magic numbers at meta-objects start (ASCII: '#VLT') */
-#define VOLUTA_VTYPE_MAGIC              (0x23564C54U)
+/* magic numbers at meta-objects start (ASCII: "#VLT") */
+#define VOLUTA_VTYPE_MAGIC              (0x544C5623U)
 
 /* max length of encryption pass-phrase */
 #define VOLUTA_PASSPHRASE_MAX           (255)

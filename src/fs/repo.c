@@ -105,7 +105,7 @@ bri_from_lru_lh(const struct voluta_list_head *lh)
 static void bri_init(struct voluta_bref_info *bri,
                      const struct voluta_blobid *bid, int fd)
 {
-	voluta_blobid_copyto(bid, &bri->bid);
+	blobid_copyto(bid, &bri->bid);
 	list_head_init(&bri->b_htb_lh);
 	list_head_init(&bri->b_lru_lh);
 	bri->b_hkey = voluta_blobid_hkey(bid);
@@ -124,7 +124,7 @@ static void bri_fini(struct voluta_bref_info *bri)
 static bool bri_has_blobid(const struct voluta_bref_info *bri,
                            const struct voluta_blobid *bid)
 {
-	return voluta_blobid_isequal(&bri->bid, bid);
+	return blobid_isequal(&bri->bid, bid);
 }
 
 static struct voluta_bref_info *
@@ -149,7 +149,7 @@ static void bri_del(struct voluta_bref_info *bri, struct voluta_qalloc *qal)
 
 static size_t bri_size(const struct voluta_bref_info *bri)
 {
-	return voluta_blobid_size(&bri->bid);
+	return blobid_size(&bri->bid);
 }
 
 static loff_t bri_off_end(const struct voluta_bref_info *bri)
@@ -464,7 +464,7 @@ static int repo_sub_pathname_of(const struct voluta_repo *repo,
 
 static loff_t blob_size_of(const struct voluta_blobid *bid)
 {
-	return (loff_t)voluta_blobid_size(bid);
+	return (loff_t)blobid_size(bid);
 }
 
 static int repo_create_blob(const struct voluta_repo *repo,
@@ -639,31 +639,6 @@ static int repo_relax_once(struct voluta_repo *repo)
 	return 0;
 }
 
-int voluta_repo_prep_blob(struct voluta_repo *repo,
-                          const struct voluta_blobid *bid)
-{
-	int err;
-	int fd = -1;
-	struct voluta_bref_info *bri = NULL;
-
-	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
-	err = repo_relax_once(repo);
-	if (err) {
-		return err;
-	}
-	err = repo_create_blob(repo, bid, &fd);
-	if (err) {
-		return err;
-	}
-	err = repo_new_bref(repo, bid, fd, &bri);
-	if (err) {
-		repo_remove_blob(repo, bid, &fd);
-		return err;
-	}
-	repo_cache_insert(repo, bri);
-	return 0;
-}
-
 static int repo_open_blob_of(struct voluta_repo *repo,
                              const struct voluta_blobid *bid,
                              struct voluta_bref_info **out_bri)
@@ -671,6 +646,7 @@ static int repo_open_blob_of(struct voluta_repo *repo,
 	int err;
 	int fd = -1;
 
+	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
 	err = repo_relax_once(repo);
 	if (err) {
 		return err;
@@ -684,37 +660,73 @@ static int repo_open_blob_of(struct voluta_repo *repo,
 		repo_close_blob(repo, bid, &fd);
 		return err;
 	}
+	repo_cache_insert(repo, *out_bri);
 	return 0;
 }
 
-static int repo_stage_blob(struct voluta_repo *repo,
-                           const struct voluta_blobid *bid,
-                           struct voluta_bref_info **out_bri)
+static int repo_create_blob_of(struct voluta_repo *repo,
+                               const struct voluta_blobid *bid,
+                               struct voluta_bref_info **out_bri)
 {
 	int err;
+	int fd = -1;
 
-	err = repo_cache_lookup(repo, bid, out_bri);
-	if (!err) {
-		return 0; /* cache hit */
-	}
-	err = repo_open_blob_of(repo, bid, out_bri);
+	err = repo_relax_once(repo);
 	if (err) {
+		return err;
+	}
+	err = repo_create_blob(repo, bid, &fd);
+	if (err) {
+		return err;
+	}
+	err = repo_new_bref(repo, bid, fd, out_bri);
+	if (err) {
+		repo_remove_blob(repo, bid, &fd);
 		return err;
 	}
 	repo_cache_insert(repo, *out_bri);
 	return 0;
 }
 
+static int repo_stage_blob(struct voluta_repo *repo, bool may_create,
+                           const struct voluta_blobid *bid,
+                           struct voluta_bref_info **out_bri)
+{
+	int err;
+
+	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
+
+	err = repo_cache_lookup(repo, bid, out_bri);
+	if (!err) {
+		return 0; /* cache hit */
+	}
+	err = repo_open_blob_of(repo, bid, out_bri);
+	if (!err) {
+		return 0;
+	}
+	if (err != -ENOENT) {
+		return err;
+	}
+	if (!may_create) {
+		return -ENOENT;
+	}
+	err = repo_create_blob_of(repo, bid, out_bri);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_repo_save_blob(struct voluta_repo *repo,
-                          const struct voluta_baddr *baddr, const void *blob)
+int voluta_repo_store(struct voluta_repo *repo,
+                      const struct voluta_baddr *baddr, const void *blob)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = repo_stage_blob(repo, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -729,14 +741,63 @@ int voluta_repo_save_blob(struct voluta_repo *repo,
 	return 0;
 }
 
-int voluta_repo_load_blob(struct voluta_repo *repo,
-                          const struct voluta_baddr *baddr, void *blob)
+static size_t iovec_length(const struct iovec *iov, size_t cnt)
+{
+	size_t len = 0;
+
+	for (size_t i = 0; i < cnt; ++i) {
+		len += iov[i].iov_len;
+	}
+	return len;
+}
+
+static int check_baddr_iovec(const struct voluta_baddr *baddr,
+                             const struct iovec *iov, size_t cnt)
+{
+	return (iovec_length(iov, cnt) == baddr->len) ? 0 : -EINVAL;
+}
+
+int voluta_repo_storev(struct voluta_repo *repo,
+                       const struct voluta_baddr *baddr,
+                       const struct iovec *iov, size_t cnt)
+{
+	int err;
+	size_t nwr = 0;
+	struct voluta_bref_info *bri = NULL;
+	struct voluta_fiovec fiov = { .fv_off = -1 };
+
+	err = check_baddr_iovec(baddr, iov, cnt);
+	if (err) {
+		return err;
+	}
+	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
+	if (err) {
+		return err;
+	}
+	err = bri_resolve_fiovec(bri, baddr->off, baddr->len, &fiov);
+	if (err) {
+		return err;
+	}
+	/* TODO: impl voluta_sys_pwritevn (like voluta_sys_pwriten) */
+	err = voluta_sys_pwritev(fiov.fv_fd, iov, (int)cnt, fiov.fv_off, &nwr);
+	if (err) {
+		return err;
+	}
+	if (nwr != baddr->len) {
+		/* XXX -- wrong, need to retry again */
+		return -EIO;
+	}
+	return 0;
+}
+
+int voluta_repo_load(struct voluta_repo *repo,
+                     const struct voluta_baddr *baddr, void *blob)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = repo_stage_blob(repo, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, false, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -750,5 +811,4 @@ int voluta_repo_load_blob(struct voluta_repo *repo,
 	}
 	return 0;
 }
-
 

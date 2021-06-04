@@ -419,8 +419,8 @@ static void zero_bs(struct voluta_bksec_info *bsi)
 	voluta_memzero(bs, sizeof(*bs));
 }
 
-static int load_bu(const struct voluta_sb_info *sbi,
-                   struct voluta_bksec_info *bsi)
+static int load_bksec(const struct voluta_sb_info *sbi,
+                      struct voluta_bksec_info *bsi)
 {
 	struct voluta_fiovec fiov = { .fv_cookie = NULL };
 	const struct voluta_vstore *vstore = vstore_of(sbi);
@@ -429,8 +429,8 @@ static int load_bu(const struct voluta_sb_info *sbi,
 	return voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bsi->bs);
 }
 
-static void forget_bu(const struct voluta_sb_info *sbi,
-                      struct voluta_bksec_info *bsi)
+static void forget_bksec(const struct voluta_sb_info *sbi,
+                         struct voluta_bksec_info *bsi)
 {
 	if (bsi != NULL) {
 		voluta_cache_forget_bsi(cache_of(sbi), bsi);
@@ -455,7 +455,7 @@ static int stage_bsi(struct voluta_sb_info *sbi, const voluta_lba_t lba,
 		zero_bs(bsi);
 		goto out_ok;
 	}
-	err = load_bu(sbi, bsi);
+	err = load_bksec(sbi, bsi);
 	if (err) {
 		goto out_err;
 	}
@@ -463,7 +463,7 @@ out_ok:
 	*out_bsi = bsi;
 	return 0;
 out_err:
-	forget_bu(sbi, bsi);
+	forget_bksec(sbi, bsi);
 	*out_bsi = NULL;
 	return err;
 }
@@ -1048,10 +1048,37 @@ static int decrypt_review_vnode(struct voluta_sb_info *sbi,
 static int load_from_blob(struct voluta_sb_info *sbi,
                           struct voluta_vnode_info *vi)
 {
+	int err;
 	struct voluta_vba vba;
+	const enum voluta_vtype vtype = vi->vaddr.vtype;
+	const struct voluta_blobid *bid = &vba.baddr.bid;
 
 	vi_vba(vi, &vba);
-	return voluta_repo_load_blob(sbi->sb_repo, &vba.baddr, vi->view);
+
+	if ((vtype != VOLUTA_VTYPE_HSMAP) && (vtype != VOLUTA_VTYPE_AGMAP)) {
+		voluta_assert_eq(bid->size, VOLUTA_AG_SIZE);
+	} else {
+		voluta_assert_eq(bid->size, VOLUTA_BK_SIZE);
+	}
+
+	err = voluta_repo_load(sbi->sb_repo, &vba.baddr, vi->view);
+	if (err) {
+		return err;
+	}
+	/* XXX */
+	if (!vi_isdata(vi)) {
+		err = voluta_verify_meta(vi);
+
+		if (err) {
+			err = voluta_verify_meta(vi);
+		}
+
+		voluta_assert_ok(err);
+		if (err) {
+			return err;
+		}
+	}
+	return 0;
 }
 
 static int stage_vnode(struct voluta_sb_info *sbi,
@@ -1090,21 +1117,10 @@ out_err:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int prepare_blob_of(const struct voluta_sb_info *sbi,
-                           const struct voluta_vba *vba)
-{
-	return voluta_repo_prep_blob(sbi->sb_repo, &vba->baddr.bid);
-}
-
 int voluta_format_super(struct voluta_sb_info *sbi)
 {
-	int err;
-	const struct voluta_vba *vba = &sbi->sb_vba;
-
-	err = prepare_blob_of(sbi, vba);
-	if (err) {
-		return err;
-	}
+	/* XXX */
+	voluta_unused(sbi);
 	return 0;
 }
 
@@ -1127,14 +1143,14 @@ int voluta_save_super(struct voluta_sb_info *sbi)
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
 	voluta_assert_eq(vba->vaddr.len, vba->baddr.len);
-	return voluta_repo_save_blob(sbi->sb_repo, &vba->baddr, sbi->sb);
+	return voluta_repo_store(sbi->sb_repo, &vba->baddr, sbi->sb);
 }
 
 int voluta_load_super(struct voluta_sb_info *sbi)
 {
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
-	return voluta_repo_load_blob(sbi->sb_repo, &vba->baddr, sbi->sb);
+	return voluta_repo_load(sbi->sb_repo, &vba->baddr, sbi->sb);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1223,10 +1239,6 @@ static int format_hsmap(struct voluta_sb_info *sbi,
 
 	voluta_vba_for_hsmap(&vba, hs_index);
 	err = spawn_hsmap_of(sbi, &vba, hs_index, nags_span, &hsi);
-	if (err) {
-		return err;
-	}
-	err = prepare_blob_of(sbi, &vba);
 	if (err) {
 		return err;
 	}
@@ -1377,14 +1389,11 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi,
 static int format_agbks_of(struct voluta_sb_info *sbi,
                            struct voluta_agroup_info *agi)
 {
-	int err;
 	struct voluta_vba vba;
 
+	voluta_unused(sbi);
+
 	voluta_vba_for_agbks(&vba, agi->ag_index);
-	err = prepare_blob_of(sbi, &vba);
-	if (err) {
-		return err;
-	}
 	voluta_agi_set_bks_blobid(agi, &vba.baddr.bid);
 	return 0;
 }
@@ -1410,10 +1419,6 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
 
 	voluta_vba_for_agmap(&vba, ag_index);
 	err = spawn_agmap_of(sbi, &vba, ag_index, &agi);
-	if (err) {
-		return err;
-	}
-	err = prepare_blob_of(sbi, &vba);
 	if (err) {
 		return err;
 	}
@@ -1762,7 +1767,7 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = voluta_vstore_flush(sbi->sb_vstore, sbi->sb_cache, 0);
+	err = voluta_vstore_flush(sbi->sb_vstore, sbi->sb_repo, sbi->sb_cache, 0);
 	if (err) {
 		return err;
 	}
@@ -1784,7 +1789,7 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = voluta_vstore_flush(sbi->sb_vstore, sbi->sb_cache, ds_key);
+	err = voluta_vstore_flush(sbi->sb_vstore, sbi->sb_repo, sbi->sb_cache, ds_key);
 	if (err) {
 		return err;
 	}

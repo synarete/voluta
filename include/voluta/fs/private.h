@@ -84,8 +84,14 @@
 #define vaddr_setup(va, t, o)           voluta_vaddr_setup(va, t, o)
 #define vaddr_by_ag(va, t, ag, bn, k)   voluta_vaddr_by_ag(va, t, ag, bn, k)
 
+#define blobid_reset(bid)               voluta_blobid_reset(bid)
+#define blobid_copyto(bid, oth)         voluta_blobid_copyto(bid, oth)
+#define blobid_isequal(bid, oth)        voluta_blobid_isequal(bid, oth)
+#define blobid_size(bid)                voluta_blobid_size(bid)
+
 #define baddr_reset(ba)                 voluta_baddr_reset(ba)
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
+#define baddr_setup(ba, bid, s, o)      voluta_baddr_setup(ba, bid, s, o)
 
 #define vi_vba(vi, vba)                 voluta_vi_vba(vi, vba)
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
@@ -318,7 +324,6 @@ bool capable_sys_admin(const struct voluta_ucred *ucred)
 	return uid_isroot(ucred->uid);
 }
 
-
 static inline
 bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
 {
@@ -354,6 +359,18 @@ static inline
 const struct voluta_baddr *bi_baddr(const struct voluta_bnode_info *bi)
 {
 	return &bi->baddr;
+}
+
+static inline
+const struct voluta_blobid *vi_blobid(const struct voluta_vnode_info *vi)
+{
+	return &vi->v_bi.baddr.bid;
+}
+
+static inline
+const struct voluta_baddr *vi_baddr(const struct voluta_vnode_info *vi)
+{
+	return &vi->v_bi.baddr;
 }
 
 static inline

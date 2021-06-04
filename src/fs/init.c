@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <limits.h>
+#include <endian.h>
 
 #include <voluta/infra.h>
 #include <voluta/defs.h>
@@ -309,6 +310,47 @@ static int errno_or_errnum(int errnum)
 	return (errno > 0) ? -errno : -abs(errnum);
 }
 
+static int check_endianess32(uint32_t val, const char *str)
+{
+	const uint32_t val_le = htole32(val);
+	char buf[16] = "";
+
+	for (size_t i = 0; i < 4; ++i) {
+		buf[i] = (char)(val_le >> (i * 8));
+	}
+	return !strcmp(buf, str) ? 0 : -EBADE;
+}
+
+static int check_endianess64(uint64_t val, const char *str)
+{
+	const uint64_t val_le = htole64(val);
+	char buf[16] = "";
+
+	for (size_t i = 0; i < 8; ++i) {
+		buf[i] = (char)(val_le >> (i * 8));
+	}
+	return !strcmp(buf, str) ? 0 : -EBADE;
+}
+
+static int check_endianess(void)
+{
+	int err;
+
+	err = check_endianess64(VOLUTA_BOOT_MARK, "@voluta@");
+	if (err) {
+		return err;
+	}
+	err = check_endianess32(VOLUTA_SUPER_MAGIC, "@VLT");
+	if (err) {
+		return err;
+	}
+	err = check_endianess32(VOLUTA_VTYPE_MAGIC, "#VLT");
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
 static int check_sysconf(void)
 {
 	long val;
@@ -394,6 +436,10 @@ int voluta_init_lib(void)
 	guarantee_sane();
 	if (g_libvoluta_init) {
 		return 0;
+	}
+	err = check_endianess();
+	if (err) {
+		return err;
 	}
 	err = check_sysconf();
 	if (err) {

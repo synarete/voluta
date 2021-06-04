@@ -94,6 +94,7 @@ loff_t voluta_off_in_blob(loff_t off, size_t blob_size)
 {
 	const size_t uoff = (size_t)off;
 
+	voluta_assert_gt(blob_size, 0);
 	voluta_assert_ge(off, 0);
 	voluta_assert(!off_isnull(off));
 
@@ -401,7 +402,9 @@ static void blobid_set_size(struct voluta_blobid *blobid, size_t size)
 
 static loff_t blobid_off_within(const struct voluta_blobid *blobid, loff_t off)
 {
-	return voluta_off_in_blob(off, voluta_blobid_size(blobid));
+	const size_t blob_size = voluta_blobid_size(blobid);
+
+	return blob_size ? voluta_off_in_blob(off, blob_size) : 0;
 }
 
 void voluta_blobid_reset(struct voluta_blobid *blobid)

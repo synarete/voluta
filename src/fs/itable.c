@@ -538,6 +538,7 @@ static int iti_set_rootdir(struct voluta_itable_info *iti, ino_t ino,
 		iaddr_setup(&iti->it_rootdir, ino, vaddr);
 	} else {
 		log_err("illegal root-ino: ino=%ld off=%ld", ino, vaddr->off);
+		err = -EINVAL;
 	}
 	return err;
 }
@@ -691,16 +692,14 @@ static int fetch_itnode_at(struct voluta_sb_info *sbi,
                            struct voluta_vnode_info **out_vi)
 {
 	int err;
-	struct voluta_vnode_info *vi;
 
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = voluta_stage_vnode(sbi, vaddr, NULL, &vi);
+	err = voluta_stage_vnode(sbi, vaddr, NULL, out_vi);
 	if (err) {
 		return err;
 	}
-	*out_vi = vi;
 	return 0;
 }
 
@@ -1395,14 +1394,15 @@ static int do_scan_root_inode(struct voluta_sb_info *sbi,
 static int scan_root_inode(struct voluta_sb_info *sbi,
                            struct voluta_inode_info **out_root_ii)
 {
-	int err = -ENOMEM;
+	int err;
 	struct voluta_ino_set *ino_set;
 
 	ino_set = ino_set_new(sbi->sb_qalloc);
-	if (ino_set != NULL) {
-		err = do_scan_root_inode(sbi, ino_set, out_root_ii);
-		ino_set_del(ino_set, sbi->sb_qalloc);
+	if (ino_set == NULL) {
+		return -ENOMEM;
 	}
+	err = do_scan_root_inode(sbi, ino_set, out_root_ii);
+	ino_set_del(ino_set, sbi->sb_qalloc);
 	return err;
 }
 
@@ -1496,15 +1496,21 @@ static int verify_itable_entry(const struct voluta_itable_entry *ite)
 {
 	int err;
 	struct voluta_vaddr vaddr;
+	const ino_t ino = ite_ino(ite);
 
 	ite_vaddr(ite, &vaddr);
 	err = voluta_verify_off(vaddr.off);
 	if (err) {
 		return err;
 	}
-	if (!vtype_isnone(vaddr.vtype) &&
-	    !vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_INODE)) {
-		return -EFSCORRUPTED;
+	if (vtype_isnone(vaddr.vtype)) {
+		if (!ino_isnull(ino)) {
+			return -EFSCORRUPTED;
+		}
+	} else {
+		if (!vtype_isinode(vaddr.vtype)) {
+			return -EFSCORRUPTED;
+		}
 	}
 	return 0;
 }
@@ -1560,20 +1566,32 @@ static int verify_itnode_childs(const struct voluta_itable_tnode *itn)
 	return verify_count(nchilds, itn_nchilds(itn));
 }
 
-int voluta_verify_itnode(const struct voluta_itable_tnode *itn)
+static int verify_itnode_parent(const struct voluta_itable_tnode *itn)
 {
 	int err;
 	struct voluta_vaddr vaddr;
 
 	itn_parent(itn, &vaddr);
-	if (!vaddr_isnull(&vaddr)) {
-		err = voluta_verify_off(vaddr.off);
-		if (err) {
-			return err;
-		}
-		if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_ITNODE)) {
-			return -EFSCORRUPTED;
-		}
+	if (vaddr_isnull(&vaddr)) {
+		return 0;
+	}
+	err = voluta_verify_off(vaddr.off);
+	if (err) {
+		return err;
+	}
+	if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_ITNODE)) {
+		return -EFSCORRUPTED;
+	}
+	return 0;
+}
+
+int voluta_verify_itnode(const struct voluta_itable_tnode *itn)
+{
+	int err;
+
+	err = verify_itnode_parent(itn);
+	if (err) {
+		return err;
 	}
 	err = verify_itnode_entries(itn);
 	if (err) {

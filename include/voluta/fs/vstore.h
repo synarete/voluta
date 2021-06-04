@@ -69,7 +69,7 @@ int voluta_vstore_sync(struct voluta_vstore *vstore);
 int voluta_vstore_fiovec(const struct voluta_vstore *vstore,
                          loff_t off, size_t len, struct voluta_fiovec *fiov);
 
-int voluta_vstore_flush(struct voluta_vstore *vstore,
+int voluta_vstore_flush(struct voluta_vstore *vstore, struct voluta_repo *repo,
                         const struct voluta_cache *cache, long ds_key);
 
 

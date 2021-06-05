@@ -22,7 +22,7 @@
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/vstore.h>
-#include <voluta/fs/repo.h>
+#include <voluta/fs/bstore.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
@@ -652,19 +652,19 @@ static int sgv_destage(const struct voluta_sgvec *sgv,
 }
 
 static int sgv_destage_into_blob(const struct voluta_sgvec *sgv,
-                                 struct voluta_repo *repo)
+                                 struct voluta_bstore *bstore)
 {
 	struct voluta_baddr baddr;
 
 	voluta_assert_gt(sgv->cnt, 0);
 	baddr_setup(&baddr, &sgv->bid, sgv->len, sgv->off);
-	return voluta_repo_storev_blob(repo, &baddr, sgv->iov, sgv->cnt);
+	return voluta_bstore_storev_bobj(bstore, &baddr, sgv->iov, sgv->cnt);
 }
 
 static int sgv_flush_dset(struct voluta_sgvec *sgv,
                           const struct voluta_dset *dset,
                           struct voluta_vstore *vstore,
-                          struct voluta_repo *repo)
+                          struct voluta_bstore *bstore)
 {
 	int err;
 	struct voluta_vnode_info *viq = dset->ds_viq;
@@ -679,7 +679,7 @@ static int sgv_flush_dset(struct voluta_sgvec *sgv,
 		if (err) {
 			return err;
 		}
-		err = sgv_destage_into_blob(sgv, repo);
+		err = sgv_destage_into_blob(sgv, bstore);
 		if (err) {
 			return err;
 		}
@@ -923,39 +923,40 @@ static void dset_cleanup(struct voluta_dset *dset)
 
 static int dset_flush(const struct voluta_dset *dset,
                       struct voluta_vstore *vstore,
-                      struct voluta_repo *repo)
+                      struct voluta_bstore *bstore)
 {
 	struct voluta_sgvec sgv;
 	struct voluta_iobuf iob;
 
 	return vstore_encryptwr(vstore) ?
 	       iob_flush_dset(&iob, dset, vstore) :
-	       sgv_flush_dset(&sgv, dset, vstore, repo);
+	       sgv_flush_dset(&sgv, dset, vstore, bstore);
 }
 
 static int dset_collect_flush(struct voluta_dset *dset,
                               const struct voluta_cache *cache,
                               struct voluta_vstore *vstore,
-                              struct voluta_repo *repo)
+                              struct voluta_bstore *bstore)
 {
 	int err;
 
 	dset_inhabit(dset, cache);
 	dset_make_fifo(dset);
 	dset_seal_meta(dset);
-	err = dset_flush(dset, vstore, repo);
+	err = dset_flush(dset, vstore, bstore);
 	dset_cleanup(dset);
 	return err;
 }
 
-int voluta_vstore_flush(struct voluta_vstore *vstore, struct voluta_repo *repo,
+int voluta_vstore_flush(struct voluta_vstore *vstore,
+                        struct voluta_bstore *bstore,
                         const struct voluta_cache *cache, long ds_key)
 {
 	int err;
 	struct voluta_dset dset;
 
 	dset_init(&dset, ds_key);
-	err = dset_collect_flush(&dset, cache, vstore, repo);
+	err = dset_collect_flush(&dset, cache, vstore, bstore);
 	dset_fini(&dset);
 	return err;
 }

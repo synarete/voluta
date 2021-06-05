@@ -409,13 +409,13 @@ static loff_t blobid_off_within(const struct voluta_blobid *blobid, loff_t off)
 
 void voluta_blobid_reset(struct voluta_blobid *blobid)
 {
-	memset(blobid->oid, 0, sizeof(blobid->oid));
+	memset(blobid->id, 0, sizeof(blobid->id));
 	blobid_set_size(blobid, 0);
 }
 
 static void blobid_generate_oid(struct voluta_blobid *blobid)
 {
-	voluta_getentropy(blobid->oid, sizeof(blobid->oid));
+	voluta_getentropy(blobid->id, sizeof(blobid->id));
 }
 
 static void blodid_make(struct voluta_blobid *blobid, size_t size)
@@ -427,7 +427,7 @@ static void blodid_make(struct voluta_blobid *blobid, size_t size)
 void voluta_blobid_copyto(const struct voluta_blobid *blobid,
                           struct voluta_blobid *other)
 {
-	memcpy(other->oid, blobid->oid, sizeof(other->oid));
+	memcpy(other->id, blobid->id, sizeof(other->id));
 	blobid_set_size(other, voluta_blobid_size(blobid));
 	other->reserved = 0;
 }
@@ -436,15 +436,15 @@ bool voluta_blobid_isequal(const struct voluta_blobid *blobid,
                            const struct voluta_blobid *other)
 {
 	return (voluta_blobid_size(blobid) == voluta_blobid_size(other)) &&
-	       (memcmp(blobid->oid, other->oid, sizeof(blobid->oid)) == 0);
+	       (memcmp(blobid->id, other->id, sizeof(blobid->id)) == 0);
 }
 
 uint64_t voluta_blobid_hkey(const struct voluta_blobid *blobid)
 {
-	const uint8_t *oid = blobid->oid;
+	const uint8_t *oid = blobid->id;
 	const uint64_t size = voluta_blobid_size(blobid);
 
-	STATICASSERT_SIZEOF(blobid->oid, 32);
+	STATICASSERT_SIZEOF(blobid->id, 32);
 
 	return size ^ uint64_at(oid) ^ uint64_at(oid + 8) ^
 	       uint64_at(oid + 16) ^ uint64_at(oid + 24);
@@ -461,13 +461,13 @@ int voluta_blobid_to_name(const struct voluta_blobid *blobid,
 {
 	unsigned int byte;
 	size_t len = 0;
-	const size_t oid_size = ARRAY_SIZE(blobid->oid);
+	const size_t oid_size = ARRAY_SIZE(blobid->id);
 
 	if (nmax < (2 * oid_size)) {
 		return -EINVAL;
 	}
 	for (size_t i = 0; i < oid_size; ++i) {
-		byte = (int)(blobid->oid[i]);
+		byte = (int)(blobid->id[i]);
 		byte_to_ascii(byte, &name[len], &name[len + 1]);
 		len += 2;
 	}
@@ -509,13 +509,13 @@ int voluta_blobid_from_name(struct voluta_blobid *blobid,
 {
 	int err = 0;
 	uint8_t *byte;
-	const size_t oid_size = ARRAY_SIZE(blobid->oid);
+	const size_t oid_size = ARRAY_SIZE(blobid->id);
 
 	if (len < (2 * oid_size)) {
 		return -EINVAL;
 	}
 	for (size_t i = 0; i < oid_size; ++i) {
-		byte = &blobid->oid[i];
+		byte = &blobid->id[i];
 		err = ascii_to_byte(name[2 * i], name[(2 * i) + 1], byte);
 		if (err) {
 			return err;
@@ -553,7 +553,7 @@ void voluta_baddr_assign(struct voluta_baddr *baddr,
 
 void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
-	memset(baddr->bid.oid, 0, sizeof(baddr->bid.oid));
+	memset(baddr->bid.id, 0, sizeof(baddr->bid.id));
 	baddr->len = 0;
 	baddr->off = 0;
 }

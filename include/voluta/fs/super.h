@@ -25,7 +25,7 @@
 int voluta_sbi_init(struct voluta_sb_info *sbi,
                     struct voluta_cache *cache,
                     struct voluta_vstore *vstore,
-                    struct voluta_repo *repo);
+                    struct voluta_bstore *bstore);
 
 void voluta_sbi_fini(struct voluta_sb_info *sbi);
 

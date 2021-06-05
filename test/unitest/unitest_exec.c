@@ -328,7 +328,7 @@ void ut_execute_tests(void)
 	testdir = ut_globals.test_dir_real;
 	volpath = ut_joinpath(testdir, "unitests.voluta");
 	args.fs_args.volume = volpath;
-	args.fs_args.repodir = testdir;
+	args.fs_args.bstoredir = testdir;
 
 	args.fs_args.passwd = ut_make_passwd(&passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;

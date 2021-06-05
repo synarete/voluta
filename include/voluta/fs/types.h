@@ -246,7 +246,7 @@ struct voluta_iaddr {
 struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
-	long ce_key;
+	const void *ce_key;
 	long ce_tick;
 	int  ce_refcnt;
 	bool ce_mapped;
@@ -258,8 +258,11 @@ struct voluta_cache_elem {
 struct voluta_bksec_info {
 	struct voluta_cache_elem        bs_ce;
 	struct voluta_blocks_sec       *bs;
-	uint64_t        bs_mask[VOLUTA_NBK_IN_BKSEC];
-	voluta_lba_t    bs_lba;
+	struct voluta_baddr             baddr;
+	uint64_t bs_mask[VOLUTA_NBK_IN_BKSEC];
+
+	/* XXX rm */
+	voluta_lba_t bs_lba;
 };
 
 /* dirty-queues of cached-elements */
@@ -275,15 +278,20 @@ struct voluta_dirtyqs {
 	size_t dq_nbins;
 };
 
-/* caching */
+/* LRU + hash-map */
+typedef long (*voluta_lrumap_hash_fn)(const void *);
+typedef bool (*voluta_lrumap_equal_fn)(const void *, const void *);
+
 struct voluta_lrumap {
+	voluta_lrumap_hash_fn    hash_fn;
+	voluta_lrumap_equal_fn   equal_fn;
 	struct voluta_listq      lru;
 	struct voluta_list_head *htbl;
-	long (*hash_fn)(long);
 	size_t htbl_nelems;
 	size_t htbl_size;
 };
 
+/* cache */
 struct voluta_cache {
 	struct voluta_qalloc   *c_qalloc;
 	struct voluta_alloc_if *c_alif;
@@ -340,7 +348,7 @@ struct voluta_vstore {
 };
 
 /* blobs storage controller */
-struct voluta_repo {
+struct voluta_bstore {
 	struct voluta_list_head re_htbl[1024];
 	struct voluta_listq     re_lru;
 	struct voluta_qalloc   *re_qalloc;
@@ -386,7 +394,7 @@ struct voluta_sb_info {
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_vstore           *sb_vstore;
-	struct voluta_repo             *sb_repo;
+	struct voluta_bstore             *sb_bstore;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -475,7 +483,7 @@ struct voluta_fuseq {
 struct voluta_fs_args {
 	const char *superid;
 	const char *volume;
-	const char *repodir;
+	const char *bstoredir;
 	const char *mountp;
 	const char *fsname;
 	const char *passwd;
@@ -507,7 +515,7 @@ struct voluta_fs_env {
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
 	struct voluta_vstore           *vstore;
-	struct voluta_repo             *repo;
+	struct voluta_bstore             *bstore;
 	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;

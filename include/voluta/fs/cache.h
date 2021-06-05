@@ -47,10 +47,12 @@ void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
                                struct voluta_dset *dset);
 
 struct voluta_bksec_info *
-voluta_cache_lookup_bsi(struct voluta_cache *cache, voluta_lba_t lba);
+voluta_cache_lookup_bsi(struct voluta_cache *cache,
+                        const struct voluta_vba *vba);
 
 struct voluta_bksec_info *
-voluta_cache_spawn_bsi(struct voluta_cache *cache, voluta_lba_t lba);
+voluta_cache_spawn_bsi(struct voluta_cache *cache,
+                       const struct voluta_vba *vba);
 
 void voluta_cache_forget_bsi(struct voluta_cache *cache,
                              struct voluta_bksec_info *bsi);

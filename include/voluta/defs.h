@@ -268,14 +268,8 @@
 #define VOLUTA_IO_SIZE_MAX              (4UL * VOLUTA_UMEGA)
 
 
-/* size in bytes of single archiving blob (16M) */
-#define VOLUTA_AR_BLOB_SIZE             (VOLUTA_AG_SIZE / 4)
-
-/* size of archive blob spec entry */
-#define VOLUTA_AR_BLOBREF_SIZE          (64)
-
-/* size in bytes of object identifier */
-#define VOLUTA_OID_LEN                  (32)
+/* size in bytes of binary object identifier */
+#define VOLUTA_BLOBID_LEN               (32)
 
 
 
@@ -466,7 +460,7 @@ struct voluta_vaddr64 {
 
 
 struct voluta_blobid {
-	uint8_t  oid[VOLUTA_OID_LEN];
+	uint8_t  id[VOLUTA_BLOBID_LEN];
 	uint32_t size;
 	uint32_t reserved;
 } voluta_packed_aligned8;

@@ -24,6 +24,7 @@ struct voluta_qalloc;
 struct voluta_baddr;
 struct voluta_bref_info;
 struct voluta_fiovec;
+struct voluta_cache;
 
 int voluta_bstore_init(struct voluta_bstore *bstore,
                        struct voluta_alloc_if *alif);
@@ -35,6 +36,8 @@ int voluta_bstore_open(struct voluta_bstore *bstore, const char *path);
 int voluta_bstore_close(struct voluta_bstore *bstore);
 
 int voluta_bstore_format(struct voluta_bstore *bstore);
+
+int voluta_bstore_sync(struct voluta_bstore *bstore);
 
 
 int voluta_bstore_create_blob(struct voluta_bstore *bstore,
@@ -50,5 +53,14 @@ int voluta_bstore_storev_bobj(struct voluta_bstore *bstore,
 
 int voluta_bstore_load_bobj(struct voluta_bstore *bstore,
                             const struct voluta_baddr *baddr, void *bobj);
+
+int voluta_bstore_resolve_bobj(struct voluta_bstore *bstore,
+                               const struct voluta_baddr *baddr,
+                               loff_t off_within, size_t len,
+                               struct voluta_fiovec *out_fiov);
+
+
+int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
+                              struct voluta_bstore *bstore, long ds_key);
 
 #endif /* VOLUTA_BSTORE_H_ */

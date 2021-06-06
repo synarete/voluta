@@ -256,10 +256,10 @@ struct voluta_cache_elem {
 
 /* cached blocks-section info */
 struct voluta_bksec_info {
-	struct voluta_cache_elem        bs_ce;
-	struct voluta_blocks_sec       *bs;
+	struct voluta_cache_elem        bks_ce;
+	struct voluta_blocks_sec       *bks;
 	struct voluta_baddr             baddr;
-	uint64_t bs_mask[VOLUTA_NBK_IN_BKSEC];
+	uint64_t bks_mask[VOLUTA_NBK_IN_BKSEC];
 
 	/* XXX rm */
 	voluta_lba_t bs_lba;
@@ -349,12 +349,12 @@ struct voluta_vstore {
 
 /* blobs storage controller */
 struct voluta_bstore {
-	struct voluta_list_head re_htbl[1024];
-	struct voluta_listq     re_lru;
-	struct voluta_alloc_if *re_alif;
-	size_t  re_nsubs;
-	size_t  re_hsize;
-	int     re_dfd;
+	struct voluta_list_head bs_htbl[1024];
+	struct voluta_listq     bs_lru;
+	struct voluta_alloc_if *bs_alif;
+	size_t  bs_nsubs;
+	size_t  bs_hsize;
+	int     bs_dfd;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -401,6 +401,8 @@ struct voluta_sb_info {
 	struct voluta_space_info        sb_spi;
 	struct voluta_itable_info       sb_iti;
 	struct voluta_oper_stat         sb_ops;
+	struct voluta_pipe              sb_pipe;
+	struct voluta_nullfd            sb_nullnfd;
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;

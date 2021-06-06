@@ -19,14 +19,6 @@
 
 #include <voluta/fs/types.h>
 
-int voluta_verify_meta(const struct voluta_vnode_info *vi);
-
-void voluta_stamp_view(struct voluta_view *view,
-                       const struct voluta_vaddr *vaddr);
-
-bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
-
-void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
 
 
 int voluta_decrypt_vnode(const struct voluta_vnode_info *vi, const void *buf);

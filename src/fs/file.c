@@ -29,6 +29,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/vstore.h>
+#include <voluta/fs/bstore.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/inode.h>
 #include <voluta/fs/file.h>
@@ -188,13 +189,23 @@ static int fiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
 }
 
 static int fiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
-                            loff_t bk_start, loff_t off_in_bk, size_t len,
+                            const struct voluta_vaddr *vaddr,
+                            loff_t off_within, size_t len,
                             struct voluta_fiovec *out_fiov)
 {
-	const loff_t ps_off = bk_start + off_in_bk;
-	const struct voluta_vstore *vstore = f_ctx->sbi->sb_vstore;
+	int err;
+	struct voluta_vba vba;
 
-	return voluta_vstore_fiovec(vstore, ps_off, len, out_fiov);
+	err = voluta_resolve_vba(f_ctx->sbi, vaddr, &vba);
+	if (err) {
+		return err;
+	}
+	err = voluta_bstore_resolve_bobj(f_ctx->sbi->sb_bstore, &vba.baddr,
+	                                 off_within, len, out_fiov);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
@@ -204,10 +215,10 @@ static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 	int err;
 	void *dat = vi_dat_of(vi);
 	const enum voluta_vtype vtype = vi_vtype(vi);
-	const loff_t oib = off_in_data(f_ctx->off, vtype);
+	const loff_t off_in_dat = off_in_data(f_ctx->off, vtype);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
-	err = fiovec_by_qalloc(f_ctx, dat, oib, len, out_fiov);
+	err = fiovec_by_qalloc(f_ctx, dat, off_in_dat, len, out_fiov);
 	if (!err && f_ctx->with_cookie) {
 		vi_incref(vi);
 		out_fiov->fv_cookie = unconst(vi);
@@ -216,10 +227,11 @@ static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 }
 
 static int fiovec_of_data(const struct voluta_file_ctx *f_ctx,
-                          loff_t bk_start, loff_t off_in_bk, size_t len,
+                          const struct voluta_vaddr *vaddr,
+                          loff_t off_in_bk, size_t len,
                           struct voluta_fiovec *out_fiov)
 {
-	return fiovec_by_vstore(f_ctx, bk_start, off_in_bk, len, out_fiov);
+	return fiovec_by_vstore(f_ctx, vaddr, off_in_bk, len, out_fiov);
 }
 
 static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
@@ -230,7 +242,7 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
 	const loff_t oid = off_in_data(f_ctx->off, vtype);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
-	return fiovec_of_data(f_ctx, vaddr->off, oid, len, out_fiov);
+	return fiovec_of_data(f_ctx, vaddr, oid, len, out_fiov);
 }
 
 static int fiovec_of_zeros(const struct voluta_file_ctx *f_ctx,
@@ -285,15 +297,16 @@ static int fiovec_copy_mem(const struct voluta_fiovec *fiov_src,
 
 static int fiovec_copy_splice(const struct voluta_fiovec *fiov_src,
                               const struct voluta_fiovec *fiov_dst,
-                              struct voluta_pipe *pipe, size_t len)
+                              struct voluta_pipe *pipe,
+                              struct voluta_nullfd *nullfd, size_t len)
 {
 	loff_t off_src = fiov_src->fv_off;
 	loff_t off_dst = fiov_dst->fv_off;
 	const int fd_src = fiov_src->fv_fd;
 	const int fd_dst = fiov_dst->fv_fd;
 
-	return voluta_pipe_kcopy(pipe, fd_src, &off_src,
-	                         fd_dst, &off_dst, len);
+	return voluta_kcopy_with_splice(pipe, nullfd, fd_src, &off_src,
+	                                fd_dst, &off_dst, len);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1237,7 +1250,7 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
 	struct voluta_fiovec fiov = { .fv_base = NULL };
 
 	if (kcopy_mode(f_ctx)) {
-		err = fiovec_of_data(f_ctx, vaddr->off, off_in_bk, len, &fiov);
+		err = fiovec_of_data(f_ctx, vaddr, off_in_bk, len, &fiov);
 		if (err) {
 			return err;
 		}
@@ -3810,7 +3823,12 @@ static int resolve_leaf_vaddr(const struct voluta_fmap_ctx *fm_ctx,
 
 static struct voluta_pipe *pipe_of(const struct voluta_fmap_ctx *fm_ctx)
 {
-	return & fm_ctx->f_ctx->sbi->sb_vstore->vs_pipe;
+	return & fm_ctx->f_ctx->sbi->sb_pipe;
+}
+
+static struct voluta_nullfd *nullfd_of(const struct voluta_fmap_ctx *fm_ctx)
+{
+	return & fm_ctx->f_ctx->sbi->sb_nullnfd;
 }
 
 static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
@@ -3840,7 +3858,8 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 			return err;
 		}
 		err = fiovec_copy_splice(&fiov_src, &fiov_dst,
-		                         pipe_of(fm_ctx_dst), len);
+		                         pipe_of(fm_ctx_dst),
+		                         nullfd_of(fm_ctx_dst), len);
 		if (err) {
 			return err;
 		}

@@ -21,8 +21,16 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/types.h>
 #include <voluta/fs/mpool.h>
+#include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/nodes.h>
+#include <voluta/fs/spmaps.h>
+#include <voluta/fs/itable.h>
+#include <voluta/fs/inode.h>
+#include <voluta/fs/dir.h>
+#include <voluta/fs/file.h>
+#include <voluta/fs/symlink.h>
+#include <voluta/fs/xattr.h>
 #include <voluta/fs/private.h>
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -139,6 +147,44 @@ void voluta_vi_vba(const struct voluta_vnode_info *vi,
                    struct voluta_vba *out_vba)
 {
 	voluta_vba_setup(out_vba, vi_vaddr(vi), bi_baddr(&vi->v_bi));
+}
+
+bool voluta_vi_isdata(const struct voluta_vnode_info *vi)
+{
+	return voluta_vtype_isdata(vi_vtype(vi));
+}
+
+void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
+{
+	void *dat;
+	const enum voluta_vtype vtype = vi_vtype(vi);
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_DATA1K:
+		dat = vi->vu.db1->dat;
+		break;
+	case VOLUTA_VTYPE_DATA4K:
+		dat = vi->vu.db4->dat;
+		break;
+	case VOLUTA_VTYPE_DATABK:
+		dat = vi->vu.db->dat;
+		break;
+	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_VTYPE_SUPER:
+	case VOLUTA_VTYPE_HSMAP:
+	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_AGBKS:
+	default:
+		dat = NULL;
+		break;
+	}
+	return dat;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -346,3 +392,260 @@ voluta_ii_new(struct voluta_alloc_if *alif,
 	}
 	return ii;
 }
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static uint32_t hdr_magic(const struct voluta_header *hdr)
+{
+	return voluta_le32_to_cpu(hdr->h_magic);
+}
+
+static void hdr_set_magic(struct voluta_header *hdr, uint32_t magic)
+{
+	hdr->h_magic = voluta_cpu_to_le32(magic);
+}
+
+static size_t hdr_size(const struct voluta_header *hdr)
+{
+	return voluta_le32_to_cpu(hdr->h_size);
+}
+
+static size_t hdr_payload_size(const struct voluta_header *hdr)
+{
+	return hdr_size(hdr) - sizeof(*hdr);
+}
+
+static void hdr_set_size(struct voluta_header *hdr, size_t size)
+{
+	hdr->h_size = voluta_cpu_to_le32((uint32_t)size);
+}
+
+static enum voluta_vtype hdr_vtype(const struct voluta_header *hdr)
+{
+	return (enum voluta_vtype)(hdr->h_vtype);
+}
+
+static void hdr_set_vtype(struct voluta_header *hdr, enum voluta_vtype vtype)
+{
+	hdr->h_vtype = (uint8_t)vtype;
+}
+
+static uint32_t hdr_csum(const struct voluta_header *hdr)
+{
+	return voluta_le32_to_cpu(hdr->h_csum);
+}
+
+static void hdr_set_csum(struct voluta_header *hdr, uint32_t csum)
+{
+	hdr->h_csum = voluta_cpu_to_le32(csum);
+}
+
+static const void *hdr_payload(const struct voluta_header *hdr)
+{
+	return hdr + 1;
+}
+
+static struct voluta_header *hdr_of(const struct voluta_view *view)
+{
+	const struct voluta_header *hdr = &view->u.hdr;
+
+	return unconst(hdr);
+}
+
+static void hdr_stamp(struct voluta_header *hdr,
+                      enum voluta_vtype vtype, size_t size)
+{
+	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
+	hdr_set_size(hdr, size);
+	hdr_set_vtype(hdr, vtype);
+	hdr_set_csum(hdr, 0);
+	hdr->h_flags = 0;
+	hdr->h_reserved = 0;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static const struct voluta_header *
+vi_hdr_of(const struct voluta_vnode_info *vi)
+{
+	return hdr_of(vi->view);
+}
+
+
+static uint32_t calc_meta_chekcsum(const struct voluta_header *hdr,
+                                   const struct voluta_mdigest *md)
+{
+	uint32_t csum = 0;
+	const void *payload = hdr_payload(hdr);
+	const size_t pl_size = hdr_payload_size(hdr);
+
+	voluta_assert_le(pl_size, VOLUTA_BK_SIZE - VOLUTA_HEADER_SIZE);
+
+	voluta_crc32_of(md, payload, pl_size, &csum);
+	return csum;
+}
+
+static uint32_t calc_data_checksum(const void *dat, size_t len,
+                                   const struct voluta_mdigest *md)
+{
+	uint32_t csum = 0;
+
+	voluta_crc32_of(md, dat, len, &csum);
+	return csum;
+}
+
+static uint32_t calc_chekcsum_of(const struct voluta_vnode_info *vi)
+{
+	uint32_t csum;
+	const struct voluta_mdigest *md = vi_mdigest(vi);
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+
+	if (vaddr_isdata(vaddr)) {
+		csum = calc_data_checksum(vi_dat_of(vi), vaddr->len, md);
+	} else {
+		csum = calc_meta_chekcsum(vi_hdr_of(vi), md);
+	}
+	return csum;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static int verify_hdr(const struct voluta_view *view, enum voluta_vtype vtype)
+{
+	const struct voluta_header *hdr = hdr_of(view);
+	const size_t hsz = hdr_size(hdr);
+	const size_t psz = vtype_size(vtype);
+
+	if (vtype_isdata(vtype)) {
+		return 0;
+	}
+	if (hdr_magic(hdr) != VOLUTA_VTYPE_MAGIC) {
+		return -EFSCORRUPTED;
+	}
+	if (hdr_vtype(hdr) != vtype) {
+		return -EFSCORRUPTED;
+	}
+	if (hsz != psz) {
+		return -EFSCORRUPTED;
+	}
+
+	return 0;
+}
+
+static int verify_checksum(const struct voluta_view *view,
+                           const struct voluta_mdigest *md)
+{
+	uint32_t csum;
+	const struct voluta_header *hdr = hdr_of(view);
+
+	csum = calc_meta_chekcsum(hdr, md);
+	return (csum == hdr_csum(hdr)) ? 0 : -EFSCORRUPTED;
+}
+
+static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
+{
+	int err;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_HSMAP:
+		err = voluta_verify_hspace_map(&view->u.hsm);
+		break;
+	case VOLUTA_VTYPE_AGMAP:
+		err = voluta_verify_agroup_map(&view->u.agm);
+		break;
+	case VOLUTA_VTYPE_ITNODE:
+		err = voluta_verify_itnode(&view->u.itn);
+		break;
+	case VOLUTA_VTYPE_INODE:
+		err = voluta_verify_inode(&view->u.inode);
+		break;
+	case VOLUTA_VTYPE_XANODE:
+		err = voluta_verify_xattr_node(&view->u.xan);
+		break;
+	case VOLUTA_VTYPE_HTNODE:
+		err = voluta_verify_dir_htree_node(&view->u.htn);
+		break;
+	case VOLUTA_VTYPE_RTNODE:
+		err = voluta_verify_radix_tnode(&view->u.rtn);
+		break;
+	case VOLUTA_VTYPE_SYMVAL:
+		err = voluta_verify_lnk_value(&view->u.lnv);
+		break;
+	case VOLUTA_VTYPE_SUPER:
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_VTYPE_AGBKS:
+		err = 0;
+		break;
+	case VOLUTA_VTYPE_NONE:
+	default:
+		err = -EFSCORRUPTED;
+		break;
+	}
+	return err;
+}
+
+static int verify_view(const struct voluta_view *view,
+                       enum voluta_vtype vtype,
+                       const struct voluta_mdigest *md)
+{
+	int err;
+
+	if (vtype_isdata(vtype)) {
+		return 0;
+	}
+	err = verify_hdr(view, vtype);
+	if (err) {
+		return err;
+	}
+	err = verify_checksum(view, md);
+	if (err) {
+		return err;
+	}
+	err = verify_sub(view, vtype);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+int voluta_verify_meta(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+
+	return verify_view(vi->view, vaddr->vtype, vi_mdigest(vi));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+
+static void stamp_view(struct voluta_view *view,
+                       const struct voluta_vaddr *vaddr)
+{
+	struct voluta_header *hdr = hdr_of(view);
+
+	voluta_memzero(view, vaddr->len);
+	hdr_stamp(hdr, vaddr->vtype, vaddr->len);
+}
+
+void voluta_vi_stamp_view(const struct voluta_vnode_info *vi)
+{
+	if (!vi_isdata(vi)) {
+		stamp_view(vi->view, vi_vaddr(vi));
+	}
+}
+
+void voluta_vi_seal_meta(const struct voluta_vnode_info *vi)
+{
+	uint32_t csum;
+
+	if (!vi_isdata(vi)) {
+		csum = calc_chekcsum_of(vi);
+		hdr_set_csum(hdr_of(vi->view), csum);
+	}
+}
+
+

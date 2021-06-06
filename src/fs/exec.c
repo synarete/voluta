@@ -47,7 +47,7 @@ struct voluta_fs_core {
 	struct voluta_mpool     mpool;
 	struct voluta_cache     cache;
 	struct voluta_vstore    vstore;
-	struct voluta_bstore      bstore;
+	struct voluta_bstore    bstore;
 	struct voluta_sb_info   sbi;
 };
 

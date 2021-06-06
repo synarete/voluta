@@ -123,5 +123,8 @@ int voluta_refcnt_islast_at(struct voluta_sb_info *sbi,
 int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam);
 
+int voluta_resolve_vba(struct voluta_sb_info *sbi,
+                       const struct voluta_vaddr *vaddr,
+                       struct voluta_vba *out_vba);
 
 #endif /* VOLUTA_SUPER_H_ */

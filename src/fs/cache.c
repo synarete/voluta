@@ -349,14 +349,14 @@ bsi_from_ce(const struct voluta_cache_elem *ce)
 	const struct voluta_bksec_info *bsi = NULL;
 
 	if (ce != NULL) {
-		bsi = container_of2(ce, struct voluta_bksec_info, bs_ce);
+		bsi = container_of2(ce, struct voluta_bksec_info, bks_ce);
 	}
 	return unconst(bsi);
 }
 
 static struct voluta_cache_elem *bsi_ce(const struct voluta_bksec_info *bsi)
 {
-	const struct voluta_cache_elem *ce = &bsi->bs_ce;
+	const struct voluta_cache_elem *ce = &bsi->bks_ce;
 
 	return unconst(ce);
 }
@@ -376,16 +376,16 @@ static void bsi_set_baddr(struct voluta_bksec_info *bsi,
 static void bsi_init(struct voluta_bksec_info *bsi,
                      struct voluta_blocks_sec *bs)
 {
-	voluta_ce_init(&bsi->bs_ce);
+	voluta_ce_init(&bsi->bks_ce);
 	baddr_reset(&bsi->baddr);
-	memset(bsi->bs_mask, 0, sizeof(bsi->bs_mask));
-	bsi->bs = bs;
+	memset(bsi->bks_mask, 0, sizeof(bsi->bks_mask));
+	bsi->bks = bs;
 }
 
 static void bsi_fini(struct voluta_bksec_info *bsi)
 {
-	voluta_ce_fini(&bsi->bs_ce);
-	bsi->bs = NULL;
+	voluta_ce_fini(&bsi->bks_ce);
+	bsi->bks = NULL;
 }
 
 static void bsi_incref(struct voluta_bksec_info *bsi)
@@ -543,7 +543,7 @@ static uint64_t view_mask_of(const struct voluta_vaddr *vaddr)
 static size_t bsi_mask_slot_of(const struct voluta_bksec_info *bsi,
                                const struct voluta_vaddr *vaddr)
 {
-	return (size_t)(vaddr->lba) % ARRAY_SIZE(bsi->bs_mask);
+	return (size_t)(vaddr->lba) % ARRAY_SIZE(bsi->bks_mask);
 }
 
 static void bsi_mark_visible_at(struct voluta_bksec_info *bsi,
@@ -551,7 +551,7 @@ static void bsi_mark_visible_at(struct voluta_bksec_info *bsi,
 {
 	const size_t slot = bsi_mask_slot_of(bsi, vaddr);
 
-	bsi->bs_mask[slot] |= view_mask_of(vaddr);
+	bsi->bks_mask[slot] |= view_mask_of(vaddr);
 }
 
 static void bsi_mark_opaque_at(struct voluta_bksec_info *bsi,
@@ -559,14 +559,14 @@ static void bsi_mark_opaque_at(struct voluta_bksec_info *bsi,
 {
 	const size_t slot = bsi_mask_slot_of(bsi, vaddr);
 
-	bsi->bs_mask[slot] &= ~view_mask_of(vaddr);
+	bsi->bks_mask[slot] &= ~view_mask_of(vaddr);
 }
 
 static bool bsi_is_visible_at(struct voluta_bksec_info *bsi,
                               const struct voluta_vaddr *vaddr)
 {
 	const size_t slot = bsi_mask_slot_of(bsi, vaddr);
-	const uint64_t bk_mask = bsi->bs_mask[slot];
+	const uint64_t bk_mask = bsi->bks_mask[slot];
 	const uint64_t mask = view_mask_of(vaddr);
 
 	return ((bk_mask & mask) == mask);
@@ -972,7 +972,7 @@ cache_new_bsi(const struct voluta_cache *cache)
 static void cache_del_bsi(const struct voluta_cache *cache,
                           struct voluta_bksec_info *bsi)
 {
-	struct voluta_blocks_sec *bs = bsi->bs;
+	struct voluta_blocks_sec *bs = bsi->bks;
 
 	bsi_fini(bsi);
 	bsec_free(bs, cache->c_alif);
@@ -1015,13 +1015,13 @@ static void cache_store_bsi(struct voluta_cache *cache,
                             const struct voluta_baddr *baddr)
 {
 	bsi_set_baddr(bsi, baddr);
-	lrumap_store(&cache->c_blm, &bsi->bs_ce, &bsi->baddr);
+	lrumap_store(&cache->c_blm, &bsi->bks_ce, &bsi->baddr);
 }
 
 static void cache_promote_lru_bsi(struct voluta_cache *cache,
                                   struct voluta_bksec_info *bsi)
 {
-	struct voluta_cache_elem *ce = &bsi->bs_ce;
+	struct voluta_cache_elem *ce = &bsi->bks_ce;
 
 	lrumap_promote_lru(&cache->c_blm, ce);
 	ce->ce_tick = cache->c_tick;
@@ -1032,14 +1032,14 @@ static void cache_evict_bsi(struct voluta_cache *cache,
 {
 	voluta_assert(ce_is_evictable(bsi_ce(bsi)));
 
-	lrumap_remove(&cache->c_blm, &bsi->bs_ce);
+	lrumap_remove(&cache->c_blm, &bsi->bks_ce);
 	cache_del_bsi(cache, bsi);
 }
 
 void voluta_cache_forget_bsi(struct voluta_cache *cache,
                              struct voluta_bksec_info *bsi)
 {
-	voluta_assert_eq(bsi->bs_ce.ce_refcnt, 0);
+	voluta_assert_eq(bsi->bks_ce.ce_refcnt, 0);
 
 	cache_evict_bsi(cache, bsi);
 }

@@ -267,26 +267,10 @@ int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd)
 	       voluta_pipe_splice_to_fd(pipe, fd, NULL, pipe->pend) : 0;
 }
 
-int voluta_pipe_purge(struct voluta_pipe *pipe,
-                      const struct voluta_nullfd *nfd)
+int voluta_pipe_dispose(struct voluta_pipe *pipe,
+                        const struct voluta_nullfd *nfd)
 {
 	return voluta_pipe_flush_to_fd(pipe, nfd->fd);
-}
-
-int voluta_pipe_kcopy(struct voluta_pipe *pipe, int fd_in, loff_t *off_in,
-                      int fd_out, loff_t *off_out, size_t len)
-{
-	int err;
-
-	err = voluta_pipe_splice_from_fd(pipe, fd_in, off_in, len);
-	if (err) {
-		return err;
-	}
-	err = voluta_pipe_splice_to_fd(pipe, fd_out, off_out, len);
-	if (err) {
-		return err;
-	}
-	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -310,3 +294,36 @@ void voluta_nullfd_fini(struct voluta_nullfd *nfd)
 	voluta_sys_closefd(&nfd->fd);
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static int do_kcopy_with_splice(struct voluta_pipe *pipe,
+                                int fd_in, loff_t *off_in,
+                                int fd_out, loff_t *off_out, size_t len)
+{
+	int err;
+
+	err = voluta_pipe_splice_from_fd(pipe, fd_in, off_in, len);
+	if (err) {
+		return err;
+	}
+	err = voluta_pipe_splice_to_fd(pipe, fd_out, off_out, len);
+	if (err) {
+		return err;
+	}
+	return 0;
+
+}
+
+int voluta_kcopy_with_splice(struct voluta_pipe *pipe,
+                             struct voluta_nullfd *nfd,
+                             int fd_in, loff_t *off_in,
+                             int fd_out, loff_t *off_out, size_t len)
+{
+	int err;
+
+	err = do_kcopy_with_splice(pipe, fd_in, off_in, fd_out, off_out, len);
+	if (err) {
+		voluta_pipe_dispose(pipe, nfd);
+	}
+	return err;
+}

@@ -31,7 +31,6 @@ struct voluta_nullfd {
 	int     fd;
 };
 
-
 void voluta_pipe_init(struct voluta_pipe *pipe);
 
 int voluta_pipe_open(struct voluta_pipe *pipe);
@@ -61,15 +60,18 @@ int voluta_pipe_append_from_buf(struct voluta_pipe *pipe,
 
 int voluta_pipe_flush_to_fd(struct voluta_pipe *pipe, int fd);
 
-int voluta_pipe_purge(struct voluta_pipe *pipe,
-                      const struct voluta_nullfd *nfd);
+int voluta_pipe_dispose(struct voluta_pipe *pipe,
+                        const struct voluta_nullfd *nfd);
 
-int voluta_pipe_kcopy(struct voluta_pipe *pipe, int fd_in, loff_t *off_in,
-                      int fd_out, loff_t *off_out, size_t len);
 
 int voluta_nullfd_init(struct voluta_nullfd *nfd);
 
 void voluta_nullfd_fini(struct voluta_nullfd *nfd);
 
+
+int voluta_kcopy_with_splice(struct voluta_pipe *pipe,
+                             struct voluta_nullfd *nfd,
+                             int fd_in, loff_t *off_in,
+                             int fd_out, loff_t *off_out, size_t len);
 
 #endif /* VOLUTA_PIPE_H_ */

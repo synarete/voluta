@@ -194,7 +194,7 @@ static void guarantee_persistent_types_members(void)
 	               de, VOLUTA_DIR_HTNODE_NENTS);
 	REQUIRE_NELEMS(struct voluta_dir_htnode,
 	               dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
-	REQUIRE_NBITS(struct voluta_bksec_info, bs_mask,
+	REQUIRE_NBITS(struct voluta_bksec_info, bks_mask,
 	              VOLUTA_NKB_IN_BK * VOLUTA_NBK_IN_BKSEC);
 }
 

@@ -26,6 +26,7 @@
 static struct ut_tgroup const g_ut_tgroups[] = {
 
 	/* XXX */
+	UT_DEFTGRP(ut_test_file_copy_range),
 	UT_DEFTGRP(ut_test_file_basic),
 	/* XXX */
 

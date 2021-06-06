@@ -2915,7 +2915,7 @@ static int fuseq_read_or_splice_request(struct voluta_fuseq_worker *fqw)
 static int fuseq_prep_request(struct voluta_fuseq_worker *fqw)
 {
 	fuseq_reset_inhdr(fqw);
-	return voluta_pipe_purge(&fqw->pipe, &fqw->nfd);
+	return voluta_pipe_dispose(&fqw->pipe, &fqw->nfd);
 }
 
 static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)

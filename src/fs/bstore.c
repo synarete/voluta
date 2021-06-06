@@ -21,7 +21,11 @@
 #include <voluta/infra.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/bstore.h>
+#include <voluta/fs/cache.h>
 #include <voluta/fs/private.h>
+
+/* XXX */
+#include <voluta/fs/vstore.h>
 
 
 /* blob-reference cache-entry */
@@ -206,25 +210,32 @@ static bool bri_is_evictable(const struct voluta_bref_info *bri)
 	return (bri->b_refcnt == 0);
 }
 
+static int bri_datasync(const struct voluta_bref_info *bri)
+{
+	voluta_assert_gt(bri->b_fd, 0);
+
+	return voluta_sys_fdatasync(bri->b_fd);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void bstore_htbl_init(struct voluta_bstore *bstore)
 {
-	list_head_initn(bstore->re_htbl, ARRAY_SIZE(bstore->re_htbl));
-	bstore->re_hsize = 0;
+	list_head_initn(bstore->bs_htbl, ARRAY_SIZE(bstore->bs_htbl));
+	bstore->bs_hsize = 0;
 }
 
 static void bstore_htbl_fini(struct voluta_bstore *bstore)
 {
-	list_head_finin(bstore->re_htbl, ARRAY_SIZE(bstore->re_htbl));
-	bstore->re_hsize = 0;
+	list_head_finin(bstore->bs_htbl, ARRAY_SIZE(bstore->bs_htbl));
+	bstore->bs_hsize = 0;
 }
 
 static struct voluta_list_head *
 bstore_htbl_list_by(const struct voluta_bstore *bstore, const uint64_t hkey)
 {
-	const size_t slot = hkey % ARRAY_SIZE(bstore->re_htbl);
-	const struct voluta_list_head *lst = &bstore->re_htbl[slot];
+	const size_t slot = hkey % ARRAY_SIZE(bstore->bs_htbl);
+	const struct voluta_list_head *lst = &bstore->bs_htbl[slot];
 
 	return unconst(lst);
 }
@@ -272,34 +283,46 @@ static void bstore_htbl_remove(struct voluta_bstore *bstore,
 
 static void bstore_lru_init(struct voluta_bstore *bstore)
 {
-	listq_init(&bstore->re_lru);
+	listq_init(&bstore->bs_lru);
 }
 
 static void bstore_lru_fini(struct voluta_bstore *bstore)
 {
-	listq_fini(&bstore->re_lru);
+	listq_fini(&bstore->bs_lru);
 }
 
 static void bstore_lru_insert(struct voluta_bstore *bstore,
                               struct voluta_bref_info *bri)
 {
-	listq_push_front(&bstore->re_lru, &bri->b_lru_lh);
+	listq_push_front(&bstore->bs_lru, &bri->b_lru_lh);
 }
 
 static void bstore_lru_remove(struct voluta_bstore *bstore,
                               struct voluta_bref_info *bri)
 {
-	voluta_assert_gt(bstore->re_lru.sz, 0);
-	listq_remove(&bstore->re_lru, &bri->b_lru_lh);
+	voluta_assert_gt(bstore->bs_lru.sz, 0);
+	listq_remove(&bstore->bs_lru, &bri->b_lru_lh);
 }
 
-static struct voluta_bref_info *bstore_lru_front(const struct voluta_bstore
-                *bstore)
+static struct voluta_bref_info *
+bstore_lru_front(const struct voluta_bstore *bstore)
 {
 	struct voluta_list_head *lh;
 
-	lh = listq_front(&bstore->re_lru);
+	lh = listq_front(&bstore->bs_lru);
 	return bri_from_lru_lh(lh);
+}
+
+static struct voluta_bref_info *
+bstore_lru_nextof(const struct voluta_bstore *bstore,
+                  const struct voluta_bref_info *bri)
+{
+	struct voluta_list_head *lh_next = bri->b_lru_lh.next;
+
+	if (lh_next == &bstore->bs_lru.ls) {
+		return NULL;
+	}
+	return bri_from_lru_lh(lh_next);
 }
 
 static struct voluta_bref_info *
@@ -307,7 +330,7 @@ bstore_cahce_rfind(const struct voluta_bstore *bstore, voluta_bri_pred_fn fn)
 {
 	const struct voluta_bref_info *bi;
 	const struct voluta_list_head *lh;
-	const struct voluta_listq *lru = &bstore->re_lru;
+	const struct voluta_listq *lru = &bstore->bs_lru;
 
 	lh = listq_back(lru);
 	while (lh != &lru->ls) {
@@ -374,6 +397,14 @@ bstore_cache_front(const struct voluta_bstore *bstore)
 }
 
 static struct voluta_bref_info *
+bstore_cache_nextof(const struct voluta_bstore *bstore,
+                    const struct voluta_bref_info *bri)
+{
+	return bstore_lru_nextof(bstore, bri);
+}
+
+
+static struct voluta_bref_info *
 bstore_cache_find_evictable(const struct voluta_bstore *bstore)
 {
 	return bstore_cahce_rfind(bstore, bri_is_evictable);
@@ -386,9 +417,9 @@ int voluta_bstore_init(struct voluta_bstore *bstore,
                        struct voluta_alloc_if *alif)
 {
 	bstore_cache_init(bstore);
-	bstore->re_dfd = -1;
-	bstore->re_nsubs = 256;
-	bstore->re_alif = alif;
+	bstore->bs_dfd = -1;
+	bstore->bs_nsubs = 256;
+	bstore->bs_alif = alif;
 	return 0;
 }
 
@@ -396,16 +427,16 @@ void voluta_bstore_fini(struct voluta_bstore *bstore)
 {
 	voluta_bstore_close(bstore);
 	bstore_cache_fini(bstore);
-	bstore->re_nsubs = 0;
-	bstore->re_alif = NULL;
+	bstore->bs_nsubs = 0;
+	bstore->bs_alif = NULL;
 }
 
 int voluta_bstore_open(struct voluta_bstore *bstore, const char *path)
 {
 	int err;
 
-	voluta_assert_lt(bstore->re_dfd, 0);
-	err = voluta_sys_opendir(path, &bstore->re_dfd);
+	voluta_assert_lt(bstore->bs_dfd, 0);
+	err = voluta_sys_opendir(path, &bstore->bs_dfd);
 	if (err) {
 		return err;
 	}
@@ -418,7 +449,7 @@ static int bstore_format_sub(const struct voluta_bstore *bstore,
 	int err;
 	struct stat st;
 	struct voluta_namebuf nb;
-	const int dfd = bstore->re_dfd;
+	const int dfd = bstore->bs_dfd;
 
 	index_to_namebuf(idx, &nb);
 	err = voluta_sys_fstatat(dfd, nb.name, &st, 0);
@@ -444,7 +475,7 @@ int voluta_bstore_format(struct voluta_bstore *bstore)
 {
 	int err;
 
-	for (size_t i = 0; i < bstore->re_nsubs; ++i) {
+	for (size_t i = 0; i < bstore->bs_nsubs; ++i) {
 		err = bstore_format_sub(bstore, i);
 		if (err) {
 			return err;
@@ -464,7 +495,7 @@ static int bstore_sub_pathname_of(const struct voluta_bstore *bstore,
 	char *nbuf = out_nb->name;
 	const size_t nmax = sizeof(out_nb->name);
 
-	idx = blobid_to_index(bid, bstore->re_nsubs);
+	idx = blobid_to_index(bid, bstore->bs_nsubs);
 	len += index_to_name(idx, nbuf, nmax);
 	if (len > (nmax / 2)) {
 		return -EINVAL;
@@ -498,13 +529,13 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->re_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
 	if (err != -ENOENT) {
 		log_err("can not create blob: name=%s err=%d", nb.name, err);
 		return err;
 	}
 	o_flags = O_CREAT | O_RDWR | O_TRUNC;
-	err = voluta_sys_openat(bstore->re_dfd, nb.name, o_flags, 0600, &fd);
+	err = voluta_sys_openat(bstore->bs_dfd, nb.name, o_flags, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -516,7 +547,7 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	*out_fd = fd;
 	return 0;
 out_err:
-	voluta_sys_unlinkat(bstore->re_dfd, nb.name, 0);
+	voluta_sys_unlinkat(bstore->bs_dfd, nb.name, 0);
 	voluta_sys_closefd(&fd);
 	return err;
 }
@@ -531,7 +562,7 @@ static int bstore_unlink_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_unlinkat(bstore->re_dfd, nb.name, 0);
+	err = voluta_sys_unlinkat(bstore->bs_dfd, nb.name, 0);
 	if (err) {
 		return err;
 	}
@@ -557,7 +588,7 @@ static int bstore_open_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->re_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
 	if (err) {
 		return err;
 	}
@@ -567,7 +598,7 @@ static int bstore_open_blob(const struct voluta_bstore *bstore,
 		err = -ENOENT;
 		return err;
 	}
-	err = voluta_sys_openat(bstore->re_dfd, nb.name, O_RDWR, 0600, &fd);
+	err = voluta_sys_openat(bstore->bs_dfd, nb.name, O_RDWR, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -586,7 +617,7 @@ static int bstore_close_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->re_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
 	if (err) {
 		log_warn("missing blob: name=%s err=%d", nb.name, err);
 	}
@@ -606,7 +637,7 @@ static int bstore_new_bref(struct voluta_bstore *bstore,
                            const struct voluta_blobid *bid, int fd,
                            struct voluta_bref_info **out_bri)
 {
-	*out_bri = bri_new(bstore->re_alif, bid, fd);
+	*out_bri = bri_new(bstore->bs_alif, bid, fd);
 
 	return (*out_bri == NULL) ? -ENOMEM : 0;
 }
@@ -614,7 +645,7 @@ static int bstore_new_bref(struct voluta_bstore *bstore,
 static void bstore_del_bref(const struct voluta_bstore *bstore,
                             struct voluta_bref_info *bri)
 {
-	bri_del(bri, bstore->re_alif);
+	bri_del(bri, bstore->bs_alif);
 }
 
 static void bstore_forget_bref(struct voluta_bstore *bstore,
@@ -623,6 +654,22 @@ static void bstore_forget_bref(struct voluta_bstore *bstore,
 	bstore_close_bref_of(bstore, bri);
 	bstore_cache_remove(bstore, bri);
 	bstore_del_bref(bstore, bri);
+}
+
+int voluta_bstore_sync(struct voluta_bstore *bstore)
+{
+	int err;
+	struct voluta_bref_info *bri;
+
+	bri = bstore_cache_front(bstore);
+	while (bri != NULL) {
+		err = bri_datasync(bri);
+		if (err) {
+			return err;
+		}
+		bri = bstore_cache_nextof(bstore, bri);
+	}
+	return 0;
 }
 
 static void bstore_forget_all(struct voluta_bstore *bstore)
@@ -639,13 +686,13 @@ static void bstore_forget_all(struct voluta_bstore *bstore)
 int voluta_bstore_close(struct voluta_bstore *bstore)
 {
 	bstore_forget_all(bstore);
-	return voluta_sys_closefd(&bstore->re_dfd);
+	return voluta_sys_closefd(&bstore->bs_dfd);
 }
 
 static int bstore_relax_once(struct voluta_bstore *bstore)
 {
 	struct voluta_bref_info *bri = NULL;
-	const size_t ncached = bstore->re_lru.sz;
+	const size_t ncached = bstore->bs_lru.sz;
 
 	if (!ncached || (ncached < 512)) { /* XXX make upper bound tweak */
 		return 0;
@@ -840,3 +887,295 @@ int voluta_bstore_load_bobj(struct voluta_bstore *bstore,
 	return 0;
 }
 
+int voluta_bstore_resolve_bobj(struct voluta_bstore *bstore,
+                               const struct voluta_baddr *baddr,
+                               loff_t off_within, size_t len,
+                               struct voluta_fiovec *out_fiov)
+{
+	int err;
+	struct voluta_bref_info *bri = NULL;
+
+	err = bstore_stage_blob(bstore, false, &baddr->bid, &bri);
+	if (err) {
+		return err;
+	}
+	err = bri_resolve_fiovec(bri, baddr->off + off_within, len, out_fiov);
+	if (err) {
+		return err;
+	}
+	return 0;
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
+struct voluta_sgvec {
+	struct iovec iov[VOLUTA_NKB_IN_BK];
+	struct voluta_blobid bid;
+	loff_t off;
+	size_t len;
+	size_t cnt;
+	size_t lim;
+};
+
+static void sgvec_setup(struct voluta_sgvec *sgv)
+{
+	sgv->bid.size = 0;
+	sgv->off = -1;
+	sgv->lim = 2 * VOLUTA_MEGA;
+	sgv->cnt = 0;
+	sgv->len = 0;
+}
+
+static bool sgvec_isappendable(const struct voluta_sgvec *sgv,
+                               const struct voluta_vnode_info *vi)
+{
+	loff_t off;
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+
+	voluta_assert_lt(vaddr->len, sgv->lim);
+
+	if (sgv->cnt == 0) {
+		return true;
+	}
+	if (sgv->cnt == ARRAY_SIZE(sgv->iov)) {
+		return false;
+	}
+	off = off_end(sgv->off, sgv->len);
+	if (vaddr->off != off) {
+		return false;
+	}
+	if ((sgv->len + vaddr->len) > sgv->lim) {
+		return false;
+	}
+	if (!blobid_isequal(vi_blobid(vi), &sgv->bid)) {
+		return false;
+	}
+	return true;
+}
+
+static int sgvec_append(struct voluta_sgvec *sgv,
+                        const struct voluta_vnode_info *vi)
+{
+	const size_t idx = sgv->cnt;
+	const size_t len = vi_length(vi);
+	const struct voluta_blobid *bid = vi_blobid(vi);
+
+	if (idx == 0) {
+		blobid_copyto(bid, &sgv->bid);
+		sgv->off = vi_offset(vi);
+	}
+	sgv->iov[idx].iov_base = vi->view;
+	sgv->iov[idx].iov_len = len;
+	sgv->len += len;
+	sgv->cnt += 1;
+	return 0;
+}
+
+static int sgvec_populate(struct voluta_sgvec *sgv,
+                          struct voluta_vnode_info **viq)
+{
+	int err;
+	struct voluta_vnode_info *vi;
+
+	while (*viq != NULL) {
+		vi = *viq;
+		if (!sgvec_isappendable(sgv, vi)) {
+			break;
+		}
+		err = sgvec_append(sgv, vi);
+		if (err) {
+			return err;
+		}
+		*viq = vi->v_ds_next;
+	}
+	return 0;
+}
+
+static int sgvec_store_in_blob(const struct voluta_sgvec *sgv,
+                               struct voluta_bstore *bstore)
+{
+	struct voluta_baddr baddr;
+
+	voluta_assert_gt(sgv->cnt, 0);
+	baddr_setup(&baddr, &sgv->bid, sgv->len, sgv->off);
+	return voluta_bstore_storev_bobj(bstore, &baddr, sgv->iov, sgv->cnt);
+}
+
+static int sgvec_flush_dset(struct voluta_sgvec *sgv,
+                            const struct voluta_dset *dset,
+                            struct voluta_bstore *bstore)
+{
+	int err;
+	struct voluta_vnode_info *viq = dset->ds_viq;
+
+	while (viq != NULL) {
+		sgvec_setup(sgv);
+		err = sgvec_populate(sgv, &viq);
+		if (err) {
+			return err;
+		}
+		err = sgvec_store_in_blob(sgv, bstore);
+		if (err) {
+			return err;
+		}
+	}
+	return 0;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static long off_compare(const void *x, const void *y)
+{
+	const long x_off = *((const loff_t *)x);
+	const long y_off = *((const loff_t *)y);
+
+	return y_off - x_off;
+}
+
+static struct voluta_vnode_info *
+avl_node_to_vi(const struct voluta_avl_node *an)
+{
+	const struct voluta_vnode_info *vi;
+
+	vi = container_of2(an, struct voluta_vnode_info, v_ds_an);
+	return unconst(vi);
+}
+
+static const void *vi_getkey(const struct voluta_avl_node *an)
+{
+	const struct voluta_vnode_info *vi = avl_node_to_vi(an);
+
+	return &vi->vaddr.off;
+}
+
+static void vi_visit_reinit(struct voluta_avl_node *an, void *p)
+{
+	struct voluta_vnode_info *vi = avl_node_to_vi(an);
+
+	voluta_avl_node_init(&vi->v_ds_an);
+	unused(p);
+}
+
+static void dset_clear_map(struct voluta_dset *dset)
+{
+	voluta_avl_clear(&dset->ds_avl, vi_visit_reinit, NULL);
+}
+
+static void dset_add_dirty_vi(struct voluta_dset *dset,
+                              struct voluta_vnode_info *vi)
+{
+	voluta_avl_insert(&dset->ds_avl, &vi->v_ds_an);
+}
+
+static void dset_init(struct voluta_dset *dset, long key)
+{
+	voluta_avl_init(&dset->ds_avl, vi_getkey, off_compare, dset);
+	dset->ds_viq = NULL;
+	dset->ds_key = key;
+	dset->ds_add_fn = dset_add_dirty_vi;
+}
+
+static void dset_fini(struct voluta_dset *dset)
+{
+	voluta_avl_fini(&dset->ds_avl);
+	dset->ds_viq = NULL;
+	dset->ds_add_fn = NULL;
+}
+
+static void dset_purge(const struct voluta_dset *dset)
+{
+	struct voluta_vnode_info *vi;
+	struct voluta_vnode_info *next;
+
+	vi = dset->ds_viq;
+	while (vi != NULL) {
+		next = vi->v_ds_next;
+
+		vi_undirtify(vi);
+		vi->v_ds_next = NULL;
+
+		vi = next;
+	}
+}
+
+static void dset_push_front_viq(struct voluta_dset *dset,
+                                struct voluta_vnode_info *vi)
+{
+	vi->v_ds_next = dset->ds_viq;
+	dset->ds_viq = vi;
+}
+
+static void dset_make_fifo(struct voluta_dset *dset)
+{
+	struct voluta_vnode_info *vi;
+	const struct voluta_avl_node *end;
+	const struct voluta_avl_node *itr;
+	const struct voluta_avl *avl = &dset->ds_avl;
+
+	dset->ds_viq = NULL;
+	end = voluta_avl_end(avl);
+	itr = voluta_avl_rbegin(avl);
+	while (itr != end) {
+		vi = avl_node_to_vi(itr);
+		dset_push_front_viq(dset, vi);
+		itr = voluta_avl_prev(avl, itr);
+	}
+}
+
+static void dset_inhabit(struct voluta_dset *dset,
+                         const struct voluta_cache *cache)
+{
+	voluta_cache_inhabit_dset(cache, dset);
+}
+
+static void dset_seal_meta(const struct voluta_dset *dset)
+{
+	const struct voluta_vnode_info *vi = dset->ds_viq;
+
+	while (vi != NULL) {
+		if (!vi_isdata(vi)) {
+			voluta_vi_seal_meta(vi);
+		}
+		vi = vi->v_ds_next;
+	}
+}
+
+static void dset_cleanup(struct voluta_dset *dset)
+{
+	dset_clear_map(dset);
+	dset_purge(dset);
+}
+
+static int dset_flush(const struct voluta_dset *dset,
+                      struct voluta_bstore *bstore)
+{
+	struct voluta_sgvec sgv;
+
+	return sgvec_flush_dset(&sgv, dset, bstore);
+}
+
+static int dset_collect_flush(struct voluta_dset *dset,
+                              const struct voluta_cache *cache,
+                              struct voluta_bstore *bstore)
+{
+	int err;
+
+	dset_inhabit(dset, cache);
+	dset_make_fifo(dset);
+	dset_seal_meta(dset);
+	err = dset_flush(dset, bstore);
+	dset_cleanup(dset);
+	return err;
+}
+
+int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
+                              struct voluta_bstore *bstore, long ds_key)
+{
+	int err;
+	struct voluta_dset dset;
+
+	dset_init(&dset, ds_key);
+	err = dset_collect_flush(&dset, cache, bstore);
+	dset_fini(&dset);
+	return err;
+}

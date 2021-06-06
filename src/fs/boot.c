@@ -323,21 +323,21 @@ static void sb_fini(struct voluta_super_block *sb)
 	voluta_memzero(sb, sizeof(*sb));
 }
 
-struct voluta_super_block *voluta_sb_new(struct voluta_qalloc *qal)
+struct voluta_super_block *voluta_sb_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_super_block *sb;
 
-	sb = voluta_qalloc_malloc(qal, sizeof(*sb));
+	sb = voluta_allocate(alif, sizeof(*sb));
 	if (sb != NULL) {
 		sb_init(sb);
 	}
 	return sb;
 }
 
-void voluta_sb_del(struct voluta_super_block *sb, struct voluta_qalloc *qal)
+void voluta_sb_del(struct voluta_super_block *sb, struct voluta_alloc_if *alif)
 {
 	sb_fini(sb);
-	voluta_qalloc_free(qal, sb, sizeof(*sb));
+	voluta_deallocate(alif, sb, sizeof(*sb));
 }
 
 void voluta_sb_set_pass_hash(struct voluta_super_block *sb,

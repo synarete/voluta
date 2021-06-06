@@ -425,7 +425,9 @@ static void zero_blocks_sec(struct voluta_bksec_info *bsi)
 {
 	struct voluta_blocks_sec *bs = bsi->bs;
 
-	voluta_memzero(bs, sizeof(*bs));
+	if (likely(bs != NULL)) { /* make clang-scan happy */
+		voluta_memzero(bs, sizeof(*bs));
+	}
 }
 
 static int load_bksec(const struct voluta_sb_info *sbi,
@@ -1617,7 +1619,7 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 
 static int sbi_init_iti(struct voluta_sb_info *sbi)
 {
-	return voluta_iti_init(&sbi->sb_iti, sbi->sb_qalloc);
+	return voluta_iti_init(&sbi->sb_iti, &sbi->sb_qalloc->alif);
 }
 
 static void sbi_fini_iti(struct voluta_sb_info *sbi)

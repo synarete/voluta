@@ -35,10 +35,10 @@ size_t voluta_br_size(const struct voluta_boot_record *br);
 void voluta_br_crypt_params(const struct voluta_boot_record *br,
                             struct voluta_zcrypt_params *zcp);
 
-struct voluta_super_block *voluta_sb_new(struct voluta_qalloc *qal);
+struct voluta_super_block *voluta_sb_new(struct voluta_alloc_if *alif);
 
 void voluta_sb_del(struct voluta_super_block *sb,
-                   struct voluta_qalloc *qal);
+                   struct voluta_alloc_if *alif);
 
 void voluta_sb_set_pass_hash(struct voluta_super_block *sb,
                              const struct voluta_hash512 *hash);

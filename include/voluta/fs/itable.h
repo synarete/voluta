@@ -19,7 +19,8 @@
 
 #include <unistd.h>
 
-int voluta_iti_init(struct voluta_itable_info *iti, struct voluta_qalloc *qal);
+int voluta_iti_init(struct voluta_itable_info *iti,
+                    struct voluta_alloc_if *alif);
 
 void voluta_iti_reinit(struct voluta_itable_info *iti);
 

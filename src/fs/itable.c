@@ -402,16 +402,16 @@ static void itc_ent_reset_arr(struct voluta_itcentry *itc_ent_arr, size_t cnt)
 	}
 }
 
-static int itc_init(struct voluta_itcache *itc, struct voluta_qalloc *qal)
+static int itc_init(struct voluta_itcache *itc, struct voluta_alloc_if *alif)
 {
 	const size_t elemsz = sizeof(*itc->itc_htable);
 	const size_t nelems = ((2 * VOLUTA_MEGA) / elemsz);
 
 	STATICASSERT_EQ(sizeof(*itc->itc_htable), 16);
 
-	itc->itc_qalloc = qal;
+	itc->itc_alif = alif;
 	itc->itc_nelems = 0;
-	itc->itc_htable = voluta_qalloc_malloc(qal, nelems * elemsz);
+	itc->itc_htable = voluta_allocate(alif, nelems * elemsz);
 	if (itc->itc_htable == NULL) {
 		return -ENOMEM;
 	}
@@ -425,10 +425,10 @@ static void itc_fini(struct voluta_itcache *itc)
 	const size_t nelems = itc->itc_nelems;
 	const size_t elemsz = sizeof(*itc->itc_htable);
 
-	voluta_qalloc_free(itc->itc_qalloc, itc->itc_htable, nelems * elemsz);
+	voluta_deallocate(itc->itc_alif, itc->itc_htable, nelems * elemsz);
 	itc->itc_nelems = 0;
 	itc->itc_htable = NULL;
-	itc->itc_qalloc = NULL;
+	itc->itc_alif = NULL;
 }
 
 static size_t itc_ino_to_slot(const struct voluta_itcache *itc, ino_t ino)
@@ -510,11 +510,11 @@ static void iti_init_common(struct voluta_itable_info *iti)
 	iti->it_ninodes = 0;
 }
 
-int voluta_iti_init(struct voluta_itable_info *iti, struct voluta_qalloc *qal)
+int voluta_iti_init(struct voluta_itable_info *iti,
+                    struct voluta_alloc_if *alif)
 {
 	iti_init_common(iti);
-
-	return itc_init(&iti->it_cache, qal);
+	return itc_init(&iti->it_cache, alif);
 }
 
 void voluta_iti_reinit(struct voluta_itable_info *iti)

@@ -26,7 +26,7 @@ struct voluta_bref_info;
 struct voluta_fiovec;
 
 int voluta_bstore_init(struct voluta_bstore *bstore,
-                       struct voluta_qalloc *qalloc);
+                       struct voluta_alloc_if *alif);
 
 void voluta_bstore_fini(struct voluta_bstore *bstore);
 

@@ -127,23 +127,23 @@ static bool bri_has_blobid(const struct voluta_bref_info *bri,
 }
 
 static struct voluta_bref_info *
-bri_new(struct voluta_qalloc *qal, const struct voluta_blobid *bid, int fd)
+bri_new(struct voluta_alloc_if *alif, const struct voluta_blobid *bid, int fd)
 {
 	struct voluta_bref_info *bri;
 
-	bri = voluta_qalloc_malloc(qal, sizeof(*bri));
+	bri = voluta_allocate(alif, sizeof(*bri));
 	if (bri != NULL) {
 		bri_init(bri, bid, fd);
 	}
 	return bri;
 }
 
-static void bri_del(struct voluta_bref_info *bri, struct voluta_qalloc *qal)
+static void bri_del(struct voluta_bref_info *bri, struct voluta_alloc_if *alif)
 {
 	voluta_assert_lt(bri->b_fd, 0);
 
 	bri_fini(bri);
-	voluta_qalloc_free(qal, bri, sizeof(*bri));
+	voluta_deallocate(alif, bri, sizeof(*bri));
 }
 
 static size_t bri_size(const struct voluta_bref_info *bri)
@@ -383,12 +383,12 @@ bstore_cache_find_evictable(const struct voluta_bstore *bstore)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 int voluta_bstore_init(struct voluta_bstore *bstore,
-                       struct voluta_qalloc *qalloc)
+                       struct voluta_alloc_if *alif)
 {
 	bstore_cache_init(bstore);
 	bstore->re_dfd = -1;
 	bstore->re_nsubs = 256;
-	bstore->re_qalloc = qalloc;
+	bstore->re_alif = alif;
 	return 0;
 }
 
@@ -397,7 +397,7 @@ void voluta_bstore_fini(struct voluta_bstore *bstore)
 	voluta_bstore_close(bstore);
 	bstore_cache_fini(bstore);
 	bstore->re_nsubs = 0;
-	bstore->re_qalloc = NULL;
+	bstore->re_alif = NULL;
 }
 
 int voluta_bstore_open(struct voluta_bstore *bstore, const char *path)
@@ -606,7 +606,7 @@ static int bstore_new_bref(struct voluta_bstore *bstore,
                            const struct voluta_blobid *bid, int fd,
                            struct voluta_bref_info **out_bri)
 {
-	*out_bri = bri_new(bstore->re_qalloc, bid, fd);
+	*out_bri = bri_new(bstore->re_alif, bid, fd);
 
 	return (*out_bri == NULL) ? -ENOMEM : 0;
 }
@@ -614,7 +614,7 @@ static int bstore_new_bref(struct voluta_bstore *bstore,
 static void bstore_del_bref(const struct voluta_bstore *bstore,
                             struct voluta_bref_info *bri)
 {
-	bri_del(bri, bstore->re_qalloc);
+	bri_del(bri, bstore->re_alif);
 }
 
 static void bstore_forget_bref(struct voluta_bstore *bstore,

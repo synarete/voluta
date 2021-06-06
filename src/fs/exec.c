@@ -161,14 +161,14 @@ static void fse_fini_cache(struct voluta_fs_env *fse)
 
 static int fse_init_sb(struct voluta_fs_env *fse)
 {
-	fse->sb = voluta_sb_new(fse->qalloc);
+	fse->sb = voluta_sb_new(&fse->qalloc->alif);
 	return (fse->sb == NULL) ? -ENOMEM : 0;
 }
 
 static void fse_fini_sb(struct voluta_fs_env *fse)
 {
 	if (fse->sb != NULL) {
-		voluta_sb_del(fse->sb, fse->qalloc);
+		voluta_sb_del(fse->sb, &fse->qalloc->alif);
 		fse->sb = NULL;
 	}
 }
@@ -219,7 +219,7 @@ static int fse_init_bstore(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_bstore *bstore = &fse_obj_of(fse)->fs_core.c.bstore;
 
-	err = voluta_bstore_init(bstore, fse->qalloc);
+	err = voluta_bstore_init(bstore, &fse->qalloc->alif);
 	if (!err) {
 		fse->bstore = bstore;
 	}

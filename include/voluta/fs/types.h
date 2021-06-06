@@ -351,7 +351,7 @@ struct voluta_vstore {
 struct voluta_bstore {
 	struct voluta_list_head re_htbl[1024];
 	struct voluta_listq     re_lru;
-	struct voluta_qalloc   *re_qalloc;
+	struct voluta_alloc_if *re_alif;
 	size_t  re_nsubs;
 	size_t  re_hsize;
 	int     re_dfd;
@@ -364,7 +364,7 @@ struct voluta_itcentry {
 };
 
 struct voluta_itcache {
-	struct voluta_qalloc   *itc_qalloc;
+	struct voluta_alloc_if *itc_alif;
 	struct voluta_itcentry *itc_htable;
 	size_t itc_nelems;
 };
@@ -394,7 +394,7 @@ struct voluta_sb_info {
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_vstore           *sb_vstore;
-	struct voluta_bstore             *sb_bstore;
+	struct voluta_bstore           *sb_bstore;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;

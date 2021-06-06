@@ -60,7 +60,9 @@ static voluta_index_t ag_to_hs_index(voluta_index_t ag_index)
 static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
 {
 	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
-	const voluta_lba_t agm_lba = (voluta_lba_t)(nbk_in_ag + ag_index);
+	const size_t nbk_in_bksec = VOLUTA_NBK_IN_BKSEC;
+	const voluta_lba_t agm_lba =
+	        (voluta_lba_t)(nbk_in_ag + (ag_index * nbk_in_bksec));
 
 	voluta_assert_ge(ag_index, VOLUTA_NAG_IN_HS);
 	voluta_assert_lt(agm_lba, VOLUTA_NBK_IN_HS);
@@ -70,11 +72,12 @@ static voluta_lba_t agm_lba_by_index(voluta_index_t ag_index)
 
 static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 {
-	const size_t nbk_in_bu = VOLUTA_NBK_IN_BKSEC;
-	const voluta_lba_t hsm_lba = (voluta_lba_t)(nbk_in_bu + hs_index);
+	const size_t nbk_in_bksec = VOLUTA_NBK_IN_BKSEC;
+	const voluta_lba_t hsm_lba =
+	        (voluta_lba_t)(nbk_in_bksec + (hs_index * nbk_in_bksec));
 
+	voluta_assert_gt(hs_index, 0);
 	voluta_assert_gt(VOLUTA_NBK_IN_BKSEC, VOLUTA_LBA_SB);
-
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
 	return hsm_lba;

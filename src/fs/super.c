@@ -431,11 +431,25 @@ static void zero_blocks_sec(struct voluta_bksec_info *bsi)
 static int load_bksec(const struct voluta_sb_info *sbi,
                       struct voluta_bksec_info *bsi)
 {
+	int err;
 	struct voluta_fiovec fiov = { .fv_cookie = NULL };
 	const struct voluta_vstore *vstore = vstore_of(sbi);
+	struct voluta_blocks_sec *bs = bsi->bs;
 
 	resolve_bksec_fiovec(sbi, bsi, &fiov);
-	return voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bsi->bs);
+	err = voluta_vstore_read(vstore, fiov.fv_off, fiov.fv_len, bs);
+	if (err) {
+		return err;
+	}
+	voluta_assert_ge(bsi->baddr.bid.size, VOLUTA_BK_SIZE);
+	voluta_assert_eq(bsi->baddr.len, sizeof(*bs));
+	voluta_assert_eq(bsi->baddr.off % VOLUTA_BKSEC_SIZE, 0);
+	err = voluta_bstore_load_bobj(sbi->sb_bstore, &bsi->baddr, bs);
+	voluta_assert_ok(err);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 static void forget_bksec(const struct voluta_sb_info *sbi,
@@ -444,6 +458,24 @@ static void forget_bksec(const struct voluta_sb_info *sbi,
 	if (bsi != NULL) {
 		voluta_cache_forget_bsi(cache_of(sbi), bsi);
 	}
+}
+
+static int spawn_bksec(struct voluta_sb_info *sbi,
+                       const struct voluta_vba *vba,
+                       struct voluta_bksec_info **out_bsi)
+{
+	int err;
+
+	err = find_cached_bksec(sbi, vba, out_bsi);
+	if (!err) {
+		return 0; /* Cache hit */
+	}
+	err = spawn_bsi(sbi, vba, out_bsi);
+	if (err) {
+		return err;
+	}
+	zero_blocks_sec(*out_bsi);
+	return 0;
 }
 
 static int stage_bksec(struct voluta_sb_info *sbi,
@@ -476,13 +508,6 @@ out_err:
 	forget_bksec(sbi, bsi);
 	*out_bsi = NULL;
 	return err;
-}
-
-static int stage_bksec_of_spmap(struct voluta_sb_info *sbi,
-                                const struct voluta_vba *vba,
-                                struct voluta_bksec_info **out_bsi)
-{
-	return stage_bksec(sbi, vba, false, out_bsi);
 }
 
 static struct voluta_view *make_view(const void *p)
@@ -1016,7 +1041,7 @@ static int spawn_spmap(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_bksec_info *bsi = NULL;
 
-	err = stage_bksec_of_spmap(sbi, vba, &bsi);
+	err = spawn_bksec(sbi, vba, &bsi);
 	if (err) {
 		return err;
 	}
@@ -1821,14 +1846,14 @@ static int try_stage_cached_hsmap(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int spawn_bind_spmap(struct voluta_sb_info *sbi,
+static int stage_bind_spmap(struct voluta_sb_info *sbi,
                             const struct voluta_vba *vba,
                             struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_bksec_info *bsi = NULL;
 
-	err = stage_bksec_of_spmap(sbi, vba, &bsi);
+	err = stage_bksec(sbi, vba, false, &bsi);
 	if (err) {
 		return err;
 	}
@@ -1859,7 +1884,7 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = spawn_bind_spmap(sbi, &vba, &vi);
+	err = stage_bind_spmap(sbi, &vba, &vi);
 	if (err) {
 		return err;
 	}
@@ -1990,7 +2015,7 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = spawn_bind_spmap(sbi, &vba, &vi);
+	err = stage_bind_spmap(sbi, &vba, &vi);
 	if (err) {
 		return err;
 	}

@@ -159,9 +159,25 @@ static loff_t bri_off_end(const struct voluta_bref_info *bri)
 static int bri_check_io_range(const struct voluta_bref_info *bri,
                               loff_t off, size_t len)
 {
-	const loff_t end = off_end(off, len);
+	loff_t end1;
+	loff_t end2;
 
-	return ((off >= 0) && (end <= bri_off_end(bri))) ? 0 : -EINVAL;
+	if (off < 0) {
+		return -EINVAL;
+	}
+	end1 = off_end(off, len);
+	end2 = bri_off_end(bri);
+
+	/*
+	 * XXX FIXME
+	 *
+	 * This logic is true when there are still u-objects which are smaller
+	 * then bksec size. Need to be removed.
+	 */
+	if (end1 >= (end2 + VOLUTA_BKSEC_SIZE)) {
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int bri_resolve_fiovec(const struct voluta_bref_info *bri,
@@ -463,9 +479,9 @@ static int bstore_sub_pathname_of(const struct voluta_bstore *bstore,
 	return 0;
 }
 
-static loff_t blob_size_of(const struct voluta_blobid *bid)
+static ssize_t blob_ssize(const struct voluta_blobid *bid)
 {
-	return (loff_t)blobid_size(bid);
+	return (ssize_t)blobid_size(bid);
 }
 
 static int bstore_create_blob(const struct voluta_bstore *bstore,
@@ -474,6 +490,7 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	int err;
 	int fd = -1;
 	int o_flags;
+	ssize_t len;
 	struct stat st;
 	struct voluta_namebuf nb;
 
@@ -491,7 +508,8 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_ftruncate(fd, blob_size_of(bid));
+	len = voluta_max64(blob_ssize(bid), VOLUTA_BKSEC_SIZE);
+	err = voluta_sys_ftruncate(fd, len);
 	if (err) {
 		goto out_err;
 	}
@@ -543,9 +561,9 @@ static int bstore_open_blob(const struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	if (st.st_size < blob_size_of(bid)) {
+	if (st.st_size < blob_ssize(bid)) {
 		log_warn("blob-size mismatch: %s size=%ld st_size=%ld",
-		         nb.name, blob_size_of(bid), st.st_size);
+		         nb.name, blob_ssize(bid), st.st_size);
 		err = -ENOENT;
 		return err;
 	}

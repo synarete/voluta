@@ -35,6 +35,16 @@ static inline uint64_t voluta_min3(uint64_t x, uint64_t y, uint64_t z)
 	return voluta_min(voluta_min(x, y), z);
 }
 
+static inline int32_t voluta_max32(int32_t x, int32_t y)
+{
+	return x > y ? x : y;
+}
+
+static inline int64_t voluta_max64(int64_t x, int64_t y)
+{
+	return x > y ? x : y;
+}
+
 static inline uint64_t voluta_max(uint64_t x, uint64_t y)
 {
 	return x > y ? x : y;

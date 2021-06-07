@@ -82,7 +82,7 @@ out_control_err:
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_mdigest_init(struct voluta_mdigest *md)
+static int mdigest_init(struct voluta_mdigest *md)
 {
 	int algo;
 	gcry_error_t err;
@@ -113,7 +113,7 @@ int voluta_mdigest_init(struct voluta_mdigest *md)
 	return 0;
 }
 
-void voluta_mdigest_fini(struct voluta_mdigest *md)
+static void mdigest_fini(struct voluta_mdigest *md)
 {
 	if (md->md_hd != NULL) {
 		gcry_md_close(md->md_hd);
@@ -496,13 +496,13 @@ int voluta_crypto_init(struct voluta_crypto *crypto)
 	int err;
 
 	memset(crypto, 0, sizeof(*crypto));
-	err = voluta_mdigest_init(&crypto->md);
+	err = mdigest_init(&crypto->md);
 	if (err) {
 		return err;
 	}
 	err = cipher_init(&crypto->ci);
 	if (err) {
-		voluta_mdigest_fini(&crypto->md);
+		mdigest_fini(&crypto->md);
 		return err;
 	}
 	return 0;
@@ -511,7 +511,7 @@ int voluta_crypto_init(struct voluta_crypto *crypto)
 void voluta_crypto_fini(struct voluta_crypto *crypto)
 {
 	cipher_fini(&crypto->ci);
-	voluta_mdigest_fini(&crypto->md);
+	mdigest_fini(&crypto->md);
 
 	memset(crypto, 0xEF, sizeof(*crypto));
 }

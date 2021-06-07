@@ -352,6 +352,7 @@ struct voluta_bstore {
 	struct voluta_list_head bs_htbl[1024];
 	struct voluta_listq     bs_lru;
 	struct voluta_alloc_if *bs_alif;
+	const char *bs_rootdir;
 	size_t  bs_nsubs;
 	size_t  bs_hsize;
 	int     bs_dfd;
@@ -393,7 +394,6 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_vstore           *sb_vstore;
 	struct voluta_bstore           *sb_bstore;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
@@ -403,6 +403,7 @@ struct voluta_sb_info {
 	struct voluta_oper_stat         sb_ops;
 	struct voluta_pipe              sb_pipe;
 	struct voluta_nullfd            sb_nullnfd;
+	struct voluta_crypto            sb_crypto;
 	unsigned long                   sb_ctl_flags;
 	unsigned long                   sb_ms_flags;
 	iconv_t                         sb_iconv;
@@ -516,8 +517,7 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_vstore           *vstore;
-	struct voluta_bstore             *bstore;
+	struct voluta_bstore           *bstore;
 	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;

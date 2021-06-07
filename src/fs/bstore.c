@@ -420,6 +420,7 @@ int voluta_bstore_init(struct voluta_bstore *bstore,
 	bstore->bs_dfd = -1;
 	bstore->bs_nsubs = 256;
 	bstore->bs_alif = alif;
+	bstore->bs_rootdir = NULL;
 	return 0;
 }
 
@@ -429,6 +430,7 @@ void voluta_bstore_fini(struct voluta_bstore *bstore)
 	bstore_cache_fini(bstore);
 	bstore->bs_nsubs = 0;
 	bstore->bs_alif = NULL;
+	bstore->bs_rootdir = NULL;
 }
 
 int voluta_bstore_open(struct voluta_bstore *bstore, const char *path)
@@ -440,6 +442,7 @@ int voluta_bstore_open(struct voluta_bstore *bstore, const char *path)
 	if (err) {
 		return err;
 	}
+	bstore->bs_rootdir = path;
 	return 0;
 }
 

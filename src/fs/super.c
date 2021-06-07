@@ -22,6 +22,7 @@
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/nodes.h>
+#include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/bstore.h>
 #include <voluta/fs/boot.h>
@@ -1340,19 +1341,6 @@ int voluta_format_spmaps(struct voluta_sb_info *sbi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int unlimit_agmap_on_pstore(struct voluta_sb_info *sbi,
-                                   voluta_index_t ag_index)
-{
-	loff_t cap;
-	struct voluta_vaddr vaddr;
-	struct voluta_vstore *vstore = sbi->sb_vstore;
-	const loff_t ag_size = VOLUTA_AG_SIZE;
-
-	voluta_vaddr_of_agmap(&vaddr, ag_index);
-	cap = ((vaddr.off + ag_size) / ag_size) * ag_size;
-	return voluta_vstore_expand(vstore, cap);
-}
-
 static int spawn_agmap_of(struct voluta_sb_info *sbi,
                           const struct voluta_vba *vba,
                           voluta_index_t ag_index,
@@ -1455,10 +1443,6 @@ static int format_next_agmap(struct voluta_sb_info *sbi,
 	voluta_index_t ag_index;
 
 	err = next_unformatted_ag(hsi, &ag_index);
-	if (err) {
-		return err;
-	}
-	err = unlimit_agmap_on_pstore(sbi, ag_index);
 	if (err) {
 		return err;
 	}
@@ -1573,7 +1557,6 @@ static void sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_mntime = 0;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
-	sbi->sb_vstore = NULL;
 	sbi->sb_bstore = NULL;
 }
 
@@ -1585,7 +1568,6 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ms_flags = 0;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
-	sbi->sb_vstore = NULL;
 	sbi->sb_bstore = NULL;
 	sbi->sb = NULL;
 }
@@ -1622,6 +1604,17 @@ static void sbi_fini_piper(struct voluta_sb_info *sbi)
 
 	voluta_nullfd_fini(nullfd);
 	voluta_pipe_fini(pipe);
+}
+
+
+static int sbi_init_crypto(struct voluta_sb_info *sbi)
+{
+	return voluta_crypto_init(&sbi->sb_crypto);
+}
+
+static void sbi_fini_crypto(struct voluta_sb_info *sbi)
+{
+	voluta_crypto_fini(&sbi->sb_crypto);
 }
 
 static int sbi_init_iti(struct voluta_sb_info *sbi)
@@ -1664,24 +1657,29 @@ static int sbi_init_subs(struct voluta_sb_info *sbi)
 	}
 	err = sbi_init_piper(sbi);
 	if (err) {
-		return err;
+		goto out_err;
+	}
+	err = sbi_init_crypto(sbi);
+	if (err) {
+		goto out_err;
 	}
 	err = sbi_init_iti(sbi);
 	if (err) {
-		sbi_fini_piper(sbi);
-		sbi_fini_iconv(sbi);
-		return err;
+		goto out_err;
 	}
 	return 0;
+out_err:
+	sbi_fini_crypto(sbi);
+	sbi_fini_piper(sbi);
+	sbi_fini_iconv(sbi);
+	return err;
 }
 
 static void sbi_attach_to(struct voluta_sb_info *sbi,
                           struct voluta_cache *cache,
-                          struct voluta_vstore *vstore,
                           struct voluta_bstore *bstore)
 {
 	sbi->sb_cache = cache;
-	sbi->sb_vstore = vstore;
 	sbi->sb_bstore = bstore;
 	sbi->sb_qalloc = cache->c_qalloc;
 	sbi->sb_ops.op_iopen_max = calc_iopen_limit(cache);
@@ -1689,17 +1687,17 @@ static void sbi_attach_to(struct voluta_sb_info *sbi,
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
                     struct voluta_cache *cache,
-                    struct voluta_vstore *vstore,
                     struct voluta_bstore *bstore)
 {
 	sbi_init_commons(sbi);
-	sbi_attach_to(sbi, cache, vstore, bstore);
+	sbi_attach_to(sbi, cache, bstore);
 	return sbi_init_subs(sbi);
 }
 
 void voluta_sbi_fini(struct voluta_sb_info *sbi)
 {
 	sbi_fini_iti(sbi);
+	sbi_fini_crypto(sbi);
 	sbi_fini_piper(sbi);
 	sbi_fini_iconv(sbi);
 	sbi_fini_commons(sbi);

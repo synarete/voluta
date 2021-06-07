@@ -28,10 +28,6 @@ int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
                         const struct voluta_mdigest *md,
                         struct voluta_kivam *kivam);
 
-int voluta_mdigest_init(struct voluta_mdigest *md);
-
-void voluta_mdigest_fini(struct voluta_mdigest *md);
-
 
 void voluta_blake2s128_of(const struct voluta_mdigest *md,
                           const void *buf, size_t bsz,

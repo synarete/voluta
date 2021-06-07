@@ -311,7 +311,6 @@ static int do_kcopy_with_splice(struct voluta_pipe *pipe,
 		return err;
 	}
 	return 0;
-
 }
 
 int voluta_kcopy_with_splice(struct voluta_pipe *pipe,

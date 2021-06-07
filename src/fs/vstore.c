@@ -42,7 +42,7 @@
 static const struct voluta_cipher *
 vi_cipher(const struct voluta_vnode_info *vi)
 {
-	return &vi->v_sbi->sb_vstore->vs_crypto.ci;
+	return &vi->v_sbi->sb_crypto.ci;
 }
 
 static int encrypt_vnode(const struct voluta_vnode_info *vi,

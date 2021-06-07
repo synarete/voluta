@@ -24,7 +24,6 @@
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
                     struct voluta_cache *cache,
-                    struct voluta_vstore *vstore,
                     struct voluta_bstore *bstore);
 
 void voluta_sbi_fini(struct voluta_sb_info *sbi);
@@ -40,6 +39,12 @@ int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity);
 
 void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 
+
+int voluta_shut_super(struct voluta_sb_info *sbi);
+
+int voluta_save_super(struct voluta_sb_info *sbi);
+
+int voluta_load_super(struct voluta_sb_info *sbi);
 
 int voluta_adjust_super(struct voluta_sb_info *sbi);
 
@@ -57,12 +62,6 @@ void voluta_statvfs_of(const struct voluta_sb_info *sbi,
 int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags);
 
 int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
-
-int voluta_shut_super(struct voluta_sb_info *sbi);
-
-int voluta_save_super(struct voluta_sb_info *sbi);
-
-int voluta_load_super(struct voluta_sb_info *sbi);
 
 
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,

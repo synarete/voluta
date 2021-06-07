@@ -1956,11 +1956,11 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
                               struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
-	const struct voluta_vstore *vstore = sbi->sb_vstore;
+	const struct voluta_bstore *bstore = sbi->sb_bstore;
 
-	query->u.volume.size = (uint64_t)vstore->vs_pstore.ps_size;
-	if (vstore->vs_volpath != NULL) {
-		strncpy(query->u.volume.path, vstore->vs_volpath,
+	query->u.volume.size = 0; /* XXX FIXME */
+	if (bstore->bs_rootdir != NULL) {
+		strncpy(query->u.volume.path, bstore->bs_rootdir,
 		        sizeof(query->u.volume.path) - 1);
 	}
 }
@@ -2053,9 +2053,10 @@ static int check_fsowner(const struct voluta_sb_info *sbi,
 
 static int check_cloneable_volume(const struct voluta_sb_info *sbi)
 {
-	const struct voluta_pstore *pstore = &sbi->sb_vstore->vs_pstore;
+	/* XXX FIXME */
+	voluta_unused(sbi);
 
-	return (pstore->ps_ctl_flags & VOLUTA_F_MEMFD) ? -EOPNOTSUPP : 0;
+	return -EOPNOTSUPP;
 }
 
 static int check_rootdir(const struct voluta_inode_info *ii)
@@ -2133,7 +2134,7 @@ static int do_clone(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = voluta_vstore_clone(sbi->sb_vstore, &name);
+	err = -EOPNOTSUPP; /* XXX FIXME impl */
 	if (err) {
 		return err;
 	}

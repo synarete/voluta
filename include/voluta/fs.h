@@ -24,9 +24,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/mpool.h>
 #include <voluta/fs/nodes.h>
-#include <voluta/fs/pstore.h>
-#include <voluta/fs/vstore.h>
-#include <voluta/fs/bstore.h>
+#include <voluta/fs/repo.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/opers.h>
 #include <voluta/fs/namei.h>

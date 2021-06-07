@@ -347,15 +347,15 @@ struct voluta_vstore {
 	unsigned long vs_ctl_flags;
 };
 
-/* blobs storage controller */
-struct voluta_bstore {
-	struct voluta_list_head bs_htbl[1024];
-	struct voluta_listq     bs_lru;
-	struct voluta_alloc_if *bs_alif;
-	const char *bs_rootdir;
-	size_t  bs_nsubs;
-	size_t  bs_hsize;
-	int     bs_dfd;
+/* repository blob-storage controller */
+struct voluta_repo {
+	struct voluta_list_head re_htbl[1024];
+	struct voluta_listq     re_lru;
+	struct voluta_alloc_if *re_alif;
+	const char *re_rootdir;
+	size_t  re_nsubs;
+	size_t  re_hsize;
+	int     re_dfd;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -394,7 +394,7 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_bstore           *sb_bstore;
+	struct voluta_repo           *sb_repo;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -485,8 +485,7 @@ struct voluta_fuseq {
 /* file-system arguments */
 struct voluta_fs_args {
 	const char *superid;
-	const char *volume;
-	const char *bstoredir;
+	const char *repodir;
 	const char *mountp;
 	const char *fsname;
 	const char *passwd;
@@ -517,7 +516,7 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_bstore           *bstore;
+	struct voluta_repo           *repo;
 	struct voluta_super_block      *sb;
 	struct voluta_sb_info          *sbi;
 	struct voluta_fuseq            *fuseq;

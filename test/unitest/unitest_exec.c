@@ -232,22 +232,6 @@ static void ut_done_tests(struct ut_env *ute)
 	voluta_assert_ok(err);
 }
 
-static char *ut_joinpath(const char *path, const char *base)
-{
-	char *rpath;
-	const size_t plen = strlen(path);
-	const size_t blen = strlen(base);
-	const size_t len = plen + blen + 2;
-
-	rpath = ut_malloc_safe(len);
-	memcpy(rpath, path, plen);
-	rpath[plen] = '/';
-	memcpy(rpath + plen + 1, base, blen);
-	rpath[plen + 1 + blen] = '\0';
-
-	return rpath;
-}
-
 static void ut_removepath(char **path)
 {
 	voluta_sys_unlink(*path);
@@ -311,7 +295,7 @@ void ut_execute_tests(void)
 			.pid = getpid(),
 			.umask = 0002,
 			.mountp = "/",
-			.volume = NULL,
+			.repodir = NULL,
 			.fsname = "unitests",
 			.vsize = UT_VOLUME_SIZE,
 			.memwant = UT_GIGA,
@@ -327,9 +311,7 @@ void ut_execute_tests(void)
 	args.fs_args.superid = super_id.name;
 
 	testdir = ut_globals.test_dir_real;
-	volpath = ut_joinpath(testdir, "unitests.voluta");
-	args.fs_args.volume = volpath;
-	args.fs_args.bstoredir = testdir;
+	args.fs_args.repodir = testdir;
 
 	args.fs_args.passwd = ut_make_passwd(&passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;

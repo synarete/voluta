@@ -41,7 +41,7 @@ struct voluta_query_version {
 
 struct voluta_query_volume {
 	uint64_t size;
-	char     path[VOLUTA_VOLUME_PATH_MAX];
+	char     path[VOLUTA_REPO_PATH_MAX];
 };
 
 struct voluta_query_fsinfo {

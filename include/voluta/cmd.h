@@ -50,11 +50,11 @@ struct voluta_cmd_info {
 struct voluta_subcmd_mkfs {
 	char   *passphrase;
 	char   *passphrase_file;
-	char   *volume;
-	char   *volume_abs;
+	char   *repodir;
+	char   *repodir_real;
 	char   *name;
 	char   *size;
-	long    volume_size;
+	long    fs_size;
 	bool    encrypted;
 	bool    force;
 };
@@ -63,11 +63,11 @@ struct voluta_subcmd_mkfs {
 struct voluta_subcmd_mount {
 	char   *passphrase;
 	char   *passphrase_file;
-	char   *volume;
-	char   *volume_real;
+	char   *repodir;
+	char   *repodir_real;
+	int     repodir_dfd;
 	char   *volume_clone;
 	char   *volume_active;
-	int     volume_fd;
 	char   *point;
 	char   *point_real;
 	char   *options;
@@ -214,15 +214,15 @@ void voluta_die_if_exists(const char *path);
 
 void voluta_die_if_bad_sb(const char *path, const char *pass);
 
-void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-                              bool mustnot_be_enc, bool *out_is_encrypted);
+void voluta_die_if_not_repository(const char *path, bool must_be_enc,
+                                  bool mustnot_be_enc, bool *out_is_encrypted);
 
 void voluta_die_if_not_lockable(const char *path, bool rw);
 
 void voluta_die_if_no_mountd(void);
 
 
-void voluta_open_and_flock(const char *path, bool rw, int *out_fd);
+void voluta_opendir_and_flock(const char *path, bool rw, int *out_fd);
 
 void voluta_funlock_and_close(const char *path, int *pfd);
 
@@ -261,10 +261,6 @@ void voluta_stat_reg_or_blk(const char *path, struct stat *st, loff_t *out_sz);
 loff_t voluta_blkgetsize_ok(const char *path);
 
 char *voluta_realpath_safe(const char *path);
-
-char *voluta_abspath_safe(const char *path);
-
-char *voluta_dirpath_safe(const char *path);
 
 char *voluta_basename_safe(const char *path);
 

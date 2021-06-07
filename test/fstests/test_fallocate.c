@@ -92,7 +92,7 @@ static void test_fallocate_unaligned(struct vt_env *vte)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /*
- * Expects fallocate(2) to bstorert allocated space as zero
+ * Expects fallocate(2) to report allocated space as zero
  */
 static void test_fallocate_zeros_(struct vt_env *vte, loff_t off, ssize_t len)
 {

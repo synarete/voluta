@@ -25,7 +25,6 @@
 #include <voluta/fs/mpool.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/spmaps.h>
-#include <voluta/fs/vstore.h>
 #include <voluta/fs/private.h>
 
 #define CACHE_RETRY 2

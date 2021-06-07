@@ -28,7 +28,6 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/crypto.h>
-#include <voluta/fs/vstore.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/namei.h>
 #include <voluta/fs/inode.h>
@@ -1956,11 +1955,11 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
                               struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
-	const struct voluta_bstore *bstore = sbi->sb_bstore;
+	const struct voluta_repo *repo = sbi->sb_repo;
 
 	query->u.volume.size = 0; /* XXX FIXME */
-	if (bstore->bs_rootdir != NULL) {
-		strncpy(query->u.volume.path, bstore->bs_rootdir,
+	if (repo->re_rootdir != NULL) {
+		strncpy(query->u.volume.path, repo->re_rootdir,
 		        sizeof(query->u.volume.path) - 1);
 	}
 }

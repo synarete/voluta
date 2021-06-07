@@ -252,19 +252,18 @@ out:
 	}
 }
 
-void voluta_die_if_not_volume(const char *path, bool rw, bool must_be_enc,
-                              bool mustnot_be_enc, bool *out_is_encrypted)
+void voluta_die_if_not_repository(const char *path, bool must_be_enc,
+                                  bool mustnot_be_enc, bool *out_is_encrypted)
 {
 	int err;
 	enum voluta_brf brf;
 	bool is_enc;
 
-	err = voluta_require_volume_path(path, rw);
+	err = voluta_require_repo_path(path);
 	if ((err == -EPERM) || (err == -EACCES)) {
-		voluta_die(err, "can not access volume: %s mode=%s",
-		           path, rw ? "rw" : "ro");
+		voluta_die(err, "can not access repository: %s", path);
 	} else if (err) {
-		voluta_die(err, "not a valid volume: %s", path);
+		voluta_die(err, "not a valid repository: %s", path);
 	}
 	die_if_bad_boot_record(path, &brf);
 	is_enc = (brf & VOLUTA_ZBF_ENCRYPTED);
@@ -283,7 +282,7 @@ void voluta_die_if_not_lockable(const char *path, bool rw)
 {
 	int fd = -1;
 
-	voluta_open_and_flock(path, rw, &fd);
+	voluta_opendir_and_flock(path, rw, &fd);
 	voluta_funlock_and_close(path, &fd);
 }
 
@@ -323,7 +322,7 @@ void voluta_die_if_not_empty_dir(const char *path, bool w_ok)
 		voluta_die(err, "close-dir error: %s", path);
 	}
 	if (ndes > 2) {
-		voluta_die(0, "mount point not empty: %s", path);
+		voluta_die(0, "not an empty directory: %s", path);
 	}
 }
 
@@ -377,10 +376,9 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
+void voluta_opendir_and_flock(const char *path, bool rw, int *out_fd)
 {
 	int err;
-	const int o_flags = rw ? O_RDWR : O_RDONLY;
 	struct flock fl = {
 		.l_type = rw ? F_WRLCK : F_RDLCK,
 		.l_whence = SEEK_SET,
@@ -389,9 +387,9 @@ void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
 	};
 
 	*out_fd = -1;
-	err = voluta_sys_open(path, o_flags, 0, out_fd);
+	err = voluta_sys_open(path, O_DIRECTORY | O_RDONLY, 0, out_fd);
 	if (err) {
-		voluta_die(err, "failed to open: %s", path);
+		voluta_die(err, "failed to opendir: %s", path);
 	}
 	err = voluta_sys_fcntl_flock(*out_fd, F_SETLK, &fl);
 	if (err) {
@@ -778,72 +776,6 @@ char *voluta_realpath_safe(const char *path)
 		voluta_die(-errno, "realpath failure: '%s'", path);
 	}
 	return real_path;
-}
-
-static void splitpath_safe(const char *path, char **head, char **tail)
-{
-	const size_t len = strlen(path);
-	const char *str = strrchr(path, '/');
-	const char *end = path + len;
-
-	if (str == NULL) {
-		*head = NULL;
-		*tail = voluta_strdup_safe(path);
-	} else {
-		*head = voluta_strndup_safe(path, (size_t)(str - path));
-		*tail = voluta_strndup_safe(str + 1, (size_t)(end - str) - 1);
-	}
-}
-
-static char *getcwd_safe(void)
-{
-	char *cwd = get_current_dir_name();
-
-	if (cwd == NULL) {
-		voluta_die(-errno, "get-current-dir failed");
-	}
-	return cwd;
-}
-
-char *voluta_abspath_safe(const char *path)
-{
-	char *head = NULL;
-	char *tail = NULL;
-	char *real = NULL;
-	char *cwd = NULL;
-	char *abspath = NULL;
-
-	splitpath_safe(path, &head, &tail);
-	if (head == NULL) {
-		cwd = getcwd_safe();
-		abspath = voluta_joinpath_safe(cwd, tail);
-	} else {
-		real = voluta_realpath_safe(head);
-		abspath = voluta_joinpath_safe(real, tail);
-	}
-	voluta_pfree_string(&cwd);
-	voluta_pfree_string(&real);
-	voluta_pfree_string(&tail);
-	voluta_pfree_string(&head);
-	return abspath;
-}
-
-char *voluta_dirpath_safe(const char *path)
-{
-	char *lasts;
-	char *rpath;
-	struct stat st;
-
-	rpath = voluta_realpath_safe(path);
-	voluta_stat_ok(rpath, &st);
-	if (!S_ISDIR(st.st_mode)) {
-		lasts = strrchr(rpath, '/');
-		if (lasts == NULL) {
-			voluta_die(-ENOTDIR, "no dir in: '%s'", rpath);
-		}
-		*lasts = '\0';
-	}
-	return rpath;
 }
 
 char *voluta_basename_safe(const char *path)

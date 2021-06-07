@@ -118,8 +118,8 @@
 #define VOLUTA_VOLUME_SIZE_MAX  \
 	(VOLUTA_AG_SIZE * VOLUTA_VOLUME_NAG_MAX)
 
-/* max path-length (including null) of volume-path */
-#define VOLUTA_VOLUME_PATH_MAX          (2032)
+/* max path-length (including null) of repository-path */
+#define VOLUTA_REPO_PATH_MAX            (2032)
 
 
 /* non-valid ("NIL") logical byte address */

@@ -28,9 +28,7 @@
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/crypto.h>
-#include <voluta/fs/pstore.h>
-#include <voluta/fs/vstore.h>
-#include <voluta/fs/bstore.h>
+#include <voluta/fs/repo.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
@@ -40,20 +38,19 @@
 #include <voluta/fs/exec.h>
 #include <voluta/fs/private.h>
 
-#define ROUND_TO_HK(n)  VOLUTA_ROUND_TO(n, 512)
+#define ROUND_TO_K(n)  VOLUTA_ROUND_TO(n, VOLUTA_KILO)
 
 struct voluta_fs_core {
 	struct voluta_qalloc    qalloc;
 	struct voluta_mpool     mpool;
 	struct voluta_cache     cache;
-	struct voluta_vstore    vstore;
-	struct voluta_bstore    bstore;
+	struct voluta_repo     repo;
 	struct voluta_sb_info   sbi;
 };
 
 union voluta_fs_core_u {
 	struct voluta_fs_core c;
-	uint8_t dat[ROUND_TO_HK(sizeof(struct voluta_fs_core))];
+	uint8_t dat[ROUND_TO_K(sizeof(struct voluta_fs_core))];
 };
 
 union voluta_fuseq_page {
@@ -178,7 +175,7 @@ static int fse_init_sbi(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbi;
 
-	err = voluta_sbi_init(sbi, fse->cache, fse->bstore);
+	err = voluta_sbi_init(sbi, fse->cache, fse->repo);
 	if (err) {
 		return err;
 	}
@@ -194,23 +191,23 @@ static void fse_fini_sbi(struct voluta_fs_env *fse)
 	}
 }
 
-static int fse_init_bstore(struct voluta_fs_env *fse)
+static int fse_init_repo(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_bstore *bstore = &fse_obj_of(fse)->fs_core.c.bstore;
+	struct voluta_repo *repo = &fse_obj_of(fse)->fs_core.c.repo;
 
-	err = voluta_bstore_init(bstore, &fse->qalloc->alif);
+	err = voluta_repo_init(repo, &fse->qalloc->alif);
 	if (!err) {
-		fse->bstore = bstore;
+		fse->repo = repo;
 	}
 	return err;
 }
 
-static void fse_fini_bstore(struct voluta_fs_env *fse)
+static void fse_fini_repo(struct voluta_fs_env *fse)
 {
-	if (fse->bstore != NULL) {
-		voluta_bstore_fini(fse->bstore);
-		fse->bstore = NULL;
+	if (fse->repo != NULL) {
+		voluta_repo_fini(fse->repo);
+		fse->repo = NULL;
 	}
 }
 
@@ -402,7 +399,7 @@ static int fse_init(struct voluta_fs_env *fse,
 	if (err) {
 		return err;
 	}
-	err = fse_init_bstore(fse);
+	err = fse_init_repo(fse);
 	if (err) {
 		return err;
 	}
@@ -437,7 +434,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_fuseq(fse);
 	fse_fini_sbi(fse);
 	fse_fini_sb(fse);
-	fse_fini_bstore(fse);
+	fse_fini_repo(fse);
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
 	fse_fini_qalloc(fse);
@@ -494,7 +491,7 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 
 	err = voluta_sbi_setspace(fse->sbi, size);
 	if (err) {
-		log_err("illegal volume size: %ld %s", size, fse->args.volume);
+		log_err("illegal volume size: %ld %s", size, fse->args.repodir);
 		return err;
 	}
 	return 0;
@@ -552,30 +549,28 @@ static int fse_reload_meta(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_create_bstore(struct voluta_fs_env *fse)
+static int fse_create_repo(struct voluta_fs_env *fse)
 {
 	int err;
-	const char *path = fse->args.bstoredir;
-	struct voluta_bstore *bstore = fse->bstore;
+	struct voluta_repo *repo = fse->repo;
 
-	err = voluta_bstore_open(bstore, path);
+	err = voluta_repo_open(repo, fse->args.repodir);
 	if (err) {
 		return err;
 	}
-	err = voluta_bstore_format(bstore);
+	err = voluta_repo_format(repo);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fse_open_bstore(struct voluta_fs_env *fse)
+static int fse_open_repo(struct voluta_fs_env *fse)
 {
 	int err;
-	const char *path = fse->args.bstoredir;
-	struct voluta_bstore *bstore = fse->bstore;
+	struct voluta_repo *repo = fse->repo;
 
-	err = voluta_bstore_open(bstore, path);
+	err = voluta_repo_open(repo, fse->args.repodir);
 	if (err) {
 		return err;
 	}
@@ -583,9 +578,9 @@ static int fse_open_bstore(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_close_bstore(struct voluta_fs_env *fse)
+static int fse_close_repo(struct voluta_fs_env *fse)
 {
-	return voluta_bstore_close(fse->bstore);
+	return voluta_repo_close(fse->repo);
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
@@ -649,7 +644,7 @@ int voluta_fse_term(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_close_bstore(fse);
+	err = fse_close_repo(fse);
 	if (err) {
 		return err;
 	}
@@ -731,11 +726,11 @@ static int fse_check_br_mode(const struct voluta_fs_env *fse)
 	const bool br_enc = voluta_br_is_encrypted(br);
 
 	if (br_enc && !(ctl_flags & VOLUTA_F_ENCRYPTED)) {
-		log_err("encrypted br: %s", fse->args.volume);
+		log_err("encrypted br: %s", fse->args.repodir);
 		return -ENOKEY;
 	}
 	if (!br_enc && (ctl_flags & VOLUTA_F_ENCRYPTED)) {
-		log_err("non encrypted br: %s", fse->args.volume);
+		log_err("non encrypted br: %s", fse->args.repodir);
 		return -EKEYREJECTED;
 	}
 	return 0;
@@ -785,7 +780,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	const struct voluta_boot_record *br = &fse->sb->sb_boot_rec;
 
 	if (fse_encrypt_mode(fse) && !fse->passph.passlen) {
-		log_err("missing passphrase of: %s", fse->args.volume);
+		log_err("missing passphrase of: %s", fse->args.repodir);
 		return -ENOKEY;
 	}
 	if (!fse->passph.passlen) {
@@ -795,7 +790,7 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
-		        fse->args.volume, err);
+		        fse->args.repodir, err);
 		return err;
 	}
 	return 0;
@@ -926,7 +921,7 @@ int voluta_fse_reload(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = fse_open_bstore(fse);
+	err = fse_open_repo(fse);
 	if (err) {
 		return err;
 	}
@@ -946,16 +941,16 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = fse_open_bstore(fse);
+	err = fse_open_repo(fse);
 	if (err) {
 		return err;
 	}
 	err = fse_stage_sb(fse);
 	if (err) {
-		fse_close_bstore(fse);
+		fse_close_repo(fse);
 		return err;
 	}
-	err = fse_close_bstore(fse);
+	err = fse_close_repo(fse);
 	if (err) {
 		return err;
 	}
@@ -1050,7 +1045,7 @@ static int fse_preformat_volume(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_create_bstore(fse);
+	err = fse_create_repo(fse);
 	if (err) {
 		return err;
 	}
@@ -1114,7 +1109,7 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 int voluta_fse_serve(struct voluta_fs_env *fse)
 {
 	int err;
-	const char *volume = fse->args.volume;
+	const char *volume = fse->args.repodir;
 	const char *mntpath = fse->args.mountp;
 
 	if (!fse->args.with_fuseq || (fse->fuseq == NULL)) {

@@ -28,8 +28,7 @@
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/vstore.h>
-#include <voluta/fs/bstore.h>
+#include <voluta/fs/repo.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/inode.h>
 #include <voluta/fs/file.h>
@@ -200,8 +199,8 @@ static int fiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	err = voluta_bstore_resolve_bobj(f_ctx->sbi->sb_bstore, &vba.baddr,
-	                                 off_within, len, out_fiov);
+	err = voluta_repo_resolve_bobj(f_ctx->sbi->sb_repo, &vba.baddr,
+	                               off_within, len, out_fiov);
 	if (err) {
 		return err;
 	}

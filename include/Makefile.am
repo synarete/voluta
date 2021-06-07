@@ -38,13 +38,11 @@ nobase_include_HEADERS += voluta/fs/namei.h
 nobase_include_HEADERS += voluta/fs/nodes.h
 nobase_include_HEADERS += voluta/fs/opers.h
 nobase_include_HEADERS += voluta/fs/private.h
-nobase_include_HEADERS += voluta/fs/pstore.h
-nobase_include_HEADERS += voluta/fs/bstore.h
+nobase_include_HEADERS += voluta/fs/repo.h
 nobase_include_HEADERS += voluta/fs/spmaps.h
 nobase_include_HEADERS += voluta/fs/super.h
 nobase_include_HEADERS += voluta/fs/symlink.h
 nobase_include_HEADERS += voluta/fs/types.h
-nobase_include_HEADERS += voluta/fs/vstore.h
 nobase_include_HEADERS += voluta/fs/xattr.h
 nobase_include_HEADERS += voluta/fs.h
 

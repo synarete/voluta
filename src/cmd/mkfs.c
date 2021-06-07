@@ -20,13 +20,13 @@
 
 
 static const char *mkfs_usage[] = {
-	"mkfs [options] <volume-path>",
+	"mkfs [options] <repository-path>",
 	"",
 	"options:",
-	"  -s, --size=NBYTES            Volume size",
+	"  -s, --size=NBYTES            File-system size",
 	"  -n, --name=NAME              Private name",
 	"  -e, --encrypted              Encrypted volume",
-	"  -F, --force                  Force overwrite if volume exists",
+	"  -F, --force                  Force overwrite if already exists",
 	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
 	NULL
@@ -54,7 +54,7 @@ static void mkfs_getopt(void)
 		} else if (opt_chr == 's') {
 			size = voluta_parse_size(optarg);
 			voluta_globals.cmd.mkfs.size = optarg;
-			voluta_globals.cmd.mkfs.volume_size = size;
+			voluta_globals.cmd.mkfs.fs_size = size;
 		} else if (opt_chr == 'n') {
 			voluta_globals.cmd.mkfs.name = optarg;
 		} else if (opt_chr == 'e') {
@@ -69,8 +69,8 @@ static void mkfs_getopt(void)
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.cmd.mkfs.volume =
-	        voluta_consume_cmdarg("volume-path", true);
+	voluta_globals.cmd.mkfs.repodir =
+	        voluta_consume_cmdarg("repository-path", true);
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
@@ -79,56 +79,25 @@ static void mkfs_finalize(void)
 {
 	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
-	voluta_pfree_string(&voluta_globals.cmd.mkfs.volume_abs);
+	voluta_pfree_string(&voluta_globals.cmd.mkfs.repodir_real);
 }
 
 static void mkfs_setup_check_params(void)
 {
-	int err;
-	int exists;
-	int blkdev;
-	size_t len = 0;
-	loff_t size = 0;
-	loff_t *psz = NULL;
-	struct stat st = { .st_size = 0 };
-	const mode_t mask = S_IRUSR | S_IWUSR;
 	const char *path = NULL;
 	const char *passfile = NULL;
 
-	voluta_globals.cmd.mkfs.volume_abs =
-	        voluta_abspath_safe(voluta_globals.cmd.mkfs.volume);
+	voluta_globals.cmd.mkfs.repodir_real =
+	        voluta_realpath_safe(voluta_globals.cmd.mkfs.repodir);
 
-	path = voluta_globals.cmd.mkfs.volume_abs;
-	len = strlen(path);
-	if (len >= VOLUTA_VOLUME_PATH_MAX) {
-		voluta_die(-ENAMETOOLONG, "illegal volume path");
+	path = voluta_globals.cmd.mkfs.repodir_real;
+	voluta_die_if_not_empty_dir(path, true);
+
+	if (strlen(path) >= VOLUTA_REPO_PATH_MAX) {
+		voluta_die(-ENAMETOOLONG, "illegal repository path");
 	}
-	err = voluta_sys_stat(path, &st);
-	if (err && (err != -ENOENT)) {
-		voluta_die(err, "stat failure: %s", path);
-	}
-	exists = !err;
-	if (exists && S_ISDIR(st.st_mode)) {
-		voluta_die(-EISDIR, "illegal volume path: %s", path);
-	}
-	blkdev = S_ISBLK(st.st_mode);
-	if (exists && !blkdev && !voluta_globals.cmd.mkfs.force) {
-		voluta_die(err, "file exists: %s", path);
-	}
-	if (exists && ((st.st_mode & mask) != mask)) {
-		voluta_die(-EPERM, "no read-write permissions: %s", path);
-	}
-	if (blkdev) {
-		voluta_globals.cmd.mkfs.volume_size =
-		        voluta_blkgetsize_ok(path);
-	} else if (!voluta_globals.cmd.mkfs.size) {
+	if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
-	}
-	psz = &voluta_globals.cmd.mkfs.volume_size;
-	size = voluta_globals.cmd.mkfs.volume_size;
-	err = voluta_resolve_volume_size(path, size, psz);
-	if (err) {
-		voluta_die(0, "unsupported size: %ld", size);
 	}
 	if (voluta_globals.cmd.mkfs.encrypted) {
 		passfile = voluta_globals.cmd.mkfs.passphrase_file;
@@ -139,12 +108,15 @@ static void mkfs_setup_check_params(void)
 static void mkfs_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
+		.superid =
+		"11111111111111111111111111111111" \
+		"11111111111111111111111111111111", /* XXX FIXME */
+		.repodir = voluta_globals.cmd.mkfs.repodir_real,
 		.fsname = voluta_globals.cmd.mkfs.name,
-		.volume = voluta_globals.cmd.mkfs.volume_abs,
 		.passwd = voluta_globals.cmd.mkfs.passphrase,
 		.encrypted = voluta_globals.cmd.mkfs.encrypted,
 		.encryptwr = voluta_globals.cmd.mkfs.encrypted,
-		.vsize = voluta_globals.cmd.mkfs.volume_size,
+		.vsize = voluta_globals.cmd.mkfs.fs_size,
 		.uid = getuid(),
 		.gid = getgid(),
 		.pid = getpid(),
@@ -158,12 +130,12 @@ static void mkfs_format_volume(void)
 {
 	int err;
 	struct voluta_fs_env *fse;
-	const char *volume_path = voluta_globals.cmd.mkfs.volume;
 
 	fse = voluta_fse_inst();
 	err = voluta_fse_format(fse);
 	if (err) {
-		voluta_die(err, "format error: %s", volume_path);
+		voluta_die(err, "format error: %s",
+		           voluta_globals.cmd.mkfs.repodir);
 	}
 }
 

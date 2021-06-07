@@ -20,13 +20,9 @@
 #include <fcntl.h>
 #include <voluta/infra.h>
 #include <voluta/fs/address.h>
-#include <voluta/fs/bstore.h>
+#include <voluta/fs/repo.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/private.h>
-
-/* XXX */
-#include <voluta/fs/vstore.h>
-
 
 /* blob-reference cache-entry */
 struct voluta_bref_info {
@@ -219,37 +215,37 @@ static int bri_datasync(const struct voluta_bref_info *bri)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bstore_htbl_init(struct voluta_bstore *bstore)
+static void repo_htbl_init(struct voluta_repo *repo)
 {
-	list_head_initn(bstore->bs_htbl, ARRAY_SIZE(bstore->bs_htbl));
-	bstore->bs_hsize = 0;
+	list_head_initn(repo->re_htbl, ARRAY_SIZE(repo->re_htbl));
+	repo->re_hsize = 0;
 }
 
-static void bstore_htbl_fini(struct voluta_bstore *bstore)
+static void repo_htbl_fini(struct voluta_repo *repo)
 {
-	list_head_finin(bstore->bs_htbl, ARRAY_SIZE(bstore->bs_htbl));
-	bstore->bs_hsize = 0;
+	list_head_finin(repo->re_htbl, ARRAY_SIZE(repo->re_htbl));
+	repo->re_hsize = 0;
 }
 
 static struct voluta_list_head *
-bstore_htbl_list_by(const struct voluta_bstore *bstore, const uint64_t hkey)
+repo_htbl_list_by(const struct voluta_repo *repo, const uint64_t hkey)
 {
-	const size_t slot = hkey % ARRAY_SIZE(bstore->bs_htbl);
-	const struct voluta_list_head *lst = &bstore->bs_htbl[slot];
+	const size_t slot = hkey % ARRAY_SIZE(repo->re_htbl);
+	const struct voluta_list_head *lst = &repo->re_htbl[slot];
 
 	return unconst(lst);
 }
 
 static struct voluta_bref_info *
-bstore_htbl_lookup(const struct voluta_bstore *bstore,
-                   const struct voluta_blobid *bid)
+repo_htbl_lookup(const struct voluta_repo *repo,
+                 const struct voluta_blobid *bid)
 {
 	const struct voluta_bref_info *bri;
 	const struct voluta_list_head *itr;
 	const struct voluta_list_head *lst;
 	const uint64_t hkey = voluta_blobid_hkey(bid);
 
-	itr = lst = bstore_htbl_list_by(bstore, hkey);
+	itr = lst = repo_htbl_list_by(repo, hkey);
 	while (itr->next != lst) {
 		itr = itr->next;
 		bri = bri_from_htb_lh(itr);
@@ -260,77 +256,77 @@ bstore_htbl_lookup(const struct voluta_bstore *bstore,
 	return NULL;
 }
 
-static void bstore_htbl_insert(struct voluta_bstore *bstore,
-                               struct voluta_bref_info *bri)
+static void repo_htbl_insert(struct voluta_repo *repo,
+                             struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lst;
 
-	lst = bstore_htbl_list_by(bstore, bri->b_hkey);
+	lst = repo_htbl_list_by(repo, bri->b_hkey);
 	list_push_front(lst, &bri->b_htb_lh);
 }
 
-static void bstore_htbl_remove(struct voluta_bstore *bstore,
-                               struct voluta_bref_info *bri)
+static void repo_htbl_remove(struct voluta_repo *repo,
+                             struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lst;
 
-	lst = bstore_htbl_list_by(bstore, bri->b_hkey);
+	lst = repo_htbl_list_by(repo, bri->b_hkey);
 	voluta_assert(!list_isempty(lst));
 	list_head_remove(&bri->b_htb_lh);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bstore_lru_init(struct voluta_bstore *bstore)
+static void repo_lru_init(struct voluta_repo *repo)
 {
-	listq_init(&bstore->bs_lru);
+	listq_init(&repo->re_lru);
 }
 
-static void bstore_lru_fini(struct voluta_bstore *bstore)
+static void repo_lru_fini(struct voluta_repo *repo)
 {
-	listq_fini(&bstore->bs_lru);
+	listq_fini(&repo->re_lru);
 }
 
-static void bstore_lru_insert(struct voluta_bstore *bstore,
-                              struct voluta_bref_info *bri)
+static void repo_lru_insert(struct voluta_repo *repo,
+                            struct voluta_bref_info *bri)
 {
-	listq_push_front(&bstore->bs_lru, &bri->b_lru_lh);
+	listq_push_front(&repo->re_lru, &bri->b_lru_lh);
 }
 
-static void bstore_lru_remove(struct voluta_bstore *bstore,
-                              struct voluta_bref_info *bri)
+static void repo_lru_remove(struct voluta_repo *repo,
+                            struct voluta_bref_info *bri)
 {
-	voluta_assert_gt(bstore->bs_lru.sz, 0);
-	listq_remove(&bstore->bs_lru, &bri->b_lru_lh);
+	voluta_assert_gt(repo->re_lru.sz, 0);
+	listq_remove(&repo->re_lru, &bri->b_lru_lh);
 }
 
 static struct voluta_bref_info *
-bstore_lru_front(const struct voluta_bstore *bstore)
+repo_lru_front(const struct voluta_repo *repo)
 {
 	struct voluta_list_head *lh;
 
-	lh = listq_front(&bstore->bs_lru);
+	lh = listq_front(&repo->re_lru);
 	return bri_from_lru_lh(lh);
 }
 
 static struct voluta_bref_info *
-bstore_lru_nextof(const struct voluta_bstore *bstore,
-                  const struct voluta_bref_info *bri)
+repo_lru_nextof(const struct voluta_repo *repo,
+                const struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lh_next = bri->b_lru_lh.next;
 
-	if (lh_next == &bstore->bs_lru.ls) {
+	if (lh_next == &repo->re_lru.ls) {
 		return NULL;
 	}
 	return bri_from_lru_lh(lh_next);
 }
 
 static struct voluta_bref_info *
-bstore_cahce_rfind(const struct voluta_bstore *bstore, voluta_bri_pred_fn fn)
+repo_cahce_rfind(const struct voluta_repo *repo, voluta_bri_pred_fn fn)
 {
 	const struct voluta_bref_info *bi;
 	const struct voluta_list_head *lh;
-	const struct voluta_listq *lru = &bstore->bs_lru;
+	const struct voluta_listq *lru = &repo->re_lru;
 
 	lh = listq_back(lru);
 	while (lh != &lru->ls) {
@@ -345,114 +341,114 @@ bstore_cahce_rfind(const struct voluta_bstore *bstore, voluta_bri_pred_fn fn)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bstore_cache_init(struct voluta_bstore *bstore)
+static void repo_cache_init(struct voluta_repo *repo)
 {
-	bstore_htbl_init(bstore);
-	bstore_lru_init(bstore);
+	repo_htbl_init(repo);
+	repo_lru_init(repo);
 }
 
-static void bstore_cache_fini(struct voluta_bstore *bstore)
+static void repo_cache_fini(struct voluta_repo *repo)
 {
-	bstore_htbl_fini(bstore);
-	bstore_lru_fini(bstore);
+	repo_htbl_fini(repo);
+	repo_lru_fini(repo);
 }
 
-static void bstore_cache_insert(struct voluta_bstore *bstore,
-                                struct voluta_bref_info *bri)
+static void repo_cache_insert(struct voluta_repo *repo,
+                              struct voluta_bref_info *bri)
 {
-	bstore_htbl_insert(bstore, bri);
-	bstore_lru_insert(bstore, bri);
+	repo_htbl_insert(repo, bri);
+	repo_lru_insert(repo, bri);
 }
 
-static void bstore_cache_remove(struct voluta_bstore *bstore,
-                                struct voluta_bref_info *bri)
+static void repo_cache_remove(struct voluta_repo *repo,
+                              struct voluta_bref_info *bri)
 {
-	bstore_lru_remove(bstore, bri);
-	bstore_htbl_remove(bstore, bri);
+	repo_lru_remove(repo, bri);
+	repo_htbl_remove(repo, bri);
 }
 
-static void bstore_cache_relru(struct voluta_bstore *bstore,
-                               struct voluta_bref_info *bri)
+static void repo_cache_relru(struct voluta_repo *repo,
+                             struct voluta_bref_info *bri)
 {
-	bstore_lru_remove(bstore, bri);
-	bstore_lru_insert(bstore, bri);
+	repo_lru_remove(repo, bri);
+	repo_lru_insert(repo, bri);
 }
 
-static int bstore_cache_lookup(struct voluta_bstore *bstore,
-                               const struct voluta_blobid *bid,
-                               struct voluta_bref_info **out_bri)
+static int repo_cache_lookup(struct voluta_repo *repo,
+                             const struct voluta_blobid *bid,
+                             struct voluta_bref_info **out_bri)
 {
-	*out_bri = bstore_htbl_lookup(bstore, bid);
+	*out_bri = repo_htbl_lookup(repo, bid);
 	if (*out_bri == NULL) {
 		return -ENOENT;
 	}
-	bstore_cache_relru(bstore, *out_bri);
+	repo_cache_relru(repo, *out_bri);
 	return 0;
 }
 
 static struct voluta_bref_info *
-bstore_cache_front(const struct voluta_bstore *bstore)
+repo_cache_front(const struct voluta_repo *repo)
 {
-	return bstore_lru_front(bstore);
+	return repo_lru_front(repo);
 }
 
 static struct voluta_bref_info *
-bstore_cache_nextof(const struct voluta_bstore *bstore,
-                    const struct voluta_bref_info *bri)
+repo_cache_nextof(const struct voluta_repo *repo,
+                  const struct voluta_bref_info *bri)
 {
-	return bstore_lru_nextof(bstore, bri);
+	return repo_lru_nextof(repo, bri);
 }
 
 
 static struct voluta_bref_info *
-bstore_cache_find_evictable(const struct voluta_bstore *bstore)
+repo_cache_find_evictable(const struct voluta_repo *repo)
 {
-	return bstore_cahce_rfind(bstore, bri_is_evictable);
+	return repo_cahce_rfind(repo, bri_is_evictable);
 }
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_bstore_init(struct voluta_bstore *bstore,
-                       struct voluta_alloc_if *alif)
+int voluta_repo_init(struct voluta_repo *repo,
+                     struct voluta_alloc_if *alif)
 {
-	bstore_cache_init(bstore);
-	bstore->bs_dfd = -1;
-	bstore->bs_nsubs = 256;
-	bstore->bs_alif = alif;
-	bstore->bs_rootdir = NULL;
+	repo_cache_init(repo);
+	repo->re_dfd = -1;
+	repo->re_nsubs = 256;
+	repo->re_alif = alif;
+	repo->re_rootdir = NULL;
 	return 0;
 }
 
-void voluta_bstore_fini(struct voluta_bstore *bstore)
+void voluta_repo_fini(struct voluta_repo *repo)
 {
-	voluta_bstore_close(bstore);
-	bstore_cache_fini(bstore);
-	bstore->bs_nsubs = 0;
-	bstore->bs_alif = NULL;
-	bstore->bs_rootdir = NULL;
+	voluta_repo_close(repo);
+	repo_cache_fini(repo);
+	repo->re_nsubs = 0;
+	repo->re_alif = NULL;
+	repo->re_rootdir = NULL;
 }
 
-int voluta_bstore_open(struct voluta_bstore *bstore, const char *path)
+int voluta_repo_open(struct voluta_repo *repo, const char *path)
 {
 	int err;
 
-	voluta_assert_lt(bstore->bs_dfd, 0);
-	err = voluta_sys_opendir(path, &bstore->bs_dfd);
+	voluta_assert_lt(repo->re_dfd, 0);
+	err = voluta_sys_opendir(path, &repo->re_dfd);
 	if (err) {
 		return err;
 	}
-	bstore->bs_rootdir = path;
+	repo->re_rootdir = path;
 	return 0;
 }
 
-static int bstore_format_sub(const struct voluta_bstore *bstore,
-                             voluta_index_t idx)
+static int repo_format_sub(const struct voluta_repo *repo,
+                           voluta_index_t idx)
 {
 	int err;
 	struct stat st;
 	struct voluta_namebuf nb;
-	const int dfd = bstore->bs_dfd;
+	const int dfd = repo->re_dfd;
 
 	index_to_namebuf(idx, &nb);
 	err = voluta_sys_fstatat(dfd, nb.name, &st, 0);
@@ -474,12 +470,12 @@ static int bstore_format_sub(const struct voluta_bstore *bstore,
 	return 0;
 }
 
-int voluta_bstore_format(struct voluta_bstore *bstore)
+int voluta_repo_format(struct voluta_repo *repo)
 {
 	int err;
 
-	for (size_t i = 0; i < bstore->bs_nsubs; ++i) {
-		err = bstore_format_sub(bstore, i);
+	for (size_t i = 0; i < repo->re_nsubs; ++i) {
+		err = repo_format_sub(repo, i);
 		if (err) {
 			return err;
 		}
@@ -487,9 +483,9 @@ int voluta_bstore_format(struct voluta_bstore *bstore)
 	return 0;
 }
 
-static int bstore_sub_pathname_of(const struct voluta_bstore *bstore,
-                                  const struct voluta_blobid *bid,
-                                  struct voluta_namebuf *out_nb)
+static int repo_sub_pathname_of(const struct voluta_repo *repo,
+                                const struct voluta_blobid *bid,
+                                struct voluta_namebuf *out_nb)
 {
 	int err;
 	size_t len = 0;
@@ -498,7 +494,7 @@ static int bstore_sub_pathname_of(const struct voluta_bstore *bstore,
 	char *nbuf = out_nb->name;
 	const size_t nmax = sizeof(out_nb->name);
 
-	idx = blobid_to_index(bid, bstore->bs_nsubs);
+	idx = blobid_to_index(bid, repo->re_nsubs);
 	len += index_to_name(idx, nbuf, nmax);
 	if (len > (nmax / 2)) {
 		return -EINVAL;
@@ -518,8 +514,8 @@ static ssize_t blob_ssize(const struct voluta_blobid *bid)
 	return (ssize_t)blobid_size(bid);
 }
 
-static int bstore_create_blob(const struct voluta_bstore *bstore,
-                              const struct voluta_blobid *bid, int *out_fd)
+static int repo_create_blob(const struct voluta_repo *repo,
+                            const struct voluta_blobid *bid, int *out_fd)
 {
 	int err;
 	int fd = -1;
@@ -528,17 +524,17 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = bstore_sub_pathname_of(bstore, bid, &nb);
+	err = repo_sub_pathname_of(repo, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(repo->re_dfd, nb.name, &st, 0);
 	if (err != -ENOENT) {
 		log_err("can not create blob: name=%s err=%d", nb.name, err);
 		return err;
 	}
 	o_flags = O_CREAT | O_RDWR | O_TRUNC;
-	err = voluta_sys_openat(bstore->bs_dfd, nb.name, o_flags, 0600, &fd);
+	err = voluta_sys_openat(repo->re_dfd, nb.name, o_flags, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -550,48 +546,48 @@ static int bstore_create_blob(const struct voluta_bstore *bstore,
 	*out_fd = fd;
 	return 0;
 out_err:
-	voluta_sys_unlinkat(bstore->bs_dfd, nb.name, 0);
+	voluta_sys_unlinkat(repo->re_dfd, nb.name, 0);
 	voluta_sys_closefd(&fd);
 	return err;
 }
 
-static int bstore_unlink_blob(const struct voluta_bstore *bstore,
-                              const struct voluta_blobid *bid)
+static int repo_unlink_blob(const struct voluta_repo *repo,
+                            const struct voluta_blobid *bid)
 {
 	int err;
 	struct voluta_namebuf nb;
 
-	err = bstore_sub_pathname_of(bstore, bid, &nb);
+	err = repo_sub_pathname_of(repo, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_unlinkat(bstore->bs_dfd, nb.name, 0);
+	err = voluta_sys_unlinkat(repo->re_dfd, nb.name, 0);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int bstore_remove_blob(const struct voluta_bstore *bstore,
-                              const struct voluta_blobid *bid, int *pfd)
+static int repo_remove_blob(const struct voluta_repo *repo,
+                            const struct voluta_blobid *bid, int *pfd)
 {
 	voluta_sys_closefd(pfd);
-	return bstore_unlink_blob(bstore, bid);
+	return repo_unlink_blob(repo, bid);
 }
 
-static int bstore_open_blob(const struct voluta_bstore *bstore,
-                            const struct voluta_blobid *bid, int *out_fd)
+static int repo_open_blob(const struct voluta_repo *repo,
+                          const struct voluta_blobid *bid, int *out_fd)
 {
 	int err;
 	int fd = -1;
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = bstore_sub_pathname_of(bstore, bid, &nb);
+	err = repo_sub_pathname_of(repo, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(repo->re_dfd, nb.name, &st, 0);
 	if (err) {
 		return err;
 	}
@@ -601,7 +597,7 @@ static int bstore_open_blob(const struct voluta_bstore *bstore,
 		err = -ENOENT;
 		return err;
 	}
-	err = voluta_sys_openat(bstore->bs_dfd, nb.name, O_RDWR, 0600, &fd);
+	err = voluta_sys_openat(repo->re_dfd, nb.name, O_RDWR, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -609,167 +605,167 @@ static int bstore_open_blob(const struct voluta_bstore *bstore,
 	return 0;
 }
 
-static int bstore_close_blob(const struct voluta_bstore *bstore,
-                             const struct voluta_blobid *bid, int *pfd)
+static int repo_close_blob(const struct voluta_repo *repo,
+                           const struct voluta_blobid *bid, int *pfd)
 {
 	int err;
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = bstore_sub_pathname_of(bstore, bid, &nb);
+	err = repo_sub_pathname_of(repo, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(bstore->bs_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(repo->re_dfd, nb.name, &st, 0);
 	if (err) {
 		log_warn("missing blob: name=%s err=%d", nb.name, err);
 	}
 	return voluta_sys_closefd(pfd);
 }
 
-static int bstore_close_bref_of(const struct voluta_bstore *bstore,
-                                struct voluta_bref_info *bri)
+static int repo_close_bref_of(const struct voluta_repo *repo,
+                              struct voluta_bref_info *bri)
 {
 	voluta_assert_gt(bri->b_fd, 0);
 	voluta_assert_eq(bri->b_refcnt, 0);
 
-	return bstore_close_blob(bstore, &bri->bid, &bri->b_fd);
+	return repo_close_blob(repo, &bri->bid, &bri->b_fd);
 }
 
-static int bstore_new_bref(struct voluta_bstore *bstore,
-                           const struct voluta_blobid *bid, int fd,
-                           struct voluta_bref_info **out_bri)
+static int repo_new_bref(struct voluta_repo *repo,
+                         const struct voluta_blobid *bid, int fd,
+                         struct voluta_bref_info **out_bri)
 {
-	*out_bri = bri_new(bstore->bs_alif, bid, fd);
+	*out_bri = bri_new(repo->re_alif, bid, fd);
 
 	return (*out_bri == NULL) ? -ENOMEM : 0;
 }
 
-static void bstore_del_bref(const struct voluta_bstore *bstore,
-                            struct voluta_bref_info *bri)
+static void repo_del_bref(const struct voluta_repo *repo,
+                          struct voluta_bref_info *bri)
 {
-	bri_del(bri, bstore->bs_alif);
+	bri_del(bri, repo->re_alif);
 }
 
-static void bstore_forget_bref(struct voluta_bstore *bstore,
-                               struct voluta_bref_info *bri)
+static void repo_forget_bref(struct voluta_repo *repo,
+                             struct voluta_bref_info *bri)
 {
-	bstore_close_bref_of(bstore, bri);
-	bstore_cache_remove(bstore, bri);
-	bstore_del_bref(bstore, bri);
+	repo_close_bref_of(repo, bri);
+	repo_cache_remove(repo, bri);
+	repo_del_bref(repo, bri);
 }
 
-int voluta_bstore_sync(struct voluta_bstore *bstore)
+int voluta_repo_sync(struct voluta_repo *repo)
 {
 	int err;
 	struct voluta_bref_info *bri;
 
-	bri = bstore_cache_front(bstore);
+	bri = repo_cache_front(repo);
 	while (bri != NULL) {
 		err = bri_datasync(bri);
 		if (err) {
 			return err;
 		}
-		bri = bstore_cache_nextof(bstore, bri);
+		bri = repo_cache_nextof(repo, bri);
 	}
 	return 0;
 }
 
-static void bstore_forget_all(struct voluta_bstore *bstore)
+static void repo_forget_all(struct voluta_repo *repo)
 {
 	struct voluta_bref_info *bri;
 
-	bri = bstore_cache_front(bstore);
+	bri = repo_cache_front(repo);
 	while (bri != NULL) {
-		bstore_forget_bref(bstore, bri);
-		bri = bstore_cache_front(bstore);
+		repo_forget_bref(repo, bri);
+		bri = repo_cache_front(repo);
 	}
 }
 
-int voluta_bstore_close(struct voluta_bstore *bstore)
+int voluta_repo_close(struct voluta_repo *repo)
 {
-	bstore_forget_all(bstore);
-	return voluta_sys_closefd(&bstore->bs_dfd);
+	repo_forget_all(repo);
+	return voluta_sys_closefd(&repo->re_dfd);
 }
 
-static int bstore_relax_once(struct voluta_bstore *bstore)
+static int repo_relax_once(struct voluta_repo *repo)
 {
 	struct voluta_bref_info *bri = NULL;
-	const size_t ncached = bstore->bs_lru.sz;
+	const size_t ncached = repo->re_lru.sz;
 
 	if (!ncached || (ncached < 512)) { /* XXX make upper bound tweak */
 		return 0;
 	}
-	bri = bstore_cache_find_evictable(bstore);
+	bri = repo_cache_find_evictable(repo);
 	if (bri == NULL) {
 		return -ENOENT;
 	}
-	bstore_forget_bref(bstore, bri);
+	repo_forget_bref(repo, bri);
 	return 0;
 }
 
-static int bstore_open_blob_of(struct voluta_bstore *bstore,
+static int repo_open_blob_of(struct voluta_repo *repo,
+                             const struct voluta_blobid *bid,
+                             struct voluta_bref_info **out_bri)
+{
+	int err;
+	int fd = -1;
+
+	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
+	err = repo_relax_once(repo);
+	if (err) {
+		return err;
+	}
+	err = repo_open_blob(repo, bid, &fd);
+	if (err) {
+		return err;
+	}
+	err = repo_new_bref(repo, bid, fd, out_bri);
+	if (err) {
+		repo_close_blob(repo, bid, &fd);
+		return err;
+	}
+	repo_cache_insert(repo, *out_bri);
+	return 0;
+}
+
+static int repo_create_blob_of(struct voluta_repo *repo,
                                const struct voluta_blobid *bid,
                                struct voluta_bref_info **out_bri)
 {
 	int err;
 	int fd = -1;
 
-	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
-	err = bstore_relax_once(bstore);
+	err = repo_relax_once(repo);
 	if (err) {
 		return err;
 	}
-	err = bstore_open_blob(bstore, bid, &fd);
+	err = repo_create_blob(repo, bid, &fd);
 	if (err) {
 		return err;
 	}
-	err = bstore_new_bref(bstore, bid, fd, out_bri);
+	err = repo_new_bref(repo, bid, fd, out_bri);
 	if (err) {
-		bstore_close_blob(bstore, bid, &fd);
+		repo_remove_blob(repo, bid, &fd);
 		return err;
 	}
-	bstore_cache_insert(bstore, *out_bri);
+	repo_cache_insert(repo, *out_bri);
 	return 0;
 }
 
-static int bstore_create_blob_of(struct voluta_bstore *bstore,
-                                 const struct voluta_blobid *bid,
-                                 struct voluta_bref_info **out_bri)
-{
-	int err;
-	int fd = -1;
-
-	err = bstore_relax_once(bstore);
-	if (err) {
-		return err;
-	}
-	err = bstore_create_blob(bstore, bid, &fd);
-	if (err) {
-		return err;
-	}
-	err = bstore_new_bref(bstore, bid, fd, out_bri);
-	if (err) {
-		bstore_remove_blob(bstore, bid, &fd);
-		return err;
-	}
-	bstore_cache_insert(bstore, *out_bri);
-	return 0;
-}
-
-static int bstore_stage_blob(struct voluta_bstore *bstore, bool may_create,
-                             const struct voluta_blobid *bid,
-                             struct voluta_bref_info **out_bri)
+static int repo_stage_blob(struct voluta_repo *repo, bool may_create,
+                           const struct voluta_blobid *bid,
+                           struct voluta_bref_info **out_bri)
 {
 	int err;
 
 	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
 
-	err = bstore_cache_lookup(bstore, bid, out_bri);
+	err = repo_cache_lookup(repo, bid, out_bri);
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = bstore_open_blob_of(bstore, bid, out_bri);
+	err = repo_open_blob_of(repo, bid, out_bri);
 	if (!err) {
 		return 0;
 	}
@@ -779,7 +775,7 @@ static int bstore_stage_blob(struct voluta_bstore *bstore, bool may_create,
 	if (!may_create) {
 		return -ENOENT;
 	}
-	err = bstore_create_blob_of(bstore, bid, out_bri);
+	err = repo_create_blob_of(repo, bid, out_bri);
 	if (err) {
 		return err;
 	}
@@ -788,23 +784,23 @@ static int bstore_stage_blob(struct voluta_bstore *bstore, bool may_create,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_bstore_create_blob(struct voluta_bstore *bstore,
-                              const struct voluta_blobid *bid)
+int voluta_repo_create_blob(struct voluta_repo *repo,
+                            const struct voluta_blobid *bid)
 {
 	struct voluta_bref_info *bri = NULL;
 
-	return bstore_stage_blob(bstore, true, bid, &bri);
+	return repo_stage_blob(repo, true, bid, &bri);
 }
 
-int voluta_bstore_store_bobj(struct voluta_bstore *bstore,
-                             const struct voluta_baddr *baddr,
-                             const void *bobj)
+int voluta_repo_store_bobj(struct voluta_repo *repo,
+                           const struct voluta_baddr *baddr,
+                           const void *bobj)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = bstore_stage_blob(bstore, true, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -835,9 +831,9 @@ static int check_baddr_iovec(const struct voluta_baddr *baddr,
 	return (iovec_length(iov, cnt) == baddr->len) ? 0 : -EINVAL;
 }
 
-int voluta_bstore_storev_bobj(struct voluta_bstore *bstore,
-                              const struct voluta_baddr *baddr,
-                              const struct iovec *iov, size_t cnt)
+int voluta_repo_storev_bobj(struct voluta_repo *repo,
+                            const struct voluta_baddr *baddr,
+                            const struct iovec *iov, size_t cnt)
 {
 	int err;
 	size_t nwr = 0;
@@ -848,7 +844,7 @@ int voluta_bstore_storev_bobj(struct voluta_bstore *bstore,
 	if (err) {
 		return err;
 	}
-	err = bstore_stage_blob(bstore, true, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -868,14 +864,14 @@ int voluta_bstore_storev_bobj(struct voluta_bstore *bstore,
 	return 0;
 }
 
-int voluta_bstore_load_bobj(struct voluta_bstore *bstore,
-                            const struct voluta_baddr *baddr, void *bobj)
+int voluta_repo_load_bobj(struct voluta_repo *repo,
+                          const struct voluta_baddr *baddr, void *bobj)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = bstore_stage_blob(bstore, false, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, false, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -890,15 +886,15 @@ int voluta_bstore_load_bobj(struct voluta_bstore *bstore,
 	return 0;
 }
 
-int voluta_bstore_resolve_bobj(struct voluta_bstore *bstore,
-                               const struct voluta_baddr *baddr,
-                               loff_t off_within, size_t len,
-                               struct voluta_fiovec *out_fiov)
+int voluta_repo_resolve_bobj(struct voluta_repo *repo,
+                             const struct voluta_baddr *baddr,
+                             loff_t off_within, size_t len,
+                             struct voluta_fiovec *out_fiov)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 
-	err = bstore_stage_blob(bstore, false, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, false, &baddr->bid, &bri);
 	if (err) {
 		return err;
 	}
@@ -995,18 +991,18 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
 }
 
 static int sgvec_store_in_blob(const struct voluta_sgvec *sgv,
-                               struct voluta_bstore *bstore)
+                               struct voluta_repo *repo)
 {
 	struct voluta_baddr baddr;
 
 	voluta_assert_gt(sgv->cnt, 0);
 	baddr_setup(&baddr, &sgv->bid, sgv->len, sgv->off);
-	return voluta_bstore_storev_bobj(bstore, &baddr, sgv->iov, sgv->cnt);
+	return voluta_repo_storev_bobj(repo, &baddr, sgv->iov, sgv->cnt);
 }
 
 static int sgvec_flush_dset(struct voluta_sgvec *sgv,
                             const struct voluta_dset *dset,
-                            struct voluta_bstore *bstore)
+                            struct voluta_repo *repo)
 {
 	int err;
 	struct voluta_vnode_info *viq = dset->ds_viq;
@@ -1017,7 +1013,7 @@ static int sgvec_flush_dset(struct voluta_sgvec *sgv,
 		if (err) {
 			return err;
 		}
-		err = sgvec_store_in_blob(sgv, bstore);
+		err = sgvec_store_in_blob(sgv, repo);
 		if (err) {
 			return err;
 		}
@@ -1150,35 +1146,68 @@ static void dset_cleanup(struct voluta_dset *dset)
 }
 
 static int dset_flush(const struct voluta_dset *dset,
-                      struct voluta_bstore *bstore)
+                      struct voluta_repo *repo)
 {
 	struct voluta_sgvec sgv;
 
-	return sgvec_flush_dset(&sgv, dset, bstore);
+	return sgvec_flush_dset(&sgv, dset, repo);
 }
 
 static int dset_collect_flush(struct voluta_dset *dset,
                               const struct voluta_cache *cache,
-                              struct voluta_bstore *bstore)
+                              struct voluta_repo *repo)
 {
 	int err;
 
 	dset_inhabit(dset, cache);
 	dset_make_fifo(dset);
 	dset_seal_meta(dset);
-	err = dset_flush(dset, bstore);
+	err = dset_flush(dset, repo);
 	dset_cleanup(dset);
 	return err;
 }
 
 int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
-                              struct voluta_bstore *bstore, long ds_key)
+                              struct voluta_repo *repo, long ds_key)
 {
 	int err;
 	struct voluta_dset dset;
 
 	dset_init(&dset, ds_key);
-	err = dset_collect_flush(&dset, cache, bstore);
+	err = dset_collect_flush(&dset, cache, repo);
 	dset_fini(&dset);
 	return err;
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
+
+int voluta_require_repo_path(const char *path)
+{
+	int err;
+	size_t len;
+	struct stat st;
+	const int access_mode = R_OK | W_OK | X_OK;
+
+	len = strlen(path);
+	if (!len) {
+		return -EINVAL;
+	}
+	if (len >= VOLUTA_REPO_PATH_MAX) {
+		return -ENAMETOOLONG;
+	}
+	err = voluta_sys_access(path, access_mode);
+	if (err) {
+		return err;
+	}
+	err = voluta_sys_stat(path, &st);
+	if (err) {
+		return err;
+	}
+	if (!S_ISDIR(st.st_mode)) {
+		return -ENOTDIR;
+	}
+	if ((st.st_mode & S_IRUSR) != S_IRUSR) {
+		return -EPERM;
+	}
+	return 0;
 }

@@ -192,30 +192,6 @@ static struct voluta_super_block *read_super_block(const char *path)
 	return sb;
 }
 
-static void die_if_bad_boot_record(const char *path, enum voluta_brf *out_brf)
-{
-	int err;
-	struct voluta_super_block *sb = NULL;
-
-	sb = read_super_block(path);
-	err = voluta_check_boot_record(sb);
-	if (err) {
-		goto out;
-	}
-	*out_brf = voluta_br_flags(&sb->sb_boot_rec);
-out:
-	del_super_block(sb);
-	if (err == -EAGAIN) {
-		voluta_die(err, "already in use: %s", path);
-	} else if (err == -EUCLEAN) {
-		voluta_die(0, "not a voluta file: %s", path);
-	} else if (err == -EKEYEXPIRED) {
-		voluta_die(0, "illegal passphrase: %s", path);
-	} else if (err) {
-		voluta_die(err, "failed to parse zero block: %s", path);
-	}
-}
-
 void voluta_die_if_bad_sb(const char *path, const char *pass)
 {
 	int err;
@@ -252,12 +228,11 @@ out:
 	}
 }
 
-void voluta_die_if_not_repository(const char *path, bool must_be_enc,
-                                  bool mustnot_be_enc, bool *out_is_encrypted)
+void voluta_die_if_not_repository(const char *path)
 {
 	int err;
-	enum voluta_brf brf;
-	bool is_enc;
+	char *lockfile = NULL;
+	struct stat st = { .st_size = 0 };
 
 	err = voluta_require_repo_path(path);
 	if ((err == -EPERM) || (err == -EACCES)) {
@@ -265,24 +240,19 @@ void voluta_die_if_not_repository(const char *path, bool must_be_enc,
 	} else if (err) {
 		voluta_die(err, "not a valid repository: %s", path);
 	}
-	die_if_bad_boot_record(path, &brf);
-	is_enc = (brf & VOLUTA_ZBF_ENCRYPTED);
-	if (must_be_enc && !is_enc) {
-		voluta_die(0, "not an encrypted volume: %s", path);
+	lockfile = voluta_lockfile_path(path);
+	voluta_stat_reg(lockfile, &st);
+	if (st.st_size > 0) {
+		voluta_die(0, "lock-file not empty: %s", lockfile);
 	}
-	if (mustnot_be_enc && is_enc) {
-		voluta_die(0, "already an encrypted volume: %s", path);
-	}
-	if (out_is_encrypted != NULL) {
-		*out_is_encrypted = is_enc;
-	}
+	voluta_pfree_string(&lockfile);
 }
 
 void voluta_die_if_not_lockable(const char *path, bool rw)
 {
 	int fd = -1;
 
-	voluta_opendir_and_flock(path, rw, &fd);
+	voluta_open_and_flock(path, rw, &fd);
 	voluta_funlock_and_close(path, &fd);
 }
 
@@ -376,9 +346,10 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_opendir_and_flock(const char *path, bool rw, int *out_fd)
+void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
 {
 	int err;
+	const int o_flags = rw ? O_RDWR : O_RDONLY;
 	struct flock fl = {
 		.l_type = rw ? F_WRLCK : F_RDLCK,
 		.l_whence = SEEK_SET,
@@ -387,7 +358,7 @@ void voluta_opendir_and_flock(const char *path, bool rw, int *out_fd)
 	};
 
 	*out_fd = -1;
-	err = voluta_sys_open(path, O_DIRECTORY | O_RDONLY, 0, out_fd);
+	err = voluta_sys_open(path, o_flags, 0, out_fd);
 	if (err) {
 		voluta_die(err, "failed to opendir: %s", path);
 	}
@@ -787,6 +758,11 @@ char *voluta_basename_safe(const char *path)
 	voluta_die_if_illegal_name(base);
 
 	return voluta_strdup_safe(base);
+}
+
+char *voluta_lockfile_path(const char *dirpath)
+{
+	return voluta_joinpath_safe(dirpath, "voluta.lock");
 }
 
 static void voluta_access_ok(const char *path)

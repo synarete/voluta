@@ -274,6 +274,7 @@
 
 
 /* boot-record control flags */
+/* XXX rm */
 enum voluta_brf {
 	VOLUTA_ZBF_NONE         = (1 << 0),
 	VOLUTA_ZBF_ENCRYPTED    = (1 << 1),

@@ -198,7 +198,7 @@ static void del_htbl(struct voluta_alloc_if *alif,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_blocks_sec *bsec_malloc(struct voluta_alloc_if *alif)
+static struct voluta_blocks_sec *bks_malloc(struct voluta_alloc_if *alif)
 {
 	struct voluta_blocks_sec *bs;
 
@@ -206,7 +206,7 @@ static struct voluta_blocks_sec *bsec_malloc(struct voluta_alloc_if *alif)
 	return bs;
 }
 
-static void bsec_free(struct voluta_blocks_sec *bs,
+static void bks_free(struct voluta_blocks_sec *bs,
                       struct voluta_alloc_if *alif)
 {
 	voluta_deallocate(alif, bs, sizeof(*bs));
@@ -955,13 +955,13 @@ cache_new_bsi(const struct voluta_cache *cache)
 	struct voluta_blocks_sec *bs;
 	struct voluta_bksec_info *bsi;
 
-	bs = bsec_malloc(cache->c_alif);
+	bs = bks_malloc(cache->c_alif);
 	if (bs == NULL) {
 		return NULL;
 	}
 	bsi = bsi_malloc(cache->c_alif);
 	if (bsi == NULL) {
-		bsec_free(bs, cache->c_alif);
+		bks_free(bs, cache->c_alif);
 		return NULL;
 	}
 	bsi_init(bsi, bs);
@@ -971,10 +971,10 @@ cache_new_bsi(const struct voluta_cache *cache)
 static void cache_del_bsi(const struct voluta_cache *cache,
                           struct voluta_bksec_info *bsi)
 {
-	struct voluta_blocks_sec *bs = bsi->bks;
+	struct voluta_blocks_sec *bks = bsi->bks;
 
 	bsi_fini(bsi);
-	bsec_free(bs, cache->c_alif);
+	bks_free(bks, cache->c_alif);
 	bsi_free(bsi, cache->c_alif);
 }
 

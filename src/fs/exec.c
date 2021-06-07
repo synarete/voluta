@@ -917,10 +917,38 @@ static int fse_store_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
+static int fse_setup_sb(struct voluta_fs_env *fse, time_t birth_time)
+{
+	int err;
+	struct voluta_vba vba;
+	struct voluta_hash512 pass_hash;
+	struct voluta_super_block *sb = fse->sb;
+	const size_t vsize = (size_t)fse->args.vsize;
+	const time_t btime = birth_time ? birth_time : voluta_time_now();
+
+	voluta_sb_setup_new(sb, btime, vsize);
+	voluta_sb_setup_rand(sb, fse_mdigest(fse));
+
+	fse_calc_pass_hash(fse, &pass_hash);
+	voluta_sb_set_pass_hash(sb, &pass_hash);
+
+	vaddr_of_super(&vba.vaddr);
+	err = voluta_baddr_parse_super(&vba.baddr, fse->args.superid);
+	if (err) {
+		return err;
+	}
+	voluta_sbi_bind_sb(fse->sbi, sb, &vba);
+	return 0;
+}
+
 int voluta_fse_reload(struct voluta_fs_env *fse)
 {
 	int err;
 
+	err = fse_setup_sb(fse, 0);
+	if (err) {
+		return err;
+	}
 	err = fse_open_repo(fse);
 	if (err) {
 		return err;
@@ -941,6 +969,10 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 {
 	int err;
 
+	err = fse_setup_sb(fse, 0);
+	if (err) {
+		return err;
+	}
 	err = fse_open_repo(fse);
 	if (err) {
 		return err;
@@ -1012,31 +1044,6 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 	return 0;
 }
 
-static int fse_setup_sb(struct voluta_fs_env *fse,
-                        const struct voluta_oper *op)
-{
-	int err;
-	struct voluta_vba vba;
-	struct voluta_hash512 pass_hash;
-	struct voluta_super_block *sb = fse->sb;
-	const time_t birth_time = op->xtime.tv_sec;
-	const size_t vsize = (size_t)fse->args.vsize;
-
-	voluta_sb_setup_new(sb, birth_time, vsize);
-	voluta_sb_setup_rand(sb, fse_mdigest(fse));
-
-	fse_calc_pass_hash(fse, &pass_hash);
-	voluta_sb_set_pass_hash(sb, &pass_hash);
-
-	vaddr_of_super(&vba.vaddr);
-	err = voluta_baddr_parse_super(&vba.baddr, fse->args.superid);
-	if (err) {
-		return err;
-	}
-	voluta_sbi_bind_sb(fse->sbi, sb, &vba);
-	return 0;
-}
-
 static int fse_preformat_volume(struct voluta_fs_env *fse)
 {
 	int err;
@@ -1075,7 +1082,7 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_setup_sb(fse, &op);
+	err = fse_setup_sb(fse, op.xtime.tv_sec);
 	if (err) {
 		return err;
 	}

@@ -340,10 +340,10 @@ static const struct voluta_block *
 block_of(const struct voluta_bksec_info *bsi, loff_t off)
 {
 	const loff_t lba = off_to_lba(off);
-	struct voluta_blocks_sec *bu = bsi->bks;
-	const size_t slot = (size_t)lba % ARRAY_SIZE(bu->bk);
+	struct voluta_blocks_sec *bks = bsi->bks;
+	const size_t slot = (size_t)lba % ARRAY_SIZE(bks->bk);
 
-	return &bu->bk[slot];
+	return &bks->bk[slot];
 }
 
 static int find_cached_bksec(struct voluta_sb_info *sbi,
@@ -403,10 +403,11 @@ static int spawn_bsi(struct voluta_sb_info *sbi, const struct voluta_vba *vba,
 
 static void zero_blocks_sec(struct voluta_bksec_info *bsi)
 {
-	struct voluta_blocks_sec *bs = bsi->bks;
+	struct voluta_blocks_sec *bks;
 
-	if (likely(bs != NULL)) { /* make clang-scan happy */
-		voluta_memzero(bs, sizeof(*bs));
+	if (likely(bsi != NULL)) { /* make clang-scan happy */
+		bks = bsi->bks;
+		voluta_memzero(bks, sizeof(*bks));
 	}
 }
 
@@ -414,12 +415,12 @@ static int load_bksec(const struct voluta_sb_info *sbi,
                       struct voluta_bksec_info *bsi)
 {
 	int err;
-	struct voluta_blocks_sec *bs = bsi->bks;
+	struct voluta_blocks_sec *bks = bsi->bks;
 
 	voluta_assert_ge(bsi->baddr.bid.size, VOLUTA_BK_SIZE);
-	voluta_assert_eq(bsi->baddr.len, sizeof(*bs));
+	voluta_assert_eq(bsi->baddr.len, sizeof(*bks));
 	voluta_assert_eq(bsi->baddr.off % VOLUTA_BKSEC_SIZE, 0);
-	err = voluta_repo_load_bobj(sbi->sb_repo, &bsi->baddr, bs);
+	err = voluta_repo_load_bobj(sbi->sb_repo, &bsi->baddr, bks);
 	if (err) {
 		voluta_assert_ok(err);
 		return err;

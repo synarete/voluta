@@ -79,6 +79,7 @@ static void mkfs_finalize(void)
 {
 	voluta_destrpy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
+	voluta_pfree_string(&voluta_globals.cmd.mkfs.repo_lock);
 	voluta_pfree_string(&voluta_globals.cmd.mkfs.repodir_real);
 }
 
@@ -92,6 +93,8 @@ static void mkfs_setup_check_params(void)
 
 	path = voluta_globals.cmd.mkfs.repodir_real;
 	voluta_die_if_not_empty_dir(path, true);
+
+	voluta_globals.cmd.mkfs.repo_lock = voluta_lockfile_path(path);
 
 	if (strlen(path) >= VOLUTA_REPO_PATH_MAX) {
 		voluta_die(-ENAMETOOLONG, "illegal repository path");
@@ -126,7 +129,7 @@ static void mkfs_create_fs_env(void)
 	voluta_create_fse_inst(&args);
 }
 
-static void mkfs_format_volume(void)
+static void mkfs_format_filesystem(void)
 {
 	int err;
 	struct voluta_fs_env *fse;
@@ -137,6 +140,19 @@ static void mkfs_format_volume(void)
 		voluta_die(err, "format error: %s",
 		           voluta_globals.cmd.mkfs.repodir);
 	}
+}
+
+static void mkfs_create_lockfile(void)
+{
+	int err;
+	int fd = -1;
+	const char *path = voluta_globals.cmd.mkfs.repo_lock;
+
+	err = voluta_sys_creat(path, 0600, &fd);
+	if (err) {
+		voluta_die(err, "failed to create lock file: %s", path);
+	}
+	voluta_sys_closefd(&fd);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -156,7 +172,10 @@ void voluta_execute_mkfs(void)
 	mkfs_create_fs_env();
 
 	/* Do actual mkfs */
-	mkfs_format_volume();
+	mkfs_format_filesystem();
+
+	/* Create lock-file */
+	mkfs_create_lockfile();
 
 	/* Post execution cleanups */
 	mkfs_finalize();

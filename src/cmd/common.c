@@ -1098,3 +1098,64 @@ void voluta_pretty_size(size_t n, char *buf, size_t bsz)
 	}
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static char *headref_path(const char *repodir)
+{
+	return voluta_joinpath_safe(repodir, "HEAD");
+}
+
+void voluta_save_headref(const char *repodir, const char *rootid)
+{
+	int err;
+	int fd = -1;
+	char *path = headref_path(repodir);
+	const size_t len = strlen(rootid);
+
+	err = voluta_sys_open(path, O_CREAT | O_RDWR, 0600, &fd);
+	if (err) {
+		voluta_die(err, "failed to create: %s", path);
+	}
+	err = voluta_sys_pwriten(fd, rootid, len, 0);
+	if (err) {
+		voluta_die(err, "write error: %s", path);
+	}
+	err = voluta_sys_pwriten(fd, "\n", 1, (loff_t)len);
+	if (err) {
+		voluta_die(err, "write error: %s", path);
+	}
+	voluta_sys_closefd(&fd);
+	voluta_pfree_string(&path);
+}
+
+static void strip_headref(char *buf, size_t len)
+{
+	struct voluta_substr ss;
+
+	buf[len] = '\0';
+	voluta_substr_init_rw(&ss, buf, len, len);
+	voluta_substr_strip_if(&ss, voluta_chr_isspace, &ss);
+	voluta_substr_copyto(&ss, buf, len);
+}
+
+void voluta_load_headref(const char *repodir, char *buf, size_t bsz)
+{
+	int err;
+	int fd = -1;
+	size_t nrd = 0;
+	char *path = headref_path(repodir);
+
+	err = voluta_sys_open(path, O_RDONLY, 0600, &fd);
+	if (err) {
+		voluta_die(err, "failed to open: %s", path);
+	}
+	err = voluta_sys_pread(fd, buf, bsz - 1, 0, &nrd);
+	if (err) {
+		voluta_die(err, "read error: %s", path);
+	}
+	voluta_sys_closefd(&fd);
+	voluta_pfree_string(&path);
+
+	strip_headref(buf, nrd);
+}
+

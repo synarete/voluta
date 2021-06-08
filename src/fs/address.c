@@ -296,15 +296,21 @@ bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr)
 	return voluta_vtype_isspmap(vaddr->vtype);
 }
 
+static void vaddr_of_super(struct voluta_vaddr *vaddr)
+{
+	const voluta_lba_t lba = VOLUTA_LBA_SB;
 
-void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
+	vaddr_setup(vaddr, VOLUTA_VTYPE_SUPER, lba_to_off(lba));
+}
+
+static void vaddr_of_hsmap(struct voluta_vaddr *vaddr, voluta_index_t hs_index)
 {
 	const voluta_lba_t lba = hsm_lba_by_index(hs_index);
 
 	vaddr_setup(vaddr, VOLUTA_VTYPE_HSMAP, lba_to_off(lba));
 }
 
-void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
+static void vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 {
 	const voluta_lba_t lba = agm_lba_by_index(ag_index);
 
@@ -544,6 +550,7 @@ void voluta_baddr_setup(struct voluta_baddr *baddr,
                         size_t len, loff_t off)
 {
 	voluta_blobid_copyto(bid, &baddr->bid);
+	baddr->bid_hkey = voluta_blobid_hkey(bid);
 	baddr->len = len;
 	baddr->off = blobid_off_within(bid, off);
 }
@@ -557,6 +564,7 @@ void voluta_baddr_assign(struct voluta_baddr *baddr,
 void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
 	memset(baddr->bid.id, 0, sizeof(baddr->bid.id));
+	baddr->bid_hkey = 0;
 	baddr->len = 0;
 	baddr->off = 0;
 }
@@ -565,6 +573,7 @@ void voluta_baddr_copyto(const struct voluta_baddr *baddr,
                          struct voluta_baddr *other)
 {
 	voluta_blobid_copyto(&baddr->bid, &other->bid);
+	other->bid_hkey = baddr->bid_hkey;
 	other->len = baddr->len;
 	other->off = baddr->off;
 }
@@ -572,13 +581,16 @@ void voluta_baddr_copyto(const struct voluta_baddr *baddr,
 bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
                           const struct voluta_baddr *other)
 {
-	return (baddr->len == other->len) && (baddr->off == other->off) &&
-	       voluta_blobid_isequal(&baddr->bid, &other->bid);
+	return ((baddr->len == other->len) &&
+	        (baddr->off == other->off) &&
+	        (baddr->bid_hkey == other->bid_hkey) &&
+	        voluta_blobid_isequal(&baddr->bid, &other->bid));
 }
 
 static void baddr_make(struct voluta_baddr *baddr, size_t size)
 {
 	blodid_make(&baddr->bid, size);
+	baddr->bid_hkey = voluta_blobid_hkey(&baddr->bid);
 	baddr->len = size;
 	baddr->off = 0;
 }
@@ -588,7 +600,7 @@ static void baddr_make_for(struct voluta_baddr *baddr, enum voluta_vtype vtype)
 	baddr_make(baddr, vtype_size(vtype));
 }
 
-void voluta_baddr_for_super(struct voluta_baddr *baddr)
+static void baddr_for_super(struct voluta_baddr *baddr)
 {
 	baddr_make_for(baddr, VOLUTA_VTYPE_SUPER);
 }
@@ -657,15 +669,21 @@ void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other)
 	voluta_baddr_copyto(&vba->baddr, &other->baddr);
 }
 
+void voluta_vba_for_super(struct voluta_vba *vba)
+{
+	vaddr_of_super(&vba->vaddr);
+	baddr_for_super(&vba->baddr);
+}
+
 void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index)
 {
-	voluta_vaddr_of_hsmap(&vba->vaddr, hs_index);
+	vaddr_of_hsmap(&vba->vaddr, hs_index);
 	baddr_for_hsmap(&vba->baddr);
 }
 
 void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index)
 {
-	voluta_vaddr_of_agmap(&vba->vaddr, ag_index);
+	vaddr_of_agmap(&vba->vaddr, ag_index);
 	baddr_for_agmap(&vba->baddr);
 }
 

@@ -41,7 +41,7 @@ static void ut_statfs_empty(struct ut_env *ute)
 	size_t fs_size;
 	size_t used_bytes;
 	size_t used_files;
-	const size_t vol_size = (size_t)(ute->args.fs_args.vsize);
+	const size_t vol_size = (size_t)(ute->args->fs_args.vsize);
 	const size_t ag_size = VOLUTA_AG_SIZE;
 	struct statvfs stv;
 

@@ -63,11 +63,6 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr);
 
 bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr);
 
-void voluta_vaddr_of_hsmap(struct voluta_vaddr *vaddr,
-                           voluta_index_t hs_index);
-
-void voluta_vaddr_of_agmap(struct voluta_vaddr *vaddr,
-                           voluta_index_t ag_index);
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
                         voluta_index_t ag_index, size_t bn, size_t kbn);
@@ -121,8 +116,6 @@ bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
                           const struct voluta_baddr *other);
 
 
-void voluta_baddr_for_super(struct voluta_baddr *baddr);
-
 int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name);
 
 
@@ -137,6 +130,8 @@ void voluta_vba_setup_by(struct voluta_vba *vba,
 void voluta_vba_reset(struct voluta_vba *vba);
 
 void voluta_vba_copyto(const struct voluta_vba *vba, struct voluta_vba *other);
+
+void voluta_vba_for_super(struct voluta_vba *vba);
 
 void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index);
 

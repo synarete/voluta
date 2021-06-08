@@ -73,11 +73,10 @@ static void *ut_malloc_safe(size_t size)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void ute_init(struct ut_env *ute, const struct ut_args *args)
+static void ute_init(struct ut_env *ute, struct ut_args *args)
 {
 	memset(ute, 0, sizeof(*ute));
-	memcpy(&ute->args, args, sizeof(ute->args));
-
+	ute->args = args;
 	ute->malloc_list = NULL;
 	ute->nbytes_alloc = 0;
 	ute->unique_opid = 1;
@@ -103,11 +102,11 @@ static void ute_setup(struct ut_env *ute)
 {
 	int err;
 
-	err = voluta_fse_new(&ute->args.fs_args, &ute->fse);
+	err = voluta_fse_new(&ute->args->fs_args, &ute->fse);
 	voluta_assert_ok(err);
 }
 
-static struct ut_env *ute_new(const struct ut_args *args)
+static struct ut_env *ute_new(struct ut_args *args)
 {
 	struct ut_env *ute;
 
@@ -210,8 +209,12 @@ static void ut_exec_tests(struct ut_env *ute)
 static void ut_prep_tests(struct ut_env *ute)
 {
 	int err;
+	struct voluta_namebuf *rootid = &ute->args->rootid;
 
 	err = voluta_fse_format(ute->fse);
+	voluta_assert_ok(err);
+
+	err = voluta_fse_rootid(ute->fse, rootid->name, sizeof(rootid->name));
 	voluta_assert_ok(err);
 
 	err = voluta_fse_sync_drop(ute->fse);
@@ -249,7 +252,7 @@ static const char *ut_make_passwd(struct voluta_passphrase *pp)
 	return (const char *)(pp->pass);
 }
 
-static void ut_execute_tests_cycle(const struct ut_args *args)
+static void ut_execute_tests_cycle(struct ut_args *args)
 {
 	struct ut_env *ute;
 
@@ -269,23 +272,8 @@ static void ut_print_tests_start(const struct ut_args *args)
 	       (int)args->fs_args.encrypted);
 }
 
-static void ut_make_super_id(struct voluta_namebuf *nb)
-{
-	int err;
-	size_t len = 0;
-	const size_t nmax = sizeof(nb->name) - 1;
-	struct voluta_baddr baddr;
-
-	voluta_baddr_for_super(&baddr);
-	err = voluta_blobid_to_name(&baddr.bid, nb->name, nmax, &len);
-	ut_expect_ok(err);
-	ut_expect_lt(len, nmax);
-	nb->name[len] = '\0';
-}
-
 void ut_execute_tests(void)
 {
-	char *testdir = NULL;
 	char *volpath = NULL;
 	bool encryptwr = false;
 	struct ut_args args = {
@@ -294,7 +282,7 @@ void ut_execute_tests(void)
 			.gid = getgid(),
 			.pid = getpid(),
 			.umask = 0002,
-			.mountp = "/",
+			.mntdir = "/",
 			.repodir = NULL,
 			.fsname = "unitests",
 			.vsize = UT_VOLUME_SIZE,
@@ -304,21 +292,15 @@ void ut_execute_tests(void)
 		.program = ut_globals.program,
 		.version = ut_globals.version
 	};
-	struct voluta_passphrase passph;
-	struct voluta_namebuf super_id;
+	args.fs_args.rootid = args.rootid.name;
+	args.fs_args.repodir = ut_globals.test_dir_real;
 
-	ut_make_super_id(&super_id);
-	args.fs_args.superid = super_id.name;
-
-	testdir = ut_globals.test_dir_real;
-	args.fs_args.repodir = testdir;
-
-	args.fs_args.passwd = ut_make_passwd(&passph);
+	args.fs_args.passwd = ut_make_passwd(&args.passph);
 	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 
-#if 0
+#if 0 /* XXX */
 	args.fs_args.encrypted = args.fs_args.encryptwr = !encryptwr;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);

@@ -238,14 +238,13 @@ repo_htbl_list_by(const struct voluta_repo *repo, const uint64_t hkey)
 
 static struct voluta_bref_info *
 repo_htbl_lookup(const struct voluta_repo *repo,
-                 const struct voluta_blobid *bid)
+                 const struct voluta_blobid *bid, uint64_t bid_hkey)
 {
 	const struct voluta_bref_info *bri;
 	const struct voluta_list_head *itr;
 	const struct voluta_list_head *lst;
-	const uint64_t hkey = voluta_blobid_hkey(bid);
 
-	itr = lst = repo_htbl_list_by(repo, hkey);
+	itr = lst = repo_htbl_list_by(repo, bid_hkey);
 	while (itr->next != lst) {
 		itr = itr->next;
 		bri = bri_from_htb_lh(itr);
@@ -374,11 +373,11 @@ static void repo_cache_relru(struct voluta_repo *repo,
 	repo_lru_insert(repo, bri);
 }
 
-static int repo_cache_lookup(struct voluta_repo *repo,
-                             const struct voluta_blobid *bid,
-                             struct voluta_bref_info **out_bri)
+static int
+repo_cache_lookup(struct voluta_repo *repo, const struct voluta_blobid *bid,
+                  uint64_t bid_hkey, struct voluta_bref_info **out_bri)
 {
-	*out_bri = repo_htbl_lookup(repo, bid);
+	*out_bri = repo_htbl_lookup(repo, bid, bid_hkey);
 	if (*out_bri == NULL) {
 		return -ENOENT;
 	}
@@ -754,14 +753,14 @@ static int repo_create_blob_of(struct voluta_repo *repo,
 }
 
 static int repo_stage_blob(struct voluta_repo *repo, bool may_create,
-                           const struct voluta_blobid *bid,
+                           const struct voluta_blobid *bid, uint64_t bid_hkey,
                            struct voluta_bref_info **out_bri)
 {
 	int err;
 
 	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
 
-	err = repo_cache_lookup(repo, bid, out_bri);
+	err = repo_cache_lookup(repo, bid, bid_hkey, out_bri);
 	if (!err) {
 		return 0; /* cache hit */
 	}
@@ -788,8 +787,9 @@ int voluta_repo_create_blob(struct voluta_repo *repo,
                             const struct voluta_blobid *bid)
 {
 	struct voluta_bref_info *bri = NULL;
+	const uint64_t bid_hkey = voluta_blobid_hkey(bid);
 
-	return repo_stage_blob(repo, true, bid, &bri);
+	return repo_stage_blob(repo, true, bid, bid_hkey, &bri);
 }
 
 int voluta_repo_store_bobj(struct voluta_repo *repo,
@@ -800,7 +800,7 @@ int voluta_repo_store_bobj(struct voluta_repo *repo,
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, true, &baddr->bid, baddr->bid_hkey, &bri);
 	if (err) {
 		return err;
 	}
@@ -844,7 +844,7 @@ int voluta_repo_storev_bobj(struct voluta_repo *repo,
 	if (err) {
 		return err;
 	}
-	err = repo_stage_blob(repo, true, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, true, &baddr->bid, baddr->bid_hkey, &bri);
 	if (err) {
 		return err;
 	}
@@ -871,7 +871,7 @@ int voluta_repo_load_bobj(struct voluta_repo *repo,
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = repo_stage_blob(repo, false, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, false, &baddr->bid, baddr->bid_hkey, &bri);
 	if (err) {
 		return err;
 	}
@@ -894,7 +894,7 @@ int voluta_repo_resolve_bobj(struct voluta_repo *repo,
 	int err;
 	struct voluta_bref_info *bri = NULL;
 
-	err = repo_stage_blob(repo, false, &baddr->bid, &bri);
+	err = repo_stage_blob(repo, false, &baddr->bid, baddr->bid_hkey, &bri);
 	if (err) {
 		return err;
 	}

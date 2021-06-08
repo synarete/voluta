@@ -29,6 +29,10 @@
 #include <voluta/cmd.h>
 
 
+/* Locals */
+static char g_mount_rootid[256];
+
+
 static const char *mount_usage[] = {
 	"mount [options] <volume-path> <mount-point>",
 	"",
@@ -164,6 +168,7 @@ static void mount_setup_check_repo(void)
 
 	path = voluta_globals.cmd.mount.repodir_real;
 	voluta_die_if_not_repository(path);
+	voluta_load_headref(path, g_mount_rootid, sizeof(g_mount_rootid));
 
 	voluta_globals.cmd.mount.repo_lock = voluta_lockfile_path(path);
 	voluta_die_if_not_lockable(voluta_globals.cmd.mount.repo_lock, rw);
@@ -245,15 +250,13 @@ static void mount_flock_repo(void)
 static void mount_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
-		.superid =
-		"11111111111111111111111111111111" \
-		"11111111111111111111111111111111", /* XXX FIXME */
+		.rootid = g_mount_rootid,
 		.uid = getuid(),
 		.gid = getgid(),
 		.pid = getpid(),
 		.umask = 0022,
 		.repodir = voluta_globals.cmd.mount.repodir_real,
-		.mountp = voluta_globals.cmd.mount.mntpoint_real,
+		.mntdir = voluta_globals.cmd.mount.mntpoint_real,
 		.passwd = voluta_globals.cmd.mount.passphrase,
 		.encrypted = voluta_globals.cmd.mount.encrypted,
 		.encryptwr = voluta_globals.cmd.mount.encrypted,
@@ -297,7 +300,8 @@ static void mount_trace_start(void)
 {
 	voluta_log_meta_banner(voluta_globals.name, 1);
 	voluta_log_info("executable: %s", voluta_globals.prog);
-	voluta_log_info("mountpoint: %s", voluta_globals.cmd.mount.mntpoint_real);
+	voluta_log_info("mountpoint: %s",
+	                voluta_globals.cmd.mount.mntpoint_real);
 	voluta_log_info("volume: %s", voluta_globals.cmd.mount.repodir);
 	voluta_log_info("modes: encrypted=%d rdonly=%d noexec=%d "
 	                "nodev=%d nosuid=%d",
@@ -312,7 +316,8 @@ static void mount_trace_finish(void)
 {
 	const time_t exec_time = time(NULL) - voluta_globals.start_time;
 
-	voluta_log_info("mount done: %s", voluta_globals.cmd.mount.mntpoint_real);
+	voluta_log_info("mount done: %s",
+	                voluta_globals.cmd.mount.mntpoint_real);
 	voluta_log_info("execution time: %ld seconds", exec_time);
 	voluta_log_meta_banner(voluta_globals.name, 0);
 }

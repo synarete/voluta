@@ -48,4 +48,6 @@ int voluta_fse_sync_drop(struct voluta_fs_env *fse);
 void voluta_fse_stats(const struct voluta_fs_env *fse,
                       struct voluta_fs_stats *st);
 
+int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz);
+
 #endif /* VOLUTA_EXEC_H_ */

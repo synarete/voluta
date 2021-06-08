@@ -98,13 +98,15 @@ struct ut_malloc_chunk {
 };
 
 struct ut_args {
-	struct voluta_fs_args fs_args;
+	struct voluta_fs_args    fs_args;
+	struct voluta_namebuf    rootid;
+	struct voluta_passphrase passph;
 	const char *program;
 	const char *version;
 };
 
 struct ut_env {
-	struct ut_args           args;
+	struct ut_args          *args;
 	struct voluta_fs_env    *fse;
 	struct voluta_oper       oper;
 	struct timespec          ts_start;

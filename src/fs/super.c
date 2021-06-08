@@ -1154,7 +1154,7 @@ int voluta_shut_super(struct voluta_sb_info *sbi)
 	return 0;
 }
 
-int voluta_save_super(struct voluta_sb_info *sbi)
+int voluta_sbi_save_sb(struct voluta_sb_info *sbi)
 {
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
@@ -1162,7 +1162,7 @@ int voluta_save_super(struct voluta_sb_info *sbi)
 	return voluta_repo_store_bobj(sbi->sb_repo, &vba->baddr, sbi->sb);
 }
 
-int voluta_load_super(struct voluta_sb_info *sbi)
+int voluta_sbi_load_sb(struct voluta_sb_info *sbi)
 {
 	const struct voluta_vba *vba = &sbi->sb_vba;
 

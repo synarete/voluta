@@ -207,7 +207,7 @@ static struct voluta_blocks_sec *bks_malloc(struct voluta_alloc_if *alif)
 }
 
 static void bks_free(struct voluta_blocks_sec *bs,
-                      struct voluta_alloc_if *alif)
+                     struct voluta_alloc_if *alif)
 {
 	voluta_deallocate(alif, bs, sizeof(*bs));
 }

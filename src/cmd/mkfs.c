@@ -111,9 +111,7 @@ static void mkfs_setup_check_params(void)
 static void mkfs_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
-		.superid =
-		"11111111111111111111111111111111" \
-		"11111111111111111111111111111111", /* XXX FIXME */
+		.rootid = NULL,
 		.repodir = voluta_globals.cmd.mkfs.repodir_real,
 		.fsname = voluta_globals.cmd.mkfs.name,
 		.passwd = voluta_globals.cmd.mkfs.passphrase,
@@ -133,13 +131,19 @@ static void mkfs_format_filesystem(void)
 {
 	int err;
 	struct voluta_fs_env *fse;
+	struct voluta_namebuf rootid;
+	const char *repodir = voluta_globals.cmd.mkfs.repodir;
 
 	fse = voluta_fse_inst();
 	err = voluta_fse_format(fse);
 	if (err) {
-		voluta_die(err, "format error: %s",
-		           voluta_globals.cmd.mkfs.repodir);
+		voluta_die(err, "format error: %s", repodir);
 	}
+	err = voluta_fse_rootid(fse, rootid.name, sizeof(rootid.name));
+	if (err) {
+		voluta_die(err, "format error: %s", repodir);
+	}
+	voluta_save_headref(repodir, rootid.name);
 }
 
 static void mkfs_create_lockfile(void)

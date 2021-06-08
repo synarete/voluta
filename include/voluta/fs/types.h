@@ -226,6 +226,7 @@ struct voluta_vaddr {
 /* object-address within underlying blobs space */
 struct voluta_baddr {
 	struct voluta_blobid bid;
+	uint64_t bid_hkey;
 	size_t len;
 	loff_t off;
 };
@@ -394,7 +395,7 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_repo           *sb_repo;
+	struct voluta_repo             *sb_repo;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -482,11 +483,11 @@ struct voluta_fuseq {
 	bool            fq_splice_memfd;
 } voluta_aligned64;
 
-/* file-system arguments */
+/* file-system input arguments */
 struct voluta_fs_args {
-	const char *superid;
 	const char *repodir;
-	const char *mountp;
+	const char *mntdir;
+	const char *rootid;
 	const char *fsname;
 	const char *passwd;
 	size_t memwant;
@@ -516,9 +517,9 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_repo           *repo;
-	struct voluta_super_block      *sb;
+	struct voluta_repo             *repo;
 	struct voluta_sb_info          *sbi;
+	struct voluta_super_block      *sb;
 	struct voluta_fuseq            *fuseq;
 	loff_t volume_size;
 	int signum;

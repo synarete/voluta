@@ -310,4 +310,10 @@ char *voluta_getpass2(const char *path);
 
 void voluta_delpass(char **pass);
 
+
+/* HEAD reference */
+void voluta_save_headref(const char *repodir, const char *rootid);
+
+void voluta_load_headref(const char *repodir, char *buf, size_t bsz);
+
 #endif /* VOLUTA_CMD_H_ */

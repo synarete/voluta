@@ -75,13 +75,6 @@ static struct voluta_fs_env_obj *fse_obj_of(struct voluta_fs_env *fse)
 	return container_of(fse, struct voluta_fs_env_obj, fs_env);
 }
 
-static void vaddr_of_super(struct voluta_vaddr *vaddr)
-{
-	const loff_t off = lba_to_off(VOLUTA_LBA_SB);
-
-	vaddr_setup(vaddr, VOLUTA_VTYPE_SUPER, off);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void fse_init_commons(struct voluta_fs_env *fse)
@@ -491,7 +484,7 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 
 	err = voluta_sbi_setspace(fse->sbi, size);
 	if (err) {
-		log_err("illegal volume size: %ld %s", size, fse->args.repodir);
+		log_err("illegal volume size: %ld", size);
 		return err;
 	}
 	return 0;
@@ -624,7 +617,7 @@ static int voluta_fse_exec(struct voluta_fs_env *fse)
 {
 	int err;
 	struct voluta_fuseq *fq = fse->fuseq;
-	const char *mount_point = fse->args.mountp;
+	const char *mount_point = fse->args.mntdir;
 
 	err = voluta_fuseq_mount(fq, mount_point);
 	if (!err) {
@@ -678,6 +671,24 @@ void voluta_fse_stats(const struct voluta_fs_env *fse,
 	st->ncache_vnodes = cache->c_vlm.htbl_size;
 }
 
+int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz)
+{
+	int err;
+	size_t len = 0;
+	const struct voluta_sb_info *sbi = fse->sbi;
+	const struct voluta_blobid *root_bid = &sbi->sb_vba.baddr.bid;
+
+	if (bsz <= (2 * VOLUTA_BLOBID_LEN)) {
+		return -EINVAL;
+	}
+	err = voluta_blobid_to_name(root_bid, buf, bsz - 1, &len);
+	if (err) {
+		return err;
+	}
+	buf[len] = '\0';
+	return 0;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_crypto *fse_crypto(const struct voluta_fs_env *fse)
@@ -698,7 +709,7 @@ fse_mdigest(const struct voluta_fs_env *fse)
 
 static int fse_save_sb(struct voluta_fs_env *fse)
 {
-	return voluta_save_super(fse->sbi);
+	return voluta_sbi_save_sb(fse->sbi);
 }
 
 static int fse_load_sb(struct voluta_fs_env *fse)
@@ -706,7 +717,7 @@ static int fse_load_sb(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_sb_info *sbi = fse->sbi;
 
-	err = voluta_load_super(sbi);
+	err = voluta_sbi_load_sb(sbi);
 	voluta_assert_ok(err);
 	if (err) {
 		return err;
@@ -917,6 +928,19 @@ static int fse_store_sb(struct voluta_fs_env *fse)
 	return 0;
 }
 
+static int fse_resolve_sb_vba(const struct voluta_fs_env *fse,
+                              struct voluta_vba *out_vba)
+{
+	int err = 0;
+	const char *rootid = fse->args.rootid;
+
+	voluta_vba_for_super(out_vba);
+	if (rootid && strlen(rootid)) {
+		err = voluta_baddr_parse_super(&out_vba->baddr, rootid);
+	}
+	return err;
+}
+
 static int fse_setup_sb(struct voluta_fs_env *fse, time_t birth_time)
 {
 	int err;
@@ -932,8 +956,7 @@ static int fse_setup_sb(struct voluta_fs_env *fse, time_t birth_time)
 	fse_calc_pass_hash(fse, &pass_hash);
 	voluta_sb_set_pass_hash(sb, &pass_hash);
 
-	vaddr_of_super(&vba.vaddr);
-	err = voluta_baddr_parse_super(&vba.baddr, fse->args.superid);
+	err = fse_resolve_sb_vba(fse, &vba);
 	if (err) {
 		return err;
 	}
@@ -1016,11 +1039,11 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 	int err;
 	struct voluta_sb_info *sbi = fse->sbi;
 
-	err = voluta_adjust_super(sbi);
+	err = voluta_format_super(sbi);
 	if (err) {
 		return err;
 	}
-	err = voluta_format_super(sbi);
+	err = voluta_adjust_super(sbi);
 	if (err) {
 		return err;
 	}
@@ -1117,7 +1140,7 @@ int voluta_fse_serve(struct voluta_fs_env *fse)
 {
 	int err;
 	const char *volume = fse->args.repodir;
-	const char *mntpath = fse->args.mountp;
+	const char *mntdir = fse->args.mntdir;
 
 	if (!fse->args.with_fuseq || (fse->fuseq == NULL)) {
 		return -EINVAL;
@@ -1129,7 +1152,7 @@ int voluta_fse_serve(struct voluta_fs_env *fse)
 	}
 	err = voluta_fse_exec(fse);
 	if (err) {
-		log_err("exec-fs error: %s %d", mntpath, err);
+		log_err("exec-fs error: %s %d", mntdir, err);
 		/* no return -- do post-exec cleanups */
 	}
 	err = voluta_fse_shut(fse);
@@ -1139,7 +1162,7 @@ int voluta_fse_serve(struct voluta_fs_env *fse)
 	}
 	err = voluta_fse_term(fse);
 	if (err) {
-		log_err("term-fs error: %s %d", mntpath, err);
+		log_err("term-fs error: %s %d", mntdir, err);
 		return err;
 	}
 	return 0;

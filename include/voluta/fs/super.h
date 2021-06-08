@@ -40,11 +40,11 @@ int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity);
 void voluta_sbi_add_ctlflags(struct voluta_sb_info *sbi, enum voluta_flags f);
 
 
+int voluta_sbi_save_sb(struct voluta_sb_info *sbi);
+
+int voluta_sbi_load_sb(struct voluta_sb_info *sbi);
+
 int voluta_shut_super(struct voluta_sb_info *sbi);
-
-int voluta_save_super(struct voluta_sb_info *sbi);
-
-int voluta_load_super(struct voluta_sb_info *sbi);
 
 int voluta_adjust_super(struct voluta_sb_info *sbi);
 

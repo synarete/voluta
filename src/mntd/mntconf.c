@@ -165,8 +165,7 @@ static char *dup_substr(const struct voluta_substr *ss)
 	return s;
 }
 
-static char *realpath_of(const struct voluta_substr *path,
-                         const struct voluta_fileline *cloc)
+static char *realpath_of(const struct voluta_substr *path)
 {
 	char *rpath;
 	char *cpath;
@@ -174,7 +173,7 @@ static char *realpath_of(const struct voluta_substr *path,
 	cpath = dup_substr(path);
 	rpath = realpath(cpath, NULL);
 	if (rpath == NULL) {
-		die_illegal_conf(cloc, "no realpath: '%s'", cpath);
+		return cpath; /* no realpath (now) */
 	}
 	free(cpath);
 	return rpath;
@@ -226,7 +225,7 @@ static void parse_mntconf_rule(const struct voluta_fileline *fl,
 		                 "(max-rules=%lu)", max_rules);
 	}
 	mntr = &mrules->rules[mrules->nrules++];
-	mntr->path = realpath_of(path, fl);
+	mntr->path = realpath_of(path);
 	parse_mntconf_rule_args(fl, args, mntr);
 }
 

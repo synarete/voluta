@@ -139,6 +139,9 @@ void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index);
 
 void voluta_vba_for_agbks(struct voluta_vba *vba, voluta_index_t ag_index);
 
+void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
+                               struct voluta_baddr *baddr);
+
 
 void voluta_uuid_generate(struct voluta_uuid *uu);
 

@@ -620,6 +620,15 @@ static void baddr_for_agbks(struct voluta_baddr *baddr)
 	baddr_make(baddr, VOLUTA_AG_SIZE);
 }
 
+static void baddr_of_bksec(struct voluta_baddr *baddr, voluta_lba_t lba,
+                           const struct voluta_blobid *bid)
+{
+	const size_t len = VOLUTA_BKSEC_SIZE;
+	const voluta_lba_t bks_lba = lba_of_bks(lba);
+
+	voluta_baddr_setup(baddr, bid, len, lba_to_off(bks_lba));
+}
+
 int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name)
 {
 	int err;
@@ -691,6 +700,12 @@ void voluta_vba_for_agbks(struct voluta_vba *vba, voluta_index_t ag_index)
 {
 	vaddr_of_agbks(&vba->vaddr, ag_index);
 	baddr_for_agbks(&vba->baddr);
+}
+
+void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
+                               struct voluta_baddr *baddr)
+{
+	baddr_of_bksec(baddr, vba->vaddr.lba, &vba->baddr.bid);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

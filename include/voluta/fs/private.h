@@ -238,6 +238,11 @@ size_t off_ulen(loff_t beg, loff_t end)
 	return (size_t)off_len(beg, end);
 }
 
+static inline
+voluta_lba_t lba_align(voluta_lba_t lba, ssize_t align)
+{
+	return (lba / align) * align;
+}
 
 static inline
 bool lba_isequal(voluta_lba_t lba1, voluta_lba_t lba2)
@@ -257,6 +262,11 @@ voluta_lba_t lba_to_off(voluta_lba_t lba)
 	return lba * (voluta_lba_t)VOLUTA_BK_SIZE;
 }
 
+static inline
+voluta_lba_t lba_of_bks(voluta_lba_t lba)
+{
+	return lba_align(lba, VOLUTA_NBK_IN_BKSEC);
+}
 
 static inline
 loff_t ag_index_to_off(voluta_index_t ag_index)

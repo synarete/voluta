@@ -53,7 +53,7 @@ static int stage_agmap_of(struct voluta_sb_info *sbi,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_agroup_info **out_agi);
 static int stage_parents_of(struct voluta_sb_info *sbi,
-                            const struct voluta_vba *vba, bool dont_reload,
+                            const struct voluta_vba *vba,
                             struct voluta_agroup_info **out_agi,
                             struct voluta_bksec_info **out_bsi);
 
@@ -412,15 +412,20 @@ static void zero_blocks_sec(struct voluta_bksec_info *bsi)
 }
 
 static int load_bksec(const struct voluta_sb_info *sbi,
+		      const struct voluta_vba *vba,
                       struct voluta_bksec_info *bsi)
 {
 	int err;
+	struct voluta_baddr baddr;
 	struct voluta_blocks_sec *bks = bsi->bks;
 
-	voluta_assert_ge(bsi->baddr.bid.size, VOLUTA_BK_SIZE);
-	voluta_assert_eq(bsi->baddr.len, sizeof(*bks));
-	voluta_assert_eq(bsi->baddr.off % VOLUTA_BKSEC_SIZE, 0);
-	err = voluta_repo_load_bobj(sbi->sb_repo, &bsi->baddr, bks);
+	voluta_vba_to_bksec_baddr(vba, &baddr);
+	voluta_assert_le(vba->vaddr.len, VOLUTA_BKSEC_SIZE);
+	voluta_assert_ge(baddr.bid.size, VOLUTA_BK_SIZE);
+	voluta_assert_eq(baddr.len, sizeof(*bks));
+	voluta_assert_eq(baddr.off % VOLUTA_BKSEC_SIZE, 0);
+
+	err = voluta_repo_load_bobj(sbi->sb_repo, &baddr, bks);
 	if (err) {
 		voluta_assert_ok(err);
 		return err;
@@ -455,35 +460,25 @@ static int spawn_bksec(struct voluta_sb_info *sbi,
 }
 
 static int stage_bksec(struct voluta_sb_info *sbi,
-                       const struct voluta_vba *vba, bool dont_reload,
+                       const struct voluta_vba *vba,
                        struct voluta_bksec_info **out_bsi)
 {
 	int err;
-	struct voluta_bksec_info *bsi = NULL;
 
 	err = find_cached_bksec(sbi, vba, out_bsi);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bsi(sbi, vba, &bsi);
+	err = spawn_bsi(sbi, vba, out_bsi);
 	if (err) {
-		goto out_err;
+		return err;
 	}
-	if (dont_reload) {
-		zero_blocks_sec(bsi);
-		goto out_ok;
-	}
-	err = load_bksec(sbi, bsi);
+	err = load_bksec(sbi, vba, *out_bsi);
 	if (err) {
-		goto out_err;
+		forget_bksec(sbi, *out_bsi);
+		return err;
 	}
-out_ok:
-	*out_bsi = bsi;
 	return 0;
-out_err:
-	forget_bksec(sbi, bsi);
-	*out_bsi = NULL;
-	return err;
 }
 
 static struct voluta_view *make_view(const void *p)
@@ -936,7 +931,7 @@ int voluta_resolve_vba(struct voluta_sb_info *sbi,
 }
 
 static int spawn_bind_vnode(struct voluta_sb_info *sbi,
-                            const struct voluta_vba *vba, bool dont_reload,
+                            const struct voluta_vba *vba,
                             struct voluta_vnode_info **out_vi)
 {
 	int err;
@@ -945,7 +940,7 @@ static int spawn_bind_vnode(struct voluta_sb_info *sbi,
 
 	voluta_assert_eq(vba->vaddr.len, vba->baddr.len);
 
-	err = stage_parents_of(sbi, vba, dont_reload, &agi, &bsi);
+	err = stage_parents_of(sbi, vba, &agi, &bsi);
 	if (err) {
 		return err;
 	}
@@ -1002,7 +997,7 @@ static int spawn_ii(struct voluta_sb_info *sbi,
 }
 
 static int spawn_bind_inode(struct voluta_sb_info *sbi,
-                            const struct voluta_iaddr *iaddr, bool dont_reload,
+                            const struct voluta_iaddr *iaddr,
                             struct voluta_inode_info **out_ii)
 {
 	int err;
@@ -1014,7 +1009,7 @@ static int spawn_bind_inode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = stage_parents_of(sbi, &vba, dont_reload, &agi, &bsi);
+	err = stage_parents_of(sbi, &vba, &agi, &bsi);
 	if (err) {
 		return err;
 	}
@@ -1108,7 +1103,7 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bind_vnode(sbi, vba, false, &vi);
+	err = spawn_bind_vnode(sbi, vba, &vi);
 	if (err) {
 		goto out_err;
 	}
@@ -1782,7 +1777,7 @@ static int require_stable_at(const struct voluta_agroup_info *agi,
 }
 
 static int stage_parents_of(struct voluta_sb_info *sbi,
-                            const struct voluta_vba *vba, bool dont_reload,
+                            const struct voluta_vba *vba,
                             struct voluta_agroup_info **out_agi,
                             struct voluta_bksec_info **out_bsi)
 {
@@ -1799,7 +1794,7 @@ static int stage_parents_of(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = stage_bksec(sbi, vba, dont_reload, out_bsi);
+	err = stage_bksec(sbi, vba, out_bsi);
 	if (err) {
 		return err;
 	}
@@ -1884,7 +1879,7 @@ static int stage_bind_spmap(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_bksec_info *bsi = NULL;
 
-	err = stage_bksec(sbi, vba, false, &bsi);
+	err = stage_bksec(sbi, vba, &bsi);
 	if (err) {
 		return err;
 	}
@@ -2089,7 +2084,7 @@ static int fetch_inode_at(struct voluta_sb_info *sbi,
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bind_inode(sbi, iaddr, false, out_ii);
+	err = spawn_bind_inode(sbi, iaddr, out_ii);
 	if (err) {
 		return err;
 	}
@@ -2373,7 +2368,7 @@ static int spawn_inode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_inode(sbi, &iaddr, spa.first_alloc, out_ii);
+	err = spawn_bind_inode(sbi, &iaddr, out_ii);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;
@@ -2417,7 +2412,7 @@ static int spawn_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_vnode(sbi, &spa.vba, spa.first_alloc, out_vi);
+	err = spawn_bind_vnode(sbi, &spa.vba, out_vi);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;

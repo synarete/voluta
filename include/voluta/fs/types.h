@@ -259,8 +259,8 @@ struct voluta_cache_elem {
 struct voluta_bksec_info {
 	struct voluta_cache_elem        bks_ce;
 	struct voluta_blocks_sec       *bks;
-	uint64_t 	bks_mask[VOLUTA_NBK_IN_BKSEC];
-	voluta_lba_t 	bks_lba;
+	uint64_t        bks_mask[VOLUTA_NBK_IN_BKSEC];
+	voluta_lba_t    bks_lba;
 };
 
 /* dirty-queues of cached-elements */

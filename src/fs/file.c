@@ -46,6 +46,12 @@
 #define OP_LSEEK        (1 << 5)
 #define OP_COPY_RANGE   (1 << 6)
 
+enum voluta_backref_type {
+	VOLUTA_BACKREF_NONE     = 0,
+	VOLUTA_BACKREF_VNODE    = 1,
+	VOLUTA_BACKREF_BLOB     = 2,
+};
+
 struct voluta_file_ctx {
 	const struct voluta_oper *op;
 	struct voluta_sb_info    *sbi;
@@ -62,7 +68,7 @@ struct voluta_file_ctx {
 	int     fm_stop;
 	int     cp_flags;
 	int     whence;
-	int     with_cookie;
+	int     with_backref;
 };
 
 struct voluta_fmap_ctx {
@@ -187,10 +193,10 @@ static int fiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
 	return voluta_qalloc_fiovec(qalloc, qamem, len, out_fiov);
 }
 
-static int fiovec_by_vstore(const struct voluta_file_ctx *f_ctx,
-                            const struct voluta_vaddr *vaddr,
-                            loff_t off_within, size_t len,
-                            struct voluta_fiovec *out_fiov)
+static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
+                          const struct voluta_vaddr *vaddr,
+                          loff_t off_within, size_t len,
+                          struct voluta_fiovec *out_fiov)
 {
 	int err;
 	struct voluta_vba vba;
@@ -218,11 +224,15 @@ static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
 	err = fiovec_by_qalloc(f_ctx, dat, off_in_dat, len, out_fiov);
-	if (!err && f_ctx->with_cookie) {
-		vi_incref(vi);
-		out_fiov->fv_cookie = unconst(vi);
+	if (err) {
+		return err;
 	}
-	return err;
+	if (f_ctx->with_backref) {
+		out_fiov->fv_backref = vi;
+		out_fiov->fv_backref_type = VOLUTA_BACKREF_VNODE;
+		vi_incref(vi);
+	}
+	return 0;
 }
 
 static int fiovec_of_data(const struct voluta_file_ctx *f_ctx,
@@ -230,18 +240,27 @@ static int fiovec_of_data(const struct voluta_file_ctx *f_ctx,
                           loff_t off_in_bk, size_t len,
                           struct voluta_fiovec *out_fiov)
 {
-	return fiovec_by_vstore(f_ctx, vaddr, off_in_bk, len, out_fiov);
+	return fiovec_by_blob(f_ctx, vaddr, off_in_bk, len, out_fiov);
 }
 
 static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
                            const struct voluta_vaddr *vaddr,
                            struct voluta_fiovec *out_fiov)
 {
+	int err;
 	const enum voluta_vtype vtype = vaddr->vtype;
-	const loff_t oid = off_in_data(f_ctx->off, vtype);
+	const loff_t off_within = off_in_data(f_ctx->off, vtype);
 	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
 
-	return fiovec_of_data(f_ctx, vaddr, oid, len, out_fiov);
+	err = fiovec_of_data(f_ctx, vaddr, off_within, len, out_fiov);
+	if (err) {
+		return err;
+	}
+	if (f_ctx->with_backref) {
+		out_fiov->fv_backref_type = VOLUTA_BACKREF_BLOB;
+		voluta_repo_prepio_bobj(f_ctx->sbi->sb_repo, out_fiov);
+	}
+	return 0;
 }
 
 static int fiovec_of_zeros(const struct voluta_file_ctx *f_ctx,
@@ -1509,7 +1528,6 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 {
 	int err;
 	struct voluta_fiovec fiov = {
-		.fv_cookie = NULL,
 		.fv_base = NULL,
 		.fv_off = -1,
 		.fv_len = 0,
@@ -1865,7 +1883,7 @@ int voluta_do_read_iter(const struct voluta_oper *op,
 		.sbi = ii_sbi(ii),
 		.ii = ii,
 		.op_mask = OP_READ,
-		.with_cookie = 1,
+		.with_backref = 1,
 	};
 
 	update_with_rw_iter(&f_ctx, rwi);
@@ -1890,7 +1908,7 @@ int voluta_do_read(const struct voluta_oper *op,
 		.sbi = ii_sbi(ii),
 		.ii = ii,
 		.op_mask = OP_READ,
-		.with_cookie = 0,
+		.with_backref = 0,
 	};
 
 	update_with_rw_iter(&f_ctx, &rdi.rwi);
@@ -2543,7 +2561,7 @@ int voluta_do_write_iter(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.op_mask = OP_WRITE,
-		.with_cookie = 1,
+		.with_backref = 1,
 	};
 
 	update_with_rw_iter(&f_ctx, rwi);
@@ -2569,7 +2587,7 @@ int voluta_do_write(const struct voluta_oper *op,
 		.op = op,
 		.ii = ii,
 		.op_mask = OP_WRITE,
-		.with_cookie = 0,
+		.with_backref = 0,
 	};
 
 	update_with_rw_iter(&f_ctx, &wri.rwi);
@@ -2578,16 +2596,49 @@ int voluta_do_write(const struct voluta_oper *op,
 	return err;
 }
 
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void decref_post_vnode_io(const struct voluta_fiovec *fiov)
+{
+	struct voluta_vnode_info *vi = fiov->fv_backref;
+
+	vi_decref(vi);
+}
+
+static void decref_post_blob_io(const struct voluta_inode_info *ii,
+                                const struct voluta_fiovec *fiov)
+{
+	const struct voluta_sb_info *sbi = ii_sbi(ii);
+
+	voluta_repo_postio_bobj(sbi->sb_repo, fiov);
+}
+
+static void decref_post_io(struct voluta_inode_info *ii,
+                           const struct voluta_fiovec *fiov)
+{
+	const enum voluta_backref_type bref_type = fiov->fv_backref_type;
+
+	switch (bref_type) {
+	case VOLUTA_BACKREF_VNODE:
+		decref_post_vnode_io(fiov);
+		break;
+	case VOLUTA_BACKREF_BLOB:
+		decref_post_blob_io(ii, fiov);
+		break;
+	case VOLUTA_BACKREF_NONE:
+	default:
+		voluta_panic("illegal backref: %d", (int)bref_type);
+		break;
+	}
+}
+
 int voluta_do_rdwr_post(const struct voluta_oper *op,
                         struct voluta_inode_info *ii,
                         const struct voluta_fiovec *fiov, size_t cnt)
 {
-	struct voluta_vnode_info *vi;
-
 	ii_incref(ii);
 	for (size_t i = 0; i < cnt; ++i) {
-		vi = fiov[i].fv_cookie;
-		vi_decref(vi);
+		decref_post_io(ii, &fiov[i]);
 	}
 	ii_decref(ii);
 	unused(op);
@@ -4037,7 +4088,7 @@ int voluta_do_copy_file_range(const struct voluta_oper *op,
 		.end = i_off_end(ii_in, off_in, len),
 		.op_mask = OP_COPY_RANGE,
 		.cp_flags = flags,
-		.with_cookie = 0,
+		.with_backref = 0,
 	};
 	struct voluta_file_ctx f_ctx_out = {
 		.op = op,
@@ -4049,7 +4100,7 @@ int voluta_do_copy_file_range(const struct voluta_oper *op,
 		.end = i_off_end(ii_out, off_out, len),
 		.op_mask = OP_COPY_RANGE,
 		.cp_flags = flags,
-		.with_cookie = 0,
+		.with_backref = 0,
 	};
 
 	ii_incref(ii_in);

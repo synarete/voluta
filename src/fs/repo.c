@@ -180,7 +180,7 @@ static int bri_check_io_range(const struct voluta_bref_info *bri,
 	return 0;
 }
 
-static int bri_resolve_fiovec(const struct voluta_bref_info *bri,
+static int bri_resolve_fiovec(struct voluta_bref_info *bri,
                               loff_t off, size_t len,
                               struct voluta_fiovec *fiov)
 {
@@ -196,7 +196,21 @@ static int bri_resolve_fiovec(const struct voluta_bref_info *bri,
 	fiov->fv_len = len;
 	fiov->fv_base = NULL;
 	fiov->fv_fd = bri->b_fd;
+	fiov->fv_backref = bri;
+	fiov->fv_backref_type = 0;
 	return 0;
+}
+
+static void bri_incref(struct voluta_bref_info *bri)
+{
+	bri->b_refcnt++;
+}
+
+static void bri_decref(struct voluta_bref_info *bri)
+{
+	voluta_assert_gt(bri->b_refcnt, 0);
+
+	bri->b_refcnt--;
 }
 
 static bool bri_is_evictable(const struct voluta_bref_info *bri)
@@ -903,6 +917,35 @@ int voluta_repo_resolve_bobj(struct voluta_repo *repo,
 		return err;
 	}
 	return 0;
+}
+
+static bool fiovec_has_backref(const struct voluta_fiovec *fiov)
+{
+	return (fiov->fv_backref != NULL) && (fiov->fv_backref_type > 0);
+}
+
+void voluta_repo_prepio_bobj(struct voluta_repo *repo,
+                             const struct voluta_fiovec *fiov)
+{
+	struct voluta_bref_info *bri;
+
+	if (fiovec_has_backref(fiov)) {
+		bri = fiov->fv_backref;
+		bri_incref(bri);
+	}
+	voluta_unused(repo);
+}
+
+void voluta_repo_postio_bobj(struct voluta_repo *repo,
+                             const struct voluta_fiovec *fiov)
+{
+	struct voluta_bref_info *bri;
+
+	if (fiovec_has_backref(fiov)) {
+		bri = fiov->fv_backref;
+		bri_decref(bri);
+		repo_relax_once(repo);
+	}
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/

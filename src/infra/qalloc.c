@@ -1229,7 +1229,8 @@ int voluta_qalloc_fiovec(const struct voluta_qalloc *qal,
 	fiov->fv_len = len;
 	fiov->fv_base = ptr;
 	fiov->fv_fd = qal->memfd_data;
-	fiov->fv_cookie = NULL;
+	fiov->fv_backref_type = 0;
+	fiov->fv_backref = NULL;
 	return 0;
 }
 

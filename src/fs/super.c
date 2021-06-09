@@ -412,7 +412,7 @@ static void zero_blocks_sec(struct voluta_bksec_info *bsi)
 }
 
 static int load_bksec(const struct voluta_sb_info *sbi,
-		      const struct voluta_vba *vba,
+                      const struct voluta_vba *vba,
                       struct voluta_bksec_info *bsi)
 {
 	int err;

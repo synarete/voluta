@@ -19,12 +19,14 @@
 
 #include <stdlib.h>
 
+
 struct voluta_fiovec {
-	void  *fv_cookie;
 	void  *fv_base;
 	size_t fv_len;
 	loff_t fv_off;
 	int    fv_fd;
+	int    fv_backref_type;
+	void  *fv_backref;
 };
 
 #endif /* VOLUTA_FIOVEC_H_ */

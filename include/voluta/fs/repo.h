@@ -60,6 +60,13 @@ int voluta_repo_resolve_bobj(struct voluta_repo *repo,
                              struct voluta_fiovec *out_fiov);
 
 
+void voluta_repo_prepio_bobj(struct voluta_repo *repo,
+                             const struct voluta_fiovec *fiov);
+
+void voluta_repo_postio_bobj(struct voluta_repo *repo,
+                             const struct voluta_fiovec *fiov);
+
+
 int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
                               struct voluta_repo *repo, long ds_key);
 

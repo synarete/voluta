@@ -1955,11 +1955,10 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
                               struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
-	const struct voluta_repo *repo = sbi->sb_repo;
 
 	query->u.volume.size = 0; /* XXX FIXME */
-	if (repo->re_rootdir != NULL) {
-		strncpy(query->u.volume.path, repo->re_rootdir,
+	if (sbi->sb_osdc->oc_rootdir != NULL) {
+		strncpy(query->u.volume.path, sbi->sb_osdc->oc_rootdir,
 		        sizeof(query->u.volume.path) - 1);
 	}
 }

@@ -234,7 +234,7 @@ void voluta_die_if_not_repository(const char *path)
 	char *lockfile = NULL;
 	struct stat st = { .st_size = 0 };
 
-	err = voluta_require_repo_path(path);
+	err = voluta_require_objstore_path(path);
 	if ((err == -EPERM) || (err == -EACCES)) {
 		voluta_die(err, "can not access repository: %s", path);
 	} else if (err) {

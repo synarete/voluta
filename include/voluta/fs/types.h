@@ -319,41 +319,15 @@ struct voluta_space_info {
 	size_t          sp_ag_count;
 };
 
-/* encrypted output buffer */
-struct voluta_encbuf {
-	uint8_t b[VOLUTA_MEGA];
-};
-
-/* persistent-storage controller */
-struct voluta_pstore {
-	int     ps_dfd;
-	int     ps_vfd;
-	int     ps_ctl_flags;
-	int     ps_o_flags;
-	loff_t  ps_size;
-	loff_t  ps_capacity;
-};
-
-/* volume storage controller */
-struct voluta_vstore {
-	struct voluta_pstore            vs_pstore;
-	struct voluta_crypto            vs_crypto;
-	struct voluta_pipe              vs_pipe;
-	struct voluta_qalloc           *vs_qalloc;
-	struct voluta_encbuf           *vs_encbuf;
-	const char *vs_volpath;
-	unsigned long vs_ctl_flags;
-};
-
-/* repository blob-storage controller */
-struct voluta_repo {
-	struct voluta_list_head re_htbl[1024];
-	struct voluta_listq     re_lru;
-	struct voluta_alloc_if *re_alif;
-	const char *re_rootdir;
-	size_t  re_nsubs;
-	size_t  re_hsize;
-	int     re_dfd;
+/* object-storage device controller (blobs) */
+struct voluta_osdctl {
+	struct voluta_list_head oc_htbl[1024];
+	struct voluta_listq     oc_lru;
+	struct voluta_alloc_if *oc_alif;
+	const char *oc_rootdir;
+	size_t  oc_nsubs;
+	size_t  oc_hsize;
+	int     oc_dfd;
 };
 
 /* inodes-table in-memory hash-map cache */
@@ -392,7 +366,7 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_repo             *sb_repo;
+	struct voluta_osdctl           *sb_osdc;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -514,7 +488,7 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_repo             *repo;
+	struct voluta_osdctl           *osdc;
 	struct voluta_sb_info          *sbi;
 	struct voluta_super_block      *sb;
 	struct voluta_fuseq            *fuseq;

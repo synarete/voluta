@@ -28,7 +28,7 @@
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/crypto.h>
-#include <voluta/fs/repo.h>
+#include <voluta/fs/osdc.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
@@ -44,8 +44,8 @@ struct voluta_fs_core {
 	struct voluta_qalloc    qalloc;
 	struct voluta_mpool     mpool;
 	struct voluta_cache     cache;
-	struct voluta_repo      repo;
-	struct voluta_sb_info   sbi;
+	struct voluta_osdctl    osdctl;
+	struct voluta_sb_info   sbinfo;
 };
 
 union voluta_fs_core_u {
@@ -166,9 +166,9 @@ static void fse_fini_sb(struct voluta_fs_env *fse)
 static int fse_init_sbi(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbi;
+	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbinfo;
 
-	err = voluta_sbi_init(sbi, fse->cache, fse->repo);
+	err = voluta_sbi_init(sbi, fse->cache, fse->osdc);
 	if (err) {
 		return err;
 	}
@@ -184,23 +184,23 @@ static void fse_fini_sbi(struct voluta_fs_env *fse)
 	}
 }
 
-static int fse_init_repo(struct voluta_fs_env *fse)
+static int fse_init_osdc(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_repo *repo = &fse_obj_of(fse)->fs_core.c.repo;
+	struct voluta_osdctl *osdc = &fse_obj_of(fse)->fs_core.c.osdctl;
 
-	err = voluta_repo_init(repo, &fse->qalloc->alif);
+	err = voluta_osdc_init(osdc, &fse->qalloc->alif);
 	if (!err) {
-		fse->repo = repo;
+		fse->osdc = osdc;
 	}
 	return err;
 }
 
-static void fse_fini_repo(struct voluta_fs_env *fse)
+static void fse_fini_osdc(struct voluta_fs_env *fse)
 {
-	if (fse->repo != NULL) {
-		voluta_repo_fini(fse->repo);
-		fse->repo = NULL;
+	if (fse->osdc != NULL) {
+		voluta_osdc_fini(fse->osdc);
+		fse->osdc = NULL;
 	}
 }
 
@@ -392,7 +392,7 @@ static int fse_init(struct voluta_fs_env *fse,
 	if (err) {
 		return err;
 	}
-	err = fse_init_repo(fse);
+	err = fse_init_osdc(fse);
 	if (err) {
 		return err;
 	}
@@ -427,7 +427,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_fuseq(fse);
 	fse_fini_sbi(fse);
 	fse_fini_sb(fse);
-	fse_fini_repo(fse);
+	fse_fini_osdc(fse);
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
 	fse_fini_qalloc(fse);
@@ -542,28 +542,26 @@ static int fse_reload_meta(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_create_repo(struct voluta_fs_env *fse)
+static int fse_create_osd(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_repo *repo = fse->repo;
 
-	err = voluta_repo_open(repo, fse->args.repodir);
+	err = voluta_osdc_open(fse->osdc, fse->args.repodir);
 	if (err) {
 		return err;
 	}
-	err = voluta_repo_format(repo);
+	err = voluta_osdc_format(fse->osdc);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int fse_open_repo(struct voluta_fs_env *fse)
+static int fse_open_osd(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_repo *repo = fse->repo;
 
-	err = voluta_repo_open(repo, fse->args.repodir);
+	err = voluta_osdc_open(fse->osdc, fse->args.repodir);
 	if (err) {
 		return err;
 	}
@@ -571,9 +569,9 @@ static int fse_open_repo(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_close_repo(struct voluta_fs_env *fse)
+static int fse_close_osdc(struct voluta_fs_env *fse)
 {
-	return voluta_repo_close(fse->repo);
+	return voluta_osdc_close(fse->osdc);
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
@@ -637,7 +635,7 @@ int voluta_fse_term(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_close_repo(fse);
+	err = fse_close_osdc(fse);
 	if (err) {
 		return err;
 	}
@@ -972,7 +970,7 @@ int voluta_fse_reload(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_open_repo(fse);
+	err = fse_open_osd(fse);
 	if (err) {
 		return err;
 	}
@@ -996,16 +994,16 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_open_repo(fse);
+	err = fse_open_osd(fse);
 	if (err) {
 		return err;
 	}
 	err = fse_stage_sb(fse);
 	if (err) {
-		fse_close_repo(fse);
+		fse_close_osdc(fse);
 		return err;
 	}
-	err = fse_close_repo(fse);
+	err = fse_close_osdc(fse);
 	if (err) {
 		return err;
 	}
@@ -1075,7 +1073,7 @@ static int fse_preformat_volume(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_create_repo(fse);
+	err = fse_create_osd(fse);
 	if (err) {
 		return err;
 	}

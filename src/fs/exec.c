@@ -44,7 +44,7 @@ struct voluta_fs_core {
 	struct voluta_qalloc    qalloc;
 	struct voluta_mpool     mpool;
 	struct voluta_cache     cache;
-	struct voluta_repo     repo;
+	struct voluta_repo      repo;
 	struct voluta_sb_info   sbi;
 };
 

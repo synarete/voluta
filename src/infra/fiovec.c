@@ -14,37 +14,33 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  */
-#ifndef VOLUTA_FIOVEC_H_
-#define VOLUTA_FIOVEC_H_
-
+#define _GNU_SOURCE 1
 #include <stdlib.h>
-
-struct voluta_fiovref;
-struct voluta_fiovec;
-
-typedef void (*voluta_fiovref_fn)(struct voluta_fiovref *fvr);
-
-struct voluta_fiovref {
-	voluta_fiovref_fn pre;
-	voluta_fiovref_fn post;
-};
-
-struct voluta_fiovec {
-	void  *fv_base;
-	size_t fv_len;
-	loff_t fv_off;
-	int    fv_fd;
-	struct voluta_fiovref *fv_ref;
-};
-
+#include <voluta/infra/fiovec.h>
 
 void voluta_fiovref_init(struct voluta_fiovref *fir,
-                         voluta_fiovref_fn pre, voluta_fiovref_fn post);
+                         voluta_fiovref_fn pre, voluta_fiovref_fn post)
+{
+	fir->pre = pre;
+	fir->post = post;
+}
 
-void voluta_fiovref_fini(struct voluta_fiovref *fir);
+void voluta_fiovref_fini(struct voluta_fiovref *fir)
+{
+	fir->pre = NULL;
+	fir->post = NULL;
+}
 
-void voluta_fiovref_do_pre(struct voluta_fiovref *fir);
+void voluta_fiovref_do_pre(struct voluta_fiovref *fir)
+{
+	if (fir && fir->pre) {
+		fir->pre(fir);
+	}
+}
 
-void voluta_fiovref_do_post(struct voluta_fiovref *fir);
-
-#endif /* VOLUTA_FIOVEC_H_ */
+void voluta_fiovref_do_post(struct voluta_fiovref *fir)
+{
+	if (fir && fir->post) {
+		fir->post(fir);
+	}
+}

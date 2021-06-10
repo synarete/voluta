@@ -52,6 +52,7 @@ struct voluta_vnode_info {
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
+	struct voluta_fiovref           v_fir;
 	struct voluta_sb_info          *v_sbi;
 	struct voluta_bksec_info       *v_bsi;
 	struct voluta_cache_elem        v_ce;

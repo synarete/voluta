@@ -12,6 +12,7 @@ libvoluta_infra_la_LIBADD = @LIBS@
 libvoluta_infra_la_LIBADD += $(PTHREAD_LIBS)
 libvoluta_infra_la_SOURCES = $(NULL)
 libvoluta_infra_la_SOURCES += avl.c
+libvoluta_infra_la_SOURCES += fiovec.c
 libvoluta_infra_la_SOURCES += list.c
 libvoluta_infra_la_SOURCES += logging.c
 libvoluta_infra_la_SOURCES += panic.c

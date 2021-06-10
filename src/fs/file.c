@@ -46,11 +46,6 @@
 #define OP_LSEEK        (1 << 5)
 #define OP_COPY_RANGE   (1 << 6)
 
-enum voluta_backref_type {
-	VOLUTA_BACKREF_NONE     = 0,
-	VOLUTA_BACKREF_VNODE    = 1,
-	VOLUTA_BACKREF_BLOB     = 2,
-};
 
 struct voluta_file_ctx {
 	const struct voluta_oper *op;
@@ -228,9 +223,8 @@ static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 		return err;
 	}
 	if (f_ctx->with_backref) {
-		out_fiov->fv_backref = vi;
-		out_fiov->fv_backref_type = VOLUTA_BACKREF_VNODE;
-		vi_incref(vi);
+		out_fiov->fv_ref = &vi->v_fir;
+		voluta_fiovref_do_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -257,8 +251,7 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
 		return err;
 	}
 	if (f_ctx->with_backref) {
-		out_fiov->fv_backref_type = VOLUTA_BACKREF_BLOB;
-		voluta_repo_prepio_bobj(f_ctx->sbi->sb_repo, out_fiov);
+		voluta_fiovref_do_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -2598,47 +2591,13 @@ int voluta_do_write(const struct voluta_oper *op,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void decref_post_vnode_io(const struct voluta_fiovec *fiov)
-{
-	struct voluta_vnode_info *vi = fiov->fv_backref;
-
-	vi_decref(vi);
-}
-
-static void decref_post_blob_io(const struct voluta_inode_info *ii,
-                                const struct voluta_fiovec *fiov)
-{
-	const struct voluta_sb_info *sbi = ii_sbi(ii);
-
-	voluta_repo_postio_bobj(sbi->sb_repo, fiov);
-}
-
-static void decref_post_io(struct voluta_inode_info *ii,
-                           const struct voluta_fiovec *fiov)
-{
-	const enum voluta_backref_type bref_type = fiov->fv_backref_type;
-
-	switch (bref_type) {
-	case VOLUTA_BACKREF_VNODE:
-		decref_post_vnode_io(fiov);
-		break;
-	case VOLUTA_BACKREF_BLOB:
-		decref_post_blob_io(ii, fiov);
-		break;
-	case VOLUTA_BACKREF_NONE:
-	default:
-		voluta_panic("illegal backref: %d", (int)bref_type);
-		break;
-	}
-}
-
 int voluta_do_rdwr_post(const struct voluta_oper *op,
                         struct voluta_inode_info *ii,
                         const struct voluta_fiovec *fiov, size_t cnt)
 {
 	ii_incref(ii);
 	for (size_t i = 0; i < cnt; ++i) {
-		decref_post_io(ii, &fiov[i]);
+		voluta_fiovref_do_post(fiov[i].fv_ref);
 	}
 	ii_decref(ii);
 	unused(op);

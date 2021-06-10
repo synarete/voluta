@@ -72,6 +72,41 @@ static void bi_fini(struct voluta_bnode_info *bi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_vnode_info *vi_unconst(const struct voluta_vnode_info *vi)
+{
+	union {
+		const struct voluta_vnode_info *p;
+		struct voluta_vnode_info *q;
+	} u = {
+		.p = vi
+	};
+	return u.q;
+}
+
+static struct voluta_vnode_info *
+vi_from_fiovref(const struct voluta_fiovref *fir)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	vi = container_of2(fir, struct voluta_vnode_info, v_fir);
+	return vi_unconst(vi);
+}
+
+
+static void vi_fiov_pre(struct voluta_fiovref *fir)
+{
+	struct voluta_vnode_info *vi = vi_from_fiovref(fir);
+
+	voluta_vi_incref(vi);
+}
+
+static void vi_fiov_post(struct voluta_fiovref *fir)
+{
+	struct voluta_vnode_info *vi = vi_from_fiovref(fir);
+
+	voluta_vi_decref(vi);
+}
+
 static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_vba *vba,
                     voluta_vi_delete_fn del_hook)
@@ -82,6 +117,7 @@ static void vi_init(struct voluta_vnode_info *vi,
 	lh_init(&vi->v_dq_mlh);
 	an_init(&vi->v_ds_an);
 	vaddr_copyto(&vba->vaddr, &vi->vaddr);
+	voluta_fiovref_init(&vi->v_fir, vi_fiov_pre, vi_fiov_post);
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
@@ -101,12 +137,13 @@ static void vi_fini(struct voluta_vnode_info *vi)
 	lh_fini(&vi->v_dq_mlh);
 	an_fini(&vi->v_ds_an);
 	vaddr_reset(&vi->vaddr);
+	voluta_fiovref_fini(&vi->v_fir);
 	vi->view = NULL;
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
 	vi->v_ds_next = NULL;
 	vi->vu.p = NULL;
-	vi->v_dirty = -11;
+	vi->v_dirty = -11111;
 	vi->v_verify = 0;
 	vi->v_del_hook = NULL;
 }

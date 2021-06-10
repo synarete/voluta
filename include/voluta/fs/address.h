@@ -46,6 +46,8 @@ ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
 
 size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
 
+enum voluta_agkind voluta_vtype_to_agkind(enum voluta_vtype vtype);
+
 
 const struct voluta_vaddr *voluta_vaddr_none(void);
 

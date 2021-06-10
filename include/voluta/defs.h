@@ -313,10 +313,15 @@ enum voluta_hsf {
 enum voluta_agf {
 	VOLUTA_AGF_FORMATTED    = (1 << 0),
 	VOLUTA_AGF_FRAGMENTED   = (1 << 1),
-	VOLUTA_AGF_USERDATA     = (1 << 2),
-	VOLUTA_AGF_METADATA     = (1 << 3),
 };
 
+/* allocation-groups sub-type */
+enum voluta_agkind {
+	VOLUTA_AGKIND_NONE      = 0,
+	VOLUTA_AGKIND_META      = 1,
+	VOLUTA_AGKIND_DATABK    = 2,
+	VOLUTA_AGKIND_DATAXK    = 3,
+};
 
 /* inode control flags */
 enum voluta_inodef {
@@ -560,7 +565,8 @@ struct voluta_super_block {
 
 struct voluta_ag_rec {
 	struct voluta_blobspec  ag_agm_bls;
-	uint32_t                ag_flags;
+	uint16_t                ag_kind;
+	uint16_t                ag_flags;
 	uint32_t                ag_nfiles;
 	uint32_t                ag_used_meta;
 	uint32_t                ag_used_data;

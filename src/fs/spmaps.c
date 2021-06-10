@@ -38,16 +38,15 @@ static uint64_t cpu_to_index(voluta_index_t index)
 	return voluta_cpu_to_le64(index);
 }
 
-static bool vtype_ismeta(enum voluta_vtype vtype)
-{
-	return !vtype_isdata(vtype) && !vtype_isnone(vtype);
-}
-
 static bool vtype_isdatabk(enum voluta_vtype vtype)
 {
 	return vtype_isequal(vtype, VOLUTA_VTYPE_DATABK);
 }
 
+static enum voluta_agkind vtype_to_agkind(enum voluta_vtype vtype)
+{
+	return voluta_vtype_to_agkind(vtype);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -241,14 +240,24 @@ static void agr_set_nfiles(struct voluta_ag_rec *agr, size_t nfiles)
 	agr->ag_nfiles = voluta_cpu_to_le32((uint32_t)nfiles);
 }
 
+static enum voluta_agkind agr_kind(const struct voluta_ag_rec *agr)
+{
+	return voluta_le16_to_cpu(agr->ag_kind);
+}
+
+static void agr_set_kind(struct voluta_ag_rec *agr, enum voluta_agkind kind)
+{
+	agr->ag_kind = voluta_cpu_to_le16((uint16_t)kind);
+}
+
 static enum voluta_agf agr_flags(const struct voluta_ag_rec *agr)
 {
-	return voluta_le32_to_cpu(agr->ag_flags);
+	return voluta_le16_to_cpu(agr->ag_flags);
 }
 
 static void agr_set_flags(struct voluta_ag_rec *agr, enum voluta_agf f)
 {
-	agr->ag_flags = voluta_cpu_to_le32((uint32_t)f);
+	agr->ag_flags = voluta_cpu_to_le16((uint16_t)f);
 }
 
 static bool agr_has_flags(const struct voluta_ag_rec *agr,
@@ -292,37 +301,19 @@ static void agr_unset_fragmented(struct voluta_ag_rec *agr)
 	agr_del_flags(agr, VOLUTA_AGF_FRAGMENTED);
 }
 
-static bool agr_is_metadata(const struct voluta_ag_rec *agr)
-{
-	return agr_has_flags(agr, VOLUTA_AGF_METADATA);
-}
-
-static bool agr_is_userdata(const struct voluta_ag_rec *agr)
-{
-	return agr_has_flags(agr, VOLUTA_AGF_USERDATA);
-}
-
 static void agr_bind_to_kind(struct voluta_ag_rec *agr,
                              enum voluta_vtype vtype)
 {
-	if (vtype_ismeta(vtype)) {
-		agr_add_flags(agr, VOLUTA_AGF_METADATA);
-	} else if (vtype_isdata(vtype)) {
-		agr_add_flags(agr, VOLUTA_AGF_USERDATA);
-	}
+	agr_set_kind(agr, vtype_to_agkind(vtype));
 }
 
 static bool agr_kind_fits_vtype(const struct voluta_ag_rec *agr,
                                 enum voluta_vtype vtype)
 {
-	bool ret = true;
+	const enum voluta_agkind agkind = agr_kind(agr);
 
-	if (agr_is_metadata(agr)) {
-		ret = vtype_ismeta(vtype);
-	} else if (agr_is_userdata(agr)) {
-		ret = vtype_isdata(vtype);
-	}
-	return ret;
+	return (agkind == VOLUTA_AGKIND_NONE) ||
+	       (agkind == vtype_to_agkind(vtype));
 }
 
 static void agr_init(struct voluta_ag_rec *agr)
@@ -330,6 +321,7 @@ static void agr_init(struct voluta_ag_rec *agr)
 	agr_set_used_meta(agr, 0);
 	agr_set_used_data(agr, 0);
 	agr_set_nfiles(agr, 0);
+	agr_set_kind(agr, VOLUTA_AGKIND_NONE);
 	agr_set_flags(agr, 0);
 	bls_init(&agr->ag_agm_bls);
 	memset(agr->ag_reserved, 0, sizeof(agr->ag_reserved));

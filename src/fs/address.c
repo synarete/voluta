@@ -226,6 +226,38 @@ size_t voluta_vtype_nkbs(enum voluta_vtype vtype)
 	return div_round_up(size, VOLUTA_KB_SIZE);
 }
 
+enum voluta_agkind voluta_vtype_to_agkind(enum voluta_vtype vtype)
+{
+	enum voluta_agkind agkind;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+		agkind = VOLUTA_AGKIND_DATAXK;
+		break;
+	case VOLUTA_VTYPE_DATABK:
+		agkind = VOLUTA_AGKIND_DATABK;
+		break;
+	case VOLUTA_VTYPE_SUPER:
+	case VOLUTA_VTYPE_HSMAP:
+	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+		agkind = VOLUTA_AGKIND_META;
+		break;
+	case VOLUTA_VTYPE_AGBKS:
+	case VOLUTA_VTYPE_NONE:
+	default:
+		agkind = VOLUTA_AGKIND_NONE;
+		break;
+	}
+	return agkind;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_vaddr s_vaddr_none = {

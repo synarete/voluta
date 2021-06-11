@@ -364,25 +364,6 @@ bool vtype_isinode(enum voluta_vtype vtype)
 	return vtype_isequal(vtype, VOLUTA_VTYPE_INODE);
 }
 
-
-static inline
-const struct voluta_baddr *bi_baddr(const struct voluta_bnode_info *bi)
-{
-	return &bi->baddr;
-}
-
-static inline
-const struct voluta_blobid *vi_blobid(const struct voluta_vnode_info *vi)
-{
-	return &vi->v_bi.baddr.bid;
-}
-
-static inline
-const struct voluta_baddr *vi_baddr(const struct voluta_vnode_info *vi)
-{
-	return &vi->v_bi.baddr;
-}
-
 static inline
 const struct voluta_vaddr *vi_vaddr(const struct voluta_vnode_info *vi)
 {

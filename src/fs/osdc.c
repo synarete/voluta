@@ -22,6 +22,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/osdc.h>
 #include <voluta/fs/cache.h>
+#include <voluta/fs/super.h>
 #include <voluta/fs/private.h>
 
 /* blob-reference cache-entry */
@@ -965,46 +966,39 @@ static void sgvec_setup(struct voluta_sgvec *sgv)
 }
 
 static bool sgvec_isappendable(const struct voluta_sgvec *sgv,
-                               const struct voluta_vnode_info *vi)
+                               const struct voluta_baddr *baddr)
 {
-	loff_t off;
-	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-
-	voluta_assert_lt(vaddr->len, sgv->lim);
-
 	if (sgv->cnt == 0) {
 		return true;
 	}
 	if (sgv->cnt == ARRAY_SIZE(sgv->iov)) {
 		return false;
 	}
-	off = off_end(sgv->off, sgv->len);
-	if (vaddr->off != off) {
+	if (baddr->off != off_end(sgv->off, sgv->len)) {
 		return false;
 	}
-	if ((sgv->len + vaddr->len) > sgv->lim) {
+	voluta_assert_lt(baddr->len, sgv->lim);
+	if ((sgv->len + baddr->len) > sgv->lim) {
 		return false;
 	}
-	if (!blobid_isequal(vi_blobid(vi), &sgv->bid)) {
+	if (!blobid_isequal(&baddr->bid, &sgv->bid)) {
 		return false;
 	}
 	return true;
 }
 
 static int sgvec_append(struct voluta_sgvec *sgv,
-                        const struct voluta_vnode_info *vi)
+                        const struct voluta_baddr *baddr, const void *dat)
 {
 	const size_t idx = sgv->cnt;
-	const size_t len = vi_length(vi);
-	const struct voluta_blobid *bid = vi_blobid(vi);
 
 	if (idx == 0) {
-		blobid_copyto(bid, &sgv->bid);
-		sgv->off = vi_offset(vi);
+		blobid_copyto(&baddr->bid, &sgv->bid);
+		sgv->off = baddr->off;
 	}
-	sgv->iov[idx].iov_base = vi->view;
-	sgv->iov[idx].iov_len = len;
-	sgv->len += len;
+	sgv->iov[idx].iov_base = unconst(dat);
+	sgv->iov[idx].iov_len = baddr->len;
+	sgv->len += baddr->len;
 	sgv->cnt += 1;
 	return 0;
 }
@@ -1013,14 +1007,19 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
                           struct voluta_vnode_info **viq)
 {
 	int err;
+	struct voluta_baddr baddr;
 	struct voluta_vnode_info *vi;
 
 	while (*viq != NULL) {
 		vi = *viq;
-		if (!sgvec_isappendable(sgv, vi)) {
+		err = voluta_resolve_baddr_of(vi_sbi(vi), vi, &baddr);
+		if (err) {
+			return err;
+		}
+		if (!sgvec_isappendable(sgv, &baddr)) {
 			break;
 		}
-		err = sgvec_append(sgv, vi);
+		err = sgvec_append(sgv, &baddr, vi->view);
 		if (err) {
 			return err;
 		}

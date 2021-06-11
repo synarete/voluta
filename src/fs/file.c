@@ -196,7 +196,7 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	int err;
 	struct voluta_vba vba;
 
-	err = voluta_resolve_vba(f_ctx->sbi, vaddr, &vba);
+	err = voluta_resolve_vnode_vba(f_ctx->sbi, vaddr, &vba);
 	if (err) {
 		return err;
 	}

@@ -110,10 +110,6 @@ struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);
 
 
-void voluta_vi_vba(const struct voluta_vnode_info *vi,
-                   struct voluta_vba *out_vba);
-
-
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
 
 void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);

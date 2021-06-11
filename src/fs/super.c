@@ -913,23 +913,6 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-int voluta_resolve_vba(struct voluta_sb_info *sbi,
-                       const struct voluta_vaddr *vaddr,
-                       struct voluta_vba *out_vba)
-{
-	int err;
-	struct voluta_agroup_info *agi = NULL;
-
-	voluta_assert(!vaddr_isspmap(vaddr));
-
-	err = stage_agmap_of(sbi, vaddr, &agi);
-	if (err) {
-		return err;
-	}
-	voluta_agi_resolve_vba(agi, vaddr, out_vba);
-	return 0;
-}
-
 static int spawn_bind_vnode(struct voluta_sb_info *sbi,
                             const struct voluta_vba *vba,
                             struct voluta_vnode_info **out_vi)
@@ -1005,7 +988,7 @@ static int spawn_bind_inode(struct voluta_sb_info *sbi,
 	struct voluta_bksec_info *bsi = NULL;
 	struct voluta_agroup_info *agi = NULL;
 
-	err = voluta_resolve_vba(sbi, &iaddr->vaddr, &vba);
+	err = voluta_resolve_vnode_vba(sbi, &iaddr->vaddr, &vba);
 	if (err) {
 		return err;
 	}
@@ -1086,10 +1069,18 @@ static int decrypt_review_vnode(struct voluta_sb_info *sbi,
 static int load_from_blob(struct voluta_sb_info *sbi,
                           struct voluta_vnode_info *vi)
 {
-	struct voluta_vba vba;
+	int err;
+	struct voluta_baddr baddr;
 
-	vi_vba(vi, &vba);
-	return voluta_osdc_load(sbi->sb_osdc, &vba.baddr, vi->view);
+	err = voluta_resolve_baddr_of(sbi, vi, &baddr);
+	if (err) {
+		return err;
+	}
+	err = voluta_osdc_load(sbi->sb_osdc, &baddr, vi->view);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 static int stage_vnode(struct voluta_sb_info *sbi,
@@ -2117,7 +2108,7 @@ static int fetch_inode(struct voluta_sb_info *sbi, ino_t ino,
 	if (err) {
 		return err;
 	}
-	err = voluta_resolve_vba(sbi, &iaddr.vaddr, &vba);
+	err = voluta_resolve_vnode_vba(sbi, &iaddr.vaddr, &vba);
 	if (err) {
 		return err;
 	}
@@ -2213,7 +2204,7 @@ static int stage_vnode_at(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vba vba;
 
-	err = voluta_resolve_vba(sbi, vaddr, &vba);
+	err = voluta_resolve_vnode_vba(sbi, vaddr, &vba);
 	if (err) {
 		return err;
 	}
@@ -2523,7 +2514,12 @@ int voluta_remove_vnode(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vba vba;
 
-	vi_vba(vi, &vba);
+	voluta_assert(!vaddr_isspmap(vi_vaddr(vi)));
+
+	err = voluta_resolve_vnode_vba(sbi, vi_vaddr(vi), &vba);
+	if (err) {
+		return err;
+	}
 	err = free_space_at(sbi, &vba);
 	if (err) {
 		return err;
@@ -2539,17 +2535,19 @@ int voluta_remove_vnode_at(struct voluta_sb_info *sbi,
 	struct voluta_vba vba;
 	struct voluta_vnode_info *vi = NULL;
 
-	err = voluta_resolve_vba(sbi, vaddr, &vba);
+	err = voluta_resolve_vnode_vba(sbi, vaddr, &vba);
 	if (err) {
 		return err;
 	}
 	err = try_stage_cached_vnode(sbi, &vba, &vi);
 	if (!err) {
-		err = voluta_remove_vnode(sbi, vi);
-	} else if (err == -ENOENT) {
-		err = free_space_at(sbi, &vba);
+		return voluta_remove_vnode(sbi, vi);
 	}
-	return err;
+	err = free_space_at(sbi, &vba);
+	if (err) {
+		return err;
+	}
+	return 0;
 }
 
 int voluta_probe_unwritten(struct voluta_sb_info *sbi,
@@ -2606,6 +2604,74 @@ int voluta_refcnt_islast_at(struct voluta_sb_info *sbi,
 	}
 	*out_res = voluta_has_lone_refcnt(agi, vaddr);
 	return 0;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+int voluta_resolve_vnode_vba(struct voluta_sb_info *sbi,
+                             const struct voluta_vaddr *vaddr,
+                             struct voluta_vba *out_vba)
+{
+	int err;
+	struct voluta_agroup_info *agi = NULL;
+
+	voluta_assert(!vaddr_isspmap(vaddr));
+
+	err = stage_agmap_of(sbi, vaddr, &agi);
+	if (err) {
+		return err;
+	}
+	voluta_agi_resolve_vba(agi, vaddr, out_vba);
+	return 0;
+}
+
+static void voluta_sbi_vba(const struct voluta_sb_info *sbi,
+                           struct voluta_vba *out_vba)
+{
+	voluta_vba_copyto(&sbi->sb_vba, out_vba);
+}
+
+int voluta_resolve_baddr_of(struct voluta_sb_info *sbi,
+                            const struct voluta_vnode_info *vi,
+                            struct voluta_baddr *out_baddr)
+{
+	int err = 0;
+	struct voluta_vba vba = { .baddr.len = 0 };
+	const enum voluta_vtype vtype = vi_vtype(vi);
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_SUPER:
+		voluta_sbi_vba(sbi, &vba);
+		break;
+	case VOLUTA_VTYPE_HSMAP:
+		voluta_hsi_vba(voluta_hsi_from_vi(vi), &vba);
+		break;
+	case VOLUTA_VTYPE_AGMAP:
+		voluta_agi_vba(voluta_agi_from_vi(vi), &vba);
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_DATABK:
+		err = voluta_resolve_vnode_vba(sbi, vi_vaddr(vi), &vba);
+		break;
+	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_VTYPE_AGBKS:
+	default:
+		err = -EINVAL;
+		break;
+	}
+
+	if (!err) {
+		voluta_baddr_copyto(&vba.baddr, out_baddr);
+	}
+	return err;
+
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

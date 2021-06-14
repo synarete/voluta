@@ -25,11 +25,11 @@ typedef void (*voluta_vi_delete_fn)(struct voluta_vnode_info *vi,
                                     struct voluta_alloc_if *alif);
 
 
-/* bnode */
-struct voluta_bnode_info {
-	struct voluta_baddr             baddr;
-	void *bp;
+/* unode */
+struct voluta_unode_info {
+	struct voluta_baddr             u_baddr;
 };
+
 
 /* vnode */
 union voluta_vnode_u {
@@ -48,7 +48,6 @@ union voluta_vnode_u {
 };
 
 struct voluta_vnode_info {
-	struct voluta_bnode_info        v_bi;
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
@@ -68,11 +67,13 @@ struct voluta_vnode_info {
 
 /* space-maps */
 struct voluta_hspace_info {
+	struct voluta_unode_info        hs_ui;
 	struct voluta_vnode_info        hs_vi;
 	voluta_index_t                  hs_index;
 };
 
 struct voluta_agroup_info {
+	struct voluta_unode_info        ag_ui;
 	struct voluta_vnode_info        ag_vi;
 	voluta_index_t                  ag_index;
 };

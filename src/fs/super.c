@@ -784,7 +784,6 @@ static int find_unallocated_space(struct voluta_sb_info *sbi,
 static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 {
 	vi->view = view;
-	vi->v_bi.bp = view;
 
 	switch (vi->vaddr.vtype) {
 	case VOLUTA_VTYPE_HSMAP:
@@ -2671,7 +2670,6 @@ int voluta_resolve_baddr_of(struct voluta_sb_info *sbi,
 		voluta_baddr_copyto(&vba.baddr, out_baddr);
 	}
 	return err;
-
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

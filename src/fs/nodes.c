@@ -57,17 +57,15 @@ static void an_fini(struct voluta_avl_node *an)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void bi_init(struct voluta_bnode_info *bi,
+static void ui_init(struct voluta_unode_info *ui,
                     const struct voluta_baddr *baddr)
 {
-	baddr_copyto(baddr, &bi->baddr);
-	bi->bp = NULL;
+	baddr_copyto(baddr, &ui->u_baddr);
 }
 
-static void bi_fini(struct voluta_bnode_info *bi)
+static void ui_fini(struct voluta_unode_info *ui)
 {
-	baddr_reset(&bi->baddr);
-	bi->bp = NULL;
+	baddr_reset(&ui->u_baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -111,7 +109,6 @@ static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_vba *vba,
                     voluta_vi_delete_fn del_hook)
 {
-	bi_init(&vi->v_bi, &vba->baddr);
 	voluta_ce_init(&vi->v_ce);
 	lh_init(&vi->v_dq_blh);
 	lh_init(&vi->v_dq_mlh);
@@ -131,7 +128,6 @@ static void vi_init(struct voluta_vnode_info *vi,
 
 static void vi_fini(struct voluta_vnode_info *vi)
 {
-	bi_fini(&vi->v_bi);
 	voluta_ce_fini(&vi->v_ce);
 	lh_fini(&vi->v_dq_blh);
 	lh_fini(&vi->v_dq_mlh);
@@ -235,12 +231,14 @@ static void hsi_init(struct voluta_hspace_info *hsi,
                      const struct voluta_vba *vba,
                      voluta_vi_delete_fn del_hook)
 {
+	ui_init(&hsi->hs_ui, &vba->baddr);
 	vi_init(&hsi->hs_vi, vba, del_hook);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
 
 static void hsi_fini(struct voluta_hspace_info *hsi)
 {
+	ui_fini(&hsi->hs_ui);
 	vi_fini(&hsi->hs_vi);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 }
@@ -301,12 +299,14 @@ static void agi_init(struct voluta_agroup_info *agi,
                      const struct voluta_vba *vba,
                      voluta_vi_delete_fn del_hook)
 {
+	ui_init(&agi->ag_ui, &vba->baddr);
 	vi_init(&agi->ag_vi, vba, del_hook);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }
 
 static void agi_fini(struct voluta_agroup_info *agi)
 {
+	ui_fini(&agi->ag_ui);
 	vi_fini(&agi->ag_vi);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 }

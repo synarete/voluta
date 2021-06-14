@@ -447,7 +447,6 @@ static void vi_detach_bk(struct voluta_vnode_info *vi)
 		vi->v_bsi = NULL;
 		vi->view = NULL;
 		vi->vu.p = NULL;
-		vi->v_bi.bp = NULL;
 	}
 }
 

@@ -20,20 +20,12 @@
 #include <unistd.h>
 #include <voluta/defs.h>
 
-void voluta_br_init(struct voluta_boot_record *br, size_t size);
 
-void voluta_br_fini(struct voluta_boot_record *br);
 
-void voluta_br_set_size(struct voluta_boot_record *br, size_t size);
+void voluta_br_set_encrypted(struct voluta_sb_boot *br, bool enc);
 
-void voluta_br_set_encrypted(struct voluta_boot_record *br, bool enc);
+bool voluta_br_is_encrypted(const struct voluta_sb_boot *br);
 
-bool voluta_br_is_encrypted(const struct voluta_boot_record *br);
-
-size_t voluta_br_size(const struct voluta_boot_record *br);
-
-void voluta_br_crypt_params(const struct voluta_boot_record *br,
-                            struct voluta_zcrypt_params *zcp);
 
 struct voluta_super_block *voluta_sb_new(struct voluta_alloc_if *alif);
 
@@ -93,22 +85,23 @@ int voluta_sb_decrypt(struct voluta_super_block *sb,
                       const struct voluta_passphrase *passph);
 
 void voluta_sb_setup_new(struct voluta_super_block *sb,
-                         time_t btime, size_t vsize);
+                         time_t btime, ssize_t vsize);
 
-void voluta_hrec_setup(struct voluta_hash_record *hr,
-                       const struct voluta_mdigest *md);
+void voluta_sb_crypt_params(const struct voluta_super_block *sb,
+                            struct voluta_zcrypt_params *zcp);
 
-int voluta_hrec_check(const struct voluta_hash_record *hr,
-                      const struct voluta_mdigest *md);
+int voluta_sb_check_boot(const struct voluta_super_block *sb);
 
+ssize_t voluta_sb_volume_size(const struct voluta_super_block *sb);
 
-int voluta_check_boot_record(const struct voluta_super_block *sb);
+void voluta_sb_set_volume_size(struct voluta_super_block *sb, ssize_t sz);
+
 
 int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant);
 
 int voluta_decipher_super_block(struct voluta_super_block *sb,
                                 const char *password);
 
-enum voluta_brf voluta_br_flags(const struct voluta_boot_record *br);
+enum voluta_brf voluta_br_flags(const struct voluta_sb_boot *br);
 
 #endif /* VOLUTA_BOOT_H_ */

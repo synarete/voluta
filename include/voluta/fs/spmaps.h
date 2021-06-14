@@ -20,12 +20,12 @@
 
 #include <voluta/fs/types.h>
 
-void voluta_usm_init(struct voluta_uspace_map *usm);
+void voluta_usm_init(struct voluta_sb_uspace *usm);
 
-void voluta_usm_vba(const struct voluta_uspace_map *usm,
+void voluta_usm_vba(const struct voluta_sb_uspace *usm,
                     voluta_index_t hs_index, struct voluta_vba *out_vba);
 
-void voluta_usm_set_vba(struct voluta_uspace_map *usm,
+void voluta_usm_set_vba(struct voluta_sb_uspace *usm,
                         voluta_index_t hs_index,
                         const struct voluta_vba *vba);
 

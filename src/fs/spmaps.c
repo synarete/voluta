@@ -162,7 +162,7 @@ static void bls_set_vba(struct voluta_blobspec *bls,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_usm_init(struct voluta_uspace_map *usm)
+void voluta_usm_init(struct voluta_sb_uspace *usm)
 {
 	bls_initn(usm->us_hsm_bls, ARRAY_SIZE(usm->us_hsm_bls));
 }
@@ -173,7 +173,7 @@ static size_t hs_index_to_us_slot(voluta_index_t hs_index)
 }
 
 static struct voluta_blobspec *
-usm_blobspec_at(const struct voluta_uspace_map *usm, size_t slot)
+usm_blobspec_at(const struct voluta_sb_uspace *usm, size_t slot)
 {
 	const struct voluta_blobspec *bls = &usm->us_hsm_bls[slot];
 
@@ -182,14 +182,14 @@ usm_blobspec_at(const struct voluta_uspace_map *usm, size_t slot)
 }
 
 static struct voluta_blobspec *
-usm_blobspec_of(const struct voluta_uspace_map *usm, voluta_index_t hs_index)
+usm_blobspec_of(const struct voluta_sb_uspace *usm, voluta_index_t hs_index)
 {
 	const size_t slot = hs_index_to_us_slot(hs_index);
 
 	return usm_blobspec_at(usm, slot);
 }
 
-void voluta_usm_vba(const struct voluta_uspace_map *usm,
+void voluta_usm_vba(const struct voluta_sb_uspace *usm,
                     voluta_index_t hs_index, struct voluta_vba *out_vba)
 {
 	const struct voluta_blobspec *bls = usm_blobspec_of(usm, hs_index);
@@ -197,7 +197,7 @@ void voluta_usm_vba(const struct voluta_uspace_map *usm,
 	bls_vba(bls, out_vba);
 }
 
-void voluta_usm_set_vba(struct voluta_uspace_map *usm,
+void voluta_usm_set_vba(struct voluta_sb_uspace *usm,
                         voluta_index_t hs_index,
                         const struct voluta_vba *vba)
 {

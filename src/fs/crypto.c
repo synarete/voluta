@@ -581,28 +581,28 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static uint32_t kr_cipher_algo(const struct voluta_keys_record *kr)
+static uint32_t kr_cipher_algo(const struct voluta_sb_keys *kr)
 {
 	return voluta_le32_to_cpu(kr->kr_cipher_algo);
 }
 
 static void
-kr_set_cipher_algo(struct voluta_keys_record *kr, uint32_t algo)
+kr_set_cipher_algo(struct voluta_sb_keys *kr, uint32_t algo)
 {
 	kr->kr_cipher_algo = voluta_cpu_to_le32(algo);
 }
 
-static uint32_t kr_cipher_mode(const struct voluta_keys_record *kr)
+static uint32_t kr_cipher_mode(const struct voluta_sb_keys *kr)
 {
 	return voluta_le32_to_cpu(kr->kr_cipher_mode);
 }
 
-static void kr_set_cipher_mode(struct voluta_keys_record *kr, uint32_t mode)
+static void kr_set_cipher_mode(struct voluta_sb_keys *kr, uint32_t mode)
 {
 	kr->kr_cipher_mode = voluta_cpu_to_le32(mode);
 }
 
-void voluta_krec_setup(struct voluta_keys_record *kr)
+void voluta_krec_setup(struct voluta_sb_keys *kr)
 {
 	kr_set_cipher_algo(kr, VOLUTA_CIPHER_AES256);
 	kr_set_cipher_mode(kr, VOLUTA_CIPHER_MODE_GCM);
@@ -612,7 +612,7 @@ void voluta_krec_setup(struct voluta_keys_record *kr)
 }
 
 static const struct voluta_key *
-kr_key_by_lba(const struct voluta_keys_record *kr, voluta_lba_t lba)
+kr_key_by_lba(const struct voluta_sb_keys *kr, voluta_lba_t lba)
 {
 	size_t key_slot;
 
@@ -621,7 +621,7 @@ kr_key_by_lba(const struct voluta_keys_record *kr, voluta_lba_t lba)
 }
 
 static const struct voluta_iv *
-kr_iv_by_ag_index(const struct voluta_keys_record *kr, voluta_index_t ag_index)
+kr_iv_by_ag_index(const struct voluta_sb_keys *kr, voluta_index_t ag_index)
 {
 	size_t iv_slot;
 
@@ -629,7 +629,7 @@ kr_iv_by_ag_index(const struct voluta_keys_record *kr, voluta_index_t ag_index)
 	return &kr->kr_iv[iv_slot];
 }
 
-void voluta_krec_kivam_of(const struct voluta_keys_record *kr,
+void voluta_krec_kivam_of(const struct voluta_sb_keys *kr,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_kivam *out_kivam)
 {

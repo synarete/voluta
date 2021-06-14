@@ -70,9 +70,9 @@ void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
 
-void voluta_krec_setup(struct voluta_keys_record *kr);
+void voluta_krec_setup(struct voluta_sb_keys *kr);
 
-void voluta_krec_kivam_of(const struct voluta_keys_record *keys,
+void voluta_krec_kivam_of(const struct voluta_sb_keys *keys,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_kivam *out_kivam);
 

@@ -1227,7 +1227,7 @@ static void bind_hsmap(struct voluta_sb_info *sbi,
 	struct voluta_super_block *sb = sbi->sb;
 
 	voluta_hsi_vba(hsi, &vba);
-	voluta_usm_set_vba(&sb->sb_usm, hsi->hs_index, &vba);
+	voluta_usm_set_vba(&sb->sb_uspace, hsi->hs_index, &vba);
 }
 
 static int format_hsmap(struct voluta_sb_info *sbi,
@@ -1841,7 +1841,7 @@ static int resolve_hsmap(const struct voluta_sb_info *sbi,
 {
 	struct voluta_super_block *sb = sbi->sb;
 
-	voluta_usm_vba(&sb->sb_usm, hs_index, out_vba);
+	voluta_usm_vba(&sb->sb_uspace, hs_index, out_vba);
 	return vaddr_isnull(&out_vba->vaddr) ? -ENOENT : 0;
 }
 

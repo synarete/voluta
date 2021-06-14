@@ -506,7 +506,7 @@ struct voluta_kdf_pair {
 } voluta_packed_aligned32;
 
 
-struct voluta_boot_record {
+struct voluta_sb_boot {
 	struct voluta_header    br_hdr;
 	uint64_t                br_magic;
 	uint64_t                br_version;
@@ -526,7 +526,7 @@ struct voluta_boot_record {
 } voluta_packed_aligned64;
 
 
-struct voluta_hash_record {
+struct voluta_sb_hash {
 	struct voluta_hash512   hr_fill_hash;
 	struct voluta_hash512   hr_pass_hash;
 	uint8_t                 hr_reserved[1920];
@@ -534,7 +534,7 @@ struct voluta_hash_record {
 } voluta_packed_aligned64;
 
 
-struct voluta_keys_record {
+struct voluta_sb_keys {
 	uint32_t                kr_cipher_algo;
 	uint32_t                kr_cipher_mode;
 	uint8_t                 kr_reserved1[104];
@@ -543,23 +543,23 @@ struct voluta_keys_record {
 } voluta_packed_aligned64;
 
 
-struct voluta_uspace_map {
+struct voluta_sb_uspace {
 	struct voluta_blobspec  us_hsm_bls[VOLUTA_NHS_MAX];
 } voluta_packed_aligned64;
 
 
 struct voluta_super_block {
-	struct voluta_boot_record sb_boot_rec;
-	struct voluta_hash_record sb_hash_rec;
-	uint64_t                  sb_birth_time;
-	uint64_t                  sb_ag_count;
-	struct voluta_vaddr64     sb_self_vaddr;
-	struct voluta_vaddr64     sb_itable_root;
-	uint8_t                   sb_reserved1[224];
-	struct voluta_name        sb_name;
-	uint8_t                   sb_reserved2[7680];
-	struct voluta_keys_record sb_keys;
-	struct voluta_uspace_map  sb_usm;
+	struct voluta_sb_boot   sb_boot;
+	struct voluta_sb_hash   sb_hash;
+	uint64_t                sb_birth_time;
+	uint64_t                sb_ag_count;
+	struct voluta_vaddr64   sb_self_vaddr;
+	struct voluta_vaddr64   sb_itable_root;
+	uint8_t                 sb_reserved1[224];
+	struct voluta_name      sb_name;
+	uint8_t                 sb_reserved2[7680];
+	struct voluta_sb_keys   sb_keys;
+	struct voluta_sb_uspace sb_uspace;
 } voluta_packed_aligned64;
 
 

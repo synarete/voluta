@@ -229,20 +229,12 @@ static void ut_done_tests(struct ut_env *ute)
 	voluta_assert_ok(err);
 }
 
-static void ut_removepath(char **path)
-{
-	voluta_sys_unlink(*path);
-	free(*path);
-	*path = NULL;
-}
-
 static const char *ut_make_passwd(struct voluta_passphrase *pp)
 {
 	voluta_memzero(pp, sizeof(*pp));
 
 	pp->passlen = sizeof(pp->pass) - 1;
 	voluta_random_ascii((char *)pp->pass, pp->passlen);
-
 	return (const char *)(pp->pass);
 }
 
@@ -262,14 +254,11 @@ static void ut_execute_tests_cycle(struct ut_args *args)
 
 static void ut_print_tests_start(const struct ut_args *args)
 {
-	printf("  %s %s encrypt=%d\n", args->program, args->version,
-	       (int)args->fs_args.encrypted);
+	printf("  %s %s\n", args->program, args->version);
 }
 
 void ut_execute_tests(void)
 {
-	char *volpath = NULL;
-	bool encryptwr = false;
 	struct ut_args args = {
 		.fs_args = {
 			.uid = getuid(),
@@ -290,17 +279,8 @@ void ut_execute_tests(void)
 	args.fs_args.repodir = ut_globals.test_dir_real;
 
 	args.fs_args.passwd = ut_make_passwd(&args.passph);
-	args.fs_args.encrypted = args.fs_args.encryptwr = encryptwr;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
-
-#if 0 /* XXX */
-	args.fs_args.encrypted = args.fs_args.encryptwr = !encryptwr;
-	ut_print_tests_start(&args);
-	ut_execute_tests_cycle(&args);
-#endif
-
-	ut_removepath(&volpath);
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/

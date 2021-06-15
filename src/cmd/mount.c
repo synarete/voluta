@@ -158,9 +158,7 @@ static void mount_setup_check_mntpoint(void)
 
 static void mount_setup_check_repo(void)
 {
-	bool is_enc = false;
 	const char *path = NULL;
-	const char *passfile = NULL;
 	const bool rw = !voluta_globals.cmd.mount.rdonly;
 
 	voluta_globals.cmd.mount.repodir_real =
@@ -173,11 +171,8 @@ static void mount_setup_check_repo(void)
 	voluta_globals.cmd.mount.repo_lock = voluta_lockfile_path(path);
 	voluta_die_if_not_lockable(voluta_globals.cmd.mount.repo_lock, rw);
 
-	if (is_enc) {
-		passfile = voluta_globals.cmd.mount.passphrase_file;
-		voluta_globals.cmd.mount.passphrase = voluta_getpass(passfile);
-		voluta_globals.cmd.mount.encrypted = true;
-	}
+	voluta_globals.cmd.mount.passphrase =
+	        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -258,8 +253,6 @@ static void mount_create_fs_env(void)
 		.repodir = voluta_globals.cmd.mount.repodir_real,
 		.mntdir = voluta_globals.cmd.mount.mntpoint_real,
 		.passwd = voluta_globals.cmd.mount.passphrase,
-		.encrypted = voluta_globals.cmd.mount.encrypted,
-		.encryptwr = voluta_globals.cmd.mount.encrypted,
 		.allowother = voluta_globals.cmd.mount.allowother,
 		.lazytime = voluta_globals.cmd.mount.lazytime,
 		.noexec = voluta_globals.cmd.mount.noexec,
@@ -302,10 +295,8 @@ static void mount_trace_start(void)
 	voluta_log_info("executable: %s", voluta_globals.prog);
 	voluta_log_info("mountpoint: %s",
 	                voluta_globals.cmd.mount.mntpoint_real);
-	voluta_log_info("volume: %s", voluta_globals.cmd.mount.repodir);
-	voluta_log_info("modes: encrypted=%d rdonly=%d noexec=%d "
-	                "nodev=%d nosuid=%d",
-	                (int)voluta_globals.cmd.mount.encrypted,
+	voluta_log_info("repodir: %s", voluta_globals.cmd.mount.repodir);
+	voluta_log_info("modes: rdonly=%d noexec=%d nodev=%d nosuid=%d",
 	                (int)voluta_globals.cmd.mount.rdonly,
 	                (int)voluta_globals.cmd.mount.noexec,
 	                (int)voluta_globals.cmd.mount.nodev,

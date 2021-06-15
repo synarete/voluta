@@ -195,17 +195,11 @@ static struct voluta_super_block *read_super_block(const char *path)
 void voluta_die_if_bad_sb(const char *path, const char *pass)
 {
 	int err;
-	enum voluta_brf brf;
 	struct voluta_super_block *sb = NULL;
 
 	sb = read_super_block(path);
 	err = voluta_sb_check_boot(sb);
 	if (err) {
-		goto out;
-	}
-	brf = voluta_br_flags(&sb->sb_boot);
-	if (!(brf & VOLUTA_ZBF_ENCRYPTED)) {
-		err = 0;
 		goto out;
 	}
 	if (pass == NULL) {

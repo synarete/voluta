@@ -47,7 +47,6 @@ struct voluta_query_volume {
 struct voluta_query_fsinfo {
 	int64_t uptime;
 	uint64_t msflags;
-	uint8_t  encrypt;
 };
 
 struct voluta_query_inode {

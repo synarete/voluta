@@ -21,12 +21,6 @@
 #include <voluta/defs.h>
 
 
-
-void voluta_br_set_encrypted(struct voluta_sb_boot *br, bool enc);
-
-bool voluta_br_is_encrypted(const struct voluta_sb_boot *br);
-
-
 struct voluta_super_block *voluta_sb_new(struct voluta_alloc_if *alif);
 
 void voluta_sb_del(struct voluta_super_block *sb,
@@ -101,7 +95,5 @@ int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant);
 
 int voluta_decipher_super_block(struct voluta_super_block *sb,
                                 const char *password);
-
-enum voluta_brf voluta_br_flags(const struct voluta_sb_boot *br);
 
 #endif /* VOLUTA_BOOT_H_ */

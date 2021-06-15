@@ -56,7 +56,6 @@ struct voluta_subcmd_mkfs {
 	char   *name;
 	char   *size;
 	long    fs_size;
-	bool    encrypted;
 	bool    force;
 };
 
@@ -71,7 +70,6 @@ struct voluta_subcmd_mount {
 	char   *mntpoint;
 	char   *mntpoint_real;
 	char   *options;
-	bool    encrypted;
 	bool    allowother;
 	bool    lazytime;
 	bool    noexec;

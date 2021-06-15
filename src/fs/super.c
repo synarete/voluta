@@ -525,56 +525,6 @@ static int verify_vnode_view(struct voluta_vnode_info *vi)
 	return 0;
 }
 
-static bool encrypted_mode(const struct voluta_sb_info *sbi)
-{
-	const unsigned long mask = VOLUTA_F_ENCRYPTED;
-
-	return (sbi->sb_ctl_flags & mask) == mask;
-}
-
-static const struct voluta_cipher *
-vi_cipher(const struct voluta_vnode_info *vi)
-{
-	return &vi->v_sbi->sb_crypto.ci;
-}
-
-static int
-decrypt_vnode_into(const struct voluta_vnode_info *vi, const void *buf)
-{
-	int err;
-	struct voluta_kivam kivam;
-	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-	const struct voluta_cipher *cipher = vi_cipher(vi);
-
-	err = voluta_kivam_of(vi, &kivam);
-	if (err) {
-		return err;
-	}
-	err = voluta_decrypt_buf(cipher, &kivam, buf, vi->view, vaddr->len);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
-static int decrypt_vnode(const struct voluta_sb_info *sbi,
-                         const struct voluta_vnode_info *vi)
-{
-	int err;
-
-	if (vi_isvisible(vi)) {
-		return 0;
-	}
-	if (!encrypted_mode(sbi)) {
-		return 0;
-	}
-	err = decrypt_vnode_into(vi, vi->view);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
 static bool is_first_alloc(const struct voluta_agroup_info *agi,
                            const struct voluta_vaddr *vaddr)
 {
@@ -1049,22 +999,6 @@ static int review_vnode(struct voluta_vnode_info *vi)
 	return 0;
 }
 
-static int decrypt_review_vnode(struct voluta_sb_info *sbi,
-                                struct voluta_vnode_info *vi)
-{
-	int err;
-
-	err = decrypt_vnode(sbi, vi);
-	if (err) {
-		return err;
-	}
-	err = review_vnode(vi);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
 static int load_from_blob(struct voluta_sb_info *sbi,
                           struct voluta_vnode_info *vi)
 {
@@ -1097,7 +1031,7 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		goto out_err;
 	}
-	err = decrypt_review_vnode(sbi, vi);
+	err = review_vnode(vi);
 	if (err) {
 		goto out_err;
 	}
@@ -1562,7 +1496,7 @@ static void sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ops.op_iopen = 0;
 	sbi->sb_ops.op_time = voluta_time_now();
 	sbi->sb_ops.op_count = 0;
-	sbi->sb_ctl_flags = 0;
+	sbi->sb_ctl_flags = VOLUTA_F_KCOPY;
 	sbi->sb_ms_flags = 0;
 	sbi->sb_mntime = 0;
 	sbi->sb_cache = NULL;
@@ -2063,12 +1997,16 @@ static int find_cached_ii(const struct voluta_sb_info *sbi,
 	return (*out_ii != NULL) ? 0 : -ENOENT;
 }
 
+static int review_inode(struct voluta_inode_info *ii)
+{
+	return review_vnode(ii_vi(ii));
+}
+
 static int fetch_inode_at(struct voluta_sb_info *sbi,
                           const struct voluta_iaddr *iaddr,
                           struct voluta_inode_info **out_ii)
 {
 	int err;
-	struct voluta_vnode_info *vi;
 
 	err = find_cached_ii(sbi, iaddr, out_ii);
 	if (!err) {
@@ -2078,20 +2016,11 @@ static int fetch_inode_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	vi = ii_vi(*out_ii);
-	err = decrypt_review_vnode(sbi, vi);
+	err = review_inode(*out_ii);
 	if (err) {
 		forget_cached_ii(sbi, *out_ii);
 		return err;
 	}
-
-	/* XXX */
-	err = load_from_blob(sbi, vi);
-	if (err) {
-		return err;
-	}
-
-
 	voluta_refresh_atime(*out_ii, true);
 	return 0;
 }

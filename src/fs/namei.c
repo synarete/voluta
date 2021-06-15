@@ -1967,11 +1967,9 @@ static void fill_query_fsinfo(const struct voluta_inode_info *ii,
                               struct voluta_ioc_query *query)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
-	const unsigned long mask = VOLUTA_F_ENCRYPTED | VOLUTA_F_ENCRYPTWR;
 
 	query->u.fsinfo.uptime = voluta_time_now() - sbi->sb_mntime;
 	query->u.fsinfo.msflags = sbi->sb_ms_flags;
-	query->u.fsinfo.encrypt = (sbi->sb_ctl_flags & mask) > 0;
 }
 
 static void fill_query_inode(const struct voluta_inode_info *ii,

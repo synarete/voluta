@@ -69,8 +69,7 @@ struct voluta_listxattr_ctx;
 
 /* file-system control flags */
 enum voluta_flags {
-	VOLUTA_F_ENCRYPTED      = VOLUTA_BIT(0),
-	VOLUTA_F_ENCRYPTWR      = VOLUTA_BIT(1),
+	VOLUTA_F_KCOPY          = VOLUTA_BIT(0),
 	VOLUTA_F_SYNC           = VOLUTA_BIT(1),
 	VOLUTA_F_NOW            = VOLUTA_BIT(2),
 	VOLUTA_F_BLKDEV         = VOLUTA_BIT(3),
@@ -469,8 +468,6 @@ struct voluta_fs_args {
 	mode_t umask;
 	bool   with_fuseq;
 	bool   pedantic;
-	bool   encrypted;
-	bool   encryptwr;
 	bool   allowother;
 	bool   lazytime;
 	bool   noexec;

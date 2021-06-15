@@ -25,7 +25,6 @@ static const char *mkfs_usage[] = {
 	"options:",
 	"  -s, --size=NBYTES            File-system size",
 	"  -n, --name=NAME              Private name",
-	"  -e, --encrypted              Encrypted volume",
 	"  -F, --force                  Force overwrite if already exists",
 	"  -V, --verbose=LEVEL          Run in verbose mode (0..3)",
 	"  -P, --passphrase-file=PATH   Passphrase file (unsafe)",
@@ -57,8 +56,6 @@ static void mkfs_getopt(void)
 			voluta_globals.cmd.mkfs.fs_size = size;
 		} else if (opt_chr == 'n') {
 			voluta_globals.cmd.mkfs.name = optarg;
-		} else if (opt_chr == 'e') {
-			voluta_globals.cmd.mkfs.encrypted = true;
 		} else if (opt_chr == 'F') {
 			voluta_globals.cmd.mkfs.force = true;
 		} else if (opt_chr == 'P') {
@@ -86,7 +83,6 @@ static void mkfs_finalize(void)
 static void mkfs_setup_check_params(void)
 {
 	const char *path = NULL;
-	const char *passfile = NULL;
 
 	voluta_globals.cmd.mkfs.repodir_real =
 	        voluta_realpath_safe(voluta_globals.cmd.mkfs.repodir);
@@ -102,10 +98,8 @@ static void mkfs_setup_check_params(void)
 	if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
 	}
-	if (voluta_globals.cmd.mkfs.encrypted) {
-		passfile = voluta_globals.cmd.mkfs.passphrase_file;
-		voluta_globals.cmd.mkfs.passphrase = voluta_getpass2(passfile);
-	}
+	voluta_globals.cmd.mkfs.passphrase =
+	        voluta_getpass2(voluta_globals.cmd.mkfs.passphrase_file);
 }
 
 static void mkfs_create_fs_env(void)
@@ -115,8 +109,6 @@ static void mkfs_create_fs_env(void)
 		.repodir = voluta_globals.cmd.mkfs.repodir_real,
 		.fsname = voluta_globals.cmd.mkfs.name,
 		.passwd = voluta_globals.cmd.mkfs.passphrase,
-		.encrypted = voluta_globals.cmd.mkfs.encrypted,
-		.encryptwr = voluta_globals.cmd.mkfs.encrypted,
 		.vsize = voluta_globals.cmd.mkfs.fs_size,
 		.uid = getuid(),
 		.gid = getgid(),

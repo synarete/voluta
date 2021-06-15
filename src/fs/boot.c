@@ -105,54 +105,6 @@ static void br_set_version(struct voluta_sb_boot *br, long version)
 	br->br_version = voluta_cpu_to_le64((uint64_t)version);
 }
 
-static enum voluta_brf br_flags(const struct voluta_sb_boot *br)
-{
-	const uint32_t flags = voluta_le32_to_cpu(br->br_flags);
-
-	return (enum voluta_brf)flags;
-}
-
-static void br_set_flags(struct voluta_sb_boot *br,
-                         enum voluta_brf f)
-{
-	br->br_flags = voluta_cpu_to_le32((uint32_t)f);
-}
-
-static void br_add_flag(struct voluta_sb_boot *br, enum voluta_brf f)
-{
-	br_set_flags(br, br_flags(br) | f);
-}
-
-static void br_remove_flag(struct voluta_sb_boot *br, enum voluta_brf f)
-{
-	br_set_flags(br, br_flags(br) & ~f);
-}
-
-static bool br_test_flag(const struct voluta_sb_boot *br,
-                         enum voluta_brf f)
-{
-	return ((br_flags(br) & f) == f);
-}
-
-void voluta_br_set_encrypted(struct voluta_sb_boot *br, bool enc)
-{
-	if (enc) {
-		br_add_flag(br, VOLUTA_ZBF_ENCRYPTED);
-	} else {
-		br_remove_flag(br, VOLUTA_ZBF_ENCRYPTED);
-	}
-}
-
-bool voluta_br_is_encrypted(const struct voluta_sb_boot *br)
-{
-	return br_test_flag(br, VOLUTA_ZBF_ENCRYPTED);
-}
-
-enum voluta_brf voluta_br_flags(const struct voluta_sb_boot *br)
-{
-	return br_flags(br);
-}
-
 static void br_set_sw_version(struct voluta_sb_boot *br,
                               const char *sw_version)
 {
@@ -221,7 +173,6 @@ static void voluta_br_init(struct voluta_sb_boot *br, ssize_t size)
 	memset(br, 0, sizeof(*br));
 	br_set_magic(br, VOLUTA_BOOT_MARK);
 	br_set_version(br, VOLUTA_FMT_VERSION);
-	br_set_flags(br, VOLUTA_ZBF_NONE);
 	br_set_sw_version(br, voluta_version.string);
 	br_set_uuid(br);
 	voluta_br_set_size(br, size);
@@ -482,7 +433,6 @@ int voluta_sb_encrypt(struct voluta_super_block *sb,
 	if (err) {
 		goto out;
 	}
-	voluta_br_set_encrypted(&sb->sb_boot, true);
 out:
 	voluta_kivam_fini(&kivam);
 	return err;

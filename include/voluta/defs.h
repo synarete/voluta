@@ -272,14 +272,6 @@
 #define VOLUTA_BLOBID_LEN               (32)
 
 
-
-/* boot-record control flags */
-/* XXX rm */
-enum voluta_brf {
-	VOLUTA_ZBF_NONE         = (1 << 0),
-	VOLUTA_ZBF_ENCRYPTED    = (1 << 1),
-};
-
 enum voluta_endianness {
 	VOLUTA_ENDIANNESS_LE    = 1,
 	VOLUTA_ENDIANNESS_BE    = 2

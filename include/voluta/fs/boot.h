@@ -84,16 +84,16 @@ void voluta_sb_setup_new(struct voluta_super_block *sb,
 void voluta_sb_crypt_params(const struct voluta_super_block *sb,
                             struct voluta_zcrypt_params *zcp);
 
-int voluta_sb_check_boot(const struct voluta_super_block *sb);
+int voluta_sb_check_root(const struct voluta_super_block *sb);
 
 ssize_t voluta_sb_volume_size(const struct voluta_super_block *sb);
 
 void voluta_sb_set_volume_size(struct voluta_super_block *sb, ssize_t sz);
 
 
-int voluta_setup_qalloc_with(struct voluta_qalloc *qal, size_t memwant);
 
-int voluta_decipher_super_block(struct voluta_super_block *sb,
-                                const char *password);
+int voluta_decipher_sb(struct voluta_super_block *sb, const char *password);
+
+int voluta_bootstrap_qalloc(struct voluta_qalloc *qal, size_t memwant);
 
 #endif /* VOLUTA_BOOT_H_ */

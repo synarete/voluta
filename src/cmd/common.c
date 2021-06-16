@@ -198,7 +198,7 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 	struct voluta_super_block *sb = NULL;
 
 	sb = read_super_block(path);
-	err = voluta_sb_check_boot(sb);
+	err = voluta_sb_check_root(sb);
 	if (err) {
 		goto out;
 	}
@@ -206,7 +206,7 @@ void voluta_die_if_bad_sb(const char *path, const char *pass)
 		err = -ENOKEY;
 		goto out;
 	}
-	err = voluta_decipher_super_block(sb, pass);
+	err = voluta_decipher_sb(sb, pass);
 out:
 	del_super_block(sb);
 	if (err == -EAGAIN) {

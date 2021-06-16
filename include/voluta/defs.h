@@ -22,8 +22,8 @@
 /* current on-disk format version number */
 #define VOLUTA_FMT_VERSION              (1)
 
-/* volume's boot-record marker (ASCII: "@voluta@") */
-#define VOLUTA_BOOT_MARK                (0x406174756C6F7640L)
+/* volume's root marker (ASCII: "@voluta@") */
+#define VOLUTA_SBROOT_MARK              (0x406174756C6F7640L)
 
 /* file-system fsid magic number (ASCII: "@VLT") */
 #define VOLUTA_SUPER_MAGIC              (0x544C5640U)
@@ -498,40 +498,39 @@ struct voluta_kdf_pair {
 } voluta_packed_aligned32;
 
 
-struct voluta_sb_boot {
-	struct voluta_header    br_hdr;
-	uint64_t                br_magic;
-	uint64_t                br_version;
-	uint64_t                br_size;
-	uint32_t                br_type;
-	uint32_t                br_flags;
-	uint8_t                 br_endianness;
-	uint8_t                 br_reserved1[15];
-	uint8_t                 br_sw_version[64];
-	struct voluta_uuid      br_uuid;
-	uint8_t                 br_reserved2[368];
-	struct voluta_kdf_pair  br_kdf_pair;
-	uint32_t                br_chiper_algo;
-	uint32_t                br_chiper_mode;
-	uint8_t                 br_reserved3[472];
-	uint8_t                 br_reserved4[3072];
+struct voluta_sb_root {
+	struct voluta_header    sr_hdr;
+	uint64_t                sr_magic;
+	uint64_t                sr_version;
+	uint64_t                sr_volume_size;
+	uint32_t                sr_flags;
+	uint8_t                 sr_endianness;
+	uint8_t                 sr_reserved1[19];
+	uint8_t                 sr_sw_version[64];
+	struct voluta_uuid      sr_uuid;
+	uint8_t                 sr_reserved2[368];
+	struct voluta_kdf_pair  sr_kdf_pair;
+	uint32_t                sr_chiper_algo;
+	uint32_t                sr_chiper_mode;
+	uint8_t                 sr_reserved3[472];
+	uint8_t                 sr_reserved4[3072];
 } voluta_packed_aligned64;
 
 
 struct voluta_sb_hash {
-	struct voluta_hash512   hr_fill_hash;
-	struct voluta_hash512   hr_pass_hash;
-	uint8_t                 hr_reserved[1920];
-	uint8_t                 hr_fill[2048];
+	struct voluta_hash512   sh_fill_hash;
+	struct voluta_hash512   sh_pass_hash;
+	uint8_t                 sh_reserved[1920];
+	uint8_t                 sh_fill[2048];
 } voluta_packed_aligned64;
 
 
 struct voluta_sb_keys {
-	uint32_t                kr_cipher_algo;
-	uint32_t                kr_cipher_mode;
-	uint8_t                 kr_reserved1[104];
-	struct voluta_iv        kr_iv[503];
-	struct voluta_key       kr_key[257];
+	uint32_t                sk_cipher_algo;
+	uint32_t                sk_cipher_mode;
+	uint8_t                 sk_reserved1[104];
+	struct voluta_iv        sk_iv[503];
+	struct voluta_key       sk_key[257];
 } voluta_packed_aligned64;
 
 
@@ -541,7 +540,7 @@ struct voluta_sb_uspace {
 
 
 struct voluta_super_block {
-	struct voluta_sb_boot   sb_boot;
+	struct voluta_sb_root   sb_boot;
 	struct voluta_sb_hash   sb_hash;
 	uint64_t                sb_birth_time;
 	uint64_t                sb_ag_count;

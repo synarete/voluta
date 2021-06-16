@@ -178,7 +178,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_itable_tnode, VOLUTA_ITNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_dir_htnode, VOLUTA_DIR_HTNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_ioc_query, 2048);
-	REQUIRE_SIZEOF_4K(struct voluta_sb_boot);
+	REQUIRE_SIZEOF_4K(struct voluta_sb_root);
 	REQUIRE_SIZEOF_4K(struct voluta_sb_hash);
 }
 
@@ -200,11 +200,11 @@ static void guarantee_persistent_types_members(void)
 
 static void guarantee_persistent_types_alignment(void)
 {
-	REQUIRE_AOFFSET64(struct voluta_sb_boot, br_magic, 16);
-	REQUIRE_AOFFSET64(struct voluta_sb_boot, br_version, 24);
-	REQUIRE_AOFFSET64(struct voluta_sb_boot, br_size, 32);
-	REQUIRE_AOFFSET64(struct voluta_sb_boot, br_sw_version, 64);
-	REQUIRE_AOFFSET64(struct voluta_sb_boot, br_kdf_pair, 512);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_magic, 16);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_version, 24);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_volume_size, 32);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_sw_version, 64);
+	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_kdf_pair, 512);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_boot, 0);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hash, 4096);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
@@ -335,7 +335,7 @@ static int check_endianess(void)
 {
 	int err;
 
-	err = check_endianess64(VOLUTA_BOOT_MARK, "@voluta@");
+	err = check_endianess64(VOLUTA_SBROOT_MARK, "@voluta@");
 	if (err) {
 		return err;
 	}

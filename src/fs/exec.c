@@ -96,7 +96,7 @@ static int fse_init_qalloc(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_qalloc *qalloc = &fse_obj_of(fse)->fs_core.c.qalloc;
 
-	err = voluta_setup_qalloc_with(qalloc, fse->args.memwant);
+	err = voluta_bootstrap_qalloc(qalloc, fse->args.memwant);
 	if (!err) {
 		fse->qalloc = qalloc;
 		fse->qalloc->mode = fse->args.pedantic;

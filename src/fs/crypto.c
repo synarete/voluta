@@ -518,36 +518,6 @@ void voluta_crypto_fini(struct voluta_crypto *crypto)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void do_randomize(void *buf, size_t len, bool very_strong)
-{
-	const enum gcry_random_level random_level =
-	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
-
-	gcry_randomize(buf, len, random_level);
-}
-
-static void iv_clone(const struct voluta_iv *iv, struct voluta_iv *other)
-{
-	memcpy(other, iv, sizeof(*other));
-}
-
-static void iv_rand(struct voluta_iv *iv, size_t n)
-{
-	do_randomize(iv, n * sizeof(*iv), false);
-}
-
-static void key_clone(const struct voluta_key *key, struct voluta_key *other)
-{
-	memcpy(other, key, sizeof(*other));
-}
-
-static void key_rand(struct voluta_key *key, size_t n)
-{
-	do_randomize(key, n * sizeof(*key), true);
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
 void voluta_kivam_init(struct voluta_kivam *kivam)
 {
 	memset(kivam, 0, sizeof(*kivam));
@@ -560,82 +530,17 @@ void voluta_kivam_fini(struct voluta_kivam *kivam)
 	memset(kivam, 0xC3, sizeof(*kivam));
 }
 
-static void kivam_setup(struct voluta_kivam *kivam,
-                        uint32_t cipher_algo,
-                        uint32_t cipher_mode,
-                        const struct voluta_key *key,
-                        const struct voluta_iv *iv)
-{
-	voluta_kivam_init(kivam);
-	key_clone(key, &kivam->key);
-	iv_clone(iv, &kivam->iv);
-	kivam->cipher_algo = cipher_algo;
-	kivam->cipher_mode = cipher_mode;
-}
-
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other)
 {
 	memcpy(other, kivam, sizeof(*other));
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static uint32_t kr_cipher_algo(const struct voluta_sb_keys *kr)
+void voluta_gcry_randomize(void *buf, size_t len, bool very_strong)
 {
-	return voluta_le32_to_cpu(kr->kr_cipher_algo);
+	const enum gcry_random_level random_level =
+	        very_strong ? GCRY_VERY_STRONG_RANDOM : GCRY_STRONG_RANDOM;
+
+	gcry_randomize(buf, len, random_level);
 }
 
-static void
-kr_set_cipher_algo(struct voluta_sb_keys *kr, uint32_t algo)
-{
-	kr->kr_cipher_algo = voluta_cpu_to_le32(algo);
-}
-
-static uint32_t kr_cipher_mode(const struct voluta_sb_keys *kr)
-{
-	return voluta_le32_to_cpu(kr->kr_cipher_mode);
-}
-
-static void kr_set_cipher_mode(struct voluta_sb_keys *kr, uint32_t mode)
-{
-	kr->kr_cipher_mode = voluta_cpu_to_le32(mode);
-}
-
-void voluta_krec_setup(struct voluta_sb_keys *kr)
-{
-	kr_set_cipher_algo(kr, VOLUTA_CIPHER_AES256);
-	kr_set_cipher_mode(kr, VOLUTA_CIPHER_MODE_GCM);
-	voluta_memzero(kr->kr_reserved1, sizeof(kr->kr_reserved1));
-	iv_rand(kr->kr_iv, ARRAY_SIZE(kr->kr_iv));
-	key_rand(kr->kr_key, ARRAY_SIZE(kr->kr_key));
-}
-
-static const struct voluta_key *
-kr_key_by_lba(const struct voluta_sb_keys *kr, voluta_lba_t lba)
-{
-	size_t key_slot;
-
-	key_slot = (uint64_t)lba % ARRAY_SIZE(kr->kr_key);
-	return &kr->kr_key[key_slot];
-}
-
-static const struct voluta_iv *
-kr_iv_by_ag_index(const struct voluta_sb_keys *kr, voluta_index_t ag_index)
-{
-	size_t iv_slot;
-
-	iv_slot = (uint64_t)ag_index % ARRAY_SIZE(kr->kr_iv);
-	return &kr->kr_iv[iv_slot];
-}
-
-void voluta_krec_kivam_of(const struct voluta_sb_keys *kr,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_kivam *out_kivam)
-{
-	const struct voluta_iv *iv = kr_iv_by_ag_index(kr, vaddr->ag_index);
-	const struct voluta_key *key = kr_key_by_lba(kr, vaddr->lba);
-
-	kivam_setup(out_kivam, kr_cipher_algo(kr),
-	            kr_cipher_mode(kr), key, iv);
-}

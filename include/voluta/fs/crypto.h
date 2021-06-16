@@ -69,11 +69,7 @@ void voluta_kivam_fini(struct voluta_kivam *kivam);
 void voluta_kivam_copyto(const struct voluta_kivam *kivam,
                          struct voluta_kivam *other);
 
+void voluta_gcry_randomize(void *buf, size_t len, bool very_strong);
 
-void voluta_krec_setup(struct voluta_sb_keys *kr);
-
-void voluta_krec_kivam_of(const struct voluta_sb_keys *keys,
-                          const struct voluta_vaddr *vaddr,
-                          struct voluta_kivam *out_kivam);
 
 #endif /* VOLUTA_CRYPTO_H_ */

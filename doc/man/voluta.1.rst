@@ -99,25 +99,12 @@ umount
 
 ..
 
-clone
------
-**voluta clone** [options] *mountpoint* *pathname*
+snap
+----
+**voluta snap** [options] *mountpoint* *pathname*
 
 ..
 
-
-export
-------
-**voluta export** *volume-file* *archive-dir*
-
-..
-
-
-import
--------
-**voluta import** *archive-file* *volume-dir*
-
-..
 
 show
 ------

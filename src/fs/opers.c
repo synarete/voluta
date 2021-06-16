@@ -1137,9 +1137,9 @@ out:
 	return op_finish(sbi, op, err);
 }
 
-int voluta_fs_clone(struct voluta_sb_info *sbi,
-                    const struct voluta_oper *op,
-                    ino_t ino, char *str, size_t lim)
+int voluta_fs_snap(struct voluta_sb_info *sbi,
+                   const struct voluta_oper *op,
+                   ino_t ino, char *str, size_t lim)
 {
 	int err;
 	struct voluta_inode_info *ii = NULL;
@@ -1153,7 +1153,7 @@ int voluta_fs_clone(struct voluta_sb_info *sbi,
 	err = voluta_fetch_inode(sbi, ino, &ii);
 	ok_or_goto_out(err);
 
-	err = voluta_do_clone(op, ii, str, lim);
+	err = voluta_do_snap(op, ii, str, lim);
 	ok_or_goto_out(err);
 out:
 	return op_finish(sbi, op, err);

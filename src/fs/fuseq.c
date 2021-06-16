@@ -2429,15 +2429,15 @@ out:
 	return fuseq_reply_ioctl(fqw, 0, &query, sizeof(query), err);
 }
 
-static int do_ioc_clone(struct voluta_fuseq_worker *fqw, ino_t ino,
-                        const struct voluta_fuseq_in *in)
+static int do_ioc_snap(struct voluta_fuseq_worker *fqw, ino_t ino,
+                       const struct voluta_fuseq_in *in)
 {
 	int err;
 	int flags;
 	size_t bsz_in;
 	size_t bsz_out;
 	const void *buf_in;
-	struct voluta_ioc_clone clone = {
+	struct voluta_ioc_snap snap = {
 		.flags = 0
 	};
 
@@ -2448,17 +2448,17 @@ static int do_ioc_clone(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 	if (!bsz_out && (flags | FUSE_IOCTL_RETRY)) {
 		err = -ENOSYS;
-	} else if (bsz_in < sizeof(clone.flags)) {
+	} else if (bsz_in < sizeof(snap.flags)) {
 		err = -EINVAL;
 	} else {
-		clone.flags = ((const struct voluta_ioc_clone *)buf_in)->flags;
+		snap.flags = ((const struct voluta_ioc_snap *)buf_in)->flags;
 
 		fuseq_lock_fs(fqw);
-		err = voluta_fs_clone(fqw->sbi, fqw->op, ino,
-		                      clone.name, sizeof(clone.name));
+		err = voluta_fs_snap(fqw->sbi, fqw->op, ino,
+		                     snap.name, sizeof(snap.name));
 		fuseq_unlock_fs(fqw);
 	}
-	return fuseq_reply_ioctl(fqw, 0, &clone, sizeof(clone), err);
+	return fuseq_reply_ioctl(fqw, 0, &snap, sizeof(snap), err);
 }
 
 static int check_ioctl_flags(int flags)
@@ -2504,8 +2504,8 @@ static int do_ioctl(struct voluta_fuseq_worker *fqw, ino_t ino,
 		case VOLUTA_FS_IOC_QUERY:
 			ret = do_ioc_query(fqw, ino, in);
 			break;
-		case VOLUTA_FS_IOC_CLONE:
-			ret = do_ioc_clone(fqw, ino, in);
+		case VOLUTA_FS_IOC_SNAP:
+			ret = do_ioc_snap(fqw, ino, in);
 			break;
 		default:
 			ret = do_ioc_notimpl(fqw, ino, in);

@@ -90,7 +90,7 @@ struct voluta_ioc_tweak {
 };
 
 
-struct voluta_ioc_clone {
+struct voluta_ioc_snap {
 	int32_t  flags;
 	uint32_t reserved;
 	uint64_t reserved2;
@@ -101,6 +101,6 @@ struct voluta_ioc_clone {
 
 #define VOLUTA_FS_IOC_QUERY   _IOWR('V', 1, struct voluta_ioc_query)
 #define VOLUTA_FS_IOC_TWEAK   _IOWR('V', 2, struct voluta_ioc_tweak)
-#define VOLUTA_FS_IOC_CLONE   _IOWR('V', 3, struct voluta_ioc_clone)
+#define VOLUTA_FS_IOC_SNAP   _IOWR('V', 3, struct voluta_ioc_snap)
 
 #endif /* VOLUTA_IOCTLS_H_ */

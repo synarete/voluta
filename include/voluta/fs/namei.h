@@ -109,8 +109,8 @@ int voluta_do_query(const struct voluta_oper *op,
                     struct voluta_inode_info *ii,
                     struct voluta_ioc_query *out_qry);
 
-int voluta_do_clone(const struct voluta_oper *op,
-                    struct voluta_inode_info *ii, char *str, size_t lim);
+int voluta_do_snap(const struct voluta_oper *op,
+                   struct voluta_inode_info *ii, char *str, size_t lim);
 
 int voluta_check_name(const char *name);
 

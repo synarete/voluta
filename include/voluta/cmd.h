@@ -86,8 +86,8 @@ struct voluta_subcmd_umount {
 	bool    lazy;
 };
 
-/* arguments for 'clone' sub-command */
-struct voluta_subcmd_clone {
+/* arguments for 'snap' sub-command */
+struct voluta_subcmd_snap {
 	char   *point;
 	char   *point_real;
 	char   *volume;
@@ -113,7 +113,7 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_mkfs       mkfs;
 	struct voluta_subcmd_mount      mount;
 	struct voluta_subcmd_umount     umount;
-	struct voluta_subcmd_clone      clone;
+	struct voluta_subcmd_snap       snap;
 	struct voluta_subcmd_show       show;
 	struct voluta_subcmd_fsck       fsck;
 };
@@ -175,7 +175,7 @@ void voluta_execute_fsck(void);
 
 void voluta_execute_show(void);
 
-void voluta_execute_clone(void);
+void voluta_execute_snap(void);
 
 void voluta_execute_encrypt(void);
 

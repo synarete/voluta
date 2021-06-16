@@ -105,8 +105,8 @@ void voluta_setup_inode(struct voluta_inode_info *ii,
                         ino_t parent_ino, mode_t parent_mode,
                         mode_t mode, dev_t rdev);
 
-void voluta_clone_inode(struct voluta_inode_info *ii,
-                        const struct voluta_inode_info *ii_other);
+void voluta_snap_inode(struct voluta_inode_info *ii,
+                       const struct voluta_inode_info *ii_other);
 
 void voluta_stat_of(const struct voluta_inode_info *ii, struct stat *st);
 

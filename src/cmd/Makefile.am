@@ -19,7 +19,6 @@ voluta_LDADD += $(top_builddir)/src/infra/libvoluta_infra.la
 voluta_LDADD += $(PTHREAD_LIBS)
 voluta_LDADD += $(LIBGCRYPT_LIBS)
 voluta_SOURCES = $(NULL)
-voluta_SOURCES += clone.c
 voluta_SOURCES += common.c
 voluta_SOURCES += fsck.c
 voluta_SOURCES += getpass.c
@@ -27,5 +26,6 @@ voluta_SOURCES += main.c
 voluta_SOURCES += mkfs.c
 voluta_SOURCES += mount.c
 voluta_SOURCES += show.c
+voluta_SOURCES += snap.c
 voluta_SOURCES += umount.c
 

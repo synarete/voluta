@@ -52,7 +52,7 @@ static const struct voluta_zcrypt_params voluta_default_zcrypt = {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void iv_clone(const struct voluta_iv *iv, struct voluta_iv *other)
+static void iv_snap(const struct voluta_iv *iv, struct voluta_iv *other)
 {
 	memcpy(other, iv, sizeof(*other));
 }
@@ -62,7 +62,7 @@ static void iv_rand(struct voluta_iv *iv, size_t n)
 	voluta_gcry_randomize(iv, n * sizeof(*iv), false);
 }
 
-static void key_clone(const struct voluta_key *key, struct voluta_key *other)
+static void key_snap(const struct voluta_key *key, struct voluta_key *other)
 {
 	memcpy(other, key, sizeof(*other));
 }
@@ -337,8 +337,8 @@ static void sbk_kivam_of(const struct voluta_sb_keys *sbk,
 	const struct voluta_key *key = sbk_key_by_lba(sbk, vaddr->lba);
 
 	voluta_kivam_init(kivam);
-	key_clone(key, &kivam->key);
-	iv_clone(iv, &kivam->iv);
+	key_snap(key, &kivam->key);
+	iv_snap(iv, &kivam->iv);
 	kivam->cipher_algo = sbk_cipher_algo(sbk);
 	kivam->cipher_mode = sbk_cipher_mode(sbk);
 }

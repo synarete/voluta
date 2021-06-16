@@ -191,9 +191,9 @@ int voluta_fs_query(struct voluta_sb_info *sbi,
                     const struct voluta_oper *op, ino_t ino,
                     struct voluta_ioc_query *out_qry);
 
-int voluta_fs_clone(struct voluta_sb_info *sbi,
-                    const struct voluta_oper *op,
-                    ino_t ino, char *str, size_t lim);
+int voluta_fs_snap(struct voluta_sb_info *sbi,
+                   const struct voluta_oper *op,
+                   ino_t ino, char *str, size_t lim);
 
 int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags);
 

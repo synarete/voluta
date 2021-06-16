@@ -2047,7 +2047,7 @@ static int check_fsowner(const struct voluta_sb_info *sbi,
 	return uid_eq(op->ucred.uid, sbi->sb_owner.uid) ? 0 : -EPERM;
 }
 
-static int check_cloneable_volume(const struct voluta_sb_info *sbi)
+static int check_snapable_volume(const struct voluta_sb_info *sbi)
 {
 	/* XXX FIXME */
 	voluta_unused(sbi);
@@ -2066,8 +2066,8 @@ static int check_rootdir(const struct voluta_inode_info *ii)
 	return 0;
 }
 
-static int check_clone(const struct voluta_oper *op,
-                       struct voluta_inode_info *ii)
+static int check_snap(const struct voluta_oper *op,
+                      struct voluta_inode_info *ii)
 {
 	int err;
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
@@ -2084,14 +2084,14 @@ static int check_clone(const struct voluta_oper *op,
 	if (err) {
 		return err;
 	}
-	err = check_cloneable_volume(sbi);
+	err = check_snapable_volume(sbi);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int gen_clone_name(char *str, size_t lim, struct voluta_str *name)
+static int gen_snap_name(char *str, size_t lim, struct voluta_str *name)
 {
 	int len;
 	struct voluta_uuid uu;
@@ -2111,18 +2111,18 @@ static int gen_clone_name(char *str, size_t lim, struct voluta_str *name)
 	return 0;
 }
 
-static int do_clone(const struct voluta_oper *op,
-                    struct voluta_inode_info *ii, char *str, size_t lim)
+static int do_snap(const struct voluta_oper *op,
+                   struct voluta_inode_info *ii, char *str, size_t lim)
 {
 	int err;
 	struct voluta_str name;
 	struct voluta_sb_info *sbi = ii_sbi(ii);
 
-	err = check_clone(op, ii);
+	err = check_snap(op, ii);
 	if (err) {
 		return err;
 	}
-	err = gen_clone_name(str, lim, &name);
+	err = gen_snap_name(str, lim, &name);
 	if (err) {
 		return err;
 	}
@@ -2137,13 +2137,13 @@ static int do_clone(const struct voluta_oper *op,
 	return 0;
 }
 
-int voluta_do_clone(const struct voluta_oper *op,
-                    struct voluta_inode_info *ii, char *str, size_t lim)
+int voluta_do_snap(const struct voluta_oper *op,
+                   struct voluta_inode_info *ii, char *str, size_t lim)
 {
 	int err;
 
 	ii_incref(ii);
-	err = do_clone(op, ii, str, lim);
+	err = do_snap(op, ii, str, lim);
 	ii_decref(ii);
 	return err;
 }

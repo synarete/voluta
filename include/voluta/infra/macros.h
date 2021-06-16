@@ -61,5 +61,8 @@
 #define voluta_likely(x_)               __builtin_expect(!!(x_), 1)
 #define voluta_unlikely(x_)             __builtin_expect(!!(x_), 0)
 
+/* unreachable code marker */
+#define voluta_unreachable()		__builtin_unreachable()
+
 
 #endif /* VOLUTA_MACROS_H_ */

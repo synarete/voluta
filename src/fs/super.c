@@ -24,7 +24,7 @@
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/osdc.h>
+#include <voluta/fs/losdc.h>
 #include <voluta/fs/boot.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/spmaps.h>
@@ -425,7 +425,7 @@ static int load_bksec(const struct voluta_sb_info *sbi,
 	voluta_assert_eq(baddr.len, sizeof(*bks));
 	voluta_assert_eq(baddr.off % VOLUTA_BKSEC_SIZE, 0);
 
-	err = voluta_osdc_load(sbi->sb_osdc, &baddr, bks);
+	err = voluta_losdc_load(sbi->sb_losdc, &baddr, bks);
 	if (err) {
 		voluta_assert_ok(err);
 		return err;
@@ -1009,7 +1009,7 @@ static int load_from_blob(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = voluta_osdc_load(sbi->sb_osdc, &baddr, vi->view);
+	err = voluta_losdc_load(sbi->sb_losdc, &baddr, vi->view);
 	if (err) {
 		return err;
 	}
@@ -1078,14 +1078,14 @@ int voluta_sbi_save_sb(struct voluta_sb_info *sbi)
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
 	voluta_assert_eq(vba->vaddr.len, vba->baddr.len);
-	return voluta_osdc_store(sbi->sb_osdc, &vba->baddr, sbi->sb);
+	return voluta_losdc_store(sbi->sb_losdc, &vba->baddr, sbi->sb);
 }
 
 int voluta_sbi_load_sb(struct voluta_sb_info *sbi)
 {
 	const struct voluta_vba *vba = &sbi->sb_vba;
 
-	return voluta_osdc_load(sbi->sb_osdc, &vba->baddr, sbi->sb);
+	return voluta_losdc_load(sbi->sb_losdc, &vba->baddr, sbi->sb);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1315,7 +1315,7 @@ static int format_agbks_of(struct voluta_sb_info *sbi,
 	struct voluta_vba vba;
 
 	voluta_vba_for_agbks(&vba, agi->ag_index);
-	err = voluta_osdc_create(sbi->sb_osdc, &vba.baddr.bid);
+	err = voluta_losdc_create(sbi->sb_losdc, &vba.baddr.bid);
 	if (err) {
 		return err;
 	}
@@ -1501,7 +1501,7 @@ static void sbi_init_commons(struct voluta_sb_info *sbi)
 	sbi->sb_mntime = 0;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
-	sbi->sb_osdc = NULL;
+	sbi->sb_losdc = NULL;
 }
 
 static void sbi_fini_commons(struct voluta_sb_info *sbi)
@@ -1512,7 +1512,7 @@ static void sbi_fini_commons(struct voluta_sb_info *sbi)
 	sbi->sb_ms_flags = 0;
 	sbi->sb_cache = NULL;
 	sbi->sb_qalloc = NULL;
-	sbi->sb_osdc = NULL;
+	sbi->sb_losdc = NULL;
 	sbi->sb = NULL;
 }
 
@@ -1621,20 +1621,20 @@ out_err:
 
 static void sbi_attach_to(struct voluta_sb_info *sbi,
                           struct voluta_cache *cache,
-                          struct voluta_osdctl *osdc)
+                          struct voluta_losdctl *losdc)
 {
 	sbi->sb_cache = cache;
-	sbi->sb_osdc = osdc;
+	sbi->sb_losdc = losdc;
 	sbi->sb_qalloc = cache->c_qalloc;
 	sbi->sb_ops.op_iopen_max = calc_iopen_limit(cache);
 }
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
                     struct voluta_cache *cache,
-                    struct voluta_osdctl *osdc)
+                    struct voluta_losdctl *losdc)
 {
 	sbi_init_commons(sbi);
-	sbi_attach_to(sbi, cache, osdc);
+	sbi_attach_to(sbi, cache, losdc);
 	return sbi_init_subs(sbi);
 }
 
@@ -1727,7 +1727,7 @@ static int stage_parents_of(struct voluta_sb_info *sbi,
 
 static int commit_last(const struct voluta_sb_info *sbi, int flags)
 {
-	return (flags & VOLUTA_F_NOW) ? voluta_osdc_sync(sbi->sb_osdc) : 0;
+	return (flags & VOLUTA_F_NOW) ? voluta_losdc_sync(sbi->sb_losdc) : 0;
 }
 
 int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
@@ -1739,7 +1739,7 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = voluta_flush_dirty_vnodes(sbi->sb_cache, sbi->sb_osdc, 0);
+	err = voluta_flush_dirty_vnodes(sbi->sb_cache, sbi->sb_losdc, 0);
 	if (err) {
 		return err;
 	}
@@ -1761,7 +1761,7 @@ int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = voluta_flush_dirty_vnodes(sbi->sb_cache, sbi->sb_osdc, ds_key);
+	err = voluta_flush_dirty_vnodes(sbi->sb_cache, sbi->sb_losdc, ds_key);
 	if (err) {
 		return err;
 	}

@@ -174,6 +174,8 @@ static void voluta_abort(void)
 	fflush(stdout);
 	fflush(stderr);
 	abort();
+	_exit(EXIT_FAILURE);
+	voluta_unreachable();
 }
 
 __attribute__((__noreturn__))
@@ -182,6 +184,7 @@ voluta_fatal_at(const char *msg, const char *fl, int ln)
 {
 	voluta_panicf(fl, ln, "failure: `%s'", msg);
 	voluta_abort();
+	voluta_unreachable();
 }
 
 __attribute__((__noreturn__))

@@ -21,7 +21,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/osdc.h>
+#include <voluta/fs/losdc.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/private.h>
 

@@ -455,7 +455,7 @@ struct voluta_fuseq {
 
 /* file-system input arguments */
 struct voluta_fs_args {
-	const char *repodir;
+	const char *objsdir;
 	const char *mntdir;
 	const char *rootid;
 	const char *fsname;

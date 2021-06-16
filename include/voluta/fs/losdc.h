@@ -61,6 +61,4 @@ int voluta_losdc_resolve(struct voluta_losdctl *losdc,
 int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
                               struct voluta_losdctl *losdc, long ds_key);
 
-int voluta_require_objstore_path(const char *path);
-
 #endif /* VOLUTA_LOSDC_H_ */

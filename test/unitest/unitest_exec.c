@@ -268,7 +268,7 @@ void ut_execute_tests(void)
 			.pid = getpid(),
 			.umask = 0002,
 			.mntdir = "/",
-			.repodir = NULL,
+			.objsdir = NULL,
 			.fsname = "unitests",
 			.vsize = UT_VOLUME_SIZE,
 			.memwant = UT_GIGA,
@@ -278,7 +278,7 @@ void ut_execute_tests(void)
 		.version = ut_globals.version
 	};
 	args.fs_args.rootid = args.rootid.name;
-	args.fs_args.repodir = ut_globals.test_dir_real;
+	args.fs_args.objsdir = ut_globals.test_dir_real;
 
 	args.fs_args.passwd = ut_make_passwd(&args.passph);
 	args.fs_args.kcopy_mode = kcopy_mode;

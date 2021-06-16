@@ -25,6 +25,7 @@ voluta_SOURCES += getpass.c
 voluta_SOURCES += main.c
 voluta_SOURCES += mkfs.c
 voluta_SOURCES += mount.c
+voluta_SOURCES += repo.c
 voluta_SOURCES += show.c
 voluta_SOURCES += snap.c
 voluta_SOURCES += umount.c

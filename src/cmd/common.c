@@ -222,34 +222,6 @@ out:
 	}
 }
 
-void voluta_die_if_not_repository(const char *path)
-{
-	int err;
-	char *lockfile = NULL;
-	struct stat st = { .st_size = 0 };
-
-	err = voluta_require_objstore_path(path);
-	if ((err == -EPERM) || (err == -EACCES)) {
-		voluta_die(err, "can not access repository: %s", path);
-	} else if (err) {
-		voluta_die(err, "not a valid repository: %s", path);
-	}
-	lockfile = voluta_lockfile_path(path);
-	voluta_stat_reg(lockfile, &st);
-	if (st.st_size > 0) {
-		voluta_die(0, "lock-file not empty: %s", lockfile);
-	}
-	voluta_pfree_string(&lockfile);
-}
-
-void voluta_die_if_not_lockable(const char *path, bool rw)
-{
-	int fd = -1;
-
-	voluta_open_and_flock(path, rw, &fd);
-	voluta_funlock_and_close(path, &fd);
-}
-
 void voluta_die_if_no_mountd(void)
 {
 	int err;
@@ -335,49 +307,6 @@ void voluta_die_if_not_mntdir(const char *path, bool mount)
 		if (st.st_ino != VOLUTA_INO_ROOT) {
 			voluta_die(0, "not a voluta mount-point: %s", path);
 		}
-	}
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-void voluta_open_and_flock(const char *path, bool rw, int *out_fd)
-{
-	int err;
-	const int o_flags = rw ? O_RDWR : O_RDONLY;
-	struct flock fl = {
-		.l_type = rw ? F_WRLCK : F_RDLCK,
-		.l_whence = SEEK_SET,
-		.l_start = 0,
-		.l_len = 0
-	};
-
-	*out_fd = -1;
-	err = voluta_sys_open(path, o_flags, 0, out_fd);
-	if (err) {
-		voluta_die(err, "failed to opendir: %s", path);
-	}
-	err = voluta_sys_fcntl_flock(*out_fd, F_SETLK, &fl);
-	if (err) {
-		voluta_die(err, "failed to flock: %s", path);
-	}
-}
-
-void voluta_funlock_and_close(const char *path, int *pfd)
-{
-	int err;
-	struct flock fl = {
-		.l_type = F_UNLCK,
-		.l_whence = SEEK_SET,
-		.l_start = 0,
-		.l_len = 0
-	};
-
-	if ((path != NULL) && (*pfd > 0)) {
-		err = voluta_sys_fcntl_flock(*pfd, F_SETLK, &fl);
-		if (err) {
-			voluta_die(err, "failed to funlock: %s", path);
-		}
-		voluta_sys_closefd(pfd);
 	}
 }
 
@@ -939,7 +868,7 @@ void voluta_create_fse_inst(const struct voluta_fs_args *args)
 	}
 }
 
-void voluta_destrpy_fse_inst(void)
+void voluta_destroy_fse_inst(void)
 {
 	if (g_fs_env_inst) {
 		voluta_fse_del(g_fs_env_inst);
@@ -1092,64 +1021,4 @@ void voluta_pretty_size(size_t n, char *buf, size_t bsz)
 	}
 }
 
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static char *headref_path(const char *repodir)
-{
-	return voluta_joinpath_safe(repodir, "HEAD");
-}
-
-void voluta_save_headref(const char *repodir, const char *rootid)
-{
-	int err;
-	int fd = -1;
-	char *path = headref_path(repodir);
-	const size_t len = strlen(rootid);
-
-	err = voluta_sys_open(path, O_CREAT | O_RDWR, 0600, &fd);
-	if (err) {
-		voluta_die(err, "failed to create: %s", path);
-	}
-	err = voluta_sys_pwriten(fd, rootid, len, 0);
-	if (err) {
-		voluta_die(err, "write error: %s", path);
-	}
-	err = voluta_sys_pwriten(fd, "\n", 1, (loff_t)len);
-	if (err) {
-		voluta_die(err, "write error: %s", path);
-	}
-	voluta_sys_closefd(&fd);
-	voluta_pfree_string(&path);
-}
-
-static void strip_headref(char *buf, size_t len)
-{
-	struct voluta_substr ss;
-
-	buf[len] = '\0';
-	voluta_substr_init_rw(&ss, buf, len, len);
-	voluta_substr_strip_if(&ss, voluta_chr_isspace, &ss);
-	voluta_substr_copyto(&ss, buf, len);
-}
-
-void voluta_load_headref(const char *repodir, char *buf, size_t bsz)
-{
-	int err;
-	int fd = -1;
-	size_t nrd = 0;
-	char *path = headref_path(repodir);
-
-	err = voluta_sys_open(path, O_RDONLY, 0600, &fd);
-	if (err) {
-		voluta_die(err, "failed to open: %s", path);
-	}
-	err = voluta_sys_pread(fd, buf, bsz - 1, 0, &nrd);
-	if (err) {
-		voluta_die(err, "read error: %s", path);
-	}
-	voluta_sys_closefd(&fd);
-	voluta_pfree_string(&path);
-
-	strip_headref(buf, nrd);
-}
 

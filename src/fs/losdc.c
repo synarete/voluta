@@ -1226,36 +1226,3 @@ int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
 	dset_fini(&dset);
 	return err;
 }
-
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
-int voluta_require_objstore_path(const char *path)
-{
-	int err;
-	size_t len;
-	struct stat st;
-	const int access_mode = R_OK | W_OK | X_OK;
-
-	len = strlen(path);
-	if (!len) {
-		return -EINVAL;
-	}
-	if (len >= VOLUTA_REPO_PATH_MAX) {
-		return -ENAMETOOLONG;
-	}
-	err = voluta_sys_access(path, access_mode);
-	if (err) {
-		return err;
-	}
-	err = voluta_sys_stat(path, &st);
-	if (err) {
-		return err;
-	}
-	if (!S_ISDIR(st.st_mode)) {
-		return -ENOTDIR;
-	}
-	if ((st.st_mode & S_IRUSR) != S_IRUSR) {
-		return -EPERM;
-	}
-	return 0;
-}

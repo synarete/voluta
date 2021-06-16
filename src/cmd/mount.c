@@ -135,13 +135,9 @@ static void mount_execute_fs(void)
 
 static void mount_finalize(void)
 {
-	int *pfd = &voluta_globals.cmd.mount.repo_lock_fd;
-
-	voluta_destrpy_fse_inst();
-	voluta_funlock_and_close(voluta_globals.cmd.mount.repo_lock, pfd);
-	voluta_pfree_string(&voluta_globals.cmd.mount.repo_lock);
-	voluta_pfree_string(&voluta_globals.cmd.mount.repodir_real);
+	voluta_destroy_fse_inst();
 	voluta_pfree_string(&voluta_globals.cmd.mount.mntpoint_real);
+	voluta_repo_finalize(&voluta_globals.repoi);
 	voluta_close_syslog();
 }
 
@@ -160,16 +156,13 @@ static void mount_setup_check_repo(void)
 {
 	const char *path = NULL;
 	const bool rw = !voluta_globals.cmd.mount.rdonly;
+	struct voluta_repo_info *repoi = &voluta_globals.repoi;
 
-	voluta_globals.cmd.mount.repodir_real =
-	        voluta_realpath_safe(voluta_globals.cmd.mount.repodir);
-
-	path = voluta_globals.cmd.mount.repodir_real;
-	voluta_die_if_not_repository(path);
-	voluta_load_headref(path, g_mount_rootid, sizeof(g_mount_rootid));
-
-	voluta_globals.cmd.mount.repo_lock = voluta_lockfile_path(path);
-	voluta_die_if_not_lockable(voluta_globals.cmd.mount.repo_lock, rw);
+	path = voluta_globals.cmd.mount.repodir;
+	voluta_repo_setup(repoi, path, rw);
+	voluta_repo_require_skel(repoi);
+	voluta_repo_require_lockable(repoi);
+	voluta_repo_load_head(repoi, g_mount_rootid, sizeof(g_mount_rootid));
 
 	voluta_globals.cmd.mount.passphrase =
 	        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
@@ -235,12 +228,16 @@ static void mount_boostrap_process(void)
 	}
 }
 
-static void mount_flock_repo(void)
+static void mount_lock_repo(void)
 {
-	voluta_open_and_flock(voluta_globals.cmd.mount.repo_lock,
-	                      !voluta_globals.cmd.mount.rdonly,
-	                      &voluta_globals.cmd.mount.repo_lock_fd);
+	voluta_repo_acquire_lock(&voluta_globals.repoi);
 }
+
+static void mount_unlock_repo(void)
+{
+	voluta_repo_release_lock(&voluta_globals.repoi);
+}
+
 
 static void mount_create_fs_env(void)
 {
@@ -250,7 +247,7 @@ static void mount_create_fs_env(void)
 		.gid = getgid(),
 		.pid = getpid(),
 		.umask = 0022,
-		.repodir = voluta_globals.cmd.mount.repodir_real,
+		.objsdir = voluta_globals.repoi.objs_dir,
 		.mntdir = voluta_globals.cmd.mount.mntpoint_real,
 		.passwd = voluta_globals.cmd.mount.passphrase,
 		.allowother = voluta_globals.cmd.mount.allowother,
@@ -333,8 +330,8 @@ void voluta_execute_mount(void)
 	/* Become daemon process */
 	mount_boostrap_process();
 
-	/* Lock volume as daemon process */
-	mount_flock_repo();
+	/* Lock repository as daemon process */
+	mount_lock_repo();
 
 	/* Setup environment instance */
 	mount_create_fs_env();
@@ -350,6 +347,9 @@ void voluta_execute_mount(void)
 
 	/* Execute as long as needed... */
 	mount_execute_fs();
+
+	/* Unlock repository */
+	mount_unlock_repo();
 
 	/* Report end-of-mount */
 	mount_trace_finish();

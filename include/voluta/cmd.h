@@ -51,8 +51,6 @@ struct voluta_subcmd_mkfs {
 	char   *passphrase;
 	char   *passphrase_file;
 	char   *repodir;
-	char   *repodir_real;
-	char   *repo_lock;
 	char   *name;
 	char   *size;
 	long    fs_size;
@@ -64,9 +62,6 @@ struct voluta_subcmd_mount {
 	char   *passphrase;
 	char   *passphrase_file;
 	char   *repodir;
-	char   *repodir_real;
-	char   *repo_lock;
-	int     repo_lock_fd;
 	char   *mntpoint;
 	char   *mntpoint_real;
 	char   *options;
@@ -118,6 +113,16 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_fsck       fsck;
 };
 
+/* repository parameters */
+struct voluta_repo_info {
+	char   *base_dir;
+	char   *objs_dir;
+	char   *lock_file;
+	int     lock_fd;
+	char   *head_file;
+	bool    rw;
+};
+
 /* global settings */
 struct voluta_globals {
 	/* program's version string */
@@ -154,11 +159,14 @@ struct voluta_globals {
 	/* execution start-time */
 	time_t  start_time;
 
+	/* repository parameters */
+	struct voluta_repo_info repoi;
+
 	/* sub-commands arguments */
 	union voluta_subcmd_args cmd;
 
 	/* sub-command execution hook */
-	const struct voluta_cmd_info *cmd_info;
+	const struct voluta_cmd_info *cmdi;
 };
 
 extern struct voluta_globals voluta_globals;
@@ -212,16 +220,8 @@ void voluta_die_if_exists(const char *path);
 
 void voluta_die_if_bad_sb(const char *path, const char *pass);
 
-void voluta_die_if_not_repository(const char *path);
-
-void voluta_die_if_not_lockable(const char *path, bool rw);
-
 void voluta_die_if_no_mountd(void);
 
-
-void voluta_open_and_flock(const char *path, bool rw, int *out_fd);
-
-void voluta_funlock_and_close(const char *path, int *pfd);
 
 char *voluta_clone_as_tmppath(const char *path);
 
@@ -291,7 +291,7 @@ char *voluta_sprintf_path(const char *fmt, ...);
 /* singleton instance */
 void voluta_create_fse_inst(const struct voluta_fs_args *args);
 
-void voluta_destrpy_fse_inst(void);
+void voluta_destroy_fse_inst(void);
 
 struct voluta_fs_env *voluta_fse_inst(void);
 
@@ -309,9 +309,26 @@ char *voluta_getpass2(const char *path);
 void voluta_delpass(char **pass);
 
 
-/* HEAD reference */
-void voluta_save_headref(const char *repodir, const char *rootid);
+/* repository */
+void voluta_repo_setup(struct voluta_repo_info *repoi,
+                       const char *base_dir, bool rw);
 
-void voluta_load_headref(const char *repodir, char *buf, size_t bsz);
+void voluta_repo_finalize(struct voluta_repo_info *repoi);
+
+void voluta_repo_create_skel(const struct voluta_repo_info *repoi);
+
+void voluta_repo_require_skel(struct voluta_repo_info *repoi);
+
+void voluta_repo_acquire_lock(struct voluta_repo_info *repoi);
+
+void voluta_repo_release_lock(struct voluta_repo_info *repoi);
+
+void voluta_repo_require_lockable(struct voluta_repo_info *repoi);
+
+void voluta_repo_save_head(const struct voluta_repo_info *repoi,
+                           const char *rootid);
+
+void voluta_repo_load_head(const struct voluta_repo_info *repoi,
+                           char *buf, size_t bsz);
 
 #endif /* VOLUTA_CMD_H_ */

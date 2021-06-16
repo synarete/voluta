@@ -64,7 +64,7 @@ static void fsck_getopt(void)
 
 static void fsck_finalize(void)
 {
-	voluta_destrpy_fse_inst();
+	voluta_destroy_fse_inst();
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/

@@ -539,7 +539,7 @@ static int fse_create_osd(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_losdc_open(fse->losdc, fse->args.repodir);
+	err = voluta_losdc_open(fse->losdc, fse->args.objsdir);
 	if (err) {
 		return err;
 	}
@@ -554,7 +554,7 @@ static int fse_open_osd(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_losdc_open(fse->losdc, fse->args.repodir);
+	err = voluta_losdc_open(fse->losdc, fse->args.objsdir);
 	if (err) {
 		return err;
 	}
@@ -750,14 +750,14 @@ static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 	const struct voluta_passphrase *pp = &fse->passph;
 
 	if (!fse->passph.passlen) {
-		log_err("missing passphrase of: %s", fse->args.repodir);
+		log_err("missing passphrase of: %s", fse->args.objsdir);
 		return -ENOKEY;
 	}
 	voluta_sb_crypt_params(fse->sb, zcp);
 	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
-		        fse->args.repodir, err);
+		        fse->args.objsdir, err);
 		return err;
 	}
 	return 0;
@@ -1057,30 +1057,28 @@ int voluta_fse_format(struct voluta_fs_env *fse)
 int voluta_fse_serve(struct voluta_fs_env *fse)
 {
 	int err;
-	const char *volume = fse->args.repodir;
-	const char *mntdir = fse->args.mntdir;
 
 	if (!fse->args.with_fuseq || (fse->fuseq == NULL)) {
 		return -EINVAL;
 	}
 	err = voluta_fse_reload(fse);
 	if (err) {
-		log_err("load-fs error: %s %d", volume, err);
+		log_err("load-fs error: %s %d", fse->args.objsdir, err);
 		return err;
 	}
 	err = voluta_fse_exec(fse);
 	if (err) {
-		log_err("exec-fs error: %s %d", mntdir, err);
+		log_err("exec-fs error: %s %d", fse->args.mntdir, err);
 		/* no return -- do post-exec cleanups */
 	}
 	err = voluta_fse_shut(fse);
 	if (err) {
-		log_err("shut-fs error: %s %d", volume, err);
+		log_err("shut-fs error: %s %d", fse->args.objsdir, err);
 		return err;
 	}
 	err = voluta_fse_term(fse);
 	if (err) {
-		log_err("term-fs error: %s %d", mntdir, err);
+		log_err("term-fs error: %s %d", fse->args.mntdir, err);
 		return err;
 	}
 	return 0;

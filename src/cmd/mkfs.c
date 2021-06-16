@@ -74,27 +74,14 @@ static void mkfs_getopt(void)
 
 static void mkfs_finalize(void)
 {
-	voluta_destrpy_fse_inst();
+	voluta_destroy_fse_inst();
 	voluta_delpass(&voluta_globals.cmd.mkfs.passphrase);
-	voluta_pfree_string(&voluta_globals.cmd.mkfs.repo_lock);
-	voluta_pfree_string(&voluta_globals.cmd.mkfs.repodir_real);
+	voluta_repo_finalize(&voluta_globals.repoi);
 }
 
 static void mkfs_setup_check_params(void)
 {
-	const char *path = NULL;
-
-	voluta_globals.cmd.mkfs.repodir_real =
-	        voluta_realpath_safe(voluta_globals.cmd.mkfs.repodir);
-
-	path = voluta_globals.cmd.mkfs.repodir_real;
-	voluta_die_if_not_empty_dir(path, true);
-
-	voluta_globals.cmd.mkfs.repo_lock = voluta_lockfile_path(path);
-
-	if (strlen(path) >= VOLUTA_REPO_PATH_MAX) {
-		voluta_die(-ENAMETOOLONG, "illegal repository path");
-	}
+	voluta_die_if_not_empty_dir(voluta_globals.cmd.mkfs.repodir, true);
 	if (!voluta_globals.cmd.mkfs.size) {
 		voluta_die_missing_arg("size");
 	}
@@ -102,11 +89,19 @@ static void mkfs_setup_check_params(void)
 	        voluta_getpass2(voluta_globals.cmd.mkfs.passphrase_file);
 }
 
+static void mkfs_format_repo(void)
+{
+	struct voluta_repo_info *repoi = &voluta_globals.repoi;
+
+	voluta_repo_setup(repoi, voluta_globals.cmd.mkfs.repodir, true);
+	voluta_repo_create_skel(repoi);
+}
+
 static void mkfs_create_fs_env(void)
 {
 	const struct voluta_fs_args args = {
 		.rootid = NULL,
-		.repodir = voluta_globals.cmd.mkfs.repodir_real,
+		.objsdir = voluta_globals.repoi.objs_dir,
 		.fsname = voluta_globals.cmd.mkfs.name,
 		.passwd = voluta_globals.cmd.mkfs.passphrase,
 		.vsize = voluta_globals.cmd.mkfs.fs_size,
@@ -124,31 +119,19 @@ static void mkfs_format_filesystem(void)
 	int err;
 	struct voluta_fs_env *fse;
 	struct voluta_namebuf rootid;
-	const char *repodir = voluta_globals.cmd.mkfs.repodir;
 
 	fse = voluta_fse_inst();
 	err = voluta_fse_format(fse);
 	if (err) {
-		voluta_die(err, "format error: %s", repodir);
+		voluta_die(err, "format error: %s",
+		           voluta_globals.cmd.mkfs.repodir);
 	}
 	err = voluta_fse_rootid(fse, rootid.name, sizeof(rootid.name));
 	if (err) {
-		voluta_die(err, "format error: %s", repodir);
+		voluta_die(err, "format error: %s",
+		           voluta_globals.cmd.mkfs.repodir);
 	}
-	voluta_save_headref(repodir, rootid.name);
-}
-
-static void mkfs_create_lockfile(void)
-{
-	int err;
-	int fd = -1;
-	const char *path = voluta_globals.cmd.mkfs.repo_lock;
-
-	err = voluta_sys_creat(path, 0600, &fd);
-	if (err) {
-		voluta_die(err, "failed to create lock file: %s", path);
-	}
-	voluta_sys_closefd(&fd);
+	voluta_repo_save_head(&voluta_globals.repoi, rootid.name);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -164,14 +147,14 @@ void voluta_execute_mkfs(void)
 	/* Verify user's arguments */
 	mkfs_setup_check_params();
 
+	/* Format repository skeleton */
+	mkfs_format_repo();
+
 	/* Prepare environment */
 	mkfs_create_fs_env();
 
 	/* Do actual mkfs */
 	mkfs_format_filesystem();
-
-	/* Create lock-file */
-	mkfs_create_lockfile();
 
 	/* Post execution cleanups */
 	mkfs_finalize();

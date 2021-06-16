@@ -261,6 +261,7 @@ static void mount_create_fs_env(void)
 		.rdonly = voluta_globals.cmd.mount.rdonly,
 		.pedantic = false,
 		.with_fuseq = true,
+		.kcopy_mode = true,
 
 	};
 	voluta_create_fse_inst(&args);

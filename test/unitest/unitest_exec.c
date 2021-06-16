@@ -254,11 +254,13 @@ static void ut_execute_tests_cycle(struct ut_args *args)
 
 static void ut_print_tests_start(const struct ut_args *args)
 {
-	printf("  %s %s\n", args->program, args->version);
+	printf("  %s %s kcopy=%d\n", args->program, args->version,
+	       (int)args->fs_args.kcopy_mode);
 }
 
 void ut_execute_tests(void)
 {
+	const bool kcopy_mode = true;
 	struct ut_args args = {
 		.fs_args = {
 			.uid = getuid(),
@@ -279,6 +281,10 @@ void ut_execute_tests(void)
 	args.fs_args.repodir = ut_globals.test_dir_real;
 
 	args.fs_args.passwd = ut_make_passwd(&args.passph);
+	args.fs_args.kcopy_mode = kcopy_mode;
+	ut_print_tests_start(&args);
+	ut_execute_tests_cycle(&args);
+	args.fs_args.kcopy_mode = !kcopy_mode;
 	ut_print_tests_start(&args);
 	ut_execute_tests_cycle(&args);
 }

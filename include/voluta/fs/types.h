@@ -467,6 +467,7 @@ struct voluta_fs_args {
 	pid_t  pid;
 	mode_t umask;
 	bool   with_fuseq;
+	bool   kcopy_mode;
 	bool   pedantic;
 	bool   allowother;
 	bool   lazytime;

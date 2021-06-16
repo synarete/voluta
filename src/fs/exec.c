@@ -342,6 +342,9 @@ static enum voluta_flags fs_args_to_ctlflags(const struct voluta_fs_args *args)
 {
 	enum voluta_flags ctl_flags = 0;
 
+	if (args->kcopy_mode) {
+		ctl_flags |= VOLUTA_F_KCOPY;
+	}
 	if (args->allowother) {
 		ctl_flags |= VOLUTA_F_ALLOWOTHER;
 	}

@@ -17,7 +17,7 @@
 #ifndef VOLUTA_PRIVATE_H_
 #define VOLUTA_PRIVATE_H_
 
-#ifndef VOLUTA_LIBPRIVATE
+#ifndef VOLUTA_USE_PRIVATE
 #error "internal library header -- do not include!"
 #endif
 

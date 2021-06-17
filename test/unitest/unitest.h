@@ -41,7 +41,7 @@
 #include <voluta/ioctls.h>
 
 
-#define VOLUTA_LIBPRIVATE 1
+#define VOLUTA_USE_PRIVATE 1
 #include <voluta/fs/private.h>
 
 #ifndef VOLUTA_UNITEST

@@ -30,7 +30,7 @@
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-static const struct voluta_zcrypt_params voluta_default_zcrypt = {
+static const struct voluta_crypt_params voluta_default_cryp = {
 	.kdf = {
 		.kdf_iv = {
 			.kd_iterations = 4096,
@@ -184,11 +184,11 @@ static void sbr_set_cipher(struct voluta_sb_root *sbr,
 }
 
 static void sbr_crypt_params(const struct voluta_sb_root *sbr,
-                             struct voluta_zcrypt_params *zcp)
+                             struct voluta_crypt_params *cryp)
 {
-	sbr_kdf(sbr, &zcp->kdf);
-	zcp->cipher_algo = sbr_chiper_algo(sbr);
-	zcp->cipher_mode = sbr_chiper_mode(sbr);
+	sbr_kdf(sbr, &cryp->kdf);
+	cryp->cipher_algo = sbr_chiper_algo(sbr);
+	cryp->cipher_mode = sbr_chiper_mode(sbr);
 }
 
 static void sbr_init(struct voluta_sb_root *sbr, ssize_t size)
@@ -199,9 +199,9 @@ static void sbr_init(struct voluta_sb_root *sbr, ssize_t size)
 	sbr_set_sw_version(sbr, voluta_version.string);
 	sbr_set_uuid(sbr);
 	sbr_set_volume_size(sbr, size);
-	sbr_set_kdf(sbr, &voluta_default_zcrypt.kdf);
-	sbr_set_cipher(sbr, voluta_default_zcrypt.cipher_algo,
-	               voluta_default_zcrypt.cipher_mode);
+	sbr_set_kdf(sbr, &voluta_default_cryp.kdf);
+	sbr_set_cipher(sbr, voluta_default_cryp.cipher_algo,
+	               voluta_default_cryp.cipher_mode);
 	sbr->sr_endianness = VOLUTA_ENDIANNESS_LE;
 }
 
@@ -345,10 +345,82 @@ static void sbk_kivam_of(const struct voluta_sb_keys *sbk,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static void sbu_init(struct voluta_sb_uspace_map *sbu)
+{
+	voluta_bls_initn(sbu->su_hsm_bls, ARRAY_SIZE(sbu->su_hsm_bls));
+}
+
+static size_t sbu_slot_of(const struct voluta_sb_uspace_map *sbu,
+                          voluta_index_t hs_index)
+{
+	voluta_assert_gt(hs_index, 0);
+	voluta_assert_lt(hs_index, ARRAY_SIZE(sbu->su_hsm_bls));
+
+	return hs_index % ARRAY_SIZE(sbu->su_hsm_bls);
+}
+
+static struct voluta_blobspec *
+sbu_blobspec_at(const struct voluta_sb_uspace_map *sbu, size_t slot)
+{
+	const struct voluta_blobspec *bls = &sbu->su_hsm_bls[slot];
+
+	voluta_assert_lt(slot, ARRAY_SIZE(sbu->su_hsm_bls));
+	return unconst(bls);
+}
+
+static struct voluta_blobspec *
+sbu_blobspec_of(const struct voluta_sb_uspace_map *sbu,
+                voluta_index_t hs_index)
+{
+	return sbu_blobspec_at(sbu, sbu_slot_of(sbu, hs_index));
+}
+
+static void sbu_hsm_vba(const struct voluta_sb_uspace_map *sbu,
+                        voluta_index_t hs_index, struct voluta_vba *out_vba)
+{
+	const struct voluta_blobspec *bls = sbu_blobspec_of(sbu, hs_index);
+
+	voluta_bls_vba(bls, out_vba);
+}
+
+static void sbu_set_hsm_vba(struct voluta_sb_uspace_map *usm,
+                            voluta_index_t hs_index,
+                            const struct voluta_vba *vba)
+{
+	struct voluta_blobspec *bls = sbu_blobspec_of(usm, hs_index);
+
+	voluta_bls_set_vba(bls, vba);
+}
+
+void voluta_sb_resolve_hsm(const struct voluta_super_block *sb,
+                           voluta_index_t hs_index,
+                           struct voluta_vba *out_hsm_vba)
+{
+	sbu_hsm_vba(&sb->sb_usm, hs_index, out_hsm_vba);
+}
+
+void voluta_sb_bind_hsm(struct voluta_super_block *sb,
+                        voluta_index_t hs_index,
+                        const struct voluta_vba *hsm_vba)
+{
+	sbu_set_hsm_vba(&sb->sb_usm, hs_index, hsm_vba);
+}
+
+bool voluta_sb_has_hsm(struct voluta_super_block *sb, voluta_index_t hs_index)
+{
+	struct voluta_vba vba;
+
+	voluta_sb_resolve_hsm(sb, hs_index, &vba);
+	return !vaddr_isnull(&vba.vaddr);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static void sb_init(struct voluta_super_block *sb)
 {
 	voluta_memzero(sb, sizeof(*sb));
 	sbr_init(&sb->sb_boot, sizeof(*sb));
+	sbu_init(&sb->sb_usm);
 }
 
 static void sb_fini(struct voluta_super_block *sb)
@@ -503,12 +575,12 @@ int voluta_sb_encrypt(struct voluta_super_block *sb,
 {
 	int err;
 	struct voluta_kivam kivam;
-	struct voluta_zcrypt_params zcp;
+	struct voluta_crypt_params cryp;
 
 	voluta_kivam_init(&kivam);
-	voluta_sb_crypt_params(sb, &zcp);
+	voluta_sb_crypt_params(sb, &cryp);
 
-	err = voluta_derive_kivam(&zcp, passph, &crypto->md, &kivam);
+	err = voluta_derive_kivam(&cryp, passph, &crypto->md, &kivam);
 	if (err) {
 		goto out;
 	}
@@ -528,12 +600,12 @@ int voluta_sb_decrypt(struct voluta_super_block *sb,
 {
 	int err;
 	struct voluta_kivam kivam;
-	struct voluta_zcrypt_params zcp;
+	struct voluta_crypt_params cryp;
 
 	voluta_kivam_init(&kivam);
-	voluta_sb_crypt_params(sb, &zcp);
+	voluta_sb_crypt_params(sb, &cryp);
 
-	err = voluta_derive_kivam(&zcp, passph, &crypto->md, &kivam);
+	err = voluta_derive_kivam(&cryp, passph, &crypto->md, &kivam);
 	if (err) {
 		goto out;
 	}
@@ -554,12 +626,10 @@ void voluta_sb_setup_new(struct voluta_super_block *sb,
 	voluta_sb_set_itable_root(sb, vaddr_none());
 	voluta_sb_setup_keys(sb);
 	voluta_sb_set_volume_size(sb, vsize);
-	voluta_usm_init(&sb->sb_uspace);
 }
 
-
 void voluta_sb_crypt_params(const struct voluta_super_block *sb,
-                            struct voluta_zcrypt_params *zcp)
+                            struct voluta_crypt_params *zcp)
 {
 	memset(zcp, 0, sizeof(*zcp));
 	sbr_crypt_params(&sb->sb_boot, zcp);

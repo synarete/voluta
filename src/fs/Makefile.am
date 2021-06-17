@@ -7,7 +7,7 @@ libvoluta_fs_la_LDFLAGS += $(PTHREAD_CFLAGS) $(PTHREAD_DEF)
 libvoluta_fs_la_LDFLAGS += -version-info 0
 libvoluta_fs_la_CPPFLAGS = $(NULL)
 libvoluta_fs_la_CPPFLAGS += -I$(top_srcdir)/include
-libvoluta_fs_la_CPPFLAGS += -DVOLUTA_LIBPRIVATE=1
+libvoluta_fs_la_CPPFLAGS += -DVOLUTA_USE_PRIVATE=1
 libvoluta_fs_la_LIBADD = @LIBS@
 libvoluta_fs_la_LIBADD += $(PTHREAD_LIBS)
 libvoluta_fs_la_SOURCES = $(NULL)

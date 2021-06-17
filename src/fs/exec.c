@@ -746,15 +746,15 @@ static int fse_update_sb(struct voluta_fs_env *fse)
 static int fse_prepare_sb_key(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_zcrypt_params *zcp = &fse->zcryp;
+	struct voluta_crypt_params *cryp = &fse->cryp;
 	const struct voluta_passphrase *pp = &fse->passph;
 
 	if (!fse->passph.passlen) {
 		log_err("missing passphrase of: %s", fse->args.objsdir);
 		return -ENOKEY;
 	}
-	voluta_sb_crypt_params(fse->sb, zcp);
-	err = voluta_derive_kivam(zcp, pp, fse_mdigest(fse), &fse->kivam);
+	voluta_sb_crypt_params(fse->sb, cryp);
+	err = voluta_derive_kivam(cryp, pp, fse_mdigest(fse), &fse->kivam);
 	if (err) {
 		log_err("derive iv-key failed: %s err=%d",
 		        fse->args.objsdir, err);

@@ -23,7 +23,7 @@ int voluta_crypto_init(struct voluta_crypto *crypto);
 
 void voluta_crypto_fini(struct voluta_crypto *crypto);
 
-int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+int voluta_derive_kivam(const struct voluta_crypt_params *zcp,
                         const struct voluta_passphrase *pp,
                         const struct voluta_mdigest *md,
                         struct voluta_kivam *kivam);

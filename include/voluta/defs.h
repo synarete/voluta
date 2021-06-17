@@ -97,18 +97,15 @@
 #define VOLUTA_HS_SIZE \
 	(VOLUTA_NAG_IN_HS * VOLUTA_AG_SIZE)
 
-/* number of hyper-spaces in uber-space */
+/* number of hyper-spaces in top-level uber-space */
 #define VOLUTA_NHS_IN_US                (512L)
-
-/* maximal number of hyper-spaces */
-#define VOLUTA_NHS_MAX                  VOLUTA_NHS_IN_US
 
 
 /* minimal number of allocation-groups in volume */
 #define VOLUTA_VOLUME_NAG_MIN           (32L)
 
 /* maximal number of allocation-groups in volume */
-#define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_MAX)
+#define VOLUTA_VOLUME_NAG_MAX           (VOLUTA_NAG_IN_HS * VOLUTA_NHS_IN_US)
 
 /* minimal bytes-size of underlying volume (2G) */
 #define VOLUTA_VOLUME_SIZE_MIN \
@@ -294,12 +291,6 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_DATABK     = 64,
 	VOLUTA_VTYPE_AGBKS      = 127,
 };
-
-/* hyper-space flags */
-enum voluta_hsf {
-	VOLUTA_HSF_HASNEXT      = (1 << 0),
-};
-
 
 /* allocation-groups flags */
 enum voluta_agf {
@@ -534,8 +525,8 @@ struct voluta_sb_keys {
 } voluta_packed_aligned64;
 
 
-struct voluta_sb_uspace {
-	struct voluta_blobspec  us_hsm_bls[VOLUTA_NHS_MAX];
+struct voluta_sb_uspace_map {
+	struct voluta_blobspec  su_hsm_bls[VOLUTA_NHS_IN_US];
 } voluta_packed_aligned64;
 
 
@@ -550,7 +541,7 @@ struct voluta_super_block {
 	struct voluta_name      sb_name;
 	uint8_t                 sb_reserved2[7680];
 	struct voluta_sb_keys   sb_keys;
-	struct voluta_sb_uspace sb_uspace;
+	struct voluta_sb_uspace_map sb_usm;
 } voluta_packed_aligned64;
 
 

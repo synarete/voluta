@@ -26,6 +26,17 @@ struct voluta_super_block *voluta_sb_new(struct voluta_alloc_if *alif);
 void voluta_sb_del(struct voluta_super_block *sb,
                    struct voluta_alloc_if *alif);
 
+void voluta_sb_bind_hsm(struct voluta_super_block *sb,
+                        voluta_index_t hs_index,
+                        const struct voluta_vba *hsm_vba);
+
+void voluta_sb_resolve_hsm(const struct voluta_super_block *sb,
+                           voluta_index_t hs_index,
+                           struct voluta_vba *out_vba);
+
+bool voluta_sb_has_hsm(struct voluta_super_block *sb, voluta_index_t hs_index);
+
+
 void voluta_sb_set_pass_hash(struct voluta_super_block *sb,
                              const struct voluta_hash512 *hash);
 
@@ -82,7 +93,7 @@ void voluta_sb_setup_new(struct voluta_super_block *sb,
                          time_t btime, ssize_t vsize);
 
 void voluta_sb_crypt_params(const struct voluta_super_block *sb,
-                            struct voluta_zcrypt_params *zcp);
+                            struct voluta_crypt_params *cryp);
 
 int voluta_sb_check_root(const struct voluta_super_block *sb);
 

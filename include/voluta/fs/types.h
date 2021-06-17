@@ -156,8 +156,8 @@ struct voluta_crypto {
 };
 
 
-/* zero-block cryptographic params */
-struct voluta_zcrypt_params {
+/* cryptographic parameters */
+struct voluta_crypt_params {
 	struct voluta_kdf_pair kdf;
 	uint32_t cipher_algo;
 	uint32_t cipher_mode;
@@ -312,10 +312,10 @@ struct voluta_space_info {
 	struct voluta_space_stat sp_used;
 	loff_t          sp_capcity_size;
 	loff_t          sp_address_space;
+	size_t          sp_ag_count;
 	size_t          sp_hs_count;
 	voluta_index_t  sp_hs_active;
 	voluta_index_t  sp_hs_index_lo;
-	size_t          sp_ag_count;
 };
 
 /* local object-storage device controller (blobs) */
@@ -364,7 +364,7 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_losd           *sb_losd;
+	struct voluta_losd             *sb_losd;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -479,13 +479,13 @@ struct voluta_fs_args {
 /* file-system environment context */
 struct voluta_fs_env {
 	struct voluta_fs_args           args;
-	struct voluta_zcrypt_params     zcryp;
+	struct voluta_crypt_params      cryp;
 	struct voluta_passphrase        passph;
 	struct voluta_kivam             kivam;
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_losd           *losd;
+	struct voluta_losd             *losd;
 	struct voluta_sb_info          *sbi;
 	struct voluta_super_block      *sb;
 	struct voluta_fuseq            *fuseq;

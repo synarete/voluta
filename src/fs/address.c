@@ -790,7 +790,6 @@ int voluta_calc_volume_space(loff_t volume_capacity,
 
 	*out_address_space = nags_to_nbytes(nags + VOLUTA_NAG_IN_HS);
 	*out_capacity_size = nags_to_nbytes(nags);
-
 	return 0;
 }
 

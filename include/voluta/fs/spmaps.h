@@ -20,14 +20,14 @@
 
 #include <voluta/fs/types.h>
 
-void voluta_usm_init(struct voluta_sb_uspace *usm);
+void voluta_bls_initn(struct voluta_blobspec *bls, size_t n);
 
-void voluta_usm_vba(const struct voluta_sb_uspace *usm,
-                    voluta_index_t hs_index, struct voluta_vba *out_vba);
+void voluta_bls_vba(const struct voluta_blobspec *bls,
+                    struct voluta_vba *out_vba);
 
-void voluta_usm_set_vba(struct voluta_sb_uspace *usm,
-                        voluta_index_t hs_index,
+void voluta_bls_set_vba(struct voluta_blobspec *bls,
                         const struct voluta_vba *vba);
+
 
 void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
@@ -53,39 +53,35 @@ void voluta_hsi_space_stat_at(const struct voluta_hspace_info *hsi,
 void voluta_hsi_space_stat_of(const struct voluta_hspace_info *hsi,
                               struct voluta_space_stat *sp_st);
 
-void voluta_hsi_set_formatted_ag(struct voluta_hspace_info *hsi,
-                                 voluta_index_t ag_index,
-                                 const struct voluta_vba *agm_vba);
+void voluta_hsi_resolve_agm(const struct voluta_hspace_info *hsi,
+                            voluta_index_t ag_index,
+                            struct voluta_vba *out_agm_vba);
 
-bool voluta_hsi_has_formatted_ag(const struct voluta_hspace_info *hsi,
+void voluta_hsi_bind_agm(struct voluta_hspace_info *hsi,
+                         voluta_index_t ag_index,
+                         const struct voluta_vba *agm_vba);
+
+bool voluta_hsi_has_agm(const struct voluta_hspace_info *hsi,
+                        voluta_index_t ag_index);
+
+void voluta_hsi_ag_span(const struct voluta_hspace_info *hsi,
+                        struct voluta_ag_span *ag_span);
+
+void voluta_hsi_mark_fragmented(struct voluta_hspace_info *hsi,
+                                voluta_index_t ag_index);
+
+void voluta_hsi_clear_fragmented(struct voluta_hspace_info *hsi,
                                  voluta_index_t ag_index);
 
-void voluta_hsi_ag_span_of(const struct voluta_hspace_info *hsi,
-                           struct voluta_ag_span *ag_span);
+bool voluta_hsi_is_fragmented(const struct voluta_hspace_info *hsi,
+                              voluta_index_t ag_index);
 
-void voluta_hsi_mark_fragmented_at(struct voluta_hspace_info *hsi,
-                                   voluta_index_t ag_index);
-
-void voluta_hsi_clear_fragmented_at(struct voluta_hspace_info *hsi,
-                                    voluta_index_t ag_index);
-
-bool voluta_hsi_fragmented_by(const struct voluta_hspace_info *hsi,
-                              const struct voluta_vaddr *vaddr);
-
-
-void voluta_mark_with_next(struct voluta_hspace_info *hsi);
-
-bool voluta_has_next_hspace(const struct voluta_hspace_info *hsi);
 
 void voluta_hsi_bind_to_kindof(struct voluta_hspace_info *hsi,
                                const struct voluta_vaddr *vaddr);
 
 int voluta_hsi_check_cap_alloc(const struct voluta_hspace_info *hsi,
                                const enum voluta_vtype vtype);
-
-void voluta_resolve_ag(const struct voluta_hspace_info *hsi,
-                       voluta_index_t ag_index,
-                       struct voluta_vba *out_agm_vba);
 
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
@@ -108,7 +104,7 @@ void voluta_agi_vba(const struct voluta_agroup_info *agi,
 void voluta_agi_set_bks_blobid(struct voluta_agroup_info *agi,
                                const struct voluta_blobid *bid);
 
-void voluta_agi_resolve_vba(const struct voluta_agroup_info *agi,
+void voluta_agi_resolve_bks(const struct voluta_agroup_info *agi,
                             const struct voluta_vaddr *vaddr,
                             struct voluta_vba *out_vba);
 

@@ -461,7 +461,7 @@ static int derive_key(const struct voluta_kdf_desc *kdf,
 	return ret;
 }
 
-int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
+int voluta_derive_kivam(const struct voluta_crypt_params *cryp,
                         const struct voluta_passphrase *pp,
                         const struct voluta_mdigest *md,
                         struct voluta_kivam *kivam)
@@ -472,16 +472,16 @@ int voluta_derive_kivam(const struct voluta_zcrypt_params *zcp,
 	if (err) {
 		goto out;
 	}
-	err = derive_iv(&zcp->kdf.kdf_iv, pp, md, &kivam->iv);
+	err = derive_iv(&cryp->kdf.kdf_iv, pp, md, &kivam->iv);
 	if (err) {
 		goto out;
 	}
-	err = derive_key(&zcp->kdf.kdf_key, pp, md, &kivam->key);
+	err = derive_key(&cryp->kdf.kdf_key, pp, md, &kivam->key);
 	if (err) {
 		goto out;
 	}
-	kivam->cipher_algo = zcp->cipher_algo;
-	kivam->cipher_mode = zcp->cipher_mode;
+	kivam->cipher_algo = cryp->cipher_algo;
+	kivam->cipher_mode = cryp->cipher_mode;
 out:
 	if (err) {
 		voluta_memzero(kivam, sizeof(*kivam));

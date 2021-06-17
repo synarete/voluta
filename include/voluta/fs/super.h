@@ -24,7 +24,7 @@
 
 int voluta_sbi_init(struct voluta_sb_info *sbi,
                     struct voluta_cache *cache,
-                    struct voluta_losdctl *losdc);
+                    struct voluta_losd *losd);
 
 void voluta_sbi_fini(struct voluta_sb_info *sbi);
 

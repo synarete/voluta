@@ -1,7 +1,13 @@
 # https://github.com/github/gitignore
 
 # Global excludes
+Makefile
 Makefile.in
+*.o
+lib*.lo
+lib*.la
+.deps
+.libs
 
 # Top-level excludes
 /.autom4te.cfg
@@ -13,6 +19,10 @@ Makefile.in
 /build
 /REVISION
 /tags
+/libtool
+/common.mk
+/config.log
+/config.status
 
 # IDEs
 .cproject

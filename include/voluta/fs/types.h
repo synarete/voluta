@@ -319,13 +319,12 @@ struct voluta_space_info {
 };
 
 /* local object-storage device controller (blobs) */
-struct voluta_losdctl {
+struct voluta_losd {
 	struct voluta_list_head lo_htbl[1024];
 	struct voluta_listq     lo_lru;
 	struct voluta_alloc_if *lo_alif;
 	const char             *lo_basedir;
 	size_t  lo_nsubs;
-	size_t  lo_hsize;
 	int     lo_dfd;
 };
 
@@ -365,7 +364,7 @@ struct voluta_sb_info {
 	struct voluta_super_block      *sb;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
-	struct voluta_losdctl           *sb_losdc;
+	struct voluta_losd           *sb_losd;
 	struct voluta_vba               sb_vba;
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
@@ -486,7 +485,7 @@ struct voluta_fs_env {
 	struct voluta_qalloc           *qalloc;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
-	struct voluta_losdctl           *losdc;
+	struct voluta_losd           *losd;
 	struct voluta_sb_info          *sbi;
 	struct voluta_super_block      *sb;
 	struct voluta_fuseq            *fuseq;

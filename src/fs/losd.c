@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include <voluta/infra.h>
 #include <voluta/fs/address.h>
-#include <voluta/fs/losdc.h>
+#include <voluta/fs/losd.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/private.h>
@@ -255,36 +255,34 @@ static int bri_datasync(const struct voluta_bref_info *bri)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void losdc_htbl_init(struct voluta_losdctl *losdc)
+static void losd_htbl_init(struct voluta_losd *losd)
 {
-	list_head_initn(losdc->lo_htbl, ARRAY_SIZE(losdc->lo_htbl));
-	losdc->lo_hsize = 0;
+	list_head_initn(losd->lo_htbl, ARRAY_SIZE(losd->lo_htbl));
 }
 
-static void losdc_htbl_fini(struct voluta_losdctl *losdc)
+static void losd_htbl_fini(struct voluta_losd *losd)
 {
-	list_head_finin(losdc->lo_htbl, ARRAY_SIZE(losdc->lo_htbl));
-	losdc->lo_hsize = 0;
+	list_head_finin(losd->lo_htbl, ARRAY_SIZE(losd->lo_htbl));
 }
 
 static struct voluta_list_head *
-losdc_htbl_list_by(const struct voluta_losdctl *losdc, const uint64_t hkey)
+losd_htbl_list_by(const struct voluta_losd *losd, const uint64_t hkey)
 {
-	const size_t slot = hkey % ARRAY_SIZE(losdc->lo_htbl);
-	const struct voluta_list_head *lst = &losdc->lo_htbl[slot];
+	const size_t slot = hkey % ARRAY_SIZE(losd->lo_htbl);
+	const struct voluta_list_head *lst = &losd->lo_htbl[slot];
 
 	return unconst(lst);
 }
 
 static struct voluta_bref_info *
-losdc_htbl_lookup(const struct voluta_losdctl *losdc,
-                  const struct voluta_blobid *bid, uint64_t bid_hkey)
+losd_htbl_lookup(const struct voluta_losd *losd,
+                 const struct voluta_blobid *bid, uint64_t bid_hkey)
 {
 	const struct voluta_bref_info *bri;
 	const struct voluta_list_head *itr;
 	const struct voluta_list_head *lst;
 
-	itr = lst = losdc_htbl_list_by(losdc, bid_hkey);
+	itr = lst = losd_htbl_list_by(losd, bid_hkey);
 	while (itr->next != lst) {
 		itr = itr->next;
 		bri = bri_from_htb_lh(itr);
@@ -295,77 +293,77 @@ losdc_htbl_lookup(const struct voluta_losdctl *losdc,
 	return NULL;
 }
 
-static void losdc_htbl_insert(struct voluta_losdctl *losdc,
-                              struct voluta_bref_info *bri)
+static void losd_htbl_insert(struct voluta_losd *losd,
+                             struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lst;
 
-	lst = losdc_htbl_list_by(losdc, bri->b_hkey);
+	lst = losd_htbl_list_by(losd, bri->b_hkey);
 	list_push_front(lst, &bri->b_htb_lh);
 }
 
-static void losdc_htbl_remove(struct voluta_losdctl *losdc,
-                              struct voluta_bref_info *bri)
+static void losd_htbl_remove(struct voluta_losd *losd,
+                             struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lst;
 
-	lst = losdc_htbl_list_by(losdc, bri->b_hkey);
+	lst = losd_htbl_list_by(losd, bri->b_hkey);
 	voluta_assert(!list_isempty(lst));
 	list_head_remove(&bri->b_htb_lh);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void losdc_lru_init(struct voluta_losdctl *losdc)
+static void losd_lru_init(struct voluta_losd *losd)
 {
-	listq_init(&losdc->lo_lru);
+	listq_init(&losd->lo_lru);
 }
 
-static void losdc_lru_fini(struct voluta_losdctl *losdc)
+static void losd_lru_fini(struct voluta_losd *losd)
 {
-	listq_fini(&losdc->lo_lru);
+	listq_fini(&losd->lo_lru);
 }
 
-static void losdc_lru_insert(struct voluta_losdctl *losdc,
-                             struct voluta_bref_info *bri)
+static void losd_lru_insert(struct voluta_losd *losd,
+                            struct voluta_bref_info *bri)
 {
-	listq_push_front(&losdc->lo_lru, &bri->b_lru_lh);
+	listq_push_front(&losd->lo_lru, &bri->b_lru_lh);
 }
 
-static void losdc_lru_remove(struct voluta_losdctl *losdc,
-                             struct voluta_bref_info *bri)
+static void losd_lru_remove(struct voluta_losd *losd,
+                            struct voluta_bref_info *bri)
 {
-	voluta_assert_gt(losdc->lo_lru.sz, 0);
-	listq_remove(&losdc->lo_lru, &bri->b_lru_lh);
+	voluta_assert_gt(losd->lo_lru.sz, 0);
+	listq_remove(&losd->lo_lru, &bri->b_lru_lh);
 }
 
 static struct voluta_bref_info *
-losdc_lru_front(const struct voluta_losdctl *losdc)
+losd_lru_front(const struct voluta_losd *losd)
 {
 	struct voluta_list_head *lh;
 
-	lh = listq_front(&losdc->lo_lru);
+	lh = listq_front(&losd->lo_lru);
 	return bri_from_lru_lh(lh);
 }
 
 static struct voluta_bref_info *
-losdc_lru_nextof(const struct voluta_losdctl *losdc,
-                 const struct voluta_bref_info *bri)
+losd_lru_nextof(const struct voluta_losd *losd,
+                const struct voluta_bref_info *bri)
 {
 	struct voluta_list_head *lh_next = bri->b_lru_lh.next;
 
-	if (lh_next == &losdc->lo_lru.ls) {
+	if (lh_next == &losd->lo_lru.ls) {
 		return NULL;
 	}
 	return bri_from_lru_lh(lh_next);
 }
 
 static struct voluta_bref_info *
-losdc_cahce_rfind(const struct voluta_losdctl *losdc, voluta_bri_pred_fn fn)
+losd_cahce_rfind(const struct voluta_losd *losd, voluta_bri_pred_fn fn)
 {
 	const struct voluta_bref_info *bi;
 	const struct voluta_list_head *lh;
-	const struct voluta_listq *lru = &losdc->lo_lru;
+	const struct voluta_listq *lru = &losd->lo_lru;
 
 	lh = listq_back(lru);
 	while (lh != &lru->ls) {
@@ -380,115 +378,115 @@ losdc_cahce_rfind(const struct voluta_losdctl *losdc, voluta_bri_pred_fn fn)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void losdc_cache_init(struct voluta_losdctl *losdc)
+static void losd_cache_init(struct voluta_losd *losd)
 {
-	losdc_htbl_init(losdc);
-	losdc_lru_init(losdc);
+	losd_htbl_init(losd);
+	losd_lru_init(losd);
 }
 
-static void losdc_cache_fini(struct voluta_losdctl *losdc)
+static void losd_cache_fini(struct voluta_losd *losd)
 {
-	losdc_htbl_fini(losdc);
-	losdc_lru_fini(losdc);
+	losd_htbl_fini(losd);
+	losd_lru_fini(losd);
 }
 
-static void losdc_cache_insert(struct voluta_losdctl *losdc,
-                               struct voluta_bref_info *bri)
-{
-	losdc_htbl_insert(losdc, bri);
-	losdc_lru_insert(losdc, bri);
-}
-
-static void losdc_cache_remove(struct voluta_losdctl *losdc,
-                               struct voluta_bref_info *bri)
-{
-	losdc_lru_remove(losdc, bri);
-	losdc_htbl_remove(losdc, bri);
-}
-
-static void losdc_cache_relru(struct voluta_losdctl *losdc,
+static void losd_cache_insert(struct voluta_losd *losd,
                               struct voluta_bref_info *bri)
 {
-	losdc_lru_remove(losdc, bri);
-	losdc_lru_insert(losdc, bri);
+	losd_htbl_insert(losd, bri);
+	losd_lru_insert(losd, bri);
+}
+
+static void losd_cache_remove(struct voluta_losd *losd,
+                              struct voluta_bref_info *bri)
+{
+	losd_lru_remove(losd, bri);
+	losd_htbl_remove(losd, bri);
+}
+
+static void losd_cache_relru(struct voluta_losd *losd,
+                             struct voluta_bref_info *bri)
+{
+	losd_lru_remove(losd, bri);
+	losd_lru_insert(losd, bri);
 }
 
 static int
-losdc_cache_lookup(struct voluta_losdctl *losdc,
-                   const struct voluta_blobid *bid,
-                   uint64_t bid_hkey, struct voluta_bref_info **out_bri)
+losd_cache_lookup(struct voluta_losd *losd,
+                  const struct voluta_blobid *bid,
+                  uint64_t bid_hkey, struct voluta_bref_info **out_bri)
 {
-	*out_bri = losdc_htbl_lookup(losdc, bid, bid_hkey);
+	*out_bri = losd_htbl_lookup(losd, bid, bid_hkey);
 	if (*out_bri == NULL) {
 		return -ENOENT;
 	}
-	losdc_cache_relru(losdc, *out_bri);
+	losd_cache_relru(losd, *out_bri);
 	return 0;
 }
 
 static struct voluta_bref_info *
-losdc_cache_front(const struct voluta_losdctl *losdc)
+losd_cache_front(const struct voluta_losd *losd)
 {
-	return losdc_lru_front(losdc);
+	return losd_lru_front(losd);
 }
 
 static struct voluta_bref_info *
-losdc_cache_nextof(const struct voluta_losdctl *losdc,
-                   const struct voluta_bref_info *bri)
+losd_cache_nextof(const struct voluta_losd *losd,
+                  const struct voluta_bref_info *bri)
 {
-	return losdc_lru_nextof(losdc, bri);
+	return losd_lru_nextof(losd, bri);
 }
 
 
 static struct voluta_bref_info *
-losdc_cache_find_evictable(const struct voluta_losdctl *losdc)
+losd_cache_find_evictable(const struct voluta_losd *losd)
 {
-	return losdc_cahce_rfind(losdc, bri_is_evictable);
+	return losd_cahce_rfind(losd, bri_is_evictable);
 }
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_losdc_init(struct voluta_losdctl *losdc,
-                      struct voluta_alloc_if *alif)
+int voluta_losd_init(struct voluta_losd *losd,
+                     struct voluta_alloc_if *alif)
 {
-	losdc_cache_init(losdc);
-	losdc->lo_dfd = -1;
-	losdc->lo_nsubs = 256;
-	losdc->lo_alif = alif;
-	losdc->lo_basedir = NULL;
+	losd_cache_init(losd);
+	losd->lo_dfd = -1;
+	losd->lo_nsubs = 256;
+	losd->lo_alif = alif;
+	losd->lo_basedir = NULL;
 	return 0;
 }
 
-void voluta_losdc_fini(struct voluta_losdctl *losdc)
+void voluta_losd_fini(struct voluta_losd *losd)
 {
-	voluta_losdc_close(losdc);
-	losdc_cache_fini(losdc);
-	losdc->lo_nsubs = 0;
-	losdc->lo_alif = NULL;
-	losdc->lo_basedir = NULL;
+	voluta_losd_close(losd);
+	losd_cache_fini(losd);
+	losd->lo_nsubs = 0;
+	losd->lo_alif = NULL;
+	losd->lo_basedir = NULL;
 }
 
-int voluta_losdc_open(struct voluta_losdctl *losdc, const char *path)
+int voluta_losd_open(struct voluta_losd *losd, const char *path)
 {
 	int err;
 
-	voluta_assert_lt(losdc->lo_dfd, 0);
-	err = voluta_sys_opendir(path, &losdc->lo_dfd);
+	voluta_assert_lt(losd->lo_dfd, 0);
+	err = voluta_sys_opendir(path, &losd->lo_dfd);
 	if (err) {
 		return err;
 	}
-	losdc->lo_basedir = path;
+	losd->lo_basedir = path;
 	return 0;
 }
 
-static int losdc_format_sub(const struct voluta_losdctl *losdc,
-                            voluta_index_t idx)
+static int losd_format_sub(const struct voluta_losd *losd,
+                           voluta_index_t idx)
 {
 	int err;
 	struct stat st;
 	struct voluta_namebuf nb;
-	const int dfd = losdc->lo_dfd;
+	const int dfd = losd->lo_dfd;
 
 	index_to_namebuf(idx, &nb);
 	err = voluta_sys_fstatat(dfd, nb.name, &st, 0);
@@ -510,12 +508,12 @@ static int losdc_format_sub(const struct voluta_losdctl *losdc,
 	return 0;
 }
 
-int voluta_losdc_format(struct voluta_losdctl *losdc)
+int voluta_losd_format(struct voluta_losd *losd)
 {
 	int err;
 
-	for (size_t i = 0; i < losdc->lo_nsubs; ++i) {
-		err = losdc_format_sub(losdc, i);
+	for (size_t i = 0; i < losd->lo_nsubs; ++i) {
+		err = losd_format_sub(losd, i);
 		if (err) {
 			return err;
 		}
@@ -523,9 +521,9 @@ int voluta_losdc_format(struct voluta_losdctl *losdc)
 	return 0;
 }
 
-static int losdc_sub_pathname_of(const struct voluta_losdctl *losdc,
-                                 const struct voluta_blobid *bid,
-                                 struct voluta_namebuf *out_nb)
+static int losd_sub_pathname_of(const struct voluta_losd *losd,
+                                const struct voluta_blobid *bid,
+                                struct voluta_namebuf *out_nb)
 {
 	int err;
 	size_t len = 0;
@@ -534,7 +532,7 @@ static int losdc_sub_pathname_of(const struct voluta_losdctl *losdc,
 	char *nbuf = out_nb->name;
 	const size_t nmax = sizeof(out_nb->name);
 
-	idx = blobid_to_index(bid, losdc->lo_nsubs);
+	idx = blobid_to_index(bid, losd->lo_nsubs);
 	len += index_to_name(idx, nbuf, nmax);
 	if (len > (nmax / 2)) {
 		return -EINVAL;
@@ -554,8 +552,8 @@ static ssize_t blob_ssize(const struct voluta_blobid *bid)
 	return (ssize_t)blobid_size(bid);
 }
 
-static int losdc_create_blob(const struct voluta_losdctl *losdc,
-                             const struct voluta_blobid *bid, int *out_fd)
+static int losd_create_blob(const struct voluta_losd *losd,
+                            const struct voluta_blobid *bid, int *out_fd)
 {
 	int err;
 	int fd = -1;
@@ -564,17 +562,17 @@ static int losdc_create_blob(const struct voluta_losdctl *losdc,
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = losdc_sub_pathname_of(losdc, bid, &nb);
+	err = losd_sub_pathname_of(losd, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(losdc->lo_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(losd->lo_dfd, nb.name, &st, 0);
 	if (err != -ENOENT) {
 		log_err("can not create blob: name=%s err=%d", nb.name, err);
 		return err;
 	}
 	o_flags = O_CREAT | O_RDWR | O_TRUNC;
-	err = voluta_sys_openat(losdc->lo_dfd, nb.name, o_flags, 0600, &fd);
+	err = voluta_sys_openat(losd->lo_dfd, nb.name, o_flags, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -586,48 +584,48 @@ static int losdc_create_blob(const struct voluta_losdctl *losdc,
 	*out_fd = fd;
 	return 0;
 out_err:
-	voluta_sys_unlinkat(losdc->lo_dfd, nb.name, 0);
+	voluta_sys_unlinkat(losd->lo_dfd, nb.name, 0);
 	voluta_sys_closefd(&fd);
 	return err;
 }
 
-static int losdc_unlink_blob(const struct voluta_losdctl *losdc,
-                             const struct voluta_blobid *bid)
+static int losd_unlink_blob(const struct voluta_losd *losd,
+                            const struct voluta_blobid *bid)
 {
 	int err;
 	struct voluta_namebuf nb;
 
-	err = losdc_sub_pathname_of(losdc, bid, &nb);
+	err = losd_sub_pathname_of(losd, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_unlinkat(losdc->lo_dfd, nb.name, 0);
+	err = voluta_sys_unlinkat(losd->lo_dfd, nb.name, 0);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int losdc_remove_blob(const struct voluta_losdctl *losdc,
-                             const struct voluta_blobid *bid, int *pfd)
+static int losd_remove_blob(const struct voluta_losd *losd,
+                            const struct voluta_blobid *bid, int *pfd)
 {
 	voluta_sys_closefd(pfd);
-	return losdc_unlink_blob(losdc, bid);
+	return losd_unlink_blob(losd, bid);
 }
 
-static int losdc_open_blob(const struct voluta_losdctl *losdc,
-                           const struct voluta_blobid *bid, int *out_fd)
+static int losd_open_blob(const struct voluta_losd *losd,
+                          const struct voluta_blobid *bid, int *out_fd)
 {
 	int err;
 	int fd = -1;
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = losdc_sub_pathname_of(losdc, bid, &nb);
+	err = losd_sub_pathname_of(losd, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(losdc->lo_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(losd->lo_dfd, nb.name, &st, 0);
 	if (err) {
 		return err;
 	}
@@ -637,7 +635,7 @@ static int losdc_open_blob(const struct voluta_losdctl *losdc,
 		err = -ENOENT;
 		return err;
 	}
-	err = voluta_sys_openat(losdc->lo_dfd, nb.name, O_RDWR, 0600, &fd);
+	err = voluta_sys_openat(losd->lo_dfd, nb.name, O_RDWR, 0600, &fd);
 	if (err) {
 		return err;
 	}
@@ -645,167 +643,167 @@ static int losdc_open_blob(const struct voluta_losdctl *losdc,
 	return 0;
 }
 
-static int losdc_close_blob(const struct voluta_losdctl *losdc,
-                            const struct voluta_blobid *bid, int *pfd)
+static int losd_close_blob(const struct voluta_losd *losd,
+                           const struct voluta_blobid *bid, int *pfd)
 {
 	int err;
 	struct stat st;
 	struct voluta_namebuf nb;
 
-	err = losdc_sub_pathname_of(losdc, bid, &nb);
+	err = losd_sub_pathname_of(losd, bid, &nb);
 	if (err) {
 		return err;
 	}
-	err = voluta_sys_fstatat(losdc->lo_dfd, nb.name, &st, 0);
+	err = voluta_sys_fstatat(losd->lo_dfd, nb.name, &st, 0);
 	if (err) {
 		log_warn("missing blob: name=%s err=%d", nb.name, err);
 	}
 	return voluta_sys_closefd(pfd);
 }
 
-static int losdc_close_bref_of(const struct voluta_losdctl *losdc,
-                               struct voluta_bref_info *bri)
+static int losd_close_bref_of(const struct voluta_losd *losd,
+                              struct voluta_bref_info *bri)
 {
 	voluta_assert_gt(bri->b_fd, 0);
 	voluta_assert_eq(bri->b_refcnt, 0);
 
-	return losdc_close_blob(losdc, &bri->bid, &bri->b_fd);
+	return losd_close_blob(losd, &bri->bid, &bri->b_fd);
 }
 
-static int losdc_new_bref(struct voluta_losdctl *losdc,
-                          const struct voluta_blobid *bid, int fd,
-                          struct voluta_bref_info **out_bri)
+static int losd_new_bref(struct voluta_losd *losd,
+                         const struct voluta_blobid *bid, int fd,
+                         struct voluta_bref_info **out_bri)
 {
-	*out_bri = bri_new(losdc->lo_alif, bid, fd);
+	*out_bri = bri_new(losd->lo_alif, bid, fd);
 
 	return (*out_bri == NULL) ? -ENOMEM : 0;
 }
 
-static void losdc_del_bref(const struct voluta_losdctl *losdc,
-                           struct voluta_bref_info *bri)
+static void losd_del_bref(const struct voluta_losd *losd,
+                          struct voluta_bref_info *bri)
 {
-	bri_del(bri, losdc->lo_alif);
+	bri_del(bri, losd->lo_alif);
 }
 
-static void losdc_forget_bref(struct voluta_losdctl *losdc,
-                              struct voluta_bref_info *bri)
+static void losd_forget_bref(struct voluta_losd *losd,
+                             struct voluta_bref_info *bri)
 {
-	losdc_close_bref_of(losdc, bri);
-	losdc_cache_remove(losdc, bri);
-	losdc_del_bref(losdc, bri);
+	losd_close_bref_of(losd, bri);
+	losd_cache_remove(losd, bri);
+	losd_del_bref(losd, bri);
 }
 
-int voluta_losdc_sync(struct voluta_losdctl *losdc)
+int voluta_losd_sync(struct voluta_losd *losd)
 {
 	int err;
 	struct voluta_bref_info *bri;
 
-	bri = losdc_cache_front(losdc);
+	bri = losd_cache_front(losd);
 	while (bri != NULL) {
 		err = bri_datasync(bri);
 		if (err) {
 			return err;
 		}
-		bri = losdc_cache_nextof(losdc, bri);
+		bri = losd_cache_nextof(losd, bri);
 	}
 	return 0;
 }
 
-static void losdc_forget_all(struct voluta_losdctl *losdc)
+static void losd_forget_all(struct voluta_losd *losd)
 {
 	struct voluta_bref_info *bri;
 
-	bri = losdc_cache_front(losdc);
+	bri = losd_cache_front(losd);
 	while (bri != NULL) {
-		losdc_forget_bref(losdc, bri);
-		bri = losdc_cache_front(losdc);
+		losd_forget_bref(losd, bri);
+		bri = losd_cache_front(losd);
 	}
 }
 
-int voluta_losdc_close(struct voluta_losdctl *losdc)
+int voluta_losd_close(struct voluta_losd *losd)
 {
-	losdc_forget_all(losdc);
-	return voluta_sys_closefd(&losdc->lo_dfd);
+	losd_forget_all(losd);
+	return voluta_sys_closefd(&losd->lo_dfd);
 }
 
-static int losdc_relax_once(struct voluta_losdctl *losdc)
+static int losd_relax_once(struct voluta_losd *losd)
 {
 	struct voluta_bref_info *bri = NULL;
-	const size_t ncached = losdc->lo_lru.sz;
+	const size_t ncached = losd->lo_lru.sz;
 
-	if (!ncached || (ncached < 512)) { /* XXX make upper bound tweak */
+	if (!ncached || (ncached < 128)) { /* XXX make upper bound tweak */
 		return 0;
 	}
-	bri = losdc_cache_find_evictable(losdc);
+	bri = losd_cache_find_evictable(losd);
 	if (bri == NULL) {
 		return -ENOENT;
 	}
-	losdc_forget_bref(losdc, bri);
+	losd_forget_bref(losd, bri);
 	return 0;
 }
 
-static int losdc_open_blob_of(struct voluta_losdctl *losdc,
-                              const struct voluta_blobid *bid,
-                              struct voluta_bref_info **out_bri)
+static int losd_open_blob_of(struct voluta_losd *losd,
+                             const struct voluta_blobid *bid,
+                             struct voluta_bref_info **out_bri)
 {
 	int err;
 	int fd = -1;
 
 	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
-	err = losdc_relax_once(losdc);
+	err = losd_relax_once(losd);
 	if (err) {
 		return err;
 	}
-	err = losdc_open_blob(losdc, bid, &fd);
+	err = losd_open_blob(losd, bid, &fd);
 	if (err) {
 		return err;
 	}
-	err = losdc_new_bref(losdc, bid, fd, out_bri);
+	err = losd_new_bref(losd, bid, fd, out_bri);
 	if (err) {
-		losdc_close_blob(losdc, bid, &fd);
+		losd_close_blob(losd, bid, &fd);
 		return err;
 	}
-	losdc_cache_insert(losdc, *out_bri);
+	losd_cache_insert(losd, *out_bri);
 	return 0;
 }
 
-static int losdc_create_blob_of(struct voluta_losdctl *losdc,
-                                const struct voluta_blobid *bid,
-                                struct voluta_bref_info **out_bri)
+static int losd_create_blob_of(struct voluta_losd *losd,
+                               const struct voluta_blobid *bid,
+                               struct voluta_bref_info **out_bri)
 {
 	int err;
 	int fd = -1;
 
-	err = losdc_relax_once(losdc);
+	err = losd_relax_once(losd);
 	if (err) {
 		return err;
 	}
-	err = losdc_create_blob(losdc, bid, &fd);
+	err = losd_create_blob(losd, bid, &fd);
 	if (err) {
 		return err;
 	}
-	err = losdc_new_bref(losdc, bid, fd, out_bri);
+	err = losd_new_bref(losd, bid, fd, out_bri);
 	if (err) {
-		losdc_remove_blob(losdc, bid, &fd);
+		losd_remove_blob(losd, bid, &fd);
 		return err;
 	}
-	losdc_cache_insert(losdc, *out_bri);
+	losd_cache_insert(losd, *out_bri);
 	return 0;
 }
 
-static int losdc_stage_blob(struct voluta_losdctl *losdc, bool may_create,
-                            const struct voluta_blobid *bid, uint64_t bid_hkey,
-                            struct voluta_bref_info **out_bri)
+static int losd_stage_blob(struct voluta_losd *losd, bool may_create,
+                           const struct voluta_blobid *bid, uint64_t bid_hkey,
+                           struct voluta_bref_info **out_bri)
 {
 	int err;
 
 	voluta_assert_ge(bid->size, VOLUTA_BK_SIZE);
 
-	err = losdc_cache_lookup(losdc, bid, bid_hkey, out_bri);
+	err = losd_cache_lookup(losd, bid, bid_hkey, out_bri);
 	if (!err) {
 		return 0; /* cache hit */
 	}
-	err = losdc_open_blob_of(losdc, bid, out_bri);
+	err = losd_open_blob_of(losd, bid, out_bri);
 	if (!err) {
 		return 0;
 	}
@@ -815,42 +813,42 @@ static int losdc_stage_blob(struct voluta_losdctl *losdc, bool may_create,
 	if (!may_create) {
 		return -ENOENT;
 	}
-	err = losdc_create_blob_of(losdc, bid, out_bri);
+	err = losd_create_blob_of(losd, bid, out_bri);
 	if (err) {
 		return err;
 	}
 	return 0;
 }
 
-static int losdc_stage_blob_of(struct voluta_losdctl *losdc, bool may_create,
-                               const struct voluta_baddr *baddr,
-                               struct voluta_bref_info **out_bri)
+static int losd_stage_blob_of(struct voluta_losd *losd, bool may_create,
+                              const struct voluta_baddr *baddr,
+                              struct voluta_bref_info **out_bri)
 {
-	return losdc_stage_blob(losdc, may_create,
-	                        &baddr->bid, baddr->bid_hkey, out_bri);
+	return losd_stage_blob(losd, may_create,
+	                       &baddr->bid, baddr->bid_hkey, out_bri);
 }
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-int voluta_losdc_create(struct voluta_losdctl *losdc,
-                        const struct voluta_blobid *bid)
+int voluta_losd_create(struct voluta_losd *losd,
+                       const struct voluta_blobid *bid)
 {
 	struct voluta_bref_info *bri = NULL;
 	const uint64_t bid_hkey = voluta_blobid_hkey(bid);
 
-	return losdc_stage_blob(losdc, true, bid, bid_hkey, &bri);
+	return losd_stage_blob(losd, true, bid, bid_hkey, &bri);
 }
 
-int voluta_losdc_store(struct voluta_losdctl *losdc,
-                       const struct voluta_baddr *baddr,
-                       const void *bobj)
+int voluta_losd_store(struct voluta_losd *losd,
+                      const struct voluta_baddr *baddr,
+                      const void *bobj)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = losdc_stage_blob_of(losdc, true, baddr, &bri);
+	err = losd_stage_blob_of(losd, true, baddr, &bri);
 	if (err) {
 		return err;
 	}
@@ -881,9 +879,9 @@ static int check_baddr_iovec(const struct voluta_baddr *baddr,
 	return (iovec_length(iov, cnt) == baddr->len) ? 0 : -EINVAL;
 }
 
-int voluta_losdc_storev(struct voluta_losdctl *losdc,
-                        const struct voluta_baddr *baddr,
-                        const struct iovec *iov, size_t cnt)
+int voluta_losd_storev(struct voluta_losd *losd,
+                       const struct voluta_baddr *baddr,
+                       const struct iovec *iov, size_t cnt)
 {
 	int err;
 	size_t nwr = 0;
@@ -894,7 +892,7 @@ int voluta_losdc_storev(struct voluta_losdctl *losdc,
 	if (err) {
 		return err;
 	}
-	err = losdc_stage_blob_of(losdc, true, baddr, &bri);
+	err = losd_stage_blob_of(losd, true, baddr, &bri);
 	if (err) {
 		return err;
 	}
@@ -914,14 +912,14 @@ int voluta_losdc_storev(struct voluta_losdctl *losdc,
 	return 0;
 }
 
-int voluta_losdc_load(struct voluta_losdctl *losdc,
-                      const struct voluta_baddr *baddr, void *bobj)
+int voluta_losd_load(struct voluta_losd *losd,
+                     const struct voluta_baddr *baddr, void *bobj)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 	struct voluta_fiovec fiov = { .fv_off = -1 };
 
-	err = losdc_stage_blob_of(losdc, false, baddr, &bri);
+	err = losd_stage_blob_of(losd, false, baddr, &bri);
 	if (err) {
 		return err;
 	}
@@ -936,15 +934,15 @@ int voluta_losdc_load(struct voluta_losdctl *losdc,
 	return 0;
 }
 
-int voluta_losdc_resolve(struct voluta_losdctl *losdc,
-                         const struct voluta_baddr *baddr,
-                         loff_t off_within, size_t len,
-                         struct voluta_fiovec *out_fiov)
+int voluta_losd_resolve(struct voluta_losd *losd,
+                        const struct voluta_baddr *baddr,
+                        loff_t off_within, size_t len,
+                        struct voluta_fiovec *out_fiov)
 {
 	int err;
 	struct voluta_bref_info *bri = NULL;
 
-	err = losdc_stage_blob_of(losdc, false, baddr, &bri);
+	err = losd_stage_blob_of(losd, false, baddr, &bri);
 	if (err) {
 		return err;
 	}
@@ -1039,18 +1037,18 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
 }
 
 static int sgvec_store_in_blob(const struct voluta_sgvec *sgv,
-                               struct voluta_losdctl *losdc)
+                               struct voluta_losd *losd)
 {
 	struct voluta_baddr baddr;
 
 	voluta_assert_gt(sgv->cnt, 0);
 	baddr_setup(&baddr, &sgv->bid, sgv->len, sgv->off);
-	return voluta_losdc_storev(losdc, &baddr, sgv->iov, sgv->cnt);
+	return voluta_losd_storev(losd, &baddr, sgv->iov, sgv->cnt);
 }
 
 static int sgvec_flush_dset(struct voluta_sgvec *sgv,
                             const struct voluta_dset *dset,
-                            struct voluta_losdctl *losdc)
+                            struct voluta_losd *losd)
 {
 	int err;
 	struct voluta_vnode_info *viq = dset->ds_viq;
@@ -1061,7 +1059,7 @@ static int sgvec_flush_dset(struct voluta_sgvec *sgv,
 		if (err) {
 			return err;
 		}
-		err = sgvec_store_in_blob(sgv, losdc);
+		err = sgvec_store_in_blob(sgv, losd);
 		if (err) {
 			return err;
 		}
@@ -1194,35 +1192,35 @@ static void dset_cleanup(struct voluta_dset *dset)
 }
 
 static int dset_flush(const struct voluta_dset *dset,
-                      struct voluta_losdctl *losdc)
+                      struct voluta_losd *losd)
 {
 	struct voluta_sgvec sgv;
 
-	return sgvec_flush_dset(&sgv, dset, losdc);
+	return sgvec_flush_dset(&sgv, dset, losd);
 }
 
 static int dset_collect_flush(struct voluta_dset *dset,
                               const struct voluta_cache *cache,
-                              struct voluta_losdctl *losdc)
+                              struct voluta_losd *losd)
 {
 	int err;
 
 	dset_inhabit(dset, cache);
 	dset_make_fifo(dset);
 	dset_seal_meta(dset);
-	err = dset_flush(dset, losdc);
+	err = dset_flush(dset, losd);
 	dset_cleanup(dset);
 	return err;
 }
 
 int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
-                              struct voluta_losdctl *losdc, long ds_key)
+                              struct voluta_losd *losd, long ds_key)
 {
 	int err;
 	struct voluta_dset dset;
 
 	dset_init(&dset, ds_key);
-	err = dset_collect_flush(&dset, cache, losdc);
+	err = dset_collect_flush(&dset, cache, losd);
 	dset_fini(&dset);
 	return err;
 }

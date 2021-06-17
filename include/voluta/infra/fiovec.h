@@ -43,8 +43,8 @@ void voluta_fiovref_init(struct voluta_fiovref *fir,
 
 void voluta_fiovref_fini(struct voluta_fiovref *fir);
 
-void voluta_fiovref_do_pre(struct voluta_fiovref *fir);
+void voluta_fiovref_pre(struct voluta_fiovref *fir);
 
-void voluta_fiovref_do_post(struct voluta_fiovref *fir);
+void voluta_fiovref_post(struct voluta_fiovref *fir);
 
 #endif /* VOLUTA_FIOVEC_H_ */

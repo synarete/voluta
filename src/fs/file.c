@@ -28,7 +28,7 @@
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/losdc.h>
+#include <voluta/fs/losd.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/inode.h>
 #include <voluta/fs/file.h>
@@ -200,8 +200,8 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	err = voluta_losdc_resolve(f_ctx->sbi->sb_losdc, &vba.baddr,
-	                           off_within, len, out_fiov);
+	err = voluta_losd_resolve(f_ctx->sbi->sb_losd, &vba.baddr,
+	                          off_within, len, out_fiov);
 	if (err) {
 		return err;
 	}
@@ -224,7 +224,7 @@ static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
 	}
 	if (f_ctx->with_backref) {
 		out_fiov->fv_ref = &vi->v_fir;
-		voluta_fiovref_do_pre(out_fiov->fv_ref);
+		voluta_fiovref_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -251,7 +251,7 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
 		return err;
 	}
 	if (f_ctx->with_backref) {
-		voluta_fiovref_do_pre(out_fiov->fv_ref);
+		voluta_fiovref_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -1522,6 +1522,7 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 		.fv_off = -1,
 		.fv_len = 0,
 		.fv_fd = -1,
+		.fv_ref = NULL,
 	};
 
 	err = resolve_fiovec(f_ctx, vi, vaddr, &fiov);
@@ -1530,6 +1531,7 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 	}
 	err = f_ctx->rwi_ctx->actor(f_ctx->rwi_ctx, &fiov);
 	if (err) {
+		voluta_fiovref_post(fiov.fv_ref);
 		return err;
 	}
 	*out_len = fiov.fv_len;
@@ -2594,7 +2596,7 @@ int voluta_do_rdwr_post(const struct voluta_oper *op,
 {
 	ii_incref(ii);
 	for (size_t i = 0; i < cnt; ++i) {
-		voluta_fiovref_do_post(fiov[i].fv_ref);
+		voluta_fiovref_post(fiov[i].fv_ref);
 	}
 	ii_decref(ii);
 	unused(op);

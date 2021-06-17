@@ -2189,7 +2189,9 @@ static int do_read_iter(struct voluta_fuseq_worker *fqw, ino_t ino,
 
 	ret = fuseq_reply_read_iter(fqw, fq_rdi->nrd,
 	                            fq_rdi->fiov, fq_rdi->cnt, err);
-
+	if (!fq_rdi->cnt) {
+		return ret;
+	}
 	fuseq_lock_fs(fqw);
 	voluta_fs_rdwr_post(fqw->sbi, fqw->op, ino,
 	                    fq_rdi->fiov, fq_rdi->cnt);

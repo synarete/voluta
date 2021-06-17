@@ -31,14 +31,14 @@ void voluta_fiovref_fini(struct voluta_fiovref *fir)
 	fir->post = NULL;
 }
 
-void voluta_fiovref_do_pre(struct voluta_fiovref *fir)
+void voluta_fiovref_pre(struct voluta_fiovref *fir)
 {
 	if (fir && fir->pre) {
 		fir->pre(fir);
 	}
 }
 
-void voluta_fiovref_do_post(struct voluta_fiovref *fir)
+void voluta_fiovref_post(struct voluta_fiovref *fir)
 {
 	if (fir && fir->post) {
 		fir->post(fir);

@@ -156,9 +156,7 @@ int voluta_check_volume_size(loff_t size);
 
 int voluta_check_address_space(loff_t size);
 
-int voluta_calc_volume_space(loff_t volume_capacity,
-                             loff_t *out_capacity_size,
-                             loff_t *out_address_space);
+int voluta_calc_volume_space(loff_t volume_size, loff_t *out_capacity_size);
 
 
 int voluta_verify_ino(ino_t ino);

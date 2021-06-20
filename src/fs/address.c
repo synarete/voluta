@@ -775,20 +775,15 @@ int voluta_check_address_space(loff_t size)
 	return value_within(nags, nag_min, nag_max) ? 0 : -EINVAL;
 }
 
-int voluta_calc_volume_space(loff_t volume_capacity,
-                             loff_t *out_capacity_size,
-                             loff_t *out_address_space)
+int voluta_calc_volume_space(loff_t volume_size, loff_t *out_capacity_size)
 {
 	int err;
-	long nags;
+	const long nags = nbytes_to_nags(volume_size);
 
-	err = voluta_check_volume_size(volume_capacity);
+	err = voluta_check_volume_size(volume_size);
 	if (err) {
 		return err;
 	}
-	nags = nbytes_to_nags(volume_capacity);
-
-	*out_address_space = nags_to_nbytes(nags + VOLUTA_NAG_IN_HS);
 	*out_capacity_size = nags_to_nbytes(nags);
 	return 0;
 }

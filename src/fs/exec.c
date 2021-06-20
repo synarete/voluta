@@ -471,13 +471,13 @@ static void fse_relax_cache(struct voluta_fs_env *fse)
 	voluta_cache_relax(fse->cache, VOLUTA_F_BRINGUP);
 }
 
-static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
+static int fse_preset_space(struct voluta_fs_env *fse, loff_t volume_size)
 {
 	int err;
 
-	err = voluta_sbi_setspace(fse->sbi, size);
+	err = voluta_sbi_setspace(fse->sbi, volume_size);
 	if (err) {
-		log_err("illegal volume size: %ld", size);
+		log_err("illegal volume size: %ld", volume_size);
 		return err;
 	}
 	return 0;
@@ -486,24 +486,16 @@ static int fse_preset_space(struct voluta_fs_env *fse, loff_t size)
 static int fse_reload_space(struct voluta_fs_env *fse)
 {
 	int err;
-	ssize_t zsize;
-	ssize_t persistent_size;
+	ssize_t volume_size;
 	ssize_t capacity_size;
-	ssize_t address_space;
 
-	zsize = voluta_sb_volume_size(fse->sb);
-	err = voluta_calc_volume_space(zsize, &capacity_size, &address_space);
+	volume_size = voluta_sb_volume_size(fse->sb);
+	err = voluta_calc_volume_space(volume_size, &capacity_size);
 	if (err) {
-		log_err("illegal volume zsize: %ld ", zsize);
+		log_err("illegal volume-size: %ld ", volume_size);
 		return err;
 	}
-	persistent_size = 1; /* XXX FIXME */
-	if (persistent_size > address_space) {
-		log_err("illegal volume: address_space=%ld "
-		        "persistent_size=%ld", address_space, persistent_size);
-		return -EINVAL;
-	}
-	err = fse_preset_space(fse, zsize);
+	err = fse_preset_space(fse, volume_size);
 	if (err) {
 		return err;
 	}
@@ -516,10 +508,6 @@ static int fse_reload_meta(struct voluta_fs_env *fse)
 	struct voluta_sb_info *sbi = sbi_of(fse);
 
 	err = fse_reload_space(fse);
-	if (err) {
-		return err;
-	}
-	err = voluta_adjust_super(sbi);
 	if (err) {
 		return err;
 	}
@@ -958,10 +946,6 @@ static int fse_format_fs_meta(const struct voluta_fs_env *fse,
 	struct voluta_sb_info *sbi = fse->sbi;
 
 	err = voluta_format_super(sbi);
-	if (err) {
-		return err;
-	}
-	err = voluta_adjust_super(sbi);
 	if (err) {
 		return err;
 	}

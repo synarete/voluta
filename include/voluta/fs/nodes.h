@@ -70,12 +70,14 @@ struct voluta_hspace_info {
 	struct voluta_unode_info        hs_ui;
 	struct voluta_vnode_info        hs_vi;
 	voluta_index_t                  hs_index;
+	struct voluta_hspace_map       *hsm;
 };
 
 struct voluta_agroup_info {
 	struct voluta_unode_info        ag_ui;
 	struct voluta_vnode_info        ag_vi;
 	voluta_index_t                  ag_index;
+	struct voluta_agroup_map       *agm;
 };
 
 /* inode */

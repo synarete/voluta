@@ -234,6 +234,7 @@ static void hsi_init(struct voluta_hspace_info *hsi,
 	ui_init(&hsi->hs_ui, &vba->baddr);
 	vi_init(&hsi->hs_vi, vba, del_hook);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
+	hsi->hsm = NULL;
 }
 
 static void hsi_fini(struct voluta_hspace_info *hsi)
@@ -241,6 +242,7 @@ static void hsi_fini(struct voluta_hspace_info *hsi)
 	ui_fini(&hsi->hs_ui);
 	vi_fini(&hsi->hs_vi);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
+	hsi->hsm = NULL;
 }
 
 static struct voluta_hspace_info *hsi_malloc(struct voluta_alloc_if *alif)
@@ -302,6 +304,7 @@ static void agi_init(struct voluta_agroup_info *agi,
 	ui_init(&agi->ag_ui, &vba->baddr);
 	vi_init(&agi->ag_vi, vba, del_hook);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
+	agi->agm = NULL;
 }
 
 static void agi_fini(struct voluta_agroup_info *agi)
@@ -309,6 +312,7 @@ static void agi_fini(struct voluta_agroup_info *agi)
 	ui_fini(&agi->ag_ui);
 	vi_fini(&agi->ag_vi);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
+	agi->agm = NULL;
 }
 
 static struct voluta_agroup_info *agi_malloc(struct voluta_alloc_if *alif)

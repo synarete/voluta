@@ -69,7 +69,6 @@ static struct voluta_cache *cache_of(const struct voluta_sb_info *sbi)
 static void spi_init(struct voluta_space_info *spi)
 {
 	spi->sp_capcity_size = -1;
-	spi->sp_address_space = -1;
 	spi->sp_hs_count = 0;
 	spi->sp_hs_active = 0;
 	spi->sp_hs_index_lo = 0;
@@ -82,7 +81,6 @@ static void spi_init(struct voluta_space_info *spi)
 static void spi_fini(struct voluta_space_info *spi)
 {
 	spi->sp_capcity_size = -1;
-	spi->sp_address_space = -1;
 	spi->sp_hs_count = 0;
 	spi->sp_hs_active = 0;
 	spi->sp_hs_index_lo = 0;
@@ -92,24 +90,16 @@ static void spi_fini(struct voluta_space_info *spi)
 	spi->sp_used.nfiles = INT_MIN;
 }
 
-static void spi_setup(struct voluta_space_info *spi,
-                      loff_t capacity_size, loff_t address_space)
+static void spi_setup(struct voluta_space_info *spi, loff_t capacity_size)
 {
-	size_t ag_count;
-	size_t hs_count;
-	const size_t nag_in_hs = VOLUTA_NAG_IN_HS;
-
-	voluta_assert_ge(address_space, capacity_size);
-
-	ag_count = nbytes_to_ag_count(address_space);
-	hs_count = div_round_up(ag_count, nag_in_hs);
+	const loff_t address_space = capacity_size + VOLUTA_HS_SIZE;
 
 	spi->sp_capcity_size = capacity_size;
-	spi->sp_address_space = address_space;
-	spi->sp_ag_count = ag_count;
-	spi->sp_hs_count = hs_count;
+	spi->sp_ag_count = nbytes_to_ag_count(address_space);
+	spi->sp_hs_count = div_round_up(spi->sp_ag_count, VOLUTA_NAG_IN_HS);
 	spi->sp_hs_active = 0;
 	spi->sp_hs_index_lo = 1;
+	spi->sp_used.nmeta = VOLUTA_SB_SIZE;
 }
 
 static void spi_mark_hs_active(struct voluta_space_info *spi,
@@ -193,16 +183,6 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 		.nmeta = nmeta
 	};
 	spi_update_stats(spi, spi->sp_hs_index_lo, &sp_st);
-}
-
-static void spi_mark_used_super(struct voluta_space_info *spi)
-{
-	/* FIXME bad logic XXX */
-	const loff_t off = 2 * VOLUTA_AG_SIZE;
-
-	if (off > spi->sp_used.nmeta) {
-		spi->sp_used.nmeta = off;
-	}
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1002,23 +982,6 @@ static int review_vnode(struct voluta_vnode_info *vi)
 	return 0;
 }
 
-static int load_from_blob(struct voluta_sb_info *sbi,
-                          struct voluta_vnode_info *vi)
-{
-	int err;
-	struct voluta_baddr baddr;
-
-	err = voluta_resolve_baddr_of(sbi, vi, &baddr);
-	if (err) {
-		return err;
-	}
-	err = voluta_losd_load(sbi->sb_losd, &baddr, vi->view);
-	if (err) {
-		return err;
-	}
-	return 0;
-}
-
 static int stage_vnode(struct voluta_sb_info *sbi,
                        const struct voluta_vba *vba,
                        struct voluta_vnode_info **out_vi)
@@ -1038,13 +1001,6 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		goto out_err;
 	}
-
-	/* XXX */
-	err = load_from_blob(sbi, vi);
-	if (err) {
-		return err;
-	}
-
 	*out_vi = vi;
 	return 0;
 out_err:
@@ -1059,12 +1015,6 @@ int voluta_format_super(struct voluta_sb_info *sbi)
 {
 	/* XXX */
 	voluta_unused(sbi);
-	return 0;
-}
-
-int voluta_adjust_super(struct voluta_sb_info *sbi)
-{
-	spi_mark_used_super(&sbi->sb_spi);
 	return 0;
 }
 
@@ -1117,21 +1067,19 @@ static void update_spi_by_hsm(struct voluta_sb_info *sbi,
 
 static void update_spi_on_hsm(struct voluta_sb_info *sbi)
 {
-	/* XXX */
-	return;
+	const ssize_t hsm_size = vtype_ssize(VOLUTA_VTYPE_HSMAP);
 
-	spi_update_meta(&sbi->sb_spi, vtype_ssize(VOLUTA_VTYPE_HSMAP));
+	spi_update_meta(&sbi->sb_spi, hsm_size);
 }
 
-static void update_spi_on_agm(struct voluta_sb_info *sbi)
+static void update_spi_on_agm(struct voluta_sb_info *sbi, size_t nags)
 {
+	const ssize_t agm_size = vtype_ssize(VOLUTA_VTYPE_AGMAP);
+
 	STATICASSERT_EQ(sizeof(struct voluta_bk_rec), 56);
 	STATICASSERT_EQ(sizeof(struct voluta_agroup_map), VOLUTA_BK_SIZE);
 
-	/* XXX */
-	return;
-
-	spi_update_meta(&sbi->sb_spi, vtype_ssize(VOLUTA_VTYPE_AGMAP));
+	spi_update_meta(&sbi->sb_spi, (ssize_t)nags * agm_size);
 }
 
 static int spawn_hsmap_of(struct voluta_sb_info *sbi,
@@ -1150,7 +1098,7 @@ static int spawn_hsmap_of(struct voluta_sb_info *sbi,
 	vi_stamp_mark_visible(vi);
 
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_setup(hsi, hs_index, nags_span);
+	voluta_hsi_setup(hsi, vi->vu.hsm, hs_index, nags_span);
 	vi_dirtify(vi);
 
 	*out_hsi = hsi;
@@ -1279,7 +1227,7 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi,
 	vi_stamp_mark_visible(vi);
 
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_setup(agi, ag_index);
+	voluta_agi_setup(agi, vi->vu.agm, ag_index);
 	vi_dirtify(vi);
 
 	*out_agi = agi;
@@ -1331,7 +1279,7 @@ static int do_format_agmap(struct voluta_sb_info *sbi,
 		return err;
 	}
 	bind_agmap(hsi, agi);
-	update_spi_on_agm(sbi);
+	update_spi_on_agm(sbi, 1);
 	return 0;
 }
 
@@ -1377,6 +1325,16 @@ static int format_next_agmap(struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static size_t hsi_nags_active(const struct voluta_hspace_info *hsi)
+{
+	struct voluta_ag_span ag_span;
+
+	voluta_hsi_ag_span(hsi, &ag_span);
+	voluta_assert_gt(ag_span.fin, ag_span.beg);
+
+	return ag_span.fin - ag_span.beg;
+}
+
 static int load_hsmap_at(struct voluta_sb_info *sbi, voluta_index_t hs_index,
                          struct voluta_hspace_info **out_hsi)
 {
@@ -1389,7 +1347,7 @@ static int load_hsmap_at(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 	}
 	update_spi_by_hsm(sbi, hsi);
 	update_spi_on_hsm(sbi);
-
+	update_spi_on_agm(sbi, hsi_nags_active(hsi));
 	*out_hsi = hsi;
 	return 0;
 }
@@ -1647,18 +1605,16 @@ void voluta_sbi_setowner(struct voluta_sb_info *sbi,
 	sbi->sb_owner.umask = cred->umask;
 }
 
-int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_capacity)
+int voluta_sbi_setspace(struct voluta_sb_info *sbi, loff_t volume_size)
 {
 	int err;
 	loff_t capacity_size = 0;
-	loff_t address_space = 0;
 
-	err = voluta_calc_volume_space(volume_capacity,
-	                               &capacity_size, &address_space);
+	err = voluta_calc_volume_space(volume_size, &capacity_size);
 	if (err) {
 		return err;
 	}
-	spi_setup(&sbi->sb_spi, capacity_size, address_space);
+	spi_setup(&sbi->sb_spi, capacity_size);
 	return 0;
 }
 
@@ -1820,13 +1776,7 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 		return err;
 	}
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_set_index(hsi, hs_index);
-
-	/* XXX */
-	err = load_from_blob(sbi, vi);
-	if (err) {
-		return err;
-	}
+	voluta_hsi_rebind(hsi, vi->vu.hsm, hs_index);
 	*out_hsi = hsi;
 	return 0;
 }
@@ -1951,19 +1901,13 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 		return err;
 	}
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_set_index(agi, ag_index);
+	voluta_agi_rebind(agi, vi->vu.agm, ag_index);
 
 	err = verify_agmap(sbi, agi);
 	if (err) {
 		/* TODO: cleanups */
 		return err;
 	}
-
-	err = load_from_blob(sbi, vi);
-	if (err) {
-		return err;
-	}
-
 	*out_agi = agi;
 	return 0;
 }

@@ -46,8 +46,6 @@ int voluta_sbi_load_sb(struct voluta_sb_info *sbi);
 
 int voluta_shut_super(struct voluta_sb_info *sbi);
 
-int voluta_adjust_super(struct voluta_sb_info *sbi);
-
 int voluta_format_super(struct voluta_sb_info *sbi);
 
 int voluta_format_spmaps(struct voluta_sb_info *sbi);

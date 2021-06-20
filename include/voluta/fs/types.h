@@ -311,7 +311,6 @@ struct voluta_space_stat {
 struct voluta_space_info {
 	struct voluta_space_stat sp_used;
 	loff_t          sp_capcity_size;
-	loff_t          sp_address_space;
 	size_t          sp_ag_count;
 	size_t          sp_hs_count;
 	voluta_index_t  sp_hs_active;

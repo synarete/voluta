@@ -18,6 +18,7 @@
 #define VOLUTA_CRYPTO_H_
 
 
+int voluta_init_gcrypt(void);
 
 int voluta_crypto_init(struct voluta_crypto *crypto);
 

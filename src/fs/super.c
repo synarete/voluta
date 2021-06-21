@@ -25,8 +25,8 @@
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/losd.h>
-#include <voluta/fs/boot.h>
 #include <voluta/fs/super.h>
+#include <voluta/fs/superb.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
 #include <voluta/fs/inode.h>

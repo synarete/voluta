@@ -25,7 +25,7 @@
 #include <voluta/fs/types.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/address.h>
-#include <voluta/fs/boot.h>
+#include <voluta/fs/superb.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/itable.h>
 #include <voluta/fs/inode.h>

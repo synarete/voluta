@@ -138,7 +138,7 @@ static void mountd_init_process(void)
 	        VOLUTA_LOG_WARN | VOLUTA_LOG_ERROR | \
 	        VOLUTA_LOG_CRIT | VOLUTA_LOG_STDOUT;
 
-	err = voluta_init_lib();
+	err = voluta_boot_lib();
 	if (err) {
 		voluta_die(err, "unable to init lib");
 	}

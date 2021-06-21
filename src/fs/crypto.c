@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <gcrypt.h>
 #include <voluta/fs/types.h>
-#include <voluta/fs/init.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/private.h>

@@ -192,34 +192,51 @@ static struct voluta_super_block *read_super_block(const char *path)
 	return sb;
 }
 
-void voluta_die_if_bad_sb(const char *path, const char *pass)
+static void decipher_super_block(struct voluta_super_block *sb,
+                                 const char *password, const char *path)
 {
 	int err;
-	struct voluta_super_block *sb = NULL;
+	struct voluta_crypto crypto;
+	struct voluta_hash512 hash;
+	struct voluta_passphrase passph;
 
-	sb = read_super_block(path);
 	err = voluta_sb_check_root(sb);
 	if (err) {
-		goto out;
+		voluta_die(err, "not a valid super-block: %s", path);
 	}
-	if (pass == NULL) {
-		err = -ENOKEY;
-		goto out;
+	err = voluta_crypto_init(&crypto);
+	if (err) {
+		voluta_die(err, "failed to create crypto context: %s", path);
 	}
-	err = voluta_decipher_sb(sb, pass);
-out:
+	err = voluta_passphrase_setup(&passph, password);
+	if (err) {
+		voluta_die(err, "bad password "\
+		           "(password-length: %d)", strlen(password));
+	}
+	err = voluta_sb_decrypt(sb, &crypto, &passph);
+	if (err) {
+		voluta_die(err, "bad super-block: %s", path);
+	}
+	voluta_sha3_512_of(&crypto.md, passph.pass, passph.passlen, &hash);
+	err = voluta_sb_check_pass_hash(sb, &hash);
+	if (err) {
+		voluta_die(err, "illegal passphrase: %s", path);
+	}
+	err = voluta_sb_check_rand(sb, &crypto.md);
+	if (err) {
+		voluta_die(err, "corrupted super block: %s", path);
+	}
+	voluta_crypto_fini(&crypto);
+	voluta_passphrase_reset(&passph);
+}
+
+void voluta_die_if_bad_sb(const char *path, const char *pass)
+{
+	struct voluta_super_block *sb;
+
+	sb = read_super_block(path);
+	decipher_super_block(sb, pass, path);
 	del_super_block(sb);
-	if (err == -EAGAIN) {
-		voluta_die(err, "already in use: %s", path);
-	} else if (err == -EUCLEAN) {
-		voluta_die(0, "not a valid voluta volume: %s", path);
-	} else if (err == -ENOKEY) {
-		voluta_die(0, "missing passphrase: %s", path);
-	} else if (err == -EKEYEXPIRED) {
-		voluta_die(0, "illegal passphrase: %s", path);
-	} else if (err) {
-		voluta_die(err, "failed to parse super block: %s", path);
-	}
 }
 
 void voluta_die_if_no_mountd(void)
@@ -989,7 +1006,7 @@ void voluta_init_process(void)
 {
 	int err;
 
-	err = voluta_init_lib();
+	err = voluta_boot_lib();
 	if (err) {
 		voluta_die(err, "unable to init lib");
 	}

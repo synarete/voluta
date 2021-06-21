@@ -19,13 +19,13 @@
 
 #include <voluta/infra.h>
 #include <voluta/fs/types.h>
-#include <voluta/fs/init.h>
-#include <voluta/fs/boot.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/mpool.h>
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/losd.h>
 #include <voluta/fs/crypto.h>
+#include <voluta/fs/superb.h>
+#include <voluta/fs/super.h>
 #include <voluta/fs/opers.h>
 #include <voluta/fs/namei.h>
 #include <voluta/fs/inode.h>
@@ -33,5 +33,6 @@
 #include <voluta/fs/file.h>
 #include <voluta/fs/exec.h>
 #include <voluta/fs/mount.h>
+#include <voluta/fs/boot.h>
 
 #endif /* VOLUTA_FS_H_ */

@@ -30,6 +30,7 @@
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/losd.h>
 #include <voluta/fs/super.h>
+#include <voluta/fs/superb.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/itable.h>
 #include <voluta/fs/inode.h>
@@ -94,14 +95,19 @@ static void fse_init_commons(struct voluta_fs_env *fse)
 static int fse_init_qalloc(struct voluta_fs_env *fse)
 {
 	int err;
+	size_t memsize = 0;
 	struct voluta_qalloc *qalloc = &fse_obj_of(fse)->fs_core.c.qalloc;
 
-	err = voluta_bootstrap_qalloc(qalloc, fse->args.memwant);
-	if (!err) {
-		fse->qalloc = qalloc;
-		fse->qalloc->mode = fse->args.pedantic;
+	err = voluta_boot_memsize(fse->args.memwant, &memsize);
+	if (err) {
+		return err;
 	}
-	return err;
+	err = voluta_qalloc_init(qalloc, memsize);
+	if (err) {
+		return err;
+	}
+	fse->qalloc = qalloc;
+	return 0;
 }
 
 static void fse_fini_qalloc(struct voluta_fs_env *fse)
@@ -254,7 +260,7 @@ static void fse_update_qalloc(struct voluta_fs_env *fse,
                               const struct voluta_fs_args *args)
 {
 	if (args->pedantic) {
-		fse->qalloc->mode = true;
+		fse->qalloc->mode = 1;
 	}
 }
 

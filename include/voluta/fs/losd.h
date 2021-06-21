@@ -61,4 +61,6 @@ int voluta_losd_resolve(struct voluta_losd *losd,
 int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
                               struct voluta_losd *losd, long ds_key);
 
+int voluta_resolve_sb_path(const char *id, struct voluta_namebuf *out_nb);
+
 #endif /* VOLUTA_LOSD_H_ */

@@ -170,21 +170,20 @@ static struct voluta_super_block *read_super_block(const char *path)
 	loff_t size = 0;
 	struct stat st = { .st_size = 0 };
 	struct voluta_super_block *sb = NULL;
-	const loff_t sb_off = VOLUTA_LBA_SB * VOLUTA_BK_SIZE;
 
 	voluta_stat_reg_or_blk(path, &st, &size);
 	if (size == 0) {
 		voluta_die(0, "empty volume: %s", path);
 	}
 	if (size < (int)sizeof(*sb)) {
-		voluta_die(0, "no zero-block in: %s", path);
+		voluta_die(0, "no super-block in: %s", path);
 	}
 	err = voluta_sys_open(path, O_RDONLY, 0, &fd);
 	if (err) {
 		voluta_die(err, "open failed: %s", path);
 	}
 	sb = new_super_block();
-	err = voluta_sys_preadn(fd, sb, sizeof(*sb), sb_off);
+	err = voluta_sys_preadn(fd, sb, sizeof(*sb), 0);
 	if (err) {
 		voluta_die(err, "pread error: %s", path);
 	}

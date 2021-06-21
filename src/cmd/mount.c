@@ -139,6 +139,7 @@ static void mount_finalize(void)
 	voluta_pfree_string(&voluta_globals.cmd.mount.mntpoint_real);
 	voluta_repo_finalize(&voluta_globals.repoi);
 	voluta_close_syslog();
+	voluta_burnstack();
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -166,6 +167,22 @@ static void mount_setup_check_repo(void)
 
 	voluta_globals.cmd.mount.passphrase =
 	        voluta_getpass(voluta_globals.cmd.mount.passphrase_file);
+}
+
+static void mount_setup_check_sb(void)
+{
+	int err;
+	char *sb_path = NULL;
+	const char *objs_dir = voluta_globals.repoi.objs_dir;
+	struct voluta_namebuf nb;
+
+	err = voluta_resolve_sb_path(g_mount_rootid, &nb);
+	if (err) {
+		voluta_die(err, "could not resolve super: %s", g_mount_rootid);
+	}
+	sb_path = voluta_joinpath_safe(objs_dir, nb.name);
+	voluta_die_if_bad_sb(sb_path, voluta_globals.cmd.mount.passphrase);
+	voluta_pfree_string(&sb_path);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -324,8 +341,11 @@ void voluta_execute_mount(void)
 	/* Require valid mount-point */
 	mount_setup_check_mntpoint();
 
-	/* Require valid back-end storage volume */
+	/* Require valid back-end storage repository */
 	mount_setup_check_repo();
+
+	/* Require valid super-block object reference */
+	mount_setup_check_sb();
 
 	/* Become daemon process */
 	mount_boostrap_process();

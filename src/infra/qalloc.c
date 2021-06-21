@@ -1282,7 +1282,7 @@ void voluta_zfree(void *mem, size_t sz)
 
 static void burnstack_recursively(int depth, int nbytes)
 {
-	char buf[1024];
+	char buf[512];
 	const int cnt = voluta_min32((int)sizeof(buf), nbytes);
 
 	if (cnt > 0) {

@@ -77,7 +77,6 @@ static voluta_lba_t hsm_lba_by_index(voluta_index_t hs_index)
 	        (voluta_lba_t)(nbk_in_bksec + (hs_index * nbk_in_bksec));
 
 	voluta_assert_gt(hs_index, 0);
-	voluta_assert_gt(VOLUTA_NBK_IN_BKSEC, VOLUTA_LBA_SB);
 	voluta_assert_lt(hsm_lba, VOLUTA_NBK_IN_HS);
 
 	return hsm_lba;

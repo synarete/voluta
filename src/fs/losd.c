@@ -25,6 +25,8 @@
 #include <voluta/fs/super.h>
 #include <voluta/fs/private.h>
 
+#define LOSD_NSUBS 256
+
 /* blob-reference cache-entry */
 struct voluta_bref_info {
 	struct voluta_blobid    bid;
@@ -65,6 +67,31 @@ static void index_to_namebuf(voluta_index_t idx, struct voluta_namebuf *nb)
 
 	len = index_to_name(idx, nb->name, sizeof(nb->name) - 1);
 	nb->name[len] = '\0';
+}
+
+static int blobid_to_pathname(const struct voluta_blobid *bid,
+                              size_t nsubs, struct voluta_namebuf *out_nb)
+{
+	int err;
+	size_t len = 0;
+	size_t nlen = 0;
+	voluta_index_t idx;
+	char *nbuf = out_nb->name;
+	const size_t nmax = sizeof(out_nb->name);
+
+	idx = blobid_to_index(bid, nsubs);
+	len += index_to_name(idx, nbuf, nmax);
+	if (len > (nmax / 2)) {
+		return -EINVAL;
+	}
+	nbuf[len++] = '/';
+	err = voluta_blobid_to_name(bid, nbuf + len, nmax - len - 1, &nlen);
+	if (err) {
+		return err;
+	}
+	len += nlen;
+	nbuf[len] = '\0';
+	return 0;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -452,7 +479,7 @@ int voluta_losd_init(struct voluta_losd *losd,
 {
 	losd_cache_init(losd);
 	losd->lo_dfd = -1;
-	losd->lo_nsubs = 256;
+	losd->lo_nsubs = LOSD_NSUBS;
 	losd->lo_alif = alif;
 	losd->lo_basedir = NULL;
 	return 0;
@@ -525,26 +552,7 @@ static int losd_sub_pathname_of(const struct voluta_losd *losd,
                                 const struct voluta_blobid *bid,
                                 struct voluta_namebuf *out_nb)
 {
-	int err;
-	size_t len = 0;
-	size_t nlen = 0;
-	voluta_index_t idx;
-	char *nbuf = out_nb->name;
-	const size_t nmax = sizeof(out_nb->name);
-
-	idx = blobid_to_index(bid, losd->lo_nsubs);
-	len += index_to_name(idx, nbuf, nmax);
-	if (len > (nmax / 2)) {
-		return -EINVAL;
-	}
-	nbuf[len++] = '/';
-	err = voluta_blobid_to_name(bid, nbuf + len, nmax - len - 1, &nlen);
-	if (err) {
-		return err;
-	}
-	len += nlen;
-	nbuf[len] = '\0';
-	return 0;
+	return blobid_to_pathname(bid, losd->lo_nsubs, out_nb);
 }
 
 static ssize_t blob_ssize(const struct voluta_blobid *bid)
@@ -1223,4 +1231,22 @@ int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
 	err = dset_collect_flush(&dset, cache, losd);
 	dset_fini(&dset);
 	return err;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+int voluta_resolve_sb_path(const char *id, struct voluta_namebuf *out_nb)
+{
+	int err;
+	struct voluta_blobid bid;
+
+	err = voluta_blobid_from_name(&bid, id, strlen(id));
+	if (err) {
+		return err;
+	}
+	err = blobid_to_pathname(&bid, LOSD_NSUBS, out_nb);
+	if (err) {
+		return err;
+	}
+	return 0;
 }

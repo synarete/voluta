@@ -214,12 +214,12 @@ static void sbr_fini(struct voluta_sb_root *sbr)
 
 int voluta_sb_check_root(const struct voluta_super_block *sb)
 {
-	const struct voluta_sb_root *br = &sb->sb_boot;
+	const struct voluta_sb_root *sbr = &sb->sb_boot;
 
-	if (sbr_magic(br) != VOLUTA_SBROOT_MARK) {
+	if (sbr_magic(sbr) != VOLUTA_SBROOT_MARK) {
 		return -EINVAL;
 	}
-	if (sbr_version(br) != VOLUTA_FMT_VERSION) {
+	if (sbr_version(sbr) != VOLUTA_FMT_VERSION) {
 		return -EFSCORRUPTED;
 	}
 	return 0;

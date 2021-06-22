@@ -717,9 +717,10 @@ static int find_unallocated_space(struct voluta_sb_info *sbi,
 
 static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 {
-	vi->view = view;
+	const enum voluta_vtype vtype = vi->vaddr.vtype;
 
-	switch (vi->vaddr.vtype) {
+	vi->view = view;
+	switch (vtype) {
 	case VOLUTA_VTYPE_HSMAP:
 		vi->vu.hsm = &view->u.hsm;
 		break;
@@ -796,7 +797,7 @@ static int bind_inode(struct voluta_sb_info *sbi,
 {
 	int err;
 
-	err = bind_vnode(sbi, ii_vi(ii), bsi);
+	err = bind_vnode(sbi, ii_to_vi(ii), bsi);
 	if (err) {
 		return err;
 	}
@@ -1099,7 +1100,7 @@ static int spawn_hsmap_of(struct voluta_sb_info *sbi,
 	vi_stamp_mark_visible(vi);
 
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_setup(hsi, vi->vu.hsm, hs_index, nags_span);
+	voluta_hsi_setup(hsi, &vi->view->u.hsm, hs_index, nags_span);
 	vi_dirtify(vi);
 
 	*out_hsi = hsi;
@@ -1228,7 +1229,7 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi,
 	vi_stamp_mark_visible(vi);
 
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_setup(agi, vi->vu.agm, ag_index);
+	voluta_agi_setup(agi, &vi->view->u.agm, ag_index);
 	vi_dirtify(vi);
 
 	*out_agi = agi;
@@ -1777,7 +1778,7 @@ static int stage_hsmap(struct voluta_sb_info *sbi, voluta_index_t hs_index,
 		return err;
 	}
 	hsi = voluta_hsi_from_vi(vi);
-	voluta_hsi_rebind(hsi, vi->vu.hsm, hs_index);
+	voluta_hsi_rebind(hsi, &vi->view->u.hsm, hs_index);
 	*out_hsi = hsi;
 	return 0;
 }
@@ -1902,7 +1903,7 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 		return err;
 	}
 	agi = voluta_agi_from_vi(vi);
-	voluta_agi_rebind(agi, vi->vu.agm, ag_index);
+	voluta_agi_rebind(agi, &vi->view->u.agm, ag_index);
 
 	err = verify_agmap(sbi, agi);
 	if (err) {
@@ -1925,7 +1926,7 @@ static int find_cached_ii(const struct voluta_sb_info *sbi,
 
 static int review_inode(struct voluta_inode_info *ii)
 {
-	return review_vnode(ii_vi(ii));
+	return review_vnode(ii_to_vi(ii));
 }
 
 static int fetch_inode_at(struct voluta_sb_info *sbi,
@@ -2190,7 +2191,7 @@ static void setup_inode(struct voluta_inode_info *ii,
 {
 	const struct voluta_ucred *ucred = &op->ucred;
 
-	setup_vnode(ii_vi(ii), ii);
+	setup_vnode(ii_to_vi(ii), ii);
 	voluta_setup_inode(ii, ucred, parent_ino, parent_mode, mode, rdev);
 	update_itimes(op, ii, VOLUTA_IATTR_TIMES);
 }

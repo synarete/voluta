@@ -164,8 +164,8 @@ static void vi_delete(struct voluta_vnode_info *vi,
 	vi_free(vi, alif);
 }
 
-struct voluta_vnode_info *voluta_vi_new(struct voluta_alloc_if *alif,
-                                        const struct voluta_vba *vba)
+static struct voluta_vnode_info *
+vi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_vnode_info *vi;
 
@@ -215,6 +215,17 @@ void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static struct voluta_vnode_info *
+hsi_to_vi(const struct voluta_hspace_info *hsi)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(hsi != NULL)) {
+		vi = &hsi->hs_vi;
+	}
+	return vi_unconst(vi);
+}
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi)
@@ -272,8 +283,8 @@ static void hsi_delete_by(struct voluta_vnode_info *vi,
 	hsi_delete(voluta_hsi_from_vi(vi), alif);
 }
 
-struct voluta_hspace_info *
-voluta_hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+static struct voluta_hspace_info *
+hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_hspace_info *hsi;
 
@@ -285,6 +296,17 @@ voluta_hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static struct voluta_vnode_info *
+agi_to_vi(const struct voluta_agroup_info *agi)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(agi != NULL)) {
+		vi = &agi->ag_vi;
+	}
+	return vi_unconst(vi);
+}
 
 struct voluta_agroup_info *
 voluta_agi_from_vi(const struct voluta_vnode_info *vi)
@@ -342,8 +364,8 @@ static void agi_delete_by(struct voluta_vnode_info *vi,
 	agi_delete(voluta_agi_from_vi(vi), alif);
 }
 
-struct voluta_agroup_info *
-voluta_agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+static struct voluta_agroup_info *
+agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_agroup_info *agi;
 
@@ -363,16 +385,15 @@ struct voluta_inode_info *voluta_ii_from_vi(const struct voluta_vnode_info *vi)
 	if (likely(vi != NULL)) {
 		ii = container_of2(vi, struct voluta_inode_info, i_vi);
 	}
-	return unconst(ii);
+	return ii_unconst(ii);
 }
 
 static void ii_init(struct voluta_inode_info *ii,
-                    const struct voluta_vba *vba, ino_t ino,
-                    voluta_vi_delete_fn del_hook)
+                    const struct voluta_vba *vba, voluta_vi_delete_fn del_hook)
 {
 	vi_init(&ii->i_vi, vba, del_hook);
 	ii->inode = NULL;
-	ii->i_ino = ino;
+	ii->i_ino = VOLUTA_INO_NULL;
 	ii->i_nopen = 0;
 	ii->i_nlookup = 0;
 	ii->i_pinned = false;
@@ -415,22 +436,57 @@ static void ii_delete_by(struct voluta_vnode_info *vi,
 	ii_delete(voluta_ii_from_vi(vi), alif);
 }
 
-struct voluta_inode_info *
-voluta_ii_new(struct voluta_alloc_if *alif,
-              const struct voluta_vba *vba, ino_t ino)
+static struct voluta_inode_info *
+ii_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_inode_info *ii;
 
 	ii = ii_malloc(alif);
 	if (ii != NULL) {
-		ii_init(ii, vba, ino, ii_delete_by);
+		ii_init(ii, vba, ii_delete_by);
 	}
 	return ii;
 }
 
-/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+struct voluta_vnode_info *
+voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
+                     const struct voluta_vba *vba)
+{
+	struct voluta_vnode_info *vi;
+	const enum voluta_vtype vtype = vba->vaddr.vtype;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_HSMAP:
+		vi = hsi_to_vi(hsi_new(alif, vba));
+		break;
+	case VOLUTA_VTYPE_AGMAP:
+		vi = agi_to_vi(agi_new(alif, vba));
+		break;
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_DATABK:
+		vi = vi_new(alif, vba);
+		break;
+	case VOLUTA_VTYPE_INODE:
+		vi = ii_to_vi(ii_new(alif, vba));
+		break;
+	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_VTYPE_SUPER:
+	case VOLUTA_VTYPE_AGBKS:
+	default:
+		vi = NULL;
+	}
+	return vi;
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
 static uint32_t hdr_magic(const struct voluta_header *hdr)
 {

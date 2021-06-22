@@ -420,8 +420,21 @@ struct voluta_vnode_info *agi_vi(const struct voluta_agroup_info *agi)
 	       voluta_unconst(&agi->ag_vi) : NULL;
 }
 
+
 static inline
-struct voluta_vnode_info *ii_vi(const struct voluta_inode_info *ii)
+struct voluta_inode_info *ii_unconst(const struct voluta_inode_info *ii)
+{
+	union {
+		const struct voluta_inode_info *p;
+		struct voluta_inode_info *q;
+	} u = {
+		.p = ii
+	};
+	return u.q;
+}
+
+static inline
+struct voluta_vnode_info *ii_to_vi(const struct voluta_inode_info *ii)
 {
 	return voluta_likely(ii != NULL) ?
 	       voluta_unconst(&ii->i_vi) : NULL;
@@ -436,19 +449,19 @@ ino_t ii_ino(const struct voluta_inode_info *ii)
 static inline
 const struct voluta_vaddr *ii_vaddr(const struct voluta_inode_info *ii)
 {
-	return vi_vaddr(ii_vi(ii));
+	return vi_vaddr(ii_to_vi(ii));
 }
 
 static inline
 struct voluta_bksec_info *ii_bsi(const struct voluta_inode_info *ii)
 {
-	return ii_vi(ii)->v_bsi;
+	return ii_to_vi(ii)->v_bsi;
 }
 
 static inline
 struct voluta_sb_info *ii_sbi(const struct voluta_inode_info *ii)
 {
-	return vi_sbi(ii_vi(ii));
+	return vi_sbi(ii_to_vi(ii));
 }
 
 

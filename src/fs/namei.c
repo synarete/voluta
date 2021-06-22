@@ -2217,7 +2217,7 @@ static uint64_t namehash_by_sha256(const struct voluta_mdigest *md,
 static const struct voluta_mdigest *
 ii_mdigest_of(const struct voluta_inode_info *ii)
 {
-	return vi_mdigest(ii_vi(ii));
+	return vi_mdigest(ii_to_vi(ii));
 }
 
 static int name_to_hash(const struct voluta_inode_info *dir_ii,

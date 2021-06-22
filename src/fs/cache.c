@@ -470,12 +470,12 @@ static struct voluta_inode_info *ii_from_ce(const struct voluta_cache_elem *ce)
 
 static struct voluta_cache_elem *ii_ce(const struct voluta_inode_info *ii)
 {
-	return vi_ce(ii_vi(ii));
+	return vi_ce(ii_to_vi(ii));
 }
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 {
-	return !ii->i_pinned && !ii->i_nopen && vi_is_evictable(ii_vi(ii));
+	return !ii->i_pinned && !ii->i_nopen && vi_is_evictable(ii_to_vi(ii));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -828,7 +828,7 @@ static struct voluta_dirtyq *
 dirtyqs_queue_of_ii(const struct voluta_dirtyqs *dqs,
                     const struct voluta_inode_info *ii)
 {
-	return dirtyqs_queue_of_vi(dqs, ii_vi(ii));
+	return dirtyqs_queue_of_vi(dqs, ii_to_vi(ii));
 }
 
 static void dirtyqs_enq_vi(struct voluta_dirtyqs *dqs,
@@ -1194,7 +1194,7 @@ static size_t cache_shrink_or_relru_bks(struct voluta_cache *cache, size_t cnt)
 static struct voluta_vnode_info *
 cache_new_vi(const struct voluta_cache *cache, const struct voluta_vba *vba)
 {
-	return voluta_vi_new(cache->c_alif, vba);
+	return voluta_vi_new_by_vba(cache->c_alif, vba);
 }
 
 static int cache_init_vlm(struct voluta_cache *cache, size_t htbl_size)
@@ -1314,26 +1314,13 @@ cache_find_evictable_vi(struct voluta_cache *cache)
 }
 
 static struct voluta_vnode_info *
-cache_spawn_vi(struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	struct voluta_vnode_info *vi;
-
-	vi = cache_new_vi(cache, vba);
-	if (vi == NULL) {
-		return NULL;
-	}
-	cache_store_vi(cache, vi);
-	return vi;
-}
-
-static struct voluta_vnode_info *
 cache_require_vi(struct voluta_cache *cache, const struct voluta_vba *vba)
 {
 	int retry = CACHE_RETRY;
 	struct voluta_vnode_info *vi = NULL;
 
 	while (retry-- > 0) {
-		vi = cache_spawn_vi(cache, vba);
+		vi = cache_new_vi(cache, vba);
 		if (vi != NULL) {
 			break;
 		}
@@ -1441,105 +1428,20 @@ static size_t cache_shrink_or_relru_vis(struct voluta_cache *cache, size_t cnt)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_hspace_info *
-cache_new_hsi(const struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	return voluta_hsi_new(cache->c_alif, vba);
-}
-
-static struct voluta_hspace_info *
-cache_spawn_hsi(struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	struct voluta_hspace_info *hsi;
-
-	hsi = cache_new_hsi(cache, vba);
-	if (hsi == NULL) {
-		return NULL;
-	}
-	cache_store_vi(cache, hsi_vi(hsi));
-	return hsi;
-}
-
-static struct voluta_hspace_info *
-cache_require_hsi(struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	int retry = CACHE_RETRY;
-	struct voluta_hspace_info *hsi = NULL;
-
-	while (retry-- > 0) {
-		hsi = cache_spawn_hsi(cache, vba);
-		if (hsi != NULL) {
-			break;
-		}
-		cache_evict_some(cache);
-	}
-	return hsi;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static struct voluta_agroup_info *
-cache_new_agi(const struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	return voluta_agi_new(cache->c_alif, vba);
-}
-
-static struct voluta_agroup_info *
-cache_spawn_agi(struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	struct voluta_agroup_info *agi;
-
-	agi = cache_new_agi(cache, vba);
-	if (agi == NULL) {
-		return NULL;
-	}
-	cache_store_vi(cache, agi_vi(agi));
-	return agi;
-}
-
-static struct voluta_agroup_info *
-cache_require_agi(struct voluta_cache *cache, const struct voluta_vba *vba)
-{
-	int retry = CACHE_RETRY;
-	struct voluta_agroup_info *agi = NULL;
-
-	while (retry-- > 0) {
-		agi = cache_spawn_agi(cache, vba);
-		if (agi != NULL) {
-			break;
-		}
-		cache_evict_some(cache);
-	}
-	return agi;
-}
-
-/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
 struct voluta_vnode_info *
 voluta_cache_spawn_vi(struct voluta_cache *cache,
                       const struct voluta_vba *vba)
 {
-	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = vba->vaddr.vtype;
+	struct voluta_vnode_info *vi;
 
-	if (vtype_ishsmap(vtype)) {
-		vi = hsi_vi(cache_require_hsi(cache, vba));
-	} else if (vtype_isagmap(vtype)) {
-		vi = agi_vi(cache_require_agi(cache, vba));
-	} else {
-		vi = cache_require_vi(cache, vba);
+	vi = cache_require_vi(cache, vba);
+	if (vi != NULL) {
+		cache_store_vi(cache, vi);
 	}
 	return vi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static struct voluta_inode_info *
-cache_new_ii(const struct voluta_cache *cache,
-             const struct voluta_vba *vba, ino_t ino)
-{
-	return voluta_ii_new(cache->c_alif, vba, ino);
-}
 
 static int cache_init_ilm(struct voluta_cache *cache, size_t htbl_size)
 {
@@ -1568,7 +1470,7 @@ cache_find_ii(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 static void cache_evict_ii(struct voluta_cache *cache,
                            struct voluta_inode_info *ii)
 {
-	struct voluta_vnode_info *vi = ii_vi(ii);
+	struct voluta_vnode_info *vi = ii_to_vi(ii);
 	voluta_vi_delete_fn delete_fn = vi->v_del_hook;
 
 	lrumap_remove(&cache->c_ilm, ii_ce(ii));
@@ -1605,9 +1507,10 @@ voluta_cache_lookup_ii(struct voluta_cache *cache,
 	return cache_lookup_ii(cache, vaddr);
 }
 
-static void cache_store_ii(struct voluta_cache *cache,
+static void cache_store_ii(struct voluta_cache *cache, ino_t ino,
                            struct voluta_inode_info *ii)
 {
+	ii->i_ino = ino;
 	lrumap_store(&cache->c_ilm, ii_ce(ii), &ii->i_vi.vaddr.off);
 }
 
@@ -1639,48 +1542,25 @@ cache_find_evictable_ii(struct voluta_cache *cache)
 	return c_ctx.ii;
 }
 
-static struct voluta_inode_info *
-cache_spawn_ii(struct voluta_cache *cache,
-               const struct voluta_vba *vba, ino_t ino)
-{
-	struct voluta_inode_info *ii;
-
-	ii = cache_new_ii(cache, vba, ino);
-	if (ii == NULL) {
-		return NULL;
-	}
-	cache_store_ii(cache, ii);
-	return ii;
-}
-
-static struct voluta_inode_info *
-cache_require_ii(struct voluta_cache *cache,
-                 const struct voluta_vba *vba, ino_t ino)
-{
-	int retry = CACHE_RETRY;
-	struct voluta_inode_info *ii = NULL;
-
-	while (retry-- > 0) {
-		ii = cache_spawn_ii(cache, vba, ino);
-		if (ii != NULL) {
-			break;
-		}
-		cache_evict_some(cache);
-	}
-	return ii;
-}
-
 struct voluta_inode_info *
 voluta_cache_spawn_ii(struct voluta_cache *cache,
                       const struct voluta_vba *vba, ino_t ino)
 {
-	return cache_require_ii(cache, vba, ino);
+	struct voluta_vnode_info *vi;
+	struct voluta_inode_info *ii = NULL;
+
+	vi = cache_require_vi(cache, vba);
+	if (vi != NULL) {
+		ii = voluta_ii_from_vi(vi);
+		cache_store_ii(cache, ino, ii);
+	}
+	return ii;
 }
 
 void voulta_cache_forget_ii(struct voluta_cache *cache,
                             struct voluta_inode_info *ii)
 {
-	vi_undirtify(ii_vi(ii));
+	vi_undirtify(ii_to_vi(ii));
 	cache_evict_ii(cache, ii);
 }
 
@@ -1696,7 +1576,7 @@ static bool cache_evict_or_relru_ii(struct voluta_cache *cache,
                                     struct voluta_inode_info *ii)
 {
 	bool evicted;
-	const bool recently_used = vi_has_tick(ii_vi(ii), cache->c_tick);
+	const bool recently_used = vi_has_tick(ii_to_vi(ii), cache->c_tick);
 
 	if (!recently_used && ii_isevictable(ii)) {
 		cache_evict_ii(cache, ii);
@@ -2097,12 +1977,12 @@ void voluta_vi_undirtify(struct voluta_vnode_info *vi)
 
 void voluta_ii_dirtify(struct voluta_inode_info *ii)
 {
-	voluta_vi_dirtify(ii_vi(ii));
+	voluta_vi_dirtify(ii_to_vi(ii));
 }
 
 void voluta_ii_undirtify(struct voluta_inode_info *ii)
 {
-	voluta_vi_undirtify(ii_vi(ii));
+	voluta_vi_undirtify(ii_to_vi(ii));
 }
 
 bool voluta_ii_isrdonly(const struct voluta_inode_info *ii)
@@ -2115,17 +1995,17 @@ bool voluta_ii_isrdonly(const struct voluta_inode_info *ii)
 
 size_t voluta_ii_refcnt(const struct voluta_inode_info *ii)
 {
-	return voluta_vi_refcnt(ii_vi(ii));
+	return voluta_vi_refcnt(ii_to_vi(ii));
 }
 
 void voluta_ii_incref(struct voluta_inode_info *ii)
 {
-	voluta_vi_incref(ii_vi(ii));
+	voluta_vi_incref(ii_to_vi(ii));
 }
 
 void voluta_ii_decref(struct voluta_inode_info *ii)
 {
-	voluta_vi_decref(ii_vi(ii));
+	voluta_vi_decref(ii_to_vi(ii));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

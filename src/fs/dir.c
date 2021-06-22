@@ -708,11 +708,6 @@ static struct voluta_inode *unconst_inode(const struct voluta_inode *inode)
 	return unconst(inode);
 }
 
-static struct voluta_inode_info *unconst_ii(const struct voluta_inode_info *ii)
-{
-	return unconst(ii);
-}
-
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_dir_ispec *dis_of(const struct voluta_inode *inode)
@@ -1225,7 +1220,7 @@ int voluta_lookup_dentry(const struct voluta_oper *op,
 	struct voluta_dir_ctx d_ctx = {
 		.sbi = ii_sbi(dir_ii),
 		.op = op,
-		.dir_ii = unconst_ii(dir_ii),
+		.dir_ii = ii_unconst(dir_ii),
 		.name = name
 	};
 
@@ -2076,7 +2071,7 @@ int voluta_remove_dentry(const struct voluta_oper *op,
 	struct voluta_dir_ctx d_ctx = {
 		.sbi = ii_sbi(dir_ii),
 		.op = op,
-		.dir_ii = unconst_ii(dir_ii),
+		.dir_ii = ii_unconst(dir_ii),
 		.name = name
 	};
 

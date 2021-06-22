@@ -115,8 +115,4 @@ void voluta_mark_opaque_at(struct voluta_bksec_info *bsi,
 bool voluta_is_visible(const struct voluta_vnode_info *vi);
 
 
-
-struct voluta_agroup_info *
-voluta_agi_from_vi(const struct voluta_vnode_info *vi);
-
 #endif /* VOLUTA_CACHE_H_ */

@@ -19,12 +19,12 @@
 
 #include <unistd.h>
 
-int voluta_iti_init(struct voluta_itable_info *iti,
-                    struct voluta_alloc_if *alif);
+int voluta_itbi_init(struct voluta_itable_info *iti,
+                     struct voluta_alloc_if *alif);
 
-void voluta_iti_reinit(struct voluta_itable_info *iti);
+void voluta_itbi_reinit(struct voluta_itable_info *iti);
 
-void voluta_iti_fini(struct voluta_itable_info *iti);
+void voluta_itbi_fini(struct voluta_itable_info *iti);
 
 int voluta_acquire_ino(struct voluta_sb_info *sbi,
                        const struct voluta_vaddr *vaddr,

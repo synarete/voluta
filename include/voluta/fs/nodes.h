@@ -78,6 +78,12 @@ struct voluta_agroup_info {
 	struct voluta_agroup_map       *agm;
 };
 
+/* itable */
+struct voluta_itnode_info {
+	struct voluta_vnode_info        itn_vi;
+	struct voluta_itable_tnode     *itn;
+};
+
 /* inode */
 struct voluta_inode_info {
 	struct voluta_vnode_info        i_vi;
@@ -97,6 +103,14 @@ voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
+
+struct voluta_agroup_info *
+voluta_agi_from_vi(const struct voluta_vnode_info *vi);
+
+struct voluta_itnode_info *
+voluta_itni_from_vi(const struct voluta_vnode_info *vi);
+
+void voluta_itni_rebind(struct voluta_itnode_info *itni);
 
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);

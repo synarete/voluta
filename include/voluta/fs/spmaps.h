@@ -32,11 +32,9 @@ void voluta_bls_set_vba(struct voluta_blobspec *bls,
 void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
 
-void voluta_hsi_rebind(struct voluta_hspace_info *hsi,
-                       struct voluta_hspace_map *hsm, voluta_index_t hs_index);
+void voluta_hsi_rebind(struct voluta_hspace_info *hsi, voluta_index_t hs_indx);
 
 void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      struct voluta_hspace_map *hsm,
                       voluta_index_t hs_index, size_t nags_span);
 
 void voluta_hsi_vba(const struct voluta_hspace_info *hsi,
@@ -93,11 +91,9 @@ int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
 void voluta_agi_dirtify(struct voluta_agroup_info *agi);
 
 
-void voluta_agi_rebind(struct voluta_agroup_info *agi,
-                       struct voluta_agroup_map *agm, voluta_index_t ag_index);
+void voluta_agi_rebind(struct voluta_agroup_info *agi, voluta_index_t ag_indx);
 
-void voluta_agi_setup(struct voluta_agroup_info *agi,
-                      struct voluta_agroup_map *agm, voluta_index_t ag_index);
+void voluta_agi_setup(struct voluta_agroup_info *agi, voluta_index_t ag_index);
 
 void voluta_agi_vba(const struct voluta_agroup_info *agi,
                     struct voluta_vba *out_vba);

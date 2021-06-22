@@ -378,6 +378,89 @@ agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_vnode_info *
+itni_to_vi(const struct voluta_itnode_info *itni)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(itni != NULL)) {
+		vi = &itni->itn_vi;
+	}
+	return vi_unconst(vi);
+}
+
+struct voluta_itnode_info *
+voluta_itni_from_vi(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_itnode_info *itni = NULL;
+
+	if (likely(vi != NULL)) {
+		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_ITNODE);
+		itni = container_of2(vi, struct voluta_itnode_info, itn_vi);
+	}
+	return unconst(itni);
+}
+
+static void itni_init(struct voluta_itnode_info *itni,
+                      const struct voluta_vba *vba,
+                      voluta_vi_delete_fn del_hook)
+{
+	vi_init(&itni->itn_vi, vba, del_hook);
+	itni->itn = NULL;
+}
+
+static void itni_fini(struct voluta_itnode_info *itni)
+{
+	vi_fini(&itni->itn_vi);
+	itni->itn = NULL;
+}
+
+static struct voluta_itnode_info *itni_malloc(struct voluta_alloc_if *alif)
+{
+	struct voluta_itnode_info *itni;
+
+	itni = voluta_allocate(alif, sizeof(*itni));
+	return itni;
+}
+
+static void itni_free(struct voluta_itnode_info *itni,
+                      struct voluta_alloc_if *alif)
+{
+	voluta_deallocate(alif, itni, sizeof(*itni));
+}
+
+static void itni_delete(struct voluta_itnode_info *itni,
+                        struct voluta_alloc_if *alif)
+{
+	itni_fini(itni);
+	itni_free(itni, alif);
+}
+
+static void itni_delete_by(struct voluta_vnode_info *vi,
+                           struct voluta_alloc_if *alif)
+{
+	itni_delete(voluta_itni_from_vi(vi), alif);
+}
+
+static struct voluta_itnode_info *
+itni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+{
+	struct voluta_itnode_info *itni;
+
+	itni = itni_malloc(alif);
+	if (itni != NULL) {
+		itni_init(itni, vba, itni_delete_by);
+	}
+	return itni;
+}
+
+void voluta_itni_rebind(struct voluta_itnode_info *itni)
+{
+	itni->itn = &itni->itn_vi.view->u.itn;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 struct voluta_inode_info *voluta_ii_from_vi(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_inode_info *ii = NULL;
@@ -464,9 +547,11 @@ voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
 	case VOLUTA_VTYPE_AGMAP:
 		vi = agi_to_vi(agi_new(alif, vba));
 		break;
+	case VOLUTA_VTYPE_ITNODE:
+		vi = itni_to_vi(itni_new(alif, vba));
+		break;
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_XANODE:
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:

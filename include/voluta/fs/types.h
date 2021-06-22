@@ -368,7 +368,7 @@ struct voluta_sb_info {
 	struct voluta_uuid              sb_fs_uuid;
 	struct voluta_ucred             sb_owner;
 	struct voluta_space_info        sb_spi;
-	struct voluta_itable_info       sb_iti;
+	struct voluta_itable_info       sb_itbi;
 	struct voluta_oper_stat         sb_ops;
 	struct voluta_pipe              sb_pipe;
 	struct voluta_nullfd            sb_nullnfd;

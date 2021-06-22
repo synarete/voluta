@@ -360,7 +360,7 @@ bool voluta_ii_issock(const struct voluta_inode_info *ii)
 
 static ino_t rootd_ino(const struct voluta_sb_info *sbi)
 {
-	return sbi->sb_iti.it_rootdir.ino;
+	return sbi->sb_itbi.it_rootdir.ino;
 }
 
 bool voluta_ii_isrootd(const struct voluta_inode_info *ii)

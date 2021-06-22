@@ -1089,20 +1089,18 @@ static void hsi_dirtify(struct voluta_hspace_info *hsi)
 	vi_dirtify(hsi_vi(hsi));
 }
 
-void voluta_hsi_rebind(struct voluta_hspace_info *hsi,
-                       struct voluta_hspace_map *hsm, voluta_index_t hs_index)
+void voluta_hsi_rebind(struct voluta_hspace_info *hsi, voluta_index_t hs_index)
 {
 	voluta_assert_gt(hs_index, 0);
 	hsi->hs_index = hs_index;
-	hsi->hsm = hsm;
+	hsi->hsm = &hsi->hs_vi.view->u.hsm;
 }
 
 void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      struct voluta_hspace_map *hsm,
                       voluta_index_t hs_index, size_t nags_span)
 {
-	voluta_hsi_rebind(hsi, hsm, hs_index);
-	hsm_init(hsm, hs_index, nags_span);
+	voluta_hsi_rebind(hsi, hs_index);
+	hsm_init(hsi->hsm, hs_index, nags_span);
 }
 
 void voluta_hsi_vba(const struct voluta_hspace_info *hsi,
@@ -1257,19 +1255,17 @@ void voluta_agi_dirtify(struct voluta_agroup_info *agi)
 	vi_dirtify(agi_vi(agi));
 }
 
-void voluta_agi_rebind(struct voluta_agroup_info *agi,
-                       struct voluta_agroup_map *agm, voluta_index_t ag_index)
+void voluta_agi_rebind(struct voluta_agroup_info *agi, voluta_index_t ag_index)
 {
 	voluta_assert_gt(ag_index, 0);
 	agi->ag_index = ag_index;
-	agi->agm = agm;
+	agi->agm = &agi->ag_vi.view->u.agm;
 }
 
-void voluta_agi_setup(struct voluta_agroup_info *agi,
-                      struct voluta_agroup_map *agm, voluta_index_t ag_index)
+void voluta_agi_setup(struct voluta_agroup_info *agi, voluta_index_t ag_index)
 {
-	voluta_agi_rebind(agi, agm, ag_index);
-	agm_init(agm, ag_index);
+	voluta_agi_rebind(agi, ag_index);
+	agm_init(agi->agm, ag_index);
 }
 
 void voluta_agi_vba(const struct voluta_agroup_info *agi,

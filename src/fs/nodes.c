@@ -33,6 +33,15 @@
 #include <voluta/fs/xattr.h>
 #include <voluta/fs/private.h>
 
+
+/* local functions forward declarations */
+static const struct voluta_vnode_vtbl *vi_vtbl(void);
+static const struct voluta_vnode_vtbl *hsi_vtbl(void);
+static const struct voluta_vnode_vtbl *agi_vtbl(void);
+static const struct voluta_vnode_vtbl *itni_vtbl(void);
+static const struct voluta_vnode_vtbl *ii_vtbl(void);
+
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void lh_init(struct voluta_list_head *lh)
@@ -107,7 +116,7 @@ static void vi_fiov_post(struct voluta_fiovref *fir)
 
 static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_vba *vba,
-                    voluta_vi_delete_fn del_hook)
+                    const struct voluta_vnode_vtbl *vtbl)
 {
 	voluta_ce_init(&vi->v_ce);
 	lh_init(&vi->v_dq_blh);
@@ -123,7 +132,7 @@ static void vi_init(struct voluta_vnode_info *vi,
 	vi->v_ds_key = 0;
 	vi->v_dirty = 0;
 	vi->v_verify = 0;
-	vi->v_del_hook = del_hook;
+	vi->v_vtbl = vtbl;
 }
 
 static void vi_fini(struct voluta_vnode_info *vi)
@@ -141,7 +150,7 @@ static void vi_fini(struct voluta_vnode_info *vi)
 	vi->vu.p = NULL;
 	vi->v_dirty = -11111;
 	vi->v_verify = 0;
-	vi->v_del_hook = NULL;
+	vi->v_vtbl = NULL;
 }
 
 static struct voluta_vnode_info *vi_malloc(struct voluta_alloc_if *alif)
@@ -171,7 +180,7 @@ vi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 	vi = vi_malloc(alif);
 	if (vi != NULL) {
-		vi_init(vi, vba, vi_delete);
+		vi_init(vi, vba, vi_vtbl());
 	}
 	return vi;
 }
@@ -214,6 +223,16 @@ void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
 	return dat;
 }
 
+static const struct voluta_vnode_vtbl g_vi_vtbl = {
+	.evictable = voluta_vi_isevictable,
+	.del = vi_delete
+};
+
+static const struct voluta_vnode_vtbl *vi_vtbl(void)
+{
+	return &g_vi_vtbl;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *
@@ -240,10 +259,10 @@ voluta_hsi_from_vi(const struct voluta_vnode_info *vi)
 
 static void hsi_init(struct voluta_hspace_info *hsi,
                      const struct voluta_vba *vba,
-                     voluta_vi_delete_fn del_hook)
+                     const struct voluta_vnode_vtbl *vtbl)
 {
 	ui_init(&hsi->hs_ui, &vba->baddr);
-	vi_init(&hsi->hs_vi, vba, del_hook);
+	vi_init(&hsi->hs_vi, vba, vtbl);
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 	hsi->hsm = NULL;
 }
@@ -290,9 +309,19 @@ hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 	hsi = hsi_malloc(alif);
 	if (hsi != NULL) {
-		hsi_init(hsi, vba, hsi_delete_by);
+		hsi_init(hsi, vba, hsi_vtbl());
 	}
 	return hsi;
+}
+
+static const struct voluta_vnode_vtbl g_hsi_vtbl = {
+	.evictable = voluta_vi_isevictable,
+	.del = hsi_delete_by
+};
+
+static const struct voluta_vnode_vtbl *hsi_vtbl(void)
+{
+	return &g_hsi_vtbl;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -321,10 +350,10 @@ voluta_agi_from_vi(const struct voluta_vnode_info *vi)
 
 static void agi_init(struct voluta_agroup_info *agi,
                      const struct voluta_vba *vba,
-                     voluta_vi_delete_fn del_hook)
+                     const struct voluta_vnode_vtbl *vtbl)
 {
 	ui_init(&agi->ag_ui, &vba->baddr);
-	vi_init(&agi->ag_vi, vba, del_hook);
+	vi_init(&agi->ag_vi, vba, vtbl);
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 	agi->agm = NULL;
 }
@@ -371,9 +400,20 @@ agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 	agi = agi_malloc(alif);
 	if (agi != NULL) {
-		agi_init(agi, vba, agi_delete_by);
+		agi_init(agi, vba, agi_vtbl());
 	}
 	return agi;
+}
+
+
+static const struct voluta_vnode_vtbl g_agi_vtbl = {
+	.evictable = voluta_vi_isevictable,
+	.del = agi_delete_by
+};
+
+static const struct voluta_vnode_vtbl *agi_vtbl(void)
+{
+	return &g_agi_vtbl;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -403,9 +443,9 @@ voluta_itni_from_vi(const struct voluta_vnode_info *vi)
 
 static void itni_init(struct voluta_itnode_info *itni,
                       const struct voluta_vba *vba,
-                      voluta_vi_delete_fn del_hook)
+                      const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&itni->itn_vi, vba, del_hook);
+	vi_init(&itni->itn_vi, vba, vtbl);
 	itni->itn = NULL;
 }
 
@@ -449,7 +489,7 @@ itni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 	itni = itni_malloc(alif);
 	if (itni != NULL) {
-		itni_init(itni, vba, itni_delete_by);
+		itni_init(itni, vba, itni_vtbl());
 	}
 	return itni;
 }
@@ -457,6 +497,17 @@ itni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 void voluta_itni_rebind(struct voluta_itnode_info *itni)
 {
 	itni->itn = &itni->itn_vi.view->u.itn;
+}
+
+
+static const struct voluta_vnode_vtbl g_itni_vtbl = {
+	.evictable = voluta_vi_isevictable,
+	.del = itni_delete_by
+};
+
+static const struct voluta_vnode_vtbl *itni_vtbl(void)
+{
+	return &g_itni_vtbl;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -472,9 +523,10 @@ struct voluta_inode_info *voluta_ii_from_vi(const struct voluta_vnode_info *vi)
 }
 
 static void ii_init(struct voluta_inode_info *ii,
-                    const struct voluta_vba *vba, voluta_vi_delete_fn del_hook)
+                    const struct voluta_vba *vba,
+                    const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&ii->i_vi, vba, del_hook);
+	vi_init(&ii->i_vi, vba, vtbl);
 	ii->inode = NULL;
 	ii->i_ino = VOLUTA_INO_NULL;
 	ii->i_nopen = 0;
@@ -526,12 +578,39 @@ ii_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 
 	ii = ii_malloc(alif);
 	if (ii != NULL) {
-		ii_init(ii, vba, ii_delete_by);
+		ii_init(ii, vba, ii_vtbl());
 	}
 	return ii;
 }
 
+static bool ii_isevictable_by(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_inode_info *ii = voluta_ii_from_vi(vi);
+
+	return voluta_ii_isevictable(ii);
+}
+
+static const struct voluta_vnode_vtbl g_ii_vtbl = {
+	.evictable = ii_isevictable_by,
+	.del = ii_delete_by
+};
+
+static const struct voluta_vnode_vtbl *ii_vtbl(void)
+{
+	return &g_ii_vtbl;
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+struct voluta_unode_info *
+voluta_ui_new_by_vba(struct voluta_alloc_if *alif,
+                     const struct voluta_vba *vba)
+{
+	/* XXX */
+	voluta_unused(alif);
+	voluta_unused(vba);
+	return NULL;
+}
 
 struct voluta_vnode_info *
 voluta_vi_new_by_vba(struct voluta_alloc_if *alif,

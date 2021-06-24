@@ -212,7 +212,13 @@ struct voluta_kivam {
 	unsigned int cipher_mode;
 };
 
-/* logical-address within underlying volume space */
+/* logical-address within 1st underlying volume space */
+struct voluta_uaddr {
+	loff_t          off;
+	unsigned int    len;
+};
+
+/* logical-address within 2nd underlying volume space */
 struct voluta_vaddr {
 	voluta_index_t  hs_index;
 	voluta_index_t  ag_index;
@@ -247,7 +253,6 @@ struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
 	const void *ce_key;
-	long ce_tick;
 	int  ce_refcnt;
 	bool ce_mapped;
 	bool ce_forgot;
@@ -297,7 +302,6 @@ struct voluta_cache {
 	struct voluta_lrumap    c_vlm;
 	struct voluta_lrumap    c_ilm;
 	struct voluta_block    *c_nil_bk;
-	long   c_tick;
 };
 
 /* space accounting */

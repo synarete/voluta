@@ -666,7 +666,7 @@ static bool is_xxi_size(size_t nbytes)
 	                sizeof(struct voluta_vnode_info));
 
 	STATICASSERT_LT(sizeof(struct voluta_xxnode_info),
-	                (3 * sizeof(struct voluta_vnode_info)) / 2);
+	                (2 * sizeof(struct voluta_vnode_info)));
 
 	return (nbytes <= sizeof(struct voluta_xxnode_info)) &&
 	       (nbytes >= sizeof(struct voluta_vnode_info));

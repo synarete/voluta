@@ -955,6 +955,11 @@ static bool ii_isnlink_orphan(const struct voluta_inode_info *ii)
 	return true;
 }
 
+static bool ii_isevictable(const struct voluta_inode_info *ii)
+{
+	return voluta_ii_isevictable(ii);
+}
+
 static bool ii_isdropable(const struct voluta_inode_info *ii)
 {
 	if (!ii_isevictable(ii)) {

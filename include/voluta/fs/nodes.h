@@ -17,19 +17,26 @@
 #ifndef VOLUTA_NODES_H_
 #define VOLUTA_NODES_H_
 
+struct voluta_unode_info;
 struct voluta_vnode_info;
 struct voluta_mpool;
 
-typedef void (*voluta_vi_delete_fn)(struct voluta_vnode_info *vi,
-                                    struct voluta_alloc_if *alif);
 
 /* unode */
 struct voluta_unode_info {
+	struct voluta_cache_elem        u_ce;
 	struct voluta_baddr             u_baddr;
+	struct voluta_uaddr             uaddr;
+	struct voluta_bksec_info       *u_bsi;
+	int  u_dirty;
 };
 
-
 /* vnode */
+struct voluta_vnode_vtbl {
+	bool (*evictable)(const struct voluta_vnode_info *vi);
+	void (*del)(struct voluta_vnode_info *vi, struct voluta_alloc_if *aif);
+};
+
 union voluta_vnode_u {
 	struct voluta_hspace_map        *hsm;
 	struct voluta_agroup_map        *agm;
@@ -46,6 +53,7 @@ union voluta_vnode_u {
 };
 
 struct voluta_vnode_info {
+	const struct voluta_vnode_vtbl *v_vtbl;
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
 	struct voluta_vaddr             vaddr;
@@ -57,7 +65,6 @@ struct voluta_vnode_info {
 	struct voluta_list_head         v_dq_blh;
 	struct voluta_avl_node          v_ds_an;
 	struct voluta_vnode_info       *v_ds_next;
-	voluta_vi_delete_fn             v_del_hook;
 	long v_ds_key;
 	int  v_verify;
 	int  v_dirty;
@@ -96,6 +103,10 @@ struct voluta_inode_info {
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+struct voluta_unode_info *
+voluta_ui_new_by_vba(struct voluta_alloc_if *alif,
+                     const struct voluta_vba *vba);
 
 struct voluta_vnode_info *
 voluta_vi_new_by_vba(struct voluta_alloc_if *alif,

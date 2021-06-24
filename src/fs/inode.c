@@ -86,7 +86,7 @@ static void assign_xts(struct statx_timestamp *xts, const struct timespec *ts)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-ino_t voluta_inode_ino(const struct voluta_inode *inode)
+static ino_t inode_ino(const struct voluta_inode *inode)
 {
 	return voluta_cpu_to_ino(inode->i_ino);
 }
@@ -270,6 +270,12 @@ static void inode_set_ctime(struct voluta_inode *inode,
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino)
+{
+	ii->inode = &ii->i_vi.view->u.inode;
+	ii->i_ino = ino;
+}
 
 ino_t voluta_ii_xino(const struct voluta_inode_info *ii)
 {
@@ -1234,7 +1240,7 @@ int voluta_verify_inode(const struct voluta_inode *inode)
 {
 	int err;
 
-	err = voluta_verify_ino(voluta_inode_ino(inode));
+	err = voluta_verify_ino(inode_ino(inode));
 	if (err) {
 		return err;
 	}

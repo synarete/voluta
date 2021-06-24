@@ -122,7 +122,6 @@
 #define ii_islnk(ii)                    voluta_ii_islnk(ii)
 #define ii_isfifo(ii)                   voluta_ii_isfifo(ii)
 #define ii_issock(ii)                   voluta_ii_issock(ii)
-#define ii_isevictable(ii)              voluta_ii_isevictable(ii)
 
 #define agi_dirtify(agi)                voluta_agi_dirtify(agi)
 

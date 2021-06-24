@@ -28,7 +28,7 @@
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
 #include <voluta/fs/crypto.h>
-#include <voluta/fs/losd.h>
+#include <voluta/fs/locosd.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/superb.h>
 #include <voluta/fs/spmaps.h>
@@ -45,7 +45,7 @@ struct voluta_fs_core {
 	struct voluta_qalloc    qalloc;
 	struct voluta_mpool     mpool;
 	struct voluta_cache     cache;
-	struct voluta_losd    losd;
+	struct voluta_locosd    locosd;
 	struct voluta_sb_info   sbinfo;
 };
 
@@ -174,7 +174,7 @@ static int fse_init_sbi(struct voluta_fs_env *fse)
 	int err;
 	struct voluta_sb_info *sbi = &fse_obj_of(fse)->fs_core.c.sbinfo;
 
-	err = voluta_sbi_init(sbi, fse->cache, fse->losd);
+	err = voluta_sbi_init(sbi, fse->cache, fse->locosd);
 	if (err) {
 		return err;
 	}
@@ -190,23 +190,23 @@ static void fse_fini_sbi(struct voluta_fs_env *fse)
 	}
 }
 
-static int fse_init_losd(struct voluta_fs_env *fse)
+static int fse_init_locosd(struct voluta_fs_env *fse)
 {
 	int err;
-	struct voluta_losd *losd = &fse_obj_of(fse)->fs_core.c.losd;
+	struct voluta_locosd *locosd = &fse_obj_of(fse)->fs_core.c.locosd;
 
-	err = voluta_losd_init(losd, &fse->qalloc->alif);
+	err = voluta_locosd_init(locosd, &fse->qalloc->alif);
 	if (!err) {
-		fse->losd = losd;
+		fse->locosd = locosd;
 	}
 	return err;
 }
 
-static void fse_fini_losd(struct voluta_fs_env *fse)
+static void fse_fini_locosd(struct voluta_fs_env *fse)
 {
-	if (fse->losd != NULL) {
-		voluta_losd_fini(fse->losd);
-		fse->losd = NULL;
+	if (fse->locosd != NULL) {
+		voluta_locosd_fini(fse->locosd);
+		fse->locosd = NULL;
 	}
 }
 
@@ -391,7 +391,7 @@ static int fse_init(struct voluta_fs_env *fse,
 	if (err) {
 		return err;
 	}
-	err = fse_init_losd(fse);
+	err = fse_init_locosd(fse);
 	if (err) {
 		return err;
 	}
@@ -426,7 +426,7 @@ static void fse_fini(struct voluta_fs_env *fse)
 	fse_fini_fuseq(fse);
 	fse_fini_sbi(fse);
 	fse_fini_sb(fse);
-	fse_fini_losd(fse);
+	fse_fini_locosd(fse);
 	fse_fini_cache(fse);
 	fse_fini_mpool(fse);
 	fse_fini_qalloc(fse);
@@ -533,11 +533,11 @@ static int fse_create_osd(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_losd_open(fse->losd, fse->args.objsdir);
+	err = voluta_locosd_open(fse->locosd, fse->args.objsdir);
 	if (err) {
 		return err;
 	}
-	err = voluta_losd_format(fse->losd);
+	err = voluta_locosd_format(fse->locosd);
 	if (err) {
 		return err;
 	}
@@ -548,7 +548,7 @@ static int fse_open_osd(struct voluta_fs_env *fse)
 {
 	int err;
 
-	err = voluta_losd_open(fse->losd, fse->args.objsdir);
+	err = voluta_locosd_open(fse->locosd, fse->args.objsdir);
 	if (err) {
 		return err;
 	}
@@ -556,9 +556,9 @@ static int fse_open_osd(struct voluta_fs_env *fse)
 	return 0;
 }
 
-static int fse_close_losd(struct voluta_fs_env *fse)
+static int fse_close_locosd(struct voluta_fs_env *fse)
 {
-	return voluta_losd_close(fse->losd);
+	return voluta_locosd_close(fse->locosd);
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
@@ -622,7 +622,7 @@ int voluta_fse_term(struct voluta_fs_env *fse)
 	if (err) {
 		return err;
 	}
-	err = fse_close_losd(fse);
+	err = fse_close_locosd(fse);
 	if (err) {
 		return err;
 	}
@@ -914,10 +914,10 @@ int voluta_fse_verify(struct voluta_fs_env *fse)
 	}
 	err = fse_stage_sb(fse);
 	if (err) {
-		fse_close_losd(fse);
+		fse_close_locosd(fse);
 		return err;
 	}
-	err = fse_close_losd(fse);
+	err = fse_close_locosd(fse);
 	if (err) {
 		return err;
 	}

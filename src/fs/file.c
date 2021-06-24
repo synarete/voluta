@@ -28,7 +28,7 @@
 #include <voluta/fs/types.h>
 #include <voluta/fs/address.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/losd.h>
+#include <voluta/fs/locosd.h>
 #include <voluta/fs/super.h>
 #include <voluta/fs/inode.h>
 #include <voluta/fs/file.h>
@@ -200,8 +200,8 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	err = voluta_losd_resolve(f_ctx->sbi->sb_losd, &vba.baddr,
-	                          off_within, len, out_fiov);
+	err = voluta_locosd_resolve(f_ctx->sbi->sb_locosd, &vba.baddr,
+	                            off_within, len, out_fiov);
 	if (err) {
 		return err;
 	}

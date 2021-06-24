@@ -1962,8 +1962,8 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
 	query->u.volume.size = 0; /* XXX FIXME */
-	if (sbi->sb_losd->lo_basedir != NULL) {
-		strncpy(query->u.volume.path, sbi->sb_losd->lo_basedir,
+	if (sbi->sb_locosd->lo_basedir != NULL) {
+		strncpy(query->u.volume.path, sbi->sb_locosd->lo_basedir,
 		        sizeof(query->u.volume.path) - 1);
 	}
 }

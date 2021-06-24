@@ -22,7 +22,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/mpool.h>
 #include <voluta/fs/nodes.h>
-#include <voluta/fs/losd.h>
+#include <voluta/fs/locosd.h>
 #include <voluta/fs/crypto.h>
 #include <voluta/fs/superb.h>
 #include <voluta/fs/super.h>

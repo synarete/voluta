@@ -22,7 +22,7 @@
 #include <voluta/fs/address.h>
 #include <voluta/fs/nodes.h>
 #include <voluta/fs/cache.h>
-#include <voluta/fs/losd.h>
+#include <voluta/fs/locosd.h>
 #include <voluta/fs/spmaps.h>
 #include <voluta/fs/private.h>
 

@@ -652,7 +652,7 @@ void voluta_fse_stats(const struct voluta_fs_env *fse,
 	voluta_qalloc_stat(fse->qalloc, &alloc_stat);
 	st->nalloc_bytes = alloc_stat.nbytes_used;
 	st->ncache_blocks = cache->c_blm.htbl_size;
-	st->ncache_inodes = cache->c_ilm.htbl_size;
+	st->ncache_inodes = cache->c_ulm.htbl_size;
 	st->ncache_vnodes = cache->c_vlm.htbl_size;
 }
 

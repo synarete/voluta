@@ -2306,7 +2306,7 @@ static int try_forget_cached_ii(struct voluta_inode_info *ii)
 	struct voluta_sb_info *sbi = ii_sbi(ii);
 
 	if ((ii->i_nlookup <= 0) && ii_isevictable(ii)) {
-		voulta_cache_forget_ii(sbi->sb_cache, ii);
+		voulta_cache_forget_vi(sbi->sb_cache, ii_to_vi(ii));
 	}
 	return 0;
 }

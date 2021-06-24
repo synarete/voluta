@@ -199,9 +199,6 @@ __attribute__((__noreturn__))
 void voluta_die_missing_arg(const char *s);
 
 __attribute__((__noreturn__))
-void voluta_die_no_volume_path(void);
-
-__attribute__((__noreturn__))
 void voluta_die_unsupported_opt(void);
 
 void voluta_die_if_redundant_arg(void);

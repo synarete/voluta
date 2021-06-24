@@ -590,6 +590,12 @@ static bool ii_isevictable_by(const struct voluta_vnode_info *vi)
 	return voluta_ii_isevictable(ii);
 }
 
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
+{
+	return !ii->i_pinned && !ii->i_nopen &&
+	       voluta_vi_isevictable(ii_to_vi(ii));
+}
+
 static const struct voluta_vnode_vtbl g_ii_vtbl = {
 	.evictable = ii_isevictable_by,
 	.del = ii_delete_by

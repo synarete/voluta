@@ -34,7 +34,7 @@ static char g_mount_rootid[256];
 
 
 static const char *mount_usage[] = {
-	"mount [options] <volume-path> <mount-point>",
+	"mount [options] <repo-path> <mount-point>",
 	"",
 	"options:",
 	"  -r, --rdonly                 Mount filesystem read-only",
@@ -98,7 +98,7 @@ static void mount_getopt(void)
 		}
 	}
 	voluta_globals.cmd.mount.repodir =
-	        voluta_consume_cmdarg("volume-path", false);
+	        voluta_consume_cmdarg("repo-path", false);
 	voluta_globals.cmd.mount.mntpoint =
 	        voluta_consume_cmdarg("mount-point", true);
 }

@@ -69,12 +69,6 @@ void voluta_die_missing_arg(const char *s)
 }
 
 __attribute__((__noreturn__))
-void voluta_die_no_volume_path(void)
-{
-	voluta_die(0, "missing volume path");
-}
-
-__attribute__((__noreturn__))
 void voluta_die_unsupported_opt(void)
 {
 	exit(EXIT_FAILURE);

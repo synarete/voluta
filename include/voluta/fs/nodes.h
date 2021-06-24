@@ -23,10 +23,16 @@ struct voluta_mpool;
 
 
 /* unode */
+struct voluta_unode_vtbl {
+	bool (*evictable)(const struct voluta_unode_info *ui);
+	void (*del)(struct voluta_unode_info *ui, struct voluta_alloc_if *aif);
+};
+
 struct voluta_unode_info {
+	struct voluta_uaddr             uaddr;
+	const struct voluta_unode_vtbl *u_vtbl;
 	struct voluta_cache_elem        u_ce;
 	struct voluta_baddr             u_baddr;
-	struct voluta_uaddr             uaddr;
 	struct voluta_bksec_info       *u_bsi;
 	int  u_dirty;
 };
@@ -53,14 +59,14 @@ union voluta_vnode_u {
 };
 
 struct voluta_vnode_info {
+	struct voluta_vaddr             vaddr;
 	const struct voluta_vnode_vtbl *v_vtbl;
+	struct voluta_cache_elem        v_ce;
 	union voluta_vnode_u            vu;
 	struct voluta_view             *view;
-	struct voluta_vaddr             vaddr;
 	struct voluta_fiovref           v_fir;
 	struct voluta_sb_info          *v_sbi;
 	struct voluta_bksec_info       *v_bsi;
-	struct voluta_cache_elem        v_ce;
 	struct voluta_list_head         v_dq_mlh;
 	struct voluta_list_head         v_dq_blh;
 	struct voluta_avl_node          v_ds_an;
@@ -125,6 +131,8 @@ void voluta_itni_rebind(struct voluta_itnode_info *itni);
 
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);
+
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
 
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);

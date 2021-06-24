@@ -190,12 +190,12 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 
 static bool vi_isvisible(const struct voluta_vnode_info *vi)
 {
-	return voluta_is_visible(vi);
+	return voluta_bsi_is_visible_at(vi->v_bsi, vi_vaddr(vi));
 }
 
 static void vi_mark_visible(const struct voluta_vnode_info *vi)
 {
-	voluta_mark_visible(vi);
+	voluta_bsi_mark_visible_at(vi->v_bsi, vi_vaddr(vi));
 }
 
 static void vi_stamp_mark_visible(struct voluta_vnode_info *vi)
@@ -819,23 +819,22 @@ static int spawn_vi(struct voluta_sb_info *sbi,
                     struct voluta_vnode_info **out_vi)
 {
 	int err;
+	int retry = 2;
 	struct voluta_cache *cache = cache_of(sbi);
 
-	err = try_spawn_vi(sbi, vba, out_vi);
-	if (!err) {
-		return 0;
+	while (retry-- > 0) {
+		err = try_spawn_vi(sbi, vba, out_vi);
+		if (!err) {
+			return 0;
+		}
+		err = commit_dirty_now(sbi);
+		if (err) {
+			break;
+		}
 	}
-	err = commit_dirty_now(sbi);
-	if (err) {
-		return err;
-	}
-	err = try_spawn_vi(sbi, vba, out_vi);
-	if (err) {
-		log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
-		        cache->c_vlm.htbl_size, total_dirty_size(sbi));
-		return err;
-	}
-	return 0;
+	log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
+	        cache->c_vlm.htbl_size, total_dirty_size(sbi));
+	return err;
 }
 
 static int spawn_bind_vnode(struct voluta_sb_info *sbi,
@@ -860,44 +859,26 @@ static int spawn_bind_vnode(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static void forget_cached_vi(struct voluta_vnode_info *vi)
+static void forget_cached_vi(struct voluta_sb_info *sbi,
+                             struct voluta_vnode_info *vi)
 {
 	if (vi != NULL) {
-		voulta_cache_forget_vi(vi_cache(vi), vi);
+		voulta_cache_forget_vi(cache_of(sbi), vi);
 	}
-}
-
-static int try_spawn_ii(struct voluta_sb_info *sbi,
-                        const struct voluta_vba *vba, ino_t ino,
-                        struct voluta_inode_info **out_ii)
-{
-	struct voluta_cache *cache = cache_of(sbi);
-
-	*out_ii = voluta_cache_spawn_ii(cache, vba, ino);
-	return (*out_ii == NULL) ? -ENOMEM : 0;
 }
 
 static int spawn_ii(struct voluta_sb_info *sbi,
-                    const struct voluta_vba *vba, ino_t ino,
+                    const struct voluta_vba *vba,
                     struct voluta_inode_info **out_ii)
 {
 	int err;
-	const struct voluta_cache *cache = cache_of(sbi);
+	struct voluta_vnode_info *vi = NULL;
 
-	err = try_spawn_ii(sbi, vba, ino, out_ii);
-	if (!err) {
-		return 0;
-	}
-	err = commit_dirty_now(sbi);
+	err = spawn_vi(sbi, vba, &vi);
 	if (err) {
 		return err;
 	}
-	err = try_spawn_ii(sbi, vba, ino, out_ii);
-	if (err) {
-		log_dbg("can not spawn ii: nii=%lu dirty=%lu",
-		        cache->c_ilm.htbl_size, total_dirty_size(sbi));
-		return err;
-	}
+	*out_ii = voluta_ii_from_vi(vi);
 	return 0;
 }
 
@@ -918,7 +899,7 @@ static int spawn_bind_inode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_ii(sbi, &vba, iaddr->ino, out_ii);
+	err = spawn_ii(sbi, &vba, out_ii);
 	if (err) {
 		return err;
 	}
@@ -929,7 +910,7 @@ static int spawn_bind_inode(struct voluta_sb_info *sbi,
 static void forget_cached_ii(struct voluta_sb_info *sbi,
                              struct voluta_inode_info *ii)
 {
-	voulta_cache_forget_ii(cache_of(sbi), ii);
+	forget_cached_vi(sbi, ii_to_vi(ii));
 }
 
 static int spawn_spmap(struct voluta_sb_info *sbi,
@@ -988,7 +969,7 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	*out_vi = vi;
 	return 0;
 out_err:
-	forget_cached_vi(vi);
+	forget_cached_vi(sbi, vi);
 	*out_vi = NULL;
 	return err;
 }
@@ -1879,10 +1860,14 @@ static int find_cached_ii(const struct voluta_sb_info *sbi,
                           const struct voluta_iaddr *iaddr,
                           struct voluta_inode_info **out_ii)
 {
-	struct voluta_cache *cache = cache_of(sbi);
+	struct voluta_vnode_info *vi = NULL;
 
-	*out_ii = voluta_cache_lookup_ii(cache, &iaddr->vaddr);
-	return (*out_ii != NULL) ? 0 : -ENOENT;
+	vi = voluta_cache_lookup_vi(cache_of(sbi), &iaddr->vaddr);
+	if (vi == NULL) {
+		return -ENOENT;
+	}
+	*out_ii = voluta_ii_from_vi(vi);
+	return 0;
 }
 
 static int review_inode(struct voluta_inode_info *ii)
@@ -1940,6 +1925,12 @@ static int check_writable_fs(const struct voluta_sb_info *sbi)
 	const unsigned long mask = MS_RDONLY;
 
 	return ((sbi->sb_ms_flags & mask) == mask) ? -EROFS : 0;
+}
+
+/* TODO: repeated logic; add inode-specific flags check */
+static bool ii_isrdonly(const struct voluta_inode_info *ii)
+{
+	return (check_writable_fs(ii_sbi(ii)) != 0);
 }
 
 static int stage_inode(struct voluta_sb_info *sbi, ino_t ino,
@@ -2307,7 +2298,7 @@ static void mark_opaque_at(struct voluta_sb_info *sbi,
 
 	err = find_cached_bksec(sbi, vba, &bsi);
 	if (!err) {
-		voluta_mark_opaque_at(bsi, &vba->vaddr);
+		voluta_bsi_mark_opaque_at(bsi, &vba->vaddr);
 	}
 }
 
@@ -2340,7 +2331,7 @@ int voluta_remove_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	forget_cached_vi(vi);
+	forget_cached_vi(sbi, vi);
 	return 0;
 }
 

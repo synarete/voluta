@@ -19,7 +19,7 @@
 
 
 static const char *voluta_fsck_usage[] = {
-	"fsck [options] <volume-path>",
+	"fsck [options] <repo-path>",
 	"",
 	"options:",
 	"  -v, --version                Show version and exit",
@@ -55,7 +55,7 @@ static void fsck_getopt(void)
 		}
 	}
 	if (optind >= argc) {
-		voluta_die_no_volume_path();
+		voluta_die(0, "missing repo path");
 	}
 	voluta_globals.cmd.fsck.volume = argv[optind++];
 	voluta_die_if_redundant_arg();

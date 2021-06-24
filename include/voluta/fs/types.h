@@ -299,8 +299,8 @@ struct voluta_cache {
 	struct voluta_alloc_if *c_alif;
 	struct voluta_dirtyqs   c_dqs;
 	struct voluta_lrumap    c_blm;
+	struct voluta_lrumap    c_ulm;
 	struct voluta_lrumap    c_vlm;
-	struct voluta_lrumap    c_ilm;
 	struct voluta_block    *c_nil_bk;
 };
 

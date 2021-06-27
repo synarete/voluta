@@ -52,7 +52,7 @@ static void umount_getopt(void)
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.cmd.umount.point =
+	voluta_globals.cmd.umount.mntpoint =
 	        voluta_consume_cmdarg("mount-point", true);
 }
 
@@ -60,7 +60,7 @@ static void umount_getopt(void)
 
 static void umount_finalize(void)
 {
-	voluta_pfree_string(&voluta_globals.cmd.umount.point_real);
+	voluta_pfree_string(&voluta_globals.cmd.umount.mntpoint_real);
 }
 
 static void umount_setup_check_params(void)
@@ -71,15 +71,15 @@ static void umount_setup_check_params(void)
 
 	voluta_die_if_no_mountd();
 
-	err = voluta_sys_stat(voluta_globals.cmd.umount.point, &st);
+	err = voluta_sys_stat(voluta_globals.cmd.umount.mntpoint, &st);
 	if ((err == -ENOTCONN) && voluta_globals.cmd.umount.force) {
 		voluta_log_debug("transport endpoint not connected: %s",
-		                 voluta_globals.cmd.umount.point);
+		                 voluta_globals.cmd.umount.mntpoint);
 	} else {
-		voluta_globals.cmd.umount.point_real =
-		        voluta_realpath_safe(voluta_globals.cmd.umount.point);
+		voluta_globals.cmd.umount.mntpoint_real =
+		        voluta_realpath_safe(voluta_globals.cmd.umount.mntpoint);
 
-		mntpath = voluta_globals.cmd.umount.point_real;
+		mntpath = voluta_globals.cmd.umount.mntpoint_real;
 		voluta_die_if_not_mntdir(mntpath, false);
 	}
 }
@@ -88,10 +88,10 @@ static const char *umount_dirpath(void)
 {
 	const char *path;
 
-	if (voluta_globals.cmd.umount.point_real != NULL) {
-		path = voluta_globals.cmd.umount.point_real;
+	if (voluta_globals.cmd.umount.mntpoint_real != NULL) {
+		path = voluta_globals.cmd.umount.mntpoint_real;
 	} else {
-		path = voluta_globals.cmd.umount.point;
+		path = voluta_globals.cmd.umount.mntpoint;
 	}
 	return path;
 }

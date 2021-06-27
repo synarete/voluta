@@ -18,15 +18,15 @@
 #include <voluta/cmd.h>
 
 
-static const char *voluta_fsck_usage[] = {
-	"fsck [options] <repo-path>",
+static const char *voluta_prune_usage[] = {
+	"prune [options] <repo-path>",
 	"",
 	"options:",
 	"  -v, --version                Show version and exit",
 	NULL
 };
 
-static void fsck_getopt(void)
+static void prune_getopt(void)
 {
 	int c = 1;
 	int opt_index;
@@ -49,7 +49,7 @@ static void fsck_getopt(void)
 		if (c == 'v') {
 			voluta_show_version_and_exit(NULL);
 		} else if (c == 'h') {
-			voluta_show_help_and_exit(voluta_fsck_usage);
+			voluta_show_help_and_exit(voluta_prune_usage);
 		} else {
 			voluta_die_unsupported_opt();
 		}
@@ -57,29 +57,29 @@ static void fsck_getopt(void)
 	if (optind >= argc) {
 		voluta_die(0, "missing repo path");
 	}
-	voluta_globals.cmd.fsck.repodir = argv[optind++];
+	voluta_globals.cmd.prune.repodir = argv[optind++];
 	voluta_die_if_redundant_arg();
 }
 
 
-static void fsck_finalize(void)
+static void prune_finalize(void)
 {
 	voluta_destroy_fse_inst();
 }
 
 /*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
-void voluta_execute_fsck(void)
+void voluta_execute_prune(void)
 {
 	/* Do all cleanups upon exits */
-	atexit(fsck_finalize);
+	atexit(prune_finalize);
 
 	/* Parse command's arguments */
-	fsck_getopt();
+	prune_getopt();
 
 	/* TODO: FSCK... */
 
 	/* Post execution cleanups */
-	fsck_finalize();
+	prune_finalize();
 }
 

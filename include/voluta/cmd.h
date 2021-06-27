@@ -75,16 +75,16 @@ struct voluta_subcmd_mount {
 
 /* arguments for 'umount' sub-command */
 struct voluta_subcmd_umount {
-	char   *point;
-	char   *point_real;
+	char   *mntpoint;
+	char   *mntpoint_real;
 	bool    force;
 	bool    lazy;
 };
 
 /* arguments for 'snap' sub-command */
 struct voluta_subcmd_snap {
-	char   *point;
-	char   *point_real;
+	char   *mntpoint;
+	char   *mntpoint_real;
 	char   *volume;
 	char   *volume_real;
 	char   *volume_tmp;
@@ -100,7 +100,12 @@ struct voluta_subcmd_show {
 
 /* arguments for 'fsck' sub-command */
 struct voluta_subcmd_fsck {
-	char   *volume;
+	char   *repodir;
+};
+
+/* arguments for 'prune' sub-command */
+struct voluta_subcmd_prune {
+	char   *repodir;
 };
 
 /* sub-commands options */
@@ -111,6 +116,7 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_snap       snap;
 	struct voluta_subcmd_show       show;
 	struct voluta_subcmd_fsck       fsck;
+	struct voluta_subcmd_prune	prune;
 };
 
 /* repository parameters */
@@ -179,15 +185,13 @@ void voluta_execute_mount(void);
 
 void voluta_execute_umount(void);
 
-void voluta_execute_fsck(void);
-
 void voluta_execute_show(void);
 
 void voluta_execute_snap(void);
 
-void voluta_execute_encrypt(void);
+void voluta_execute_fsck(void);
 
-void voluta_execute_decrypt(void);
+void voluta_execute_prune(void);
 
 
 /* common utilities */

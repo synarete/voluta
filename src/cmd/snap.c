@@ -51,7 +51,7 @@ static void snap_getopt(void)
 			voluta_die_unsupported_opt();
 		}
 	}
-	voluta_globals.cmd.snap.point =
+	voluta_globals.cmd.snap.mntpoint =
 	        voluta_consume_cmdarg("mount-point", false);
 	voluta_globals.cmd.snap.volume =
 	        voluta_consume_cmdarg("volume-path", true);
@@ -61,7 +61,7 @@ static void snap_getopt(void)
 
 static void snap_finalize(void)
 {
-	voluta_pfree_string(&voluta_globals.cmd.snap.point_real);
+	voluta_pfree_string(&voluta_globals.cmd.snap.mntpoint_real);
 	voluta_pfree_string(&voluta_globals.cmd.snap.volume_real);
 	voluta_pfree_string(&voluta_globals.cmd.snap.volume_tmp);
 }
@@ -73,7 +73,7 @@ static void snap_setup_check_params(void)
 	struct stat st;
 	const char *path;
 
-	path = voluta_globals.cmd.snap.point;
+	path = voluta_globals.cmd.snap.mntpoint;
 	voluta_stat_ok(path, &st);
 	if (!S_ISDIR(st.st_mode)) {
 		voluta_die(-ENOTDIR, "bad mount-point: %s", path);
@@ -81,7 +81,7 @@ static void snap_setup_check_params(void)
 	if (st.st_ino != VOLUTA_INO_ROOT) {
 		voluta_die(0, "not a voluta mount-point: %s", path);
 	}
-	voluta_globals.cmd.snap.point_real = voluta_realpath_safe(path);
+	voluta_globals.cmd.snap.mntpoint_real = voluta_realpath_safe(path);
 
 	path = voluta_globals.cmd.snap.volume;
 	err = voluta_sys_stat(path, &st);
@@ -119,7 +119,7 @@ static void snap_execute(void)
 		.qtype = VOLUTA_QUERY_VOLUME
 	};
 
-	path = voluta_globals.cmd.snap.point_real;
+	path = voluta_globals.cmd.snap.mntpoint_real;
 	err = voluta_sys_open(path, O_DIRECTORY | O_RDONLY, 0, &dfd);
 	if (err) {
 		voluta_die(err, "failed to open-dir: %s", path);

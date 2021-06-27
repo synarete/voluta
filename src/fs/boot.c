@@ -207,12 +207,12 @@ static void guarantee_persistent_types_alignment(void)
 {
 	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_magic, 16);
 	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_version, 24);
-	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_volume_size, 32);
 	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_sw_version, 64);
 	REQUIRE_AOFFSET64(struct voluta_sb_root, sr_kdf_pair, 512);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_boot, 0);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_hash, 4096);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_birth_time, 8192);
+	REQUIRE_AOFFSET64(struct voluta_super_block, sb_volume_size, 8200);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_name, 8448);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_keys, 16384);
 	REQUIRE_AOFFSET64(struct voluta_super_block, sb_usm, 32768);

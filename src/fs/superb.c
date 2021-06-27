@@ -142,16 +142,6 @@ static void sbr_set_uuid(struct voluta_sb_root *sbr)
 	voluta_uuid_generate(&sbr->sr_uuid);
 }
 
-static ssize_t sbr_volume_size(const struct voluta_sb_root *sbr)
-{
-	return (ssize_t)voluta_le64_to_cpu(sbr->sr_volume_size);
-}
-
-static void sbr_set_volume_size(struct voluta_sb_root *sbr, ssize_t size)
-{
-	sbr->sr_volume_size = voluta_cpu_to_le64((uint64_t)size);
-}
-
 static void sbr_kdf(const struct voluta_sb_root *sbr,
                     struct voluta_kdf_pair *kdf)
 {
@@ -191,14 +181,13 @@ static void sbr_crypt_params(const struct voluta_sb_root *sbr,
 	cryp->cipher_mode = sbr_chiper_mode(sbr);
 }
 
-static void sbr_init(struct voluta_sb_root *sbr, ssize_t size)
+static void sbr_init(struct voluta_sb_root *sbr)
 {
 	memset(sbr, 0, sizeof(*sbr));
 	sbr_set_magic(sbr, VOLUTA_SBROOT_MARK);
 	sbr_set_version(sbr, VOLUTA_FMT_VERSION);
 	sbr_set_sw_version(sbr, voluta_version.string);
 	sbr_set_uuid(sbr);
-	sbr_set_volume_size(sbr, size);
 	sbr_set_kdf(sbr, &voluta_default_cryp.kdf);
 	sbr_set_cipher(sbr, voluta_default_cryp.cipher_algo,
 	               voluta_default_cryp.cipher_mode);
@@ -209,7 +198,6 @@ static void sbr_fini(struct voluta_sb_root *sbr)
 {
 	memset(sbr, 0xFF, sizeof(*sbr));
 	sbr_set_magic(sbr, 0);
-	sbr_set_volume_size(sbr, 0);
 }
 
 int voluta_sb_check_root(const struct voluta_super_block *sb)
@@ -419,7 +407,7 @@ bool voluta_sb_has_hsm(struct voluta_super_block *sb, voluta_index_t hs_index)
 static void sb_init(struct voluta_super_block *sb)
 {
 	voluta_memzero(sb, sizeof(*sb));
-	sbr_init(&sb->sb_boot, sizeof(*sb));
+	sbr_init(&sb->sb_boot);
 	sbu_init(&sb->sb_usm);
 }
 
@@ -637,11 +625,11 @@ void voluta_sb_crypt_params(const struct voluta_super_block *sb,
 
 ssize_t voluta_sb_volume_size(const struct voluta_super_block *sb)
 {
-	return (ssize_t)sbr_volume_size(&sb->sb_boot);
+	return (ssize_t)voluta_le64_to_cpu(sb->sb_volume_size);
 }
 
-void voluta_sb_set_volume_size(struct voluta_super_block *sb, ssize_t sz)
+void voluta_sb_set_volume_size(struct voluta_super_block *sb, ssize_t size)
 {
-	sbr_set_volume_size(&sb->sb_boot, sz);
+	sb->sb_volume_size = voluta_cpu_to_le64((uint64_t)size);
 }
 

@@ -493,10 +493,9 @@ struct voluta_sb_root {
 	struct voluta_header    sr_hdr;
 	uint64_t                sr_magic;
 	uint64_t                sr_version;
-	uint64_t                sr_volume_size;
 	uint32_t                sr_flags;
 	uint8_t                 sr_endianness;
-	uint8_t                 sr_reserved1[19];
+	uint8_t                 sr_reserved1[27];
 	uint8_t                 sr_sw_version[64];
 	struct voluta_uuid      sr_uuid;
 	uint8_t                 sr_reserved2[368];
@@ -534,10 +533,13 @@ struct voluta_super_block {
 	struct voluta_sb_root   sb_boot;
 	struct voluta_sb_hash   sb_hash;
 	uint64_t                sb_birth_time;
+	uint64_t                sb_volume_size;
+	uint64_t                sb_base_address;
 	uint64_t                sb_ag_count;
 	struct voluta_vaddr64   sb_self_vaddr;
 	struct voluta_vaddr64   sb_itable_root;
-	uint8_t                 sb_reserved1[224];
+	uint8_t                 sb_reserved1[144];
+	struct voluta_blobspec  sb_prev_bls;
 	struct voluta_name      sb_name;
 	uint8_t                 sb_reserved2[7680];
 	struct voluta_sb_keys   sb_keys;

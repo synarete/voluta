@@ -41,7 +41,7 @@ static const struct voluta_vnode_vtbl *agi_vtbl(void);
 static const struct voluta_vnode_vtbl *itni_vtbl(void);
 static const struct voluta_vnode_vtbl *ii_vtbl(void);
 static const struct voluta_vnode_vtbl *xani_vtbl(void);
-
+static const struct voluta_vnode_vtbl *symi_vtbl(void);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -224,14 +224,14 @@ void *voluta_vi_dat_of(const struct voluta_vnode_info *vi)
 	return dat;
 }
 
-static const struct voluta_vnode_vtbl g_vi_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_vi = {
 	.evictable = voluta_vi_isevictable,
 	.del = vi_delete
 };
 
 static const struct voluta_vnode_vtbl *vi_vtbl(void)
 {
-	return &g_vi_vtbl;
+	return &vtbl_vi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -315,14 +315,14 @@ hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	return hsi;
 }
 
-static const struct voluta_vnode_vtbl g_hsi_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_hsi = {
 	.evictable = voluta_vi_isevictable,
 	.del = hsi_delete_by
 };
 
 static const struct voluta_vnode_vtbl *hsi_vtbl(void)
 {
-	return &g_hsi_vtbl;
+	return &vtbl_hsi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -407,14 +407,14 @@ agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 }
 
 
-static const struct voluta_vnode_vtbl g_agi_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_agi = {
 	.evictable = voluta_vi_isevictable,
 	.del = agi_delete_by
 };
 
 static const struct voluta_vnode_vtbl *agi_vtbl(void)
 {
-	return &g_agi_vtbl;
+	return &vtbl_agi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -501,14 +501,14 @@ void voluta_itni_rebind(struct voluta_itnode_info *itni)
 }
 
 
-static const struct voluta_vnode_vtbl g_itni_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_itni = {
 	.evictable = voluta_vi_isevictable,
 	.del = itni_delete_by
 };
 
 static const struct voluta_vnode_vtbl *itni_vtbl(void)
 {
-	return &g_itni_vtbl;
+	return &vtbl_itni;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -603,14 +603,14 @@ void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino)
 	ii->i_ino = ino;
 }
 
-static const struct voluta_vnode_vtbl g_ii_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_ii = {
 	.evictable = ii_isevictable_by,
 	.del = ii_delete_by
 };
 
 static const struct voluta_vnode_vtbl *ii_vtbl(void)
 {
-	return &g_ii_vtbl;
+	return &vtbl_ii;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -697,14 +697,110 @@ void voluta_xani_rebind(struct voluta_xanode_info *xani)
 }
 
 
-static const struct voluta_vnode_vtbl g_xani_vtbl = {
+static const struct voluta_vnode_vtbl vtbl_xani = {
 	.evictable = voluta_vi_isevictable,
 	.del = xani_delete_by
 };
 
 static const struct voluta_vnode_vtbl *xani_vtbl(void)
 {
-	return &g_xani_vtbl;
+	return &vtbl_xani;
+}
+
+
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static struct voluta_vnode_info *
+symi_to_vi(const struct voluta_symval_info *symi)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(symi != NULL)) {
+		vi = &symi->sym_vi;
+	}
+	return vi_unconst(vi);
+}
+
+struct voluta_symval_info *
+voluta_symi_from_vi(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_symval_info *symi = NULL;
+
+	if (likely(vi != NULL)) {
+		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_SYMVAL);
+		symi = container_of2(vi, struct voluta_symval_info, sym_vi);
+	}
+	return unconst(symi);
+}
+
+static void symi_init(struct voluta_symval_info *symi,
+                      const struct voluta_vba *vba,
+                      const struct voluta_vnode_vtbl *vtbl)
+{
+	vi_init(&symi->sym_vi, vba, vtbl);
+	symi->sym = NULL;
+}
+
+static void symi_fini(struct voluta_symval_info *symi)
+{
+	vi_fini(&symi->sym_vi);
+	symi->sym = NULL;
+}
+
+static struct voluta_symval_info *symi_malloc(struct voluta_alloc_if *alif)
+{
+	struct voluta_symval_info *symi;
+
+	symi = voluta_allocate(alif, sizeof(*symi));
+	return symi;
+}
+
+static void symi_free(struct voluta_symval_info *symi,
+                      struct voluta_alloc_if *alif)
+{
+	voluta_deallocate(alif, symi, sizeof(*symi));
+}
+
+static void symi_delete(struct voluta_symval_info *symi,
+                        struct voluta_alloc_if *alif)
+{
+	symi_fini(symi);
+	symi_free(symi, alif);
+}
+
+static void symi_delete_by(struct voluta_vnode_info *vi,
+                           struct voluta_alloc_if *alif)
+{
+	symi_delete(voluta_symi_from_vi(vi), alif);
+}
+
+static struct voluta_symval_info *
+symi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+{
+	struct voluta_symval_info *symi;
+
+	symi = symi_malloc(alif);
+	if (symi != NULL) {
+		symi_init(symi, vba, symi_vtbl());
+	}
+	return symi;
+}
+
+void voluta_symi_rebind(struct voluta_symval_info *symi)
+{
+	symi->sym = &symi->sym_vi.view->u.sym;
+}
+
+
+static const struct voluta_vnode_vtbl vtbl_symi = {
+	.evictable = voluta_vi_isevictable,
+	.del = symi_delete_by
+};
+
+static const struct voluta_vnode_vtbl *symi_vtbl(void)
+{
+	return &vtbl_symi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -737,11 +833,13 @@ voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	case VOLUTA_VTYPE_XANODE:
 		vi = xani_to_vi(xani_new(alif, vba));
 		break;
+	case VOLUTA_VTYPE_SYMVAL:
+		vi = symi_to_vi(symi_new(alif, vba));
+		break;
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
-	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_DATABK:
 		vi = vi_new(alif, vba);
 		break;
@@ -933,7 +1031,7 @@ static int verify_sub(const struct voluta_view *view, enum voluta_vtype vtype)
 		err = voluta_verify_radix_tnode(&view->u.rtn);
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		err = voluta_verify_lnk_value(&view->u.lnv);
+		err = voluta_verify_lnk_value(&view->u.sym);
 		break;
 	case VOLUTA_VTYPE_SUPER:
 	case VOLUTA_VTYPE_DATA1K:

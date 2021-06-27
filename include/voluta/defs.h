@@ -713,12 +713,12 @@ struct voluta_radix_tnode {
 } voluta_packed_aligned64;
 
 
-struct voluta_lnk_value {
-	struct voluta_header    lv_hdr;
-	uint64_t                lv_parent;
-	uint16_t                lv_length;
-	uint8_t                 lv_reserved1[38];
-	uint8_t                 lv_value[VOLUTA_SYMLNK_PART_MAX];
+struct voluta_symlnk_value {
+	struct voluta_header    sy_hdr;
+	uint64_t                sy_parent;
+	uint16_t                sy_length;
+	uint8_t                 sy_reserved1[38];
+	uint8_t                 sy_value[VOLUTA_SYMLNK_PART_MAX];
 } voluta_packed_aligned64;
 
 
@@ -796,7 +796,7 @@ union voluta_view_u {
 	struct voluta_dir_htnode        htn;
 	struct voluta_radix_tnode       rtn;
 	struct voluta_xattr_node        xan;
-	struct voluta_lnk_value         lnv;
+	struct voluta_symlnk_value      sym;
 	struct voluta_itable_tnode      itn;
 	struct voluta_data_block1       db1;
 	struct voluta_data_block4       db4;

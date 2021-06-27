@@ -50,7 +50,7 @@ union voluta_vnode_u {
 	struct voluta_inode             *inode;
 	struct voluta_xattr_node        *xan;
 	struct voluta_dir_htnode        *htn;
-	struct voluta_lnk_value         *lnv;
+	struct voluta_symlnk_value      *lnv;
 	struct voluta_radix_tnode       *rtn;
 	struct voluta_data_block1       *db1;
 	struct voluta_data_block4       *db4;
@@ -114,6 +114,12 @@ struct voluta_xanode_info {
 	struct voluta_xattr_node       *xan;
 };
 
+/* symlink-value */
+struct voluta_symval_info {
+	struct voluta_vnode_info        sym_vi;
+	struct voluta_symlnk_value     *sym;
+};
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_unode_info *
@@ -149,6 +155,13 @@ struct voluta_xanode_info *
 voluta_xani_from_vi(const struct voluta_vnode_info *vi);
 
 void voluta_xani_rebind(struct voluta_xanode_info *xani);
+
+
+struct voluta_symval_info *
+voluta_symi_from_vi(const struct voluta_vnode_info *vi);
+
+void voluta_symi_rebind(struct voluta_symval_info *symi);
+
 
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);

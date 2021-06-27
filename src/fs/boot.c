@@ -147,7 +147,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF_4K(struct voluta_data_block4);
 	REQUIRE_SIZEOF(struct voluta_data_block4, VOLUTA_FILE_HEAD2_LEAF_SIZE);
 	REQUIRE_SIZEOF_KB(struct voluta_inode);
-	REQUIRE_SIZEOF_KB(struct voluta_lnk_value);
+	REQUIRE_SIZEOF_KB(struct voluta_symlnk_value);
 	REQUIRE_SIZEOF_16K(struct voluta_sb_keys);
 	REQUIRE_SIZEOF_32K(struct voluta_sb_uspace_map);
 	REQUIRE_SIZEOF_BK(struct voluta_super_block);
@@ -177,7 +177,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_xattr_ispec, 320);
 	REQUIRE_SIZEOF(union voluta_iattr_specific, 512);
 	REQUIRE_SIZEOF(struct voluta_inode, VOLUTA_INODE_SIZE);
-	REQUIRE_SIZEOF(struct voluta_lnk_value, VOLUTA_SYMLNK_VAL_SIZE);
+	REQUIRE_SIZEOF(struct voluta_symlnk_value, VOLUTA_SYMLNK_VAL_SIZE);
 	REQUIRE_SIZEOF(struct voluta_xattr_node, VOLUTA_XATTR_NODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_radix_tnode, VOLUTA_FILE_RTNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_itable_tnode, VOLUTA_ITNODE_SIZE);
@@ -252,7 +252,7 @@ static void guarantee_persistent_types_alignment(void)
 	REQUIRE_AOFFSET(struct voluta_xattr_ispec, xa_vaddr, 8);
 	REQUIRE_AOFFSET(struct voluta_xattr_node, xa_hdr, 0);
 	REQUIRE_AOFFSET(struct voluta_xattr_node, xe, 64);
-	REQUIRE_AOFFSET64(struct voluta_lnk_value, lv_value, 64);
+	REQUIRE_AOFFSET64(struct voluta_symlnk_value, sy_value, 64);
 }
 
 static void guarantee_defs_consistency(void)

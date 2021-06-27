@@ -191,7 +191,7 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 		sz = sizeof(struct voluta_radix_tnode);
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		sz = sizeof(struct voluta_lnk_value);
+		sz = sizeof(struct voluta_symlnk_value);
 		break;
 	case VOLUTA_VTYPE_DATA1K:
 		sz = sizeof(struct voluta_data_block1);

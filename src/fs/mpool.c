@@ -50,6 +50,7 @@ union voluta_xxnode_info_u {
 	struct voluta_agroup_info       agi;
 	struct voluta_itnode_info       itni;
 	struct voluta_itnode_info       xani;
+	struct voluta_symval_info       symi;
 };
 
 struct voluta_xxnode_info {

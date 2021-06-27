@@ -743,7 +743,7 @@ static void bind_view(struct voluta_vnode_info *vi, struct voluta_view *view)
 		vi->vu.rtn = &view->u.rtn;
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		vi->vu.lnv = &view->u.lnv;
+		vi->vu.lnv = &view->u.sym;
 		break;
 	case VOLUTA_VTYPE_DATA1K:
 		vi->vu.db1 = &view->u.db1;
@@ -776,6 +776,8 @@ static void attach_vnode(struct voluta_sb_info *sbi,
                          struct voluta_vnode_info *vi,
                          struct voluta_bksec_info *bsi)
 {
+	voluta_assert_not_null(vi);
+
 	vi->v_sbi = sbi;
 	voluta_vi_attach_to(vi, bsi);
 }
@@ -818,7 +820,7 @@ static int spawn_vi(struct voluta_sb_info *sbi,
                     const struct voluta_vba *vba,
                     struct voluta_vnode_info **out_vi)
 {
-	int err;
+	int err = -ENOMEM;
 	int retry = 2;
 	struct voluta_cache *cache = cache_of(sbi);
 

@@ -31,6 +31,6 @@ int voluta_setup_symlink(const struct voluta_oper *op,
                          struct voluta_inode_info *lnk_ii,
                          const struct voluta_str *symval);
 
-int voluta_verify_lnk_value(const struct voluta_lnk_value *lnv);
+int voluta_verify_lnk_value(const struct voluta_symlnk_value *lnv);
 
 #endif /* VOLUTA_SYMLINK_H_ */

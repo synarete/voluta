@@ -116,7 +116,7 @@ union voluta_subcmd_args {
 	struct voluta_subcmd_snap       snap;
 	struct voluta_subcmd_show       show;
 	struct voluta_subcmd_fsck       fsck;
-	struct voluta_subcmd_prune	prune;
+	struct voluta_subcmd_prune      prune;
 };
 
 /* repository parameters */

@@ -271,12 +271,6 @@ static void inode_set_ctime(struct voluta_inode *inode,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino)
-{
-	ii->inode = &ii->i_vi.view->u.inode;
-	ii->i_ino = ino;
-}
-
 ino_t voluta_ii_xino(const struct voluta_inode_info *ii)
 {
 	return ii_isrootd(ii) ? VOLUTA_INO_ROOT : ii_ino(ii);
@@ -448,7 +442,7 @@ void voluta_setup_inode(struct voluta_inode_info *ii,
                         mode_t mode, dev_t rdev)
 {
 	setup_inode_common(ii->inode, ucred, ii_ino(ii), parent_ino, mode);
-	voluta_setup_xattr(ii);
+	voluta_ii_setup_xattr(ii);
 	if (ii_isdir(ii)) {
 		voluta_setup_dir(ii, parent_mode, 1);
 	} else if (ii_isreg(ii)) {

@@ -17,7 +17,7 @@
 #ifndef VOLUTA_XATTR_H_
 #define VOLUTA_XATTR_H_
 
-void voluta_setup_xattr(struct voluta_inode_info *ii);
+void voluta_ii_setup_xattr(struct voluta_inode_info *ii);
 
 int voluta_do_getxattr(const struct voluta_oper *op,
                        struct voluta_inode_info *ii,

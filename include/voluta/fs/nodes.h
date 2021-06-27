@@ -48,10 +48,10 @@ union voluta_vnode_u {
 	struct voluta_agroup_map        *agm;
 	struct voluta_itable_tnode      *itn;
 	struct voluta_inode             *inode;
-	struct voluta_radix_tnode       *rtn;
-	struct voluta_dir_htnode        *htn;
 	struct voluta_xattr_node        *xan;
+	struct voluta_dir_htnode        *htn;
 	struct voluta_lnk_value         *lnv;
+	struct voluta_radix_tnode       *rtn;
 	struct voluta_data_block1       *db1;
 	struct voluta_data_block4       *db4;
 	struct voluta_data_block        *db;
@@ -108,31 +108,47 @@ struct voluta_inode_info {
 	bool   i_pinned;
 };
 
+/* xattr */
+struct voluta_xanode_info {
+	struct voluta_vnode_info        xan_vi;
+	struct voluta_xattr_node       *xan;
+};
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_unode_info *
-voluta_ui_new_by_vba(struct voluta_alloc_if *alif,
-                     const struct voluta_vba *vba);
+voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
 
 struct voluta_vnode_info *
-voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
-                     const struct voluta_vba *vba);
+voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
+
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
 
+
 struct voluta_agroup_info *
 voluta_agi_from_vi(const struct voluta_vnode_info *vi);
+
 
 struct voluta_itnode_info *
 voluta_itni_from_vi(const struct voluta_vnode_info *vi);
 
 void voluta_itni_rebind(struct voluta_itnode_info *itni);
 
+
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);
 
+void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino);
+
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
+
+
+struct voluta_xanode_info *
+voluta_xani_from_vi(const struct voluta_vnode_info *vi);
+
+void voluta_xani_rebind(struct voluta_xanode_info *xani);
 
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
@@ -140,7 +156,7 @@ bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
 void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
 
 
-int voluta_verify_meta(const struct voluta_vnode_info *vi);
+int voluta_vi_verify_meta(const struct voluta_vnode_info *vi);
 
 void voluta_vi_stamp_view(const struct voluta_vnode_info *vi);
 

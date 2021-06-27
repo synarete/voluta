@@ -67,20 +67,20 @@ static void umount_setup_check_params(void)
 {
 	int err;
 	struct stat st;
-	const char *mntpath;
+	const char *mntpoint = voluta_globals.cmd.umount.mntpoint;
 
 	voluta_die_if_no_mountd();
 
-	err = voluta_sys_stat(voluta_globals.cmd.umount.mntpoint, &st);
+	err = voluta_sys_stat(mntpoint, &st);
 	if ((err == -ENOTCONN) && voluta_globals.cmd.umount.force) {
-		voluta_log_debug("transport endpoint not connected: %s",
-		                 voluta_globals.cmd.umount.mntpoint);
+		voluta_log_debug("transport endpoint "
+		                 "not connected: %s", mntpoint);
 	} else {
 		voluta_globals.cmd.umount.mntpoint_real =
-		        voluta_realpath_safe(voluta_globals.cmd.umount.mntpoint);
+		        voluta_realpath_safe(mntpoint);
 
-		mntpath = voluta_globals.cmd.umount.mntpoint_real;
-		voluta_die_if_not_mntdir(mntpath, false);
+		mntpoint = voluta_globals.cmd.umount.mntpoint_real;
+		voluta_die_if_not_mntdir(mntpoint, false);
 	}
 }
 

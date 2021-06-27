@@ -34,7 +34,7 @@ struct voluta_symlnk_ctx {
 	const struct voluta_oper *op;
 	struct voluta_sb_info    *sbi;
 	struct voluta_inode_info *lnk_ii;
-	const struct voluta_str *symval;
+	const struct voluta_str  *symval;
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

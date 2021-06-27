@@ -501,7 +501,7 @@ static int verify_vnode_view(struct voluta_vnode_info *vi)
 	if (vi_isdata(vi) || vi->v_verify) {
 		return 0;
 	}
-	err = voluta_verify_meta(vi);
+	err = voluta_vi_verify_meta(vi);
 	if (err) {
 		return err;
 	}

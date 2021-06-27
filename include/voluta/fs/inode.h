@@ -20,7 +20,6 @@
 #include <unistd.h>
 #include <voluta/fs/types.h>
 
-void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino);
 
 ino_t voluta_ii_parent(const struct voluta_inode_info *ii);
 

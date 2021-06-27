@@ -1217,7 +1217,7 @@ static size_t cache_shrink_or_relru_bks(struct voluta_cache *cache, size_t cnt)
 static struct voluta_vnode_info *
 cache_new_vi(const struct voluta_cache *cache, const struct voluta_vba *vba)
 {
-	return voluta_vi_new_by_vba(cache->c_alif, vba);
+	return voluta_new_vi(cache->c_alif, vba);
 }
 
 static int cache_init_vlm(struct voluta_cache *cache, size_t htbl_size)
@@ -1545,7 +1545,7 @@ cache_find_evictable_ui(struct voluta_cache *cache)
 static struct voluta_unode_info *
 cache_new_ui(const struct voluta_cache *cache, const struct voluta_vba *vba)
 {
-	return voluta_ui_new_by_vba(cache->c_alif, vba);
+	return voluta_new_ui(cache->c_alif, vba);
 }
 
 static struct voluta_unode_info *

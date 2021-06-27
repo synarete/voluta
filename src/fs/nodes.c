@@ -40,6 +40,7 @@ static const struct voluta_vnode_vtbl *hsi_vtbl(void);
 static const struct voluta_vnode_vtbl *agi_vtbl(void);
 static const struct voluta_vnode_vtbl *itni_vtbl(void);
 static const struct voluta_vnode_vtbl *ii_vtbl(void);
+static const struct voluta_vnode_vtbl *xani_vtbl(void);
 
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -596,6 +597,12 @@ bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 	       voluta_vi_isevictable(ii_to_vi(ii));
 }
 
+void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino)
+{
+	ii->inode = &ii->i_vi.view->u.inode;
+	ii->i_ino = ino;
+}
+
 static const struct voluta_vnode_vtbl g_ii_vtbl = {
 	.evictable = ii_isevictable_by,
 	.del = ii_delete_by
@@ -608,9 +615,102 @@ static const struct voluta_vnode_vtbl *ii_vtbl(void)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_vnode_info *
+xani_to_vi(const struct voluta_xanode_info *xani)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(xani != NULL)) {
+		vi = &xani->xan_vi;
+	}
+	return vi_unconst(vi);
+}
+
+struct voluta_xanode_info *
+voluta_xani_from_vi(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_xanode_info *xani = NULL;
+
+	if (likely(vi != NULL)) {
+		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_XANODE);
+		xani = container_of2(vi, struct voluta_xanode_info, xan_vi);
+	}
+	return unconst(xani);
+}
+
+static void xani_init(struct voluta_xanode_info *xani,
+                      const struct voluta_vba *vba,
+                      const struct voluta_vnode_vtbl *vtbl)
+{
+	vi_init(&xani->xan_vi, vba, vtbl);
+	xani->xan = NULL;
+}
+
+static void xani_fini(struct voluta_xanode_info *xani)
+{
+	vi_fini(&xani->xan_vi);
+	xani->xan = NULL;
+}
+
+static struct voluta_xanode_info *xani_malloc(struct voluta_alloc_if *alif)
+{
+	struct voluta_xanode_info *xani;
+
+	xani = voluta_allocate(alif, sizeof(*xani));
+	return xani;
+}
+
+static void xani_free(struct voluta_xanode_info *xani,
+                      struct voluta_alloc_if *alif)
+{
+	voluta_deallocate(alif, xani, sizeof(*xani));
+}
+
+static void xani_delete(struct voluta_xanode_info *xani,
+                        struct voluta_alloc_if *alif)
+{
+	xani_fini(xani);
+	xani_free(xani, alif);
+}
+
+static void xani_delete_by(struct voluta_vnode_info *vi,
+                           struct voluta_alloc_if *alif)
+{
+	xani_delete(voluta_xani_from_vi(vi), alif);
+}
+
+static struct voluta_xanode_info *
+xani_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+{
+	struct voluta_xanode_info *xani;
+
+	xani = xani_malloc(alif);
+	if (xani != NULL) {
+		xani_init(xani, vba, xani_vtbl());
+	}
+	return xani;
+}
+
+void voluta_xani_rebind(struct voluta_xanode_info *xani)
+{
+	xani->xan = &xani->xan_vi.view->u.xan;
+}
+
+
+static const struct voluta_vnode_vtbl g_xani_vtbl = {
+	.evictable = voluta_vi_isevictable,
+	.del = xani_delete_by
+};
+
+static const struct voluta_vnode_vtbl *xani_vtbl(void)
+{
+	return &g_xani_vtbl;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 struct voluta_unode_info *
-voluta_ui_new_by_vba(struct voluta_alloc_if *alif,
-                     const struct voluta_vba *vba)
+voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	/* XXX */
 	voluta_unused(alif);
@@ -619,8 +719,7 @@ voluta_ui_new_by_vba(struct voluta_alloc_if *alif,
 }
 
 struct voluta_vnode_info *
-voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
-                     const struct voluta_vba *vba)
+voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_vnode_info *vi;
 	const enum voluta_vtype vtype = vba->vaddr.vtype;
@@ -635,9 +734,11 @@ voluta_vi_new_by_vba(struct voluta_alloc_if *alif,
 	case VOLUTA_VTYPE_ITNODE:
 		vi = itni_to_vi(itni_new(alif, vba));
 		break;
+	case VOLUTA_VTYPE_XANODE:
+		vi = xani_to_vi(xani_new(alif, vba));
+		break;
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_XANODE:
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
@@ -873,7 +974,7 @@ static int verify_view(const struct voluta_view *view,
 	return 0;
 }
 
-int voluta_verify_meta(const struct voluta_vnode_info *vi)
+int voluta_vi_verify_meta(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 

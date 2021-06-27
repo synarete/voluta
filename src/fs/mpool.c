@@ -49,6 +49,7 @@ union voluta_xxnode_info_u {
 	struct voluta_hspace_info       hsi;
 	struct voluta_agroup_info       agi;
 	struct voluta_itnode_info       itni;
+	struct voluta_itnode_info       xani;
 };
 
 struct voluta_xxnode_info {
@@ -61,7 +62,7 @@ union voluta_mobj_xxi_u {
 };
 
 struct voluta_mobj_xxi {
-	union voluta_mobj_xxi_u    u;
+	union voluta_mobj_xxi_u   u;
 	struct voluta_mpool_chnk *p;
 } voluta_aligned64;
 

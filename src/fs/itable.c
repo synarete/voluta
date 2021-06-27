@@ -703,12 +703,11 @@ static int spawn_itnode(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
-	err =  voluta_spawn_vnode(sbi, NULL, VOLUTA_VTYPE_ITNODE, &vi);
+	err = voluta_spawn_vnode(sbi, NULL, VOLUTA_VTYPE_ITNODE, &vi);
 	if (err) {
 		return err;
 	}
-	*out_itni = voluta_itni_from_vi(vi);
-	voluta_itni_rebind(*out_itni);
+	*out_itni = voluta_rebind_as_itni(vi);
 	return 0;
 }
 
@@ -746,8 +745,7 @@ static int stage_itnode_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	*out_itni = voluta_itni_from_vi(vi);
-	voluta_itni_rebind(*out_itni);
+	*out_itni = voluta_rebind_as_itni(vi);
 	return 0;
 }
 

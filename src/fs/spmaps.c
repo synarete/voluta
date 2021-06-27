@@ -1255,17 +1255,9 @@ void voluta_agi_dirtify(struct voluta_agroup_info *agi)
 	vi_dirtify(agi_vi(agi));
 }
 
-void voluta_agi_rebind(struct voluta_agroup_info *agi, voluta_index_t ag_index)
+void voluta_agi_setup(struct voluta_agroup_info *agi)
 {
-	voluta_assert_gt(ag_index, 0);
-	agi->ag_index = ag_index;
-	agi->agm = &agi->ag_vi.view->u.agm;
-}
-
-void voluta_agi_setup(struct voluta_agroup_info *agi, voluta_index_t ag_index)
-{
-	voluta_agi_rebind(agi, ag_index);
-	agm_init(agi->agm, ag_index);
+	agm_init(agi->agm, agi->ag_index);
 }
 
 void voluta_agi_vba(const struct voluta_agroup_info *agi,

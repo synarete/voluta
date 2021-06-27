@@ -120,6 +120,12 @@ struct voluta_symval_info {
 	struct voluta_symlnk_value     *sym;
 };
 
+/* htnode */
+struct voluta_htnode_info {
+	struct voluta_vnode_info        htn_vi;
+	struct voluta_dir_htnode       *htn;
+};
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_unode_info *
@@ -137,10 +143,7 @@ struct voluta_agroup_info *
 voluta_agi_from_vi(const struct voluta_vnode_info *vi);
 
 
-struct voluta_itnode_info *
-voluta_itni_from_vi(const struct voluta_vnode_info *vi);
 
-void voluta_itni_rebind(struct voluta_itnode_info *itni);
 
 
 struct voluta_inode_info *
@@ -151,17 +154,17 @@ void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino);
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
 
 
-struct voluta_xanode_info *
-voluta_xani_from_vi(const struct voluta_vnode_info *vi);
-
-void voluta_xani_rebind(struct voluta_xanode_info *xani);
-
 
 struct voluta_symval_info *
 voluta_symi_from_vi(const struct voluta_vnode_info *vi);
 
 void voluta_symi_rebind(struct voluta_symval_info *symi);
 
+
+struct voluta_htnode_info *
+voluta_htni_from_vi(const struct voluta_vnode_info *vi);
+
+void voluta_htni_rebind(struct voluta_htnode_info *htni);
 
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
@@ -174,5 +177,15 @@ int voluta_vi_verify_meta(const struct voluta_vnode_info *vi);
 void voluta_vi_stamp_view(const struct voluta_vnode_info *vi);
 
 void voluta_vi_seal_meta(const struct voluta_vnode_info *vi);
+
+
+struct voluta_agroup_info *
+voluta_rebind_as_agi(struct voluta_vnode_info *vi, voluta_index_t ag_index);
+
+struct voluta_itnode_info *
+voluta_rebind_as_itni(struct voluta_vnode_info *vi);
+
+struct voluta_xanode_info *
+voluta_rebind_as_xani(struct voluta_vnode_info *vi);
 
 #endif /* VOLUTA_NODES_H_ */

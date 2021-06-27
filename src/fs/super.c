@@ -931,6 +931,7 @@ static int spawn_spmap(struct voluta_sb_info *sbi,
 		return err;
 	}
 	bind_vnode(sbi, *out_vi, bsi);
+	vi_stamp_mark_visible(*out_vi);
 	return 0;
 }
 
@@ -1061,9 +1062,6 @@ static int spawn_hsmap_of(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	vi_stamp_mark_visible(vi);
-	vi_dirtify(vi);
-
 	*out_hsi = voluta_hsi_from_vi(vi);
 	voluta_hsi_setup(*out_hsi, hs_index, nags_span);
 	return 0;
@@ -1181,20 +1179,14 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi,
                           struct voluta_agroup_info **out_agi)
 {
 	int err;
-	struct voluta_agroup_info *agi = NULL;
 	struct voluta_vnode_info *vi = NULL;
 
 	err = spawn_spmap(sbi, vba, &vi);
 	if (err) {
 		return err;
 	}
-	vi_stamp_mark_visible(vi);
-
-	agi = voluta_agi_from_vi(vi);
-	voluta_agi_setup(agi, ag_index);
-	vi_dirtify(vi);
-
-	*out_agi = agi;
+	*out_agi = voluta_rebind_as_agi(vi, ag_index);
+	voluta_agi_setup(*out_agi);
 	return 0;
 }
 
@@ -1832,7 +1824,6 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	int err;
 	struct voluta_vba vba;
 	struct voluta_vnode_info *vi = NULL;
-	struct voluta_agroup_info *agi = NULL;
 
 	err = resolve_agmap(sbi, ag_index, &vba);
 	if (err) {
@@ -1846,15 +1837,13 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (err) {
 		return err;
 	}
-	agi = voluta_agi_from_vi(vi);
-	voluta_agi_rebind(agi, ag_index);
+	*out_agi = voluta_rebind_as_agi(vi, ag_index);
 
-	err = verify_agmap_stat(sbi, agi);
+	err = verify_agmap_stat(sbi, *out_agi);
 	if (err) {
 		/* TODO: cleanups */
 		return err;
 	}
-	*out_agi = agi;
 	return 0;
 }
 

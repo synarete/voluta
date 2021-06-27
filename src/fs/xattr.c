@@ -553,9 +553,7 @@ static int stage_xanode(const struct voluta_xattr_ctx *xa_ctx,
 	if (err) {
 		return err;
 	}
-	xani = voluta_xani_from_vi(vi);
-	voluta_xani_rebind(xani);
-
+	xani = voluta_rebind_as_xani(vi);
 	xa_ino = xan_ino(xani->xan);
 	if (ino != xa_ino) {
 		log_err("xattr ino mismatch: ino=%lu xa_ino=%lu", ino, xa_ino);
@@ -781,8 +779,7 @@ static int spawn_xanode(const struct voluta_xattr_ctx *xa_ctx,
 	if (err) {
 		return err;
 	}
-	*out_xani = voluta_xani_from_vi(vi);
-	voluta_xani_rebind(*out_xani);
+	*out_xani = voluta_rebind_as_xani(vi);
 	return 0;
 }
 

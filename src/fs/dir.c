@@ -989,15 +989,15 @@ static int stage_child_by_name(const struct voluta_dir_ctx *d_ctx,
 	return stage_child(d_ctx, parent_vi, &vaddr, out_vi);
 }
 
-static int new_htnode(const struct voluta_dir_ctx *d_ctx,
-                      struct voluta_vnode_info **out_vi)
+static int spawn_htnode(const struct voluta_dir_ctx *d_ctx,
+                        struct voluta_vnode_info **out_vi)
 {
 	return voluta_spawn_vnode(d_ctx->sbi, d_ctx->dir_ii,
 	                          VOLUTA_VTYPE_HTNODE, out_vi);
 }
 
-static int del_htnode(const struct voluta_dir_ctx *d_ctx,
-                      struct voluta_vnode_info *vi)
+static int remove_htnode(const struct voluta_dir_ctx *d_ctx,
+                         struct voluta_vnode_info *vi)
 {
 	return voluta_remove_vnode(d_ctx->sbi, vi);
 }
@@ -1036,7 +1036,7 @@ static int create_htnode(const struct voluta_dir_ctx *d_ctx,
 	struct voluta_vnode_info *vi;
 	struct voluta_inode_info *dir_ii = d_ctx->dir_ii;
 
-	err = new_htnode(d_ctx, &vi);
+	err = spawn_htnode(d_ctx, &vi);
 	if (err) {
 		return err;
 	}
@@ -1316,7 +1316,7 @@ static int discard_htnode(const struct voluta_dir_ctx *d_ctx,
 	const size_t node_index = htn_node_index(vi->vu.htn);
 
 	htn_reset_des(vi->vu.htn);
-	err = del_htnode(d_ctx, vi);
+	err = remove_htnode(d_ctx, vi);
 	if (err) {
 		return err;
 	}

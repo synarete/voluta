@@ -91,9 +91,7 @@ int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
 void voluta_agi_dirtify(struct voluta_agroup_info *agi);
 
 
-void voluta_agi_rebind(struct voluta_agroup_info *agi, voluta_index_t ag_indx);
-
-void voluta_agi_setup(struct voluta_agroup_info *agi, voluta_index_t ag_index);
+void voluta_agi_setup(struct voluta_agroup_info *agi);
 
 void voluta_agi_vba(const struct voluta_agroup_info *agi,
                     struct voluta_vba *out_vba);

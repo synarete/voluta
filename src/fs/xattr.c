@@ -539,27 +539,40 @@ static void xani_dirtify(struct voluta_xanode_info *xani)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static int check_staged_xanode(const struct voluta_xattr_ctx *xa_ctx,
+                               const struct voluta_xanode_info *xani)
+{
+	const ino_t ino = ii_ino(xa_ctx->ii);
+	const ino_t xa_ino = xan_ino(xani->xan);
+
+	if (ino != xa_ino) {
+		log_err("bad xanode ino: ino=%lu xa_ino=%lu", ino, xa_ino);
+		return -EFSCORRUPTED;
+	}
+	return 0;
+}
+
 static int stage_xanode(const struct voluta_xattr_ctx *xa_ctx,
                         const struct voluta_vaddr *vaddr,
                         struct voluta_xanode_info **out_xani)
 {
 	int err;
-	ino_t xa_ino;
-	const ino_t ino = ii_ino(xa_ctx->ii);
 	struct voluta_vnode_info *vi = NULL;
-	struct voluta_xanode_info *xani = NULL;
 
+	err = voluta_stage_cached_vnode(xa_ctx->sbi, vaddr, &vi);
+	if (!err) {
+		*out_xani = voluta_xani_from_vi(vi);
+		return 0;
+	}
 	err = voluta_stage_vnode(xa_ctx->sbi, vaddr, xa_ctx->ii, &vi);
 	if (err) {
 		return err;
 	}
-	xani = voluta_rebind_as_xani(vi);
-	xa_ino = xan_ino(xani->xan);
-	if (ino != xa_ino) {
-		log_err("xattr ino mismatch: ino=%lu xa_ino=%lu", ino, xa_ino);
-		return -EFSCORRUPTED;
+	*out_xani = voluta_xani_from_vi_rebind(vi);
+	err = check_staged_xanode(xa_ctx, *out_xani);
+	if (err) {
+		return err;
 	}
-	*out_xani = xani;
 	return 0;
 }
 
@@ -773,13 +786,13 @@ static int spawn_xanode(const struct voluta_xattr_ctx *xa_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	struct voluta_sb_info *sbi = xa_ctx->sbi;
+	const enum voluta_vtype vtype = VOLUTA_VTYPE_XANODE;
 
-	err = voluta_spawn_vnode(sbi, xa_ctx->ii, VOLUTA_VTYPE_XANODE, &vi);
+	err = voluta_spawn_vnode(xa_ctx->sbi, xa_ctx->ii, vtype, &vi);
 	if (err) {
 		return err;
 	}
-	*out_xani = voluta_rebind_as_xani(vi);
+	*out_xani = voluta_xani_from_vi_rebind(vi);
 	return 0;
 }
 

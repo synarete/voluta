@@ -61,6 +61,10 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags);
 int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags);
 
 
+int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,
+                              const struct voluta_vaddr *vaddr,
+                              struct voluta_vnode_info **out_vi);
+
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 

@@ -798,13 +798,13 @@ static void bind_inode(struct voluta_sb_info *sbi, ino_t ino,
 	voluta_ii_rebind(ii, ino);
 }
 
-static int try_stage_cached_vnode(struct voluta_sb_info *sbi,
-                                  const struct voluta_vba *vba,
-                                  struct voluta_vnode_info **out_vi)
+int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,
+                              const struct voluta_vaddr *vaddr,
+                              struct voluta_vnode_info **out_vi)
 {
 	struct voluta_cache *cache = cache_of(sbi);
 
-	*out_vi = voluta_cache_lookup_vi(cache, &vba->vaddr);
+	*out_vi = voluta_cache_lookup_vi(cache, vaddr);
 	return (*out_vi != NULL) ? 0 : -ENOENT;
 }
 
@@ -957,7 +957,7 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
-	err = try_stage_cached_vnode(sbi, vba, out_vi);
+	err = voluta_stage_cached_vnode(sbi, &vba->vaddr, out_vi);
 	if (!err) {
 		return 0; /* Cache hit */
 	}
@@ -1185,7 +1185,7 @@ static int spawn_agmap_of(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	*out_agi = voluta_rebind_as_agi(vi, ag_index);
+	*out_agi = voluta_agi_from_vi_rebind(vi, ag_index);
 	voluta_agi_setup(*out_agi);
 	return 0;
 }
@@ -1680,7 +1680,7 @@ static int try_stage_cached_hsmap(struct voluta_sb_info *sbi,
 
 	voluta_assert_eq(vba->vaddr.vtype, VOLUTA_VTYPE_HSMAP);
 
-	err = try_stage_cached_vnode(sbi, vba, &vi);
+	err = voluta_stage_cached_vnode(sbi, &vba->vaddr, &vi);
 	if (err) {
 		return err;
 	}
@@ -1778,7 +1778,7 @@ static int try_stage_cached_agmap(struct voluta_sb_info *sbi,
 
 	voluta_assert_eq(vba->vaddr.vtype, VOLUTA_VTYPE_AGMAP);
 
-	err = try_stage_cached_vnode(sbi, vba, &vi);
+	err = voluta_stage_cached_vnode(sbi, &vba->vaddr, &vi);
 	if (err) {
 		return err;
 	}
@@ -1837,7 +1837,7 @@ static int stage_agmap(struct voluta_sb_info *sbi, voluta_index_t ag_index,
 	if (err) {
 		return err;
 	}
-	*out_agi = voluta_rebind_as_agi(vi, ag_index);
+	*out_agi = voluta_agi_from_vi_rebind(vi, ag_index);
 
 	err = verify_agmap_stat(sbi, *out_agi);
 	if (err) {
@@ -2337,7 +2337,7 @@ int voluta_remove_vnode_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = try_stage_cached_vnode(sbi, &vba, &vi);
+	err = voluta_stage_cached_vnode(sbi, &vba.vaddr, &vi);
 	if (!err) {
 		return voluta_remove_vnode(sbi, vi);
 	}

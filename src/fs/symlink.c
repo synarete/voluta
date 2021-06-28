@@ -230,12 +230,16 @@ static int stage_symval(const struct voluta_symlnk_ctx *sl_ctx,
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
+	err = voluta_stage_cached_vnode(sl_ctx->sbi, vaddr, &vi);
+	if (!err) {
+		*out_symi = voluta_symi_from_vi(vi);
+		return 0;
+	}
 	err = voluta_stage_vnode(sl_ctx->sbi, vaddr, sl_ctx->lnk_ii, &vi);
 	if (err) {
 		return err;
 	}
-	*out_symi = voluta_symi_from_vi(vi);
-	voluta_symi_rebind(*out_symi);
+	*out_symi = voluta_symi_from_vi_rebind(vi);
 	return 0;
 }
 
@@ -343,14 +347,13 @@ static int spawn_symval(const struct voluta_symlnk_ctx *sl_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
+	const enum voluta_vtype vtype = VOLUTA_VTYPE_SYMVAL;
 
-	err = voluta_spawn_vnode(sl_ctx->sbi, sl_ctx->lnk_ii,
-	                         VOLUTA_VTYPE_SYMVAL, &vi);
+	err = voluta_spawn_vnode(sl_ctx->sbi, sl_ctx->lnk_ii, vtype, &vi);
 	if (err) {
 		return err;
 	}
-	*out_symi = voluta_symi_from_vi(vi);
-	voluta_symi_rebind(*out_symi);
+	*out_symi = voluta_symi_from_vi_rebind(vi);
 	return 0;
 }
 

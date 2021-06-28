@@ -408,7 +408,8 @@ agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 }
 
 struct voluta_agroup_info *
-voluta_rebind_as_agi(struct voluta_vnode_info *vi, voluta_index_t ag_index)
+voluta_agi_from_vi_rebind(struct voluta_vnode_info *vi,
+                          voluta_index_t ag_index)
 {
 	struct voluta_agroup_info *agi = voluta_agi_from_vi(vi);
 
@@ -442,8 +443,8 @@ itni_to_vi(const struct voluta_itnode_info *itni)
 	return vi_unconst(vi);
 }
 
-static struct voluta_itnode_info *
-itni_from_vi(const struct voluta_vnode_info *vi)
+struct voluta_itnode_info *
+voluta_itni_from_vi(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_itnode_info *itni = NULL;
 
@@ -452,6 +453,17 @@ itni_from_vi(const struct voluta_vnode_info *vi)
 		itni = container_of2(vi, struct voluta_itnode_info, itn_vi);
 	}
 	return unconst(itni);
+}
+
+struct voluta_itnode_info *
+voluta_itni_from_vi_rebind(struct voluta_vnode_info *vi)
+{
+	struct voluta_itnode_info *itni = voluta_itni_from_vi(vi);
+
+	if (likely(itni != NULL)) {
+		itni->itn = &vi->view->u.itn;
+	}
+	return itni;
 }
 
 static void itni_init(struct voluta_itnode_info *itni,
@@ -492,7 +504,7 @@ static void itni_delete(struct voluta_itnode_info *itni,
 static void itni_delete_by(struct voluta_vnode_info *vi,
                            struct voluta_alloc_if *alif)
 {
-	itni_delete(itni_from_vi(vi), alif);
+	itni_delete(voluta_itni_from_vi(vi), alif);
 }
 
 static struct voluta_itnode_info *
@@ -506,15 +518,6 @@ itni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	}
 	return itni;
 }
-
-struct voluta_itnode_info *voluta_rebind_as_itni(struct voluta_vnode_info *vi)
-{
-	struct voluta_itnode_info *itni = itni_from_vi(vi);
-
-	itni->itn = &vi->view->u.itn;
-	return itni;
-}
-
 
 static const struct voluta_vnode_vtbl vtbl_itni = {
 	.evictable = voluta_vi_isevictable,
@@ -606,11 +609,6 @@ static bool ii_isevictable_by(const struct voluta_vnode_info *vi)
 	return voluta_ii_isevictable(ii);
 }
 
-bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
-{
-	return !ii->i_pinned && !ii->i_nopen &&
-	       voluta_vi_isevictable(ii_to_vi(ii));
-}
 
 void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino)
 {
@@ -641,8 +639,8 @@ xani_to_vi(const struct voluta_xanode_info *xani)
 	return vi_unconst(vi);
 }
 
-static struct voluta_xanode_info *
-xani_from_vi(const struct voluta_vnode_info *vi)
+struct voluta_xanode_info *
+voluta_xani_from_vi(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_xanode_info *xani = NULL;
 
@@ -651,6 +649,15 @@ xani_from_vi(const struct voluta_vnode_info *vi)
 		xani = container_of2(vi, struct voluta_xanode_info, xan_vi);
 	}
 	return unconst(xani);
+}
+
+struct voluta_xanode_info *
+voluta_xani_from_vi_rebind(struct voluta_vnode_info *vi)
+{
+	struct voluta_xanode_info *xani = voluta_xani_from_vi(vi);
+
+	xani->xan = &vi->view->u.xan;
+	return xani;
 }
 
 static void xani_init(struct voluta_xanode_info *xani,
@@ -691,7 +698,7 @@ static void xani_delete(struct voluta_xanode_info *xani,
 static void xani_delete_by(struct voluta_vnode_info *vi,
                            struct voluta_alloc_if *alif)
 {
-	xani_delete(xani_from_vi(vi), alif);
+	xani_delete(voluta_xani_from_vi(vi), alif);
 }
 
 static struct voluta_xanode_info *
@@ -705,15 +712,6 @@ xani_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	}
 	return xani;
 }
-
-struct voluta_xanode_info *voluta_rebind_as_xani(struct voluta_vnode_info *vi)
-{
-	struct voluta_xanode_info *xani = xani_from_vi(vi);
-
-	xani->xan = &vi->view->u.xan;
-	return xani;
-}
-
 
 static const struct voluta_vnode_vtbl vtbl_xani = {
 	.evictable = voluta_vi_isevictable,
@@ -748,6 +746,17 @@ voluta_symi_from_vi(const struct voluta_vnode_info *vi)
 		symi = container_of2(vi, struct voluta_symval_info, sym_vi);
 	}
 	return unconst(symi);
+}
+
+struct voluta_symval_info *
+voluta_symi_from_vi_rebind(struct voluta_vnode_info *vi)
+{
+	struct voluta_symval_info *symi = voluta_symi_from_vi(vi);
+
+	if (likely(symi != NULL)) {
+		symi->sym = &symi->sym_vi.view->u.sym;
+	}
+	return symi;
 }
 
 static void symi_init(struct voluta_symval_info *symi,
@@ -803,12 +812,6 @@ symi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	return symi;
 }
 
-void voluta_symi_rebind(struct voluta_symval_info *symi)
-{
-	symi->sym = &symi->sym_vi.view->u.sym;
-}
-
-
 static const struct voluta_vnode_vtbl vtbl_symi = {
 	.evictable = voluta_vi_isevictable,
 	.del = symi_delete_by
@@ -842,6 +845,17 @@ voluta_htni_from_vi(const struct voluta_vnode_info *vi)
 		htni = container_of2(vi, struct voluta_htnode_info, htn_vi);
 	}
 	return unconst(htni);
+}
+
+struct voluta_htnode_info *
+voluta_htni_from_vi_rebind(struct voluta_vnode_info *vi)
+{
+	struct voluta_htnode_info *htni = voluta_htni_from_vi(vi);
+
+	if (likely(htni != NULL)) {
+		htni->htn = &htni->htn_vi.view->u.htn;
+	}
+	return htni;
 }
 
 static void htni_init(struct voluta_htnode_info *htni,
@@ -896,12 +910,6 @@ htni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	}
 	return htni;
 }
-
-void voluta_htni_rebind(struct voluta_htnode_info *htni)
-{
-	htni->htn = &htni->htn_vi.view->u.htn;
-}
-
 
 static const struct voluta_vnode_vtbl vtbl_htni = {
 	.evictable = voluta_vi_isevictable,

@@ -53,6 +53,9 @@ bool voluta_ii_isrootd(const struct voluta_inode_info *ii);
 
 bool voluta_is_rootdir(const struct voluta_inode_info *ii);
 
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii);
+
+
 void voluta_fixup_rootdir(struct voluta_inode_info *ii);
 
 enum voluta_inodef voluta_ii_flags(const struct voluta_inode_info *ii);

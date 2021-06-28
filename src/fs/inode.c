@@ -400,6 +400,12 @@ static void voluta_ii_times(const struct voluta_inode_info *ii,
 	inode_ctime(inode, &tms->ctime);
 }
 
+bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
+{
+	return !ii->i_pinned && !ii->i_nopen &&
+	       voluta_vi_isevictable(ii_to_vi(ii));
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void voluta_setup_ispecial(struct voluta_inode_info *ii, dev_t rdev)

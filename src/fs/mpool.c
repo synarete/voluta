@@ -52,6 +52,7 @@ union voluta_xxnode_info_u {
 	struct voluta_xanode_info       xani;
 	struct voluta_htnode_info       htni;
 	struct voluta_symval_info       symi;
+	struct voluta_rtnode_info       rtni;
 };
 
 struct voluta_xxnode_info {

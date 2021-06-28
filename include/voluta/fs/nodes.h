@@ -114,7 +114,7 @@ struct voluta_xanode_info {
 	struct voluta_xattr_node       *xan;
 };
 
-/* symlink-value */
+/* symval */
 struct voluta_symval_info {
 	struct voluta_vnode_info        sym_vi;
 	struct voluta_symlnk_value     *sym;
@@ -124,6 +124,12 @@ struct voluta_symval_info {
 struct voluta_htnode_info {
 	struct voluta_vnode_info        htn_vi;
 	struct voluta_dir_htnode       *htn;
+};
+
+/* rtnode */
+struct voluta_rtnode_info {
+	struct voluta_vnode_info        rtn_vi;
+	struct voluta_radix_tnode      *rtn;
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -180,6 +186,14 @@ voluta_htni_from_vi(const struct voluta_vnode_info *vi);
 
 struct voluta_htnode_info *
 voluta_htni_from_vi_rebind(struct voluta_vnode_info *vi);
+
+
+struct voluta_rtnode_info *
+voluta_rtni_from_vi(const struct voluta_vnode_info *vi);
+
+struct voluta_rtnode_info *
+voluta_rtni_from_vi_rebind(struct voluta_vnode_info *vi);
+
 
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);

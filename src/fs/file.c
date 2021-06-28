@@ -68,7 +68,7 @@ struct voluta_file_ctx {
 
 struct voluta_fmap_ctx {
 	const struct voluta_file_ctx *f_ctx;
-	struct voluta_vnode_info *parent;
+	struct voluta_rtnode_info *parent;
 	struct voluta_vaddr vaddr;
 	size_t  slot_idx;
 	size_t  slot_len;
@@ -627,7 +627,55 @@ static struct voluta_reg_ispec *ii_ris_of(const struct voluta_inode_info *ii)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool isbottom(const struct voluta_vnode_info *vi);
+static void rtni_dirtify(struct voluta_rtnode_info *rtni)
+{
+	vi_dirtify(&rtni->rtn_vi);
+}
+
+static void rtni_incref(struct voluta_rtnode_info *rtni)
+{
+	vi_incref(&rtni->rtn_vi);
+}
+
+static void rtni_decref(struct voluta_rtnode_info *rtni)
+{
+	vi_decref(&rtni->rtn_vi);
+}
+
+static const struct voluta_vaddr *
+rtni_vaddr(const struct voluta_rtnode_info *rtni)
+{
+	return vi_vaddr(&rtni->rtn_vi);
+}
+
+static bool
+rtni_isinrange(const struct voluta_rtnode_info *rtni, loff_t file_pos)
+{
+	return rtn_isinrange(rtni->rtn, file_pos);
+}
+
+static bool rtni_isbottom(const struct voluta_rtnode_info *rtni)
+{
+	return rtn_isbottom(rtni->rtn);
+}
+
+static size_t rtni_height(const struct voluta_rtnode_info *rtni)
+{
+	return rtn_height(rtni->rtn);
+}
+
+static size_t rtni_nchilds_max(const struct voluta_rtnode_info *rtni)
+{
+	return rtn_nchilds_max(rtni->rtn);
+}
+
+static size_t
+rtni_child_slot_of(const struct voluta_rtnode_info *rtni, loff_t off)
+{
+	return rtn_slot_by_file_pos(rtni->rtn, off);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void vaddr_assign(struct voluta_vaddr *vaddr,
                          const struct voluta_vaddr *from)
@@ -661,17 +709,17 @@ static void fm_ctx_init(struct voluta_fmap_ctx *fm_ctx,
 static void fm_ctx_setup(struct voluta_fmap_ctx *fm_ctx,
                          const struct voluta_file_ctx *f_ctx,
                          const struct voluta_vaddr *vaddr,
-                         struct voluta_vnode_info *parent_vi,
+                         struct voluta_rtnode_info *parent,
                          size_t slot, loff_t file_pos)
 {
 	fm_ctx_init(fm_ctx, f_ctx, vaddr, file_pos);
-	fm_ctx->parent = parent_vi;
+	fm_ctx->parent = parent;
 	fm_ctx->slot_idx = slot;
 	if (fm_ctx->head1 || fm_ctx->head2) {
 		fm_ctx->leaf = true;
 	} else if (vaddr_isdata(vaddr)) {
 		fm_ctx->leaf = true;
-	} else if (parent_vi && isbottom(parent_vi)) {
+	} else if (parent && rtni_isbottom(parent)) {
 		fm_ctx->leaf = true;
 	}
 	if (fm_ctx->leaf) {
@@ -682,99 +730,78 @@ static void fm_ctx_setup(struct voluta_fmap_ctx *fm_ctx,
 
 static void fm_ctx_nomap(struct voluta_fmap_ctx *fm_ctx,
                          const struct voluta_file_ctx *f_ctx,
-                         struct voluta_vnode_info *parent, loff_t file_pos)
+                         struct voluta_rtnode_info *parent, loff_t file_pos)
 {
 	fm_ctx_setup(fm_ctx, f_ctx, vaddr_none(), parent, UINT_MAX, file_pos);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool isinrange(const struct voluta_vnode_info *vi, loff_t file_pos)
-{
-	return rtn_isinrange(vi->vu.rtn, file_pos);
-}
-
-static bool isbottom(const struct voluta_vnode_info *vi)
-{
-	return rtn_isbottom(vi->vu.rtn);
-}
-
-static size_t height_of(const struct voluta_vnode_info *vi)
-{
-	return rtn_height(vi->vu.rtn);
-}
-
-static size_t nchilds_max(const struct voluta_vnode_info *vi)
-{
-	return rtn_nchilds_max(vi->vu.rtn);
-}
-
-static size_t child_slot_of(const struct voluta_vnode_info *vi, loff_t off)
-{
-	return rtn_slot_by_file_pos(vi->vu.rtn, off);
-}
-
-static void resolve_child_by_slot(const struct voluta_vnode_info *vi,
+static void resolve_child_by_slot(const struct voluta_rtnode_info *rtni,
                                   size_t slot, struct voluta_vaddr *vaddr)
 {
 	loff_t child_off;
 
-	child_off = rtn_child(vi->vu.rtn, slot);
-	if (isbottom(vi)) {
+	child_off = rtn_child(rtni->rtn, slot);
+	if (rtni_isbottom(rtni)) {
 		vaddr_of_databk_leaf(vaddr, child_off);
 	} else {
 		vaddr_of_rtnode(vaddr, child_off);
 	}
 }
 
-static void assign_child_by_pos(struct voluta_vnode_info *vi, loff_t file_pos,
-                                const struct voluta_vaddr *vaddr)
+static void
+assign_child_by_pos(struct voluta_rtnode_info *parent_rtni,
+                    loff_t file_pos, const struct voluta_vaddr *vaddr)
 {
 	size_t child_slot;
 
-	child_slot = child_slot_of(vi, file_pos);
-	rtn_set_child(vi->vu.rtn, child_slot, vaddr->off);
+	child_slot = rtni_child_slot_of(parent_rtni, file_pos);
+	rtn_set_child(parent_rtni->rtn, child_slot, vaddr->off);
 }
 
 static void resolve_child_at(const struct voluta_file_ctx *f_ctx,
-                             struct voluta_vnode_info *vi,
+                             struct voluta_rtnode_info *rtni,
                              loff_t file_pos, size_t slot,
                              struct voluta_fmap_ctx *out_fm_ctx)
 {
 	struct voluta_vaddr vaddr;
 
-	resolve_child_by_slot(vi, slot, &vaddr);
-	fm_ctx_setup(out_fm_ctx, f_ctx, &vaddr, vi, slot, file_pos);
+	resolve_child_by_slot(rtni, slot, &vaddr);
+	fm_ctx_setup(out_fm_ctx, f_ctx, &vaddr, rtni, slot, file_pos);
 }
 
 static void resolve_child(const struct voluta_file_ctx *f_ctx,
-                          struct voluta_vnode_info *vi, loff_t file_pos,
+                          struct voluta_rtnode_info *rtni, loff_t file_pos,
                           struct voluta_fmap_ctx *out_fm_ctx)
 {
 	size_t child_slot;
 
-	if (vi != NULL) {
-		child_slot = child_slot_of(vi, file_pos);
-		resolve_child_at(f_ctx, vi, file_pos, child_slot, out_fm_ctx);
+	if (rtni != NULL) {
+		child_slot = rtni_child_slot_of(rtni, file_pos);
+		resolve_child_at(f_ctx, rtni, file_pos,
+		                 child_slot, out_fm_ctx);
 	} else {
 		fm_ctx_init(out_fm_ctx, f_ctx, vaddr_none(), file_pos);
 	}
 }
 
-static void bind_child(struct voluta_vnode_info *parent_vi, loff_t file_pos,
+static void bind_child(struct voluta_rtnode_info *parent_rtni, loff_t file_pos,
                        const struct voluta_vaddr *vaddr)
 {
-	if (parent_vi != NULL) {
-		assign_child_by_pos(parent_vi, file_pos, vaddr);
-		vi_dirtify(parent_vi);
+	if (parent_rtni != NULL) {
+		assign_child_by_pos(parent_rtni, file_pos, vaddr);
+		rtni_dirtify(parent_rtni);
 	}
 }
 
-static void bind_rtnode(struct voluta_vnode_info *parent_vi,
-                        loff_t file_pos, struct voluta_vnode_info *vi)
+static void bind_rtnode(struct voluta_rtnode_info *parent_rtni,
+                        loff_t file_pos, struct voluta_rtnode_info *rtni)
 {
-	bind_child(parent_vi, file_pos, vi_vaddr(vi));
-	rtn_inc_refcnt(vi->vu.rtn);
+	bind_child(parent_rtni, file_pos, rtni_vaddr(rtni));
+
+	rtn_inc_refcnt(rtni->rtn);
+	rtni_dirtify(rtni);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1028,16 +1055,16 @@ static void advance_to_next(struct voluta_file_ctx *f_ctx)
 
 static void
 advance_to_tree_slot(struct voluta_file_ctx *f_ctx,
-                     const struct voluta_vnode_info *vi, size_t slot)
+                     const struct voluta_rtnode_info *rtni, size_t slot)
 {
-	advance_to(f_ctx, rtn_file_pos(vi->vu.rtn, slot));
+	advance_to(f_ctx, rtn_file_pos(rtni->rtn, slot));
 }
 
 static void
 advance_to_next_tree_slot(struct voluta_file_ctx *f_ctx,
-                          const struct voluta_vnode_info *vi, size_t slot)
+                          const struct voluta_rtnode_info *rtni, size_t slot)
 {
-	advance_to(f_ctx, rtn_next_file_pos(vi->vu.rtn, slot));
+	advance_to(f_ctx, rtn_next_file_pos(rtni->rtn, slot));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1141,7 +1168,7 @@ static int check_file_io(const struct voluta_file_ctx *f_ctx)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int seek_tree_recursive(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi,
+                               struct voluta_rtnode_info *parent_rtni,
                                struct voluta_fmap_ctx *out_fm_ctx);
 
 static bool kcopy_mode(const struct voluta_file_ctx *f_ctx)
@@ -1304,36 +1331,66 @@ static int stage_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx,
 	return 0;
 }
 
-static int stage_radix_tnode(const struct voluta_file_ctx *f_ctx,
-                             const struct voluta_vaddr *vaddr,
-                             struct voluta_vnode_info **out_vi)
+static int check_staged_rtnode(const struct voluta_file_ctx *f_ctx,
+                               const struct voluta_rtnode_info *rtni)
+{
+	const ino_t r_ino = rtn_ino(rtni->rtn);
+	const ino_t f_ino = ii_ino(f_ctx->ii);
+	const size_t height = rtn_height(rtni->rtn);
+
+	voluta_assert_ge(height, 2);
+	if ((height < 2) || (height > 16)) {
+		log_err("illegal height: height=%lu ino=%lu", height, f_ino);
+		return -EFSCORRUPTED;
+	}
+	/* TODO: refine me when having FICLONE + meta-data */
+	if (r_ino != f_ino) {
+		log_err("bad rtnode ino: r_ino=%lu f_ino=%lu", r_ino, f_ino);
+		return -EFSCORRUPTED;
+	}
+	return 0;
+}
+
+static int stage_rtnode(const struct voluta_file_ctx *f_ctx,
+                        const struct voluta_vaddr *vaddr,
+                        struct voluta_rtnode_info **out_rtni)
 {
 	int err;
+	struct voluta_vnode_info *vi = NULL;
 
 	if (vaddr_isnull(vaddr)) {
 		return -ENOENT;
 	}
-	err = voluta_stage_vnode(f_ctx->sbi, vaddr, f_ctx->ii, out_vi);
+	err = voluta_stage_cached_vnode(f_ctx->sbi, vaddr, &vi);
+	if (!err) {
+		*out_rtni = voluta_rtni_from_vi(vi);
+		return 0;
+	}
+	err = voluta_stage_vnode(f_ctx->sbi, vaddr, f_ctx->ii, &vi);
 	if (err) {
 		return err;
 	}
-	voluta_assert_ge(rtn_height((*out_vi)->vu.rtn), 2);
+	*out_rtni = voluta_rtni_from_vi_rebind(vi);
+	err = check_staged_rtnode(f_ctx, *out_rtni);
+	if (err) {
+		return err;
+	}
 	return 0;
 }
 
 static int stage_tree_root(const struct voluta_file_ctx *f_ctx,
-                           struct voluta_vnode_info **out_vi)
+                           struct voluta_rtnode_info **out_rtni)
 {
 	struct voluta_vaddr root_vaddr;
 
 	tree_root_of(f_ctx, &root_vaddr);
-	return stage_radix_tnode(f_ctx, &root_vaddr, out_vi);
+	return stage_rtnode(f_ctx, &root_vaddr, out_rtni);
 }
 
 static size_t iter_start_slot(const struct voluta_file_ctx *f_ctx,
-                              const struct voluta_vnode_info *parent_vi)
+                              const struct voluta_rtnode_info *parent_rtni)
 {
-	return child_slot_of(parent_vi, f_ctx->off);
+	return rtni_child_slot_of(parent_rtni, f_ctx->off);
 }
 
 static bool is_seek_data(const struct voluta_file_ctx *f_ctx)
@@ -1347,20 +1404,21 @@ static bool is_seek_hole(const struct voluta_file_ctx *f_ctx)
 }
 
 static int seek_tree_at_leaves(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi,
+                               struct voluta_rtnode_info *parent_rtni,
                                struct voluta_fmap_ctx *out_fm_ctx)
 {
 	size_t start_slot;
-	const size_t nslots_max = nchilds_max(parent_vi);
+	size_t nslots_max;
 	const bool seek_hole = is_seek_hole(f_ctx);
 
-	start_slot = iter_start_slot(f_ctx, parent_vi);
+	start_slot = iter_start_slot(f_ctx, parent_rtni);
+	nslots_max = rtni_nchilds_max(parent_rtni);
 	for (size_t slot = start_slot; slot < nslots_max; ++slot) {
-		advance_to_tree_slot(f_ctx, parent_vi, slot);
+		advance_to_tree_slot(f_ctx, parent_rtni, slot);
 		if (!has_more_io(f_ctx)) {
 			break;
 		}
-		resolve_child_at(f_ctx, parent_vi, f_ctx->off,
+		resolve_child_at(f_ctx, parent_rtni, f_ctx->off,
 		                 slot, out_fm_ctx);
 		if (seek_hole == out_fm_ctx->has_hole) {
 			return 0;
@@ -1371,22 +1429,22 @@ static int seek_tree_at_leaves(struct voluta_file_ctx *f_ctx,
 
 static int
 seek_tree_recursive_at(struct voluta_file_ctx *f_ctx,
-                       struct voluta_vnode_info *parent_vi, size_t slot,
+                       struct voluta_rtnode_info *parent_rtni, size_t slot,
                        struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
-	resolve_child_by_slot(parent_vi, slot, &vaddr);
+	resolve_child_by_slot(parent_rtni, slot, &vaddr);
 	if (vaddr_isnull(&vaddr)) {
 		return -ENOENT;
 	}
-	err = stage_radix_tnode(f_ctx, &vaddr, &vi);
+	err = stage_rtnode(f_ctx, &vaddr, &rtni);
 	if (err) {
 		return err;
 	}
-	err = seek_tree_recursive(f_ctx, vi, out_fm_ctx);
+	err = seek_tree_recursive(f_ctx, rtni, out_fm_ctx);
 	if (err) {
 		return err;
 	}
@@ -1394,41 +1452,41 @@ seek_tree_recursive_at(struct voluta_file_ctx *f_ctx,
 }
 
 static int do_seek_tree_recursive(struct voluta_file_ctx *f_ctx,
-                                  struct voluta_vnode_info *parent_vi,
+                                  struct voluta_rtnode_info *parent_rtni,
                                   struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 	size_t start_slot;
-	const size_t nslots_max = nchilds_max(parent_vi);
+	const size_t nslots_max = rtni_nchilds_max(parent_rtni);
 
-	if (!isinrange(parent_vi, f_ctx->off)) {
+	if (!rtni_isinrange(parent_rtni, f_ctx->off)) {
 		return -ENOENT;
 	}
-	if (isbottom(parent_vi)) {
-		return seek_tree_at_leaves(f_ctx, parent_vi, out_fm_ctx);
+	if (rtni_isbottom(parent_rtni)) {
+		return seek_tree_at_leaves(f_ctx, parent_rtni, out_fm_ctx);
 	}
 	err = is_seek_hole(f_ctx) ? 0 : -ENOENT;
-	start_slot = child_slot_of(parent_vi, f_ctx->off);
+	start_slot = rtni_child_slot_of(parent_rtni, f_ctx->off);
 	for (size_t slot = start_slot; slot < nslots_max; ++slot) {
-		err = seek_tree_recursive_at(f_ctx, parent_vi,
+		err = seek_tree_recursive_at(f_ctx, parent_rtni,
 		                             slot, out_fm_ctx);
 		if (err != -ENOENT) {
 			break;
 		}
-		advance_to_next_tree_slot(f_ctx, parent_vi, slot);
+		advance_to_next_tree_slot(f_ctx, parent_rtni, slot);
 	}
 	return err;
 }
 
 static int seek_tree_recursive(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi,
+                               struct voluta_rtnode_info *parent_rtni,
                                struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_seek_tree_recursive(f_ctx, parent_vi, out_fm_ctx);
-	vi_decref(parent_vi);
+	rtni_incref(parent_rtni);
+	err = do_seek_tree_recursive(f_ctx, parent_rtni, out_fm_ctx);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
@@ -1436,16 +1494,16 @@ static int seek_by_tree_map(struct voluta_file_ctx *f_ctx,
                             struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
-	struct voluta_vnode_info *root_vi;
+	struct voluta_rtnode_info *root_rtni = NULL;
 
 	if (!has_tree_root(f_ctx)) {
 		return -ENOENT;
 	}
-	err = stage_tree_root(f_ctx, &root_vi);
+	err = stage_tree_root(f_ctx, &root_rtni);
 	if (err) {
 		return err;
 	}
-	err = seek_tree_recursive(f_ctx, root_vi, out_fm_ctx);
+	err = seek_tree_recursive(f_ctx, root_rtni, out_fm_ctx);
 	if (err) {
 		return err;
 	}
@@ -1572,52 +1630,52 @@ static int import_data_by_vaddr(const struct voluta_file_ctx *f_ctx,
 }
 
 static void child_of_current_pos(const struct voluta_file_ctx *f_ctx,
-                                 struct voluta_vnode_info *parent_vi,
+                                 struct voluta_rtnode_info *parent_rtni,
                                  struct voluta_fmap_ctx *out_fm_ctx)
 {
-	resolve_child(f_ctx, parent_vi, f_ctx->off, out_fm_ctx);
+	resolve_child(f_ctx, parent_rtni, f_ctx->off, out_fm_ctx);
 }
 
 static void resolve_tree_leaf(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *parent_vi,
+                              struct voluta_rtnode_info *parent_rtni,
                               struct voluta_fmap_ctx *out_fm_ctx)
 {
-	child_of_current_pos(f_ctx, parent_vi, out_fm_ctx);
+	child_of_current_pos(f_ctx, parent_rtni, out_fm_ctx);
 }
 
 static void resolve_curr_node(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *parent_vi,
+                              struct voluta_rtnode_info *parent_rtni,
                               struct voluta_fmap_ctx *out_fm_ctx)
 {
-	child_of_current_pos(f_ctx, parent_vi, out_fm_ctx);
+	child_of_current_pos(f_ctx, parent_rtni, out_fm_ctx);
 }
 
 static int stage_by_tree_map(const struct voluta_file_ctx *f_ctx,
-                             struct voluta_vnode_info **out_vi)
+                             struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 	size_t height;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 	struct voluta_fmap_ctx fm_ctx = { .file_pos = -1 };
 
 	if (!has_tree_root(f_ctx)) {
 		return -ENOENT;
 	}
-	err = stage_tree_root(f_ctx, &vi);
+	err = stage_tree_root(f_ctx, &rtni);
 	if (err) {
 		return err;
 	}
-	if (!isinrange(vi, f_ctx->off)) {
+	if (!rtni_isinrange(rtni, f_ctx->off)) {
 		return -ENOENT;
 	}
-	height = height_of(vi);
+	height = rtni_height(rtni);
 	while (height--) {
-		if (isbottom(vi)) {
-			*out_vi = vi;
+		if (rtni_isbottom(rtni)) {
+			*out_rtni = rtni;
 			return 0;
 		}
-		resolve_curr_node(f_ctx, vi, &fm_ctx);
-		err = stage_radix_tnode(f_ctx, &fm_ctx.vaddr, &vi);
+		resolve_curr_node(f_ctx, rtni, &fm_ctx);
+		err = stage_rtnode(f_ctx, &fm_ctx.vaddr, &rtni);
 		if (err) {
 			return err;
 		}
@@ -1693,14 +1751,14 @@ static int read_from_leaf(struct voluta_file_ctx *f_ctx,
 }
 
 static int do_read_tree_leaves(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi)
+                               struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 	size_t len;
 	struct voluta_fmap_ctx fm_ctx;
 
 	while (has_more_io(f_ctx)) {
-		resolve_tree_leaf(f_ctx, parent_vi, &fm_ctx);
+		resolve_tree_leaf(f_ctx, parent_rtni, &fm_ctx);
 		err = read_from_leaf(f_ctx, &fm_ctx, &len);
 		if (err) {
 			return err;
@@ -1714,13 +1772,13 @@ static int do_read_tree_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int read_tree_leaves(struct voluta_file_ctx *f_ctx,
-                            struct voluta_vnode_info *parent_vi)
+                            struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_read_tree_leaves(f_ctx, parent_vi);
-	vi_decref(parent_vi);
+	rtni_incref(parent_rtni);
+	err = do_read_tree_leaves(f_ctx, parent_rtni);
+	rtni_decref(parent_rtni);
 
 	return err;
 }
@@ -1728,15 +1786,15 @@ static int read_tree_leaves(struct voluta_file_ctx *f_ctx,
 static int read_by_tree_map(struct voluta_file_ctx *f_ctx)
 {
 	int err;
-	struct voluta_vnode_info *parent_vi;
+	struct voluta_rtnode_info *parent_rtni = NULL;
 
 	while (has_more_io(f_ctx)) {
-		parent_vi = NULL;
-		err = stage_by_tree_map(f_ctx, &parent_vi);
+		parent_rtni = NULL;
+		err = stage_by_tree_map(f_ctx, &parent_rtni);
 		if (err && (err != -ENOENT)) {
 			return err;
 		}
-		err = read_tree_leaves(f_ctx, parent_vi);
+		err = read_tree_leaves(f_ctx, parent_rtni);
 		if (err) {
 			return err;
 		}
@@ -1973,19 +2031,27 @@ static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
-static int new_rtnode(const struct voluta_file_ctx *f_ctx,
-                      struct voluta_vnode_info **out_vi)
+static int spawn_rtnode(const struct voluta_file_ctx *f_ctx,
+                        struct voluta_rtnode_info **out_rtni)
 {
-	return voluta_spawn_vnode(f_ctx->sbi, f_ctx->ii,
-	                          VOLUTA_VTYPE_RTNODE, out_vi);
+	int err;
+	struct voluta_vnode_info *vi = NULL;
+	const enum voluta_vtype vtype = VOLUTA_VTYPE_RTNODE;
+
+	err = voluta_spawn_vnode(f_ctx->sbi, f_ctx->ii, vtype, &vi);
+	if (err) {
+		return err;
+	}
+	*out_rtni = voluta_rtni_from_vi_rebind(vi);
+	return 0;
 }
 
-static int del_rtnode(const struct voluta_file_ctx *f_ctx,
-                      struct voluta_vnode_info *vi)
+static int remove_rtnode(const struct voluta_file_ctx *f_ctx,
+                         struct voluta_rtnode_info *rtni)
 {
-	voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_RTNODE);
+	voluta_assert_eq(rtni->rtn_vi.vaddr.vtype, VOLUTA_VTYPE_RTNODE);
 
-	return voluta_remove_vnode(f_ctx->sbi, vi);
+	return voluta_remove_vnode(f_ctx->sbi, &rtni->rtn_vi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -2015,47 +2081,49 @@ static void update_iattr_blocks(const struct voluta_file_ctx *f_ctx,
 	update_iblocks(f_ctx->op, f_ctx->ii, vaddr->vtype, dif);
 }
 
+static void setup_rtnode(struct voluta_rtnode_info *rtni,
+                         const struct voluta_inode_info *ii,
+                         loff_t off, size_t height)
+{
+	rtn_init_by(rtni->rtn, ii_ino(ii), off, height);
+	rtni_dirtify(rtni);
+}
+
 static int create_radix_tnode(const struct voluta_file_ctx *f_ctx,
                               loff_t off, size_t height,
-                              struct voluta_vnode_info **out_vi)
+                              struct voluta_rtnode_info **out_rtni)
 {
 	int err;
-	struct voluta_vnode_info *vi;
 
-	err = new_rtnode(f_ctx, &vi);
+	err = spawn_rtnode(f_ctx, out_rtni);
 	if (err) {
 		return err;
 	}
-	rtn_init_by(vi->vu.rtn, ii_ino(f_ctx->ii), off, height);
-	vi_dirtify(vi);
-	*out_vi = vi;
+	setup_rtnode(*out_rtni, f_ctx->ii, off, height);
 	return 0;
 }
 
-static int create_root_node(const struct voluta_file_ctx *f_ctx,
-                            size_t height, struct voluta_vnode_info **out_vi)
+static int create_root_node(const struct voluta_file_ctx *f_ctx, size_t height,
+                            struct voluta_rtnode_info **out_rtni)
 {
 	voluta_assert_gt(height, 0);
 
-	return create_radix_tnode(f_ctx, 0, height, out_vi);
+	return create_radix_tnode(f_ctx, 0, height, out_rtni);
 }
 
 static int create_bind_rtnode(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *parent_vi,
-                              struct voluta_vnode_info **out_vi)
+                              struct voluta_rtnode_info *parent_rtni,
+                              struct voluta_rtnode_info **out_rtni)
 {
 	int err;
-	struct voluta_vnode_info *vi;
 	const loff_t file_pos = f_ctx->off;
-	const size_t height = height_of(parent_vi);
+	const size_t height = rtni_height(parent_rtni);
 
-	err = create_radix_tnode(f_ctx, file_pos, height - 1, &vi);
+	err = create_radix_tnode(f_ctx, file_pos, height - 1, out_rtni);
 	if (err) {
 		return err;
 	}
-	bind_rtnode(parent_vi, file_pos, vi);
-
-	*out_vi = vi;
+	bind_rtnode(parent_rtni, file_pos, *out_rtni);
 	return 0;
 }
 
@@ -2106,31 +2174,31 @@ static int create_head2_leaf_space(const struct voluta_file_ctx *f_ctx,
 }
 
 static int create_tree_leaf_space(const struct voluta_file_ctx *f_ctx,
-                                  struct voluta_vnode_info *parent_vi,
+                                  struct voluta_rtnode_info *parent_rtni,
                                   struct voluta_vaddr *out_vaddr)
 {
 	int err;
 
-	vi_incref(parent_vi);
+	rtni_incref(parent_rtni);
 	err = create_data_leaf(f_ctx, VOLUTA_VTYPE_DATABK, out_vaddr);
 	if (!err) {
-		bind_child(parent_vi, f_ctx->off, out_vaddr);
+		bind_child(parent_rtni, f_ctx->off, out_vaddr);
 	}
-	vi_decref(parent_vi);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
 static void bind_sub_tree(const struct voluta_file_ctx *f_ctx,
-                          struct voluta_vnode_info *vi)
+                          struct voluta_rtnode_info *rtni)
 {
 	struct voluta_vaddr vaddr;
 
 	tree_root_of(f_ctx, &vaddr);
-	rtn_set_child(vi->vu.rtn, 0, vaddr.off);
-	vi_dirtify(vi);
+	rtn_set_child(rtni->rtn, 0, vaddr.off);
+	rtni_dirtify(rtni);
 
-	update_tree_root(f_ctx, vi_vaddr(vi));
-	bind_rtnode(NULL, 0, vi);
+	update_tree_root(f_ctx, rtni_vaddr(rtni));
+	bind_rtnode(NULL, 0, rtni);
 }
 
 static size_t off_to_height(loff_t off)
@@ -2143,11 +2211,11 @@ static int create_tree_spine(const struct voluta_file_ctx *f_ctx)
 	int err;
 	size_t new_height;
 	size_t cur_height = 0;
-	struct voluta_vnode_info *vi = NULL;
+	struct voluta_rtnode_info *rtni = NULL;
 
-	err = stage_tree_root(f_ctx, &vi);
+	err = stage_tree_root(f_ctx, &rtni);
 	if (!err) {
-		cur_height = height_of(vi);
+		cur_height = rtni_height(rtni);
 	} else if (err == -ENOENT) {
 		cur_height = 1;
 	} else {
@@ -2155,71 +2223,71 @@ static int create_tree_spine(const struct voluta_file_ctx *f_ctx)
 	}
 	new_height = off_to_height(f_ctx->off);
 	while (new_height > cur_height) {
-		err = create_root_node(f_ctx, ++cur_height, &vi);
+		err = create_root_node(f_ctx, ++cur_height, &rtni);
 		if (err) {
 			return err;
 		}
-		bind_sub_tree(f_ctx, vi);
+		bind_sub_tree(f_ctx, rtni);
 	}
 	return 0;
 }
 
 static int do_stage_or_create_rtnode(const struct voluta_file_ctx *f_ctx,
-                                     struct voluta_vnode_info *parent_vi,
-                                     struct voluta_vnode_info **out_vi)
+                                     struct voluta_rtnode_info *parent_rtni,
+                                     struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 	struct voluta_fmap_ctx fm_ctx;
 
-	resolve_curr_node(f_ctx, parent_vi, &fm_ctx);
+	resolve_curr_node(f_ctx, parent_rtni, &fm_ctx);
 	if (fm_ctx.has_target) {
-		err = stage_radix_tnode(f_ctx, &fm_ctx.vaddr, out_vi);
+		err = stage_rtnode(f_ctx, &fm_ctx.vaddr, out_rtni);
 	} else {
-		err = create_bind_rtnode(f_ctx, parent_vi, out_vi);
+		err = create_bind_rtnode(f_ctx, parent_rtni, out_rtni);
 	}
 	return err;
 }
 
 static int stage_or_create_rtnode(const struct voluta_file_ctx *f_ctx,
-                                  struct voluta_vnode_info *parent_vi,
-                                  struct voluta_vnode_info **out_vi)
+                                  struct voluta_rtnode_info *parent_rtni,
+                                  struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_stage_or_create_rtnode(f_ctx, parent_vi, out_vi);
-	vi_decref(parent_vi);
+	rtni_incref(parent_rtni);
+	err = do_stage_or_create_rtnode(f_ctx, parent_rtni, out_rtni);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
 static int stage_or_create_tree_path(const struct voluta_file_ctx *f_ctx,
-                                     struct voluta_vnode_info **out_vi)
+                                     struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 	size_t height;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni;
 
-	*out_vi = NULL;
-	err = stage_tree_root(f_ctx, &vi);
+	*out_rtni = NULL;
+	err = stage_tree_root(f_ctx, &rtni);
 	if (err) {
 		return err;
 	}
-	height = height_of(vi);
+	height = rtni_height(rtni);
 	for (size_t level = height; level > 0; --level) {
-		if (isbottom(vi)) {
-			*out_vi = vi;
+		if (rtni_isbottom(rtni)) {
+			*out_rtni = rtni;
 			break;
 		}
-		err = stage_or_create_rtnode(f_ctx, vi, &vi);
+		err = stage_or_create_rtnode(f_ctx, rtni, &rtni);
 		if (err) {
 			return err;
 		}
 	}
-	return unlikely(*out_vi == NULL) ? -EFSCORRUPTED : 0;
+	return unlikely(*out_rtni == NULL) ? -EFSCORRUPTED : 0;
 }
 
 static int stage_or_create_tree_map(const struct voluta_file_ctx *f_ctx,
-                                    struct voluta_vnode_info **out_vi)
+                                    struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 
@@ -2227,7 +2295,7 @@ static int stage_or_create_tree_map(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	err = stage_or_create_tree_path(f_ctx, out_vi);
+	err = stage_or_create_tree_path(f_ctx, out_rtni);
 	if (err) {
 		return err;
 	}
@@ -2304,17 +2372,17 @@ static int prepare_unwritten_leaf(const struct voluta_fmap_ctx *fm_ctx)
 }
 
 static int require_tree_leaf(const struct voluta_file_ctx *f_ctx,
-                             struct voluta_vnode_info *parent_vi,
+                             struct voluta_rtnode_info *parent_rtni,
                              struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 
-	resolve_tree_leaf(f_ctx, parent_vi, out_fm_ctx);
+	resolve_tree_leaf(f_ctx, parent_rtni, out_fm_ctx);
 	if (out_fm_ctx->has_data) {
 		voluta_assert(out_fm_ctx->has_target);
 		return 0;
 	}
-	err = create_tree_leaf_space(f_ctx, parent_vi, &out_fm_ctx->vaddr);
+	err = create_tree_leaf_space(f_ctx, parent_rtni, &out_fm_ctx->vaddr);
 	if (err) {
 		return err;
 	}
@@ -2354,14 +2422,14 @@ static int write_to_leaf(const struct voluta_fmap_ctx *fm_ctx, size_t *out_len)
 }
 
 static int do_write_tree_leaves(struct voluta_file_ctx *f_ctx,
-                                struct voluta_vnode_info *parent_vi)
+                                struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 	size_t len;
 	struct voluta_fmap_ctx fm_ctx;
 
 	while (has_more_io(f_ctx)) {
-		err = require_tree_leaf(f_ctx, parent_vi, &fm_ctx);
+		err = require_tree_leaf(f_ctx, parent_rtni, &fm_ctx);
 		if (err) {
 			return err;
 		}
@@ -2378,27 +2446,27 @@ static int do_write_tree_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int write_to_leaves(struct voluta_file_ctx *f_ctx,
-                           struct voluta_vnode_info *vi)
+                           struct voluta_rtnode_info *rtni)
 {
 	int err;
 
-	vi_incref(vi);
-	err = do_write_tree_leaves(f_ctx, vi);
-	vi_decref(vi);
+	rtni_incref(rtni);
+	err = do_write_tree_leaves(f_ctx, rtni);
+	rtni_decref(rtni);
 	return err;
 }
 
 static int write_by_tree_map(struct voluta_file_ctx *f_ctx)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
 	while (has_more_io(f_ctx)) {
-		err = stage_or_create_tree_map(f_ctx, &vi);
+		err = stage_or_create_tree_map(f_ctx, &rtni);
 		if (err) {
 			return err;
 		}
-		err = write_to_leaves(f_ctx, vi);
+		err = write_to_leaves(f_ctx, rtni);
 		if (err) {
 			return err;
 		}
@@ -2605,8 +2673,8 @@ int voluta_do_rdwr_post(const struct voluta_oper *op,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int drop_del_subtree(struct voluta_file_ctx *f_ctx,
-                            struct voluta_vnode_info *vi);
+static int drop_remove_subtree(struct voluta_file_ctx *f_ctx,
+                               struct voluta_rtnode_info *rtni);
 
 static int discard_data_leaf(const struct voluta_file_ctx *f_ctx,
                              const struct voluta_vaddr *vaddr)
@@ -2628,16 +2696,16 @@ static int drop_subtree(struct voluta_file_ctx *f_ctx,
                         const struct voluta_vaddr *vaddr)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
 	if (vaddr_isnull(vaddr)) {
 		return 0;
 	}
-	err = stage_radix_tnode(f_ctx, vaddr, &vi);
+	err = stage_rtnode(f_ctx, vaddr, &rtni);
 	if (err) {
 		return err;
 	}
-	err = drop_del_subtree(f_ctx, vi);
+	err = drop_remove_subtree(f_ctx, rtni);
 	if (err) {
 		return err;
 	}
@@ -2646,13 +2714,13 @@ static int drop_subtree(struct voluta_file_ctx *f_ctx,
 
 static int
 drop_subtree_at(struct voluta_file_ctx *f_ctx,
-                const struct voluta_vnode_info *parent_vi, size_t slot)
+                const struct voluta_rtnode_info *parent_rtni, size_t slot)
 {
 	int err;
 	struct voluta_vaddr vaddr;
 
-	resolve_child_by_slot(parent_vi, slot, &vaddr);
-	if (isbottom(parent_vi)) {
+	resolve_child_by_slot(parent_rtni, slot, &vaddr);
+	if (rtni_isbottom(parent_rtni)) {
 		err = discard_data_leaf(f_ctx, &vaddr);
 	} else {
 		err = drop_subtree(f_ctx, &vaddr);
@@ -2661,13 +2729,13 @@ drop_subtree_at(struct voluta_file_ctx *f_ctx,
 }
 
 static int do_drop_recursive(struct voluta_file_ctx *f_ctx,
-                             struct voluta_vnode_info *vi)
+                             struct voluta_rtnode_info *rtni)
 {
 	int err;
-	const size_t nslots_max = rtn_nchilds_max(vi->vu.rtn);
+	const size_t nslots_max = rtn_nchilds_max(rtni->rtn);
 
 	for (size_t slot = 0; slot < nslots_max; ++slot) {
-		err = drop_subtree_at(f_ctx, vi, slot);
+		err = drop_subtree_at(f_ctx, rtni, slot);
 		if (err) {
 			return err;
 		}
@@ -2676,39 +2744,38 @@ static int do_drop_recursive(struct voluta_file_ctx *f_ctx,
 }
 
 static int drop_recursive(struct voluta_file_ctx *f_ctx,
-                          struct voluta_vnode_info *vi)
+                          struct voluta_rtnode_info *rtni)
 {
 	int err;
 
-	vi_incref(vi);
-	err = do_drop_recursive(f_ctx, vi);
-	vi_decref(vi);
+	rtni_incref(rtni);
+	err = do_drop_recursive(f_ctx, rtni);
+	rtni_decref(rtni);
 	return err;
 }
 
 static int drop_rtnode(struct voluta_file_ctx *f_ctx,
-                       struct voluta_vnode_info *vi)
+                       struct voluta_rtnode_info *rtni)
 {
 	int err = 0;
-	struct voluta_radix_tnode *rtn = vi->vu.rtn;
 
-	rtn_dec_refcnt(vi->vu.rtn);
-	if (!rtn_refcnt(rtn)) {
-		err = del_rtnode(f_ctx, vi);
+	rtn_dec_refcnt(rtni->rtn);
+	if (!rtn_refcnt(rtni->rtn)) {
+		err = remove_rtnode(f_ctx, rtni);
 	}
 	return err;
 }
 
-static int drop_del_subtree(struct voluta_file_ctx *f_ctx,
-                            struct voluta_vnode_info *vi)
+static int drop_remove_subtree(struct voluta_file_ctx *f_ctx,
+                               struct voluta_rtnode_info *rtni)
 {
 	int err;
 
-	err = drop_recursive(f_ctx, vi);
+	err = drop_recursive(f_ctx, rtni);
 	if (err) {
 		return err;
 	}
-	err = drop_rtnode(f_ctx, vi);
+	err = drop_rtnode(f_ctx, rtni);
 	if (err) {
 		return err;
 	}
@@ -2724,16 +2791,16 @@ static void reset_tree_root(struct voluta_file_ctx *f_ctx)
 static int drop_tree_map(struct voluta_file_ctx *f_ctx)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
 	if (!has_tree_root(f_ctx)) {
 		return 0;
 	}
-	err = stage_tree_root(f_ctx, &vi);
+	err = stage_tree_root(f_ctx, &rtni);
 	if (err) {
 		return err;
 	}
-	err = drop_del_subtree(f_ctx, vi);
+	err = drop_remove_subtree(f_ctx, rtni);
 	if (err) {
 		return err;
 	}
@@ -2852,10 +2919,9 @@ static int discard_partial(const struct voluta_fmap_ctx *fm_ctx)
 {
 	int err;
 
-	vi_incref(fm_ctx->parent);
+	rtni_incref(fm_ctx->parent);
 	err = do_discard_partial(fm_ctx);
-	vi_decref(fm_ctx->parent);
-
+	rtni_decref(fm_ctx->parent);
 	return err;
 }
 
@@ -2863,18 +2929,18 @@ static int discard_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx)
 {
 	int err;
 
-	vi_incref(fm_ctx->parent);
+	rtni_incref(fm_ctx->parent);
 	err = discard_data_leaf(fm_ctx->f_ctx, &fm_ctx->vaddr);
-	vi_decref(fm_ctx->parent);
-
+	rtni_decref(fm_ctx->parent);
 	return err;
 }
 
-static void clear_subtree_mappings(struct voluta_vnode_info *vi, size_t slot)
+static void
+clear_subtree_mappings(struct voluta_rtnode_info *rtni, size_t slot)
 {
-	if (likely(vi != NULL)) { /* make clang-scan happy */
-		rtn_reset_child(vi->vu.rtn, slot);
-		vi_dirtify(vi);
+	if (likely(rtni != NULL)) { /* make clang-scan happy */
+		rtn_reset_child(rtni->rtn, slot);
+		rtni_dirtify(rtni);
 	}
 }
 
@@ -3020,17 +3086,17 @@ static int
 tree_leaves_end(const struct voluta_file_ctx *f_ctx, loff_t *out_end)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
 	*out_end = 0;
 	if (!has_tree_root(f_ctx)) {
 		return 0;
 	}
-	err = stage_tree_root(f_ctx, &vi);
+	err = stage_tree_root(f_ctx, &rtni);
 	if (err) {
 		return err;
 	}
-	*out_end = rtn_end(vi->vu.rtn);
+	*out_end = rtn_end(rtni->rtn);
 	return 0;
 }
 
@@ -3271,12 +3337,12 @@ static int check_fl_mode(const struct voluta_file_ctx *f_ctx)
 }
 
 static int create_bind_tree_leaf(const struct voluta_file_ctx *f_ctx,
-                                 struct voluta_vnode_info *parent_vi)
+                                 struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 	struct voluta_fmap_ctx fm_ctx;
 
-	resolve_tree_leaf(f_ctx, parent_vi, &fm_ctx);
+	resolve_tree_leaf(f_ctx, parent_rtni, &fm_ctx);
 	if (fm_ctx.has_data) {
 		return 0;
 	}
@@ -3284,18 +3350,18 @@ static int create_bind_tree_leaf(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	bind_child(parent_vi, f_ctx->off, &fm_ctx.vaddr);
+	bind_child(parent_rtni, f_ctx->off, &fm_ctx.vaddr);
 	return 0;
 }
 
 static int do_reserve_tree_leaves(struct voluta_file_ctx *f_ctx,
-                                  struct voluta_vnode_info *parent_vi)
+                                  struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 	bool next_mapping = false;
 
 	while (has_more_io(f_ctx) && !next_mapping) {
-		err = create_bind_tree_leaf(f_ctx, parent_vi);
+		err = create_bind_tree_leaf(f_ctx, parent_rtni);
 		if (err) {
 			return err;
 		}
@@ -3306,14 +3372,13 @@ static int do_reserve_tree_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int reserve_tree_leaves(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi)
+                               struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_reserve_tree_leaves(f_ctx, parent_vi);
-	vi_decref(parent_vi);
-
+	rtni_incref(parent_rtni);
+	err = do_reserve_tree_leaves(f_ctx, parent_rtni);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
@@ -3321,18 +3386,18 @@ static int reserve_leaves(struct voluta_file_ctx *f_ctx)
 {
 	int err;
 	size_t height;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
-	err = stage_tree_root(f_ctx, &vi);
+	err = stage_tree_root(f_ctx, &rtni);
 	if (err) {
 		return err;
 	}
-	height = height_of(vi);
+	height = rtni_height(rtni);
 	for (size_t level = height; level > 0; --level) {
-		if (isbottom(vi)) {
-			return reserve_tree_leaves(f_ctx, vi);
+		if (rtni_isbottom(rtni)) {
+			return reserve_tree_leaves(f_ctx, rtni);
 		}
-		err = stage_or_create_rtnode(f_ctx, vi, &vi);
+		err = stage_or_create_rtnode(f_ctx, rtni, &rtni);
 		if (err) {
 			return err;
 		}
@@ -3517,12 +3582,12 @@ static bool emit_fiemap(struct voluta_file_ctx *f_ctx,
 }
 
 static int do_fiemap_by_tree_leaves(struct voluta_file_ctx *f_ctx,
-                                    struct voluta_vnode_info *parent_vi)
+                                    struct voluta_rtnode_info *parent_rtni)
 {
-	struct voluta_fmap_ctx fm_ctx;
+	struct voluta_fmap_ctx fm_ctx = { .f_ctx = NULL };
 
 	while (has_more_io(f_ctx)) {
-		resolve_tree_leaf(f_ctx, parent_vi, &fm_ctx);
+		resolve_tree_leaf(f_ctx, parent_rtni, &fm_ctx);
 		if (!emit_fiemap(f_ctx, &fm_ctx)) {
 			break;
 		}
@@ -3535,14 +3600,13 @@ static int do_fiemap_by_tree_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int fiemap_by_tree_leaves(struct voluta_file_ctx *f_ctx,
-                                 struct voluta_vnode_info *parent_vi)
+                                 struct voluta_rtnode_info *parent_rtni)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_fiemap_by_tree_leaves(f_ctx, parent_vi);
-	vi_decref(parent_vi);
-
+	rtni_incref(parent_rtni);
+	err = do_fiemap_by_tree_leaves(f_ctx, parent_rtni);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
@@ -3677,9 +3741,10 @@ int voluta_do_fiemap(const struct voluta_oper *op,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int resolve_fmap_by_tree_recursive(struct voluta_file_ctx *f_ctx,
-                struct voluta_vnode_info *parent_vi,
-                struct voluta_fmap_ctx *out_fm_ctx);
+static int
+resolve_fmap_by_tree_recursive(struct voluta_file_ctx *f_ctx,
+                               struct voluta_rtnode_info *parent_rtni,
+                               struct voluta_fmap_ctx *out_fm_ctx);
 
 static int resolve_fmap_by_head_leaves(struct voluta_file_ctx *f_ctx,
                                        struct voluta_fmap_ctx *out_fm_ctx)
@@ -3699,24 +3764,24 @@ static int resolve_fmap_by_head_leaves(struct voluta_file_ctx *f_ctx,
 
 static int
 resolve_fmap_recursive_at(struct voluta_file_ctx *f_ctx,
-                          struct voluta_vnode_info *parent_vi, size_t slot,
+                          struct voluta_rtnode_info *parent_rtni, size_t slot,
                           struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 	struct voluta_vaddr vaddr;
-	struct voluta_vnode_info *vi;
+	struct voluta_rtnode_info *rtni = NULL;
 
-	resolve_child_by_slot(parent_vi, slot, &vaddr);
-	fm_ctx_nomap(out_fm_ctx, f_ctx, parent_vi, f_ctx->off);
+	resolve_child_by_slot(parent_rtni, slot, &vaddr);
+	fm_ctx_nomap(out_fm_ctx, f_ctx, parent_rtni, f_ctx->off);
 
 	if (vaddr_isnull(&vaddr)) {
 		return -ENOENT;
 	}
-	err = stage_radix_tnode(f_ctx, &vaddr, &vi);
+	err = stage_rtnode(f_ctx, &vaddr, &rtni);
 	if (err) {
 		return err;
 	}
-	err = resolve_fmap_by_tree_recursive(f_ctx, vi, out_fm_ctx);
+	err = resolve_fmap_by_tree_recursive(f_ctx, rtni, out_fm_ctx);
 	if (err) {
 		return err;
 	}
@@ -3725,33 +3790,34 @@ resolve_fmap_recursive_at(struct voluta_file_ctx *f_ctx,
 
 static int
 do_resolve_fmap_by_tree_recursive(struct voluta_file_ctx *f_ctx,
-                                  struct voluta_vnode_info *parent_vi,
+                                  struct voluta_rtnode_info *parent_rtni,
                                   struct voluta_fmap_ctx *out_fm_ctx)
 {
 	size_t slot;
 
-	if (!isinrange(parent_vi, f_ctx->off)) {
+	if (!rtni_isinrange(parent_rtni, f_ctx->off)) {
 		return -ENOENT;
 	}
-	slot = child_slot_of(parent_vi, f_ctx->off);
-	if (!isbottom(parent_vi)) {
-		return resolve_fmap_recursive_at(f_ctx, parent_vi,
+	slot = rtni_child_slot_of(parent_rtni, f_ctx->off);
+	if (!rtni_isbottom(parent_rtni)) {
+		return resolve_fmap_recursive_at(f_ctx, parent_rtni,
 		                                 slot, out_fm_ctx);
 	}
-	resolve_child_at(f_ctx, parent_vi, f_ctx->off, slot, out_fm_ctx);
+	resolve_child_at(f_ctx, parent_rtni, f_ctx->off, slot, out_fm_ctx);
 	return 0;
 }
 
 static int
 resolve_fmap_by_tree_recursive(struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *parent_vi,
+                               struct voluta_rtnode_info *parent_rtni,
                                struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
 
-	vi_incref(parent_vi);
-	err = do_resolve_fmap_by_tree_recursive(f_ctx, parent_vi, out_fm_ctx);
-	vi_decref(parent_vi);
+	rtni_incref(parent_rtni);
+	err = do_resolve_fmap_by_tree_recursive(f_ctx, parent_rtni,
+	                                        out_fm_ctx);
+	rtni_decref(parent_rtni);
 	return err;
 }
 
@@ -3759,16 +3825,16 @@ static int resolve_fmap_by_tree_map(struct voluta_file_ctx *f_ctx,
                                     struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
-	struct voluta_vnode_info *root_vi;
+	struct voluta_rtnode_info *root_rtni = NULL;
 
 	if (!has_tree_root(f_ctx)) {
 		return -ENOENT;
 	}
-	err = stage_tree_root(f_ctx, &root_vi);
+	err = stage_tree_root(f_ctx, &root_rtni);
 	if (err) {
 		return err;
 	}
-	err = resolve_fmap_by_tree_recursive(f_ctx, root_vi, out_fm_ctx);
+	err = resolve_fmap_by_tree_recursive(f_ctx, root_rtni, out_fm_ctx);
 	if (err) {
 		return err;
 	}
@@ -3900,13 +3966,13 @@ static int require_tree_leaf2(const struct voluta_file_ctx *f_ctx,
                               struct voluta_fmap_ctx *out_fm_ctx)
 {
 	int err;
-	struct voluta_vnode_info *parent_vi = NULL;
+	struct voluta_rtnode_info *parent_rtni = NULL;
 
-	err = stage_or_create_tree_map(f_ctx, &parent_vi);
+	err = stage_or_create_tree_map(f_ctx, &parent_rtni);
 	if (err) {
 		return err;
 	}
-	err = require_tree_leaf(f_ctx, parent_vi, out_fm_ctx);
+	err = require_tree_leaf(f_ctx, parent_rtni, out_fm_ctx);
 	if (err) {
 		return err;
 	}

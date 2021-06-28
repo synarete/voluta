@@ -43,6 +43,7 @@ static const struct voluta_vnode_vtbl *ii_vtbl(void);
 static const struct voluta_vnode_vtbl *xani_vtbl(void);
 static const struct voluta_vnode_vtbl *symi_vtbl(void);
 static const struct voluta_vnode_vtbl *htni_vtbl(void);
+static const struct voluta_vnode_vtbl *rtni_vtbl(void);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -923,6 +924,105 @@ static const struct voluta_vnode_vtbl *htni_vtbl(void)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_vnode_info *
+rtni_to_vi(const struct voluta_rtnode_info *rtni)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(rtni != NULL)) {
+		vi = &rtni->rtn_vi;
+	}
+	return vi_unconst(vi);
+}
+
+struct voluta_rtnode_info *
+voluta_rtni_from_vi(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_rtnode_info *rtni = NULL;
+
+	if (likely(vi != NULL)) {
+		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_RTNODE);
+		rtni = container_of2(vi, struct voluta_rtnode_info, rtn_vi);
+	}
+	return unconst(rtni);
+}
+
+struct voluta_rtnode_info *
+voluta_rtni_from_vi_rebind(struct voluta_vnode_info *vi)
+{
+	struct voluta_rtnode_info *rtni = voluta_rtni_from_vi(vi);
+
+	if (likely(rtni != NULL)) {
+		rtni->rtn = &rtni->rtn_vi.view->u.rtn;
+	}
+	return rtni;
+}
+
+static void rtni_init(struct voluta_rtnode_info *rtni,
+                      const struct voluta_vba *vba,
+                      const struct voluta_vnode_vtbl *vtbl)
+{
+	vi_init(&rtni->rtn_vi, vba, vtbl);
+	rtni->rtn = NULL;
+}
+
+static void rtni_fini(struct voluta_rtnode_info *rtni)
+{
+	vi_fini(&rtni->rtn_vi);
+	rtni->rtn = NULL;
+}
+
+static struct voluta_rtnode_info *rtni_malloc(struct voluta_alloc_if *alif)
+{
+	struct voluta_rtnode_info *rtni;
+
+	rtni = voluta_allocate(alif, sizeof(*rtni));
+	return rtni;
+}
+
+static void rtni_free(struct voluta_rtnode_info *rtni,
+                      struct voluta_alloc_if *alif)
+{
+	voluta_deallocate(alif, rtni, sizeof(*rtni));
+}
+
+static void rtni_delete(struct voluta_rtnode_info *rtni,
+                        struct voluta_alloc_if *alif)
+{
+	rtni_fini(rtni);
+	rtni_free(rtni, alif);
+}
+
+static void rtni_delete_by(struct voluta_vnode_info *vi,
+                           struct voluta_alloc_if *alif)
+{
+	rtni_delete(voluta_rtni_from_vi(vi), alif);
+}
+
+static struct voluta_rtnode_info *
+rtni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+{
+	struct voluta_rtnode_info *rtni;
+
+	rtni = rtni_malloc(alif);
+	if (rtni != NULL) {
+		rtni_init(rtni, vba, rtni_vtbl());
+	}
+	return rtni;
+}
+
+static const struct voluta_vnode_vtbl vtbl_rtni = {
+	.evictable = voluta_vi_isevictable,
+	.del = rtni_delete_by
+};
+
+static const struct voluta_vnode_vtbl *rtni_vtbl(void)
+{
+	return &vtbl_rtni;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 struct voluta_unode_info *
 voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
@@ -961,6 +1061,8 @@ voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 		vi = htni_to_vi(htni_new(alif, vba));
 		break;
 	case VOLUTA_VTYPE_RTNODE:
+		vi = rtni_to_vi(rtni_new(alif, vba));
+		break;
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:

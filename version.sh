@@ -64,6 +64,3 @@ case "$arg" in
     echo
     ;;
 esac
-
-
-

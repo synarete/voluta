@@ -99,6 +99,8 @@ int voluta_blobid_to_name(const struct voluta_blobid *blobid,
 int voluta_blobid_from_name(struct voluta_blobid *blobid,
                             const char *name, size_t len);
 
+void voluta_blobid_for_agbks(struct voluta_blobid *blobid);
+
 
 const struct voluta_baddr *voluta_baddr_none(void);
 
@@ -121,6 +123,7 @@ bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
 int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name);
 
 
+
 void voluta_vba_setup(struct voluta_vba *vba,
                       const struct voluta_vaddr *vaddr,
                       const struct voluta_baddr *baddr);
@@ -138,8 +141,6 @@ void voluta_vba_for_super(struct voluta_vba *vba);
 void voluta_vba_for_hsmap(struct voluta_vba *vba, voluta_index_t hs_index);
 
 void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index);
-
-void voluta_vba_for_agbks(struct voluta_vba *vba, voluta_index_t ag_index);
 
 void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
                                struct voluta_baddr *baddr);

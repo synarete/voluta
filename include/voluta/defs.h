@@ -289,7 +289,6 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_RTNODE     = 23,
 	VOLUTA_VTYPE_SYMVAL     = 29,
 	VOLUTA_VTYPE_DATABK     = 64,
-	VOLUTA_VTYPE_AGBKS      = 127,
 };
 
 /* allocation-groups flags */
@@ -787,7 +786,7 @@ struct voluta_blocks_sec {
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 /* semantic "view" into meta elements */
-union voluta_view_u {
+union voluta_view {
 	struct voluta_header            hdr;
 	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
@@ -801,11 +800,6 @@ union voluta_view_u {
 	struct voluta_data_block1       db1;
 	struct voluta_data_block4       db4;
 	struct voluta_data_block        db;
-} voluta_packed_aligned64;
-
-
-struct voluta_view {
-	union voluta_view_u u;
 } voluta_packed_aligned64;
 
 #endif /* VOLUTA_DEFS_H_ */

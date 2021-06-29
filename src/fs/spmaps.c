@@ -1089,18 +1089,10 @@ static void hsi_dirtify(struct voluta_hspace_info *hsi)
 	vi_dirtify(hsi_vi(hsi));
 }
 
-void voluta_hsi_rebind(struct voluta_hspace_info *hsi, voluta_index_t hs_index)
+void voluta_hsi_setup(struct voluta_hspace_info *hsi, size_t nags_span)
 {
-	voluta_assert_gt(hs_index, 0);
-	hsi->hs_index = hs_index;
-	hsi->hsm = &hsi->hs_vi.view->u.hsm;
-}
-
-void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      voluta_index_t hs_index, size_t nags_span)
-{
-	voluta_hsi_rebind(hsi, hs_index);
-	hsm_init(hsi->hsm, hs_index, nags_span);
+	voluta_assert_gt(hsi->hs_index, 0);
+	hsm_init(hsi->hsm, hsi->hs_index, nags_span);
 }
 
 void voluta_hsi_vba(const struct voluta_hspace_info *hsi,
@@ -1386,7 +1378,6 @@ static int verify_vtype(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
 	case VOLUTA_VTYPE_DATABK:
-	case VOLUTA_VTYPE_AGBKS:
 		return 0;
 	default:
 		break;

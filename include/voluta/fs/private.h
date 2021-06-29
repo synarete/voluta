@@ -100,7 +100,6 @@
 #define vi_dirtify(vi)                  voluta_vi_dirtify(vi)
 #define vi_undirtify(vi)                voluta_vi_undirtify(vi)
 #define vi_isdata(vi)                   voluta_vi_isdata(vi)
-#define vi_dat_of(vi)                   voluta_vi_dat_of(vi)
 #define ii_refcnt(ii)                   voluta_ii_refcnt(ii)
 #define ii_incref(ii)                   voluta_ii_incref(ii)
 #define ii_decref(ii)                   voluta_ii_decref(ii)

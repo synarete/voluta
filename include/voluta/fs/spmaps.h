@@ -32,10 +32,7 @@ void voluta_bls_set_vba(struct voluta_blobspec *bls,
 void voluta_accum_space_stat(struct voluta_space_stat *sp_st,
                              const struct voluta_space_stat *other);
 
-void voluta_hsi_rebind(struct voluta_hspace_info *hsi, voluta_index_t hs_indx);
-
-void voluta_hsi_setup(struct voluta_hspace_info *hsi,
-                      voluta_index_t hs_index, size_t nags_span);
+void voluta_hsi_setup(struct voluta_hspace_info *hsi, size_t nags_span);
 
 void voluta_hsi_vba(const struct voluta_hspace_info *hsi,
                     struct voluta_vba *out_vba);

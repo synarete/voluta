@@ -169,6 +169,62 @@ static void vaddr_of_databk_leaf(struct voluta_vaddr *vaddr, loff_t off)
 	vaddr_setup(vaddr, VOLUTA_VTYPE_DATABK, off);
 }
 
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static void dli_dirtify(struct voluta_dleaf_info *dli)
+{
+	vi_dirtify(&dli->dl_vi);
+}
+
+static void dli_incref(struct voluta_dleaf_info *dli)
+{
+	vi_incref(&dli->dl_vi);
+}
+
+static void dli_decref(struct voluta_dleaf_info *dli)
+{
+	vi_decref(&dli->dl_vi);
+}
+
+static const struct voluta_vaddr *
+dli_vaddr(const struct voluta_dleaf_info *dli)
+{
+	return (dli != NULL) ? vi_vaddr(&dli->dl_vi) : NULL;
+}
+
+static enum voluta_vtype dli_vtype(const struct voluta_dleaf_info *dli)
+{
+	return vi_vtype(&dli->dl_vi);
+}
+
+static void *dli_data(const struct voluta_dleaf_info *dli)
+{
+	void *dat = NULL;
+	const enum voluta_vtype vtype = dli_vtype(dli);
+
+	if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA1K)) {
+		dat = dli->dlu.db1;
+	} else if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA4K)) {
+		dat = dli->dlu.db4;
+	} else {
+		voluta_assert_eq(vtype, VOLUTA_VTYPE_DATABK);
+		dat = dli->dlu.db;
+	}
+	return dat;
+}
+
+static loff_t dli_off_within(const struct voluta_dleaf_info *dli, loff_t off)
+{
+	return off_in_data(off, dli_vtype(dli));
+}
+
+static size_t dli_len_within(const struct voluta_dleaf_info *dli,
+                             loff_t off, loff_t end)
+{
+	return len_of_data(off, end, dli_vtype(dli));
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static void *nil_bk_buf_of(const struct voluta_file_ctx *f_ctx)
@@ -196,7 +252,7 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	int err;
 	struct voluta_vba vba;
 
-	err = voluta_resolve_vnode_vba(f_ctx->sbi, vaddr, &vba);
+	err = voluta_resolve_vba(f_ctx->sbi, vaddr, &vba);
 	if (err) {
 		return err;
 	}
@@ -208,22 +264,20 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
-static int fiovec_of_vnode(const struct voluta_file_ctx *f_ctx,
-                           struct voluta_vnode_info *vi,
+static int fiovec_of_dleaf(const struct voluta_file_ctx *f_ctx,
+                           struct voluta_dleaf_info *dli,
                            struct voluta_fiovec *out_fiov)
 {
 	int err;
-	void *dat = vi_dat_of(vi);
-	const enum voluta_vtype vtype = vi_vtype(vi);
-	const loff_t off_in_dat = off_in_data(f_ctx->off, vtype);
-	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
+	const loff_t doff = dli_off_within(dli, f_ctx->off);
+	const size_t dlen = dli_len_within(dli, f_ctx->off, f_ctx->end);
 
-	err = fiovec_by_qalloc(f_ctx, dat, off_in_dat, len, out_fiov);
+	err = fiovec_by_qalloc(f_ctx, dli_data(dli), doff, dlen, out_fiov);
 	if (err) {
 		return err;
 	}
 	if (f_ctx->with_backref) {
-		out_fiov->fv_ref = &vi->v_fir;
+		out_fiov->fv_ref = &dli->dl_vi.v_fir;
 		voluta_fiovref_pre(out_fiov->fv_ref);
 	}
 	return 0;
@@ -1250,30 +1304,52 @@ static int probe_unwritten(const struct voluta_fmap_ctx *fm_ctx, bool *out_res)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void dirtify_data_leaf(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *leaf_vi)
+static int stage_dleaf(struct voluta_sb_info *sbi,
+                       const struct voluta_vaddr *vaddr,
+                       struct voluta_inode_info *pii,
+                       struct voluta_dleaf_info **out_dli)
 {
-	voluta_assert(vaddr_isdata(vi_vaddr(leaf_vi)));
+	int err;
+	struct voluta_vnode_info *vi = NULL;
 
-	vi_dirtify(leaf_vi);
+	voluta_assert(vaddr_isdata(vaddr));
+	voluta_assert_not_null(pii);
+
+	err = voluta_stage_cached_vnode(sbi, vaddr, &vi);
+	if (!err) {
+		*out_dli = voluta_dli_from_vi(vi);
+		return 0;
+	}
+	err = voluta_stage_vnode(sbi, vaddr, pii, &vi);
+	if (err) {
+		return err;
+	}
+	*out_dli = voluta_dli_from_vi_rebind(vi);
+	return 0;
+}
+
+static void dirtify_dleaf(const struct voluta_file_ctx *f_ctx,
+                          struct voluta_dleaf_info *dli)
+{
+	dli_dirtify(dli);
 	if (!kcopy_mode(f_ctx)) {
 		/* for data checksum, need to do:  */
 		/* vi_dirtify(agi); */
 	}
 }
 
-static void zero_data_leaf_sub(const struct voluta_file_ctx *f_ctx,
-                               struct voluta_vnode_info *vi,
-                               loff_t off_in_db, size_t len)
+static void zero_dleaf_sub(const struct voluta_file_ctx *f_ctx,
+                           struct voluta_dleaf_info *dli,
+                           loff_t off_in_db, size_t len)
 {
-	struct voluta_data_block *db = vi->vu.db;
+	struct voluta_data_block *db = dli->dlu.db;
 
 	voluta_assert_ge(off_in_db, 0);
 	voluta_assert_lt(off_in_db, sizeof(db->dat));
 	voluta_assert_le(off_in_db + (long)len, sizeof(db->dat));
 
 	voluta_memzero(&db->dat[off_in_db], len);
-	dirtify_data_leaf(f_ctx, vi);
+	dirtify_dleaf(f_ctx, dli);
 }
 
 static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
@@ -1281,7 +1357,7 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
                                 loff_t off_in_bk, size_t len)
 {
 	int err;
-	struct voluta_vnode_info *vi;
+	struct voluta_dleaf_info *dli = NULL;
 	struct voluta_fiovec fiov = { .fv_base = NULL };
 
 	if (kcopy_mode(f_ctx)) {
@@ -1294,11 +1370,11 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
 			return err;
 		}
 	} else {
-		err = voluta_stage_data(f_ctx->sbi, vaddr, f_ctx->ii, &vi);
+		err = stage_dleaf(f_ctx->sbi, vaddr, f_ctx->ii, &dli);
 		if (err) {
 			return err;
 		}
-		zero_data_leaf_sub(f_ctx, vi, off_in_bk, len);
+		zero_dleaf_sub(f_ctx, dli, off_in_bk, len);
 	}
 	return 0;
 }
@@ -1311,8 +1387,8 @@ static int zero_data_leaf_at(const struct voluta_file_ctx *f_ctx,
 	return zero_data_leaf_range(f_ctx, vaddr, 0, (size_t)len);
 }
 
-static int stage_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx,
-                              struct voluta_vnode_info **out_vi)
+static int stage_dleaf_at(const struct voluta_fmap_ctx *fm_ctx,
+                          struct voluta_dleaf_info **out_dli)
 {
 	int err;
 	struct voluta_sb_info *sbi = fm_ctx->f_ctx->sbi;
@@ -1320,11 +1396,11 @@ static int stage_data_leaf_at(const struct voluta_fmap_ctx *fm_ctx,
 
 	voluta_assert(!kcopy_mode(fm_ctx->f_ctx));
 
-	*out_vi = NULL;
+	*out_dli = NULL;
 	if (!fm_ctx->has_data) {
 		return -ENOENT;
 	}
-	err = voluta_stage_data(sbi, &fm_ctx->vaddr, ii, out_vi);
+	err = stage_dleaf(sbi, &fm_ctx->vaddr, ii, out_dli);
 	if (err) {
 		return err;
 	}
@@ -1551,15 +1627,15 @@ static int seek_hole_by_head_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
-                          struct voluta_vnode_info *vi,
+                          struct voluta_dleaf_info *dli,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_fiovec *out_fiov)
 {
 	int err;
 	enum voluta_vtype vtype;
 
-	if (vi != NULL) {
-		err = fiovec_of_vnode(f_ctx, vi, out_fiov);
+	if (dli != NULL) {
+		err = fiovec_of_dleaf(f_ctx, dli, out_fiov);
 	} else if ((vaddr != NULL) && !vaddr_isnull(vaddr)) {
 		err = fiovec_of_vaddr(f_ctx, vaddr, out_fiov);
 	} else {
@@ -1570,7 +1646,7 @@ static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
 }
 
 static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
-                         struct voluta_vnode_info *vi,
+                         struct voluta_dleaf_info *dli,
                          const struct voluta_vaddr *vaddr,
                          size_t *out_len)
 {
@@ -1583,7 +1659,7 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 		.fv_ref = NULL,
 	};
 
-	err = resolve_fiovec(f_ctx, vi, vaddr, &fiov);
+	err = resolve_fiovec(f_ctx, dli, vaddr, &fiov);
 	if (err) {
 		return err;
 	}
@@ -1596,16 +1672,10 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
-static const struct voluta_vaddr *vi_vaddr2(const struct voluta_vnode_info *vi)
+static int export_data_by_dleaf(const struct voluta_file_ctx *f_ctx,
+                                struct voluta_dleaf_info *dli, size_t *out_sz)
 {
-	return (vi != NULL) ? vi_vaddr(vi) : NULL;
-}
-
-static int export_data_by_vnode(const struct voluta_file_ctx *f_ctx,
-                                struct voluta_vnode_info *vi,
-                                size_t *out_size)
-{
-	return call_rw_actor(f_ctx, vi, vi_vaddr2(vi), out_size);
+	return call_rw_actor(f_ctx, dli, dli_vaddr(dli), out_sz);
 }
 
 static int export_data_by_vaddr(struct voluta_file_ctx *f_ctx,
@@ -1615,11 +1685,10 @@ static int export_data_by_vaddr(struct voluta_file_ctx *f_ctx,
 	return call_rw_actor(f_ctx, NULL, vaddr, out_size);
 }
 
-static int import_data_by_vnode(const struct voluta_file_ctx *f_ctx,
-                                struct voluta_vnode_info *vi,
-                                size_t *out_size)
+static int import_data_by_dleaf(const struct voluta_file_ctx *f_ctx,
+                                struct voluta_dleaf_info *dli, size_t *out_sz)
 {
-	return call_rw_actor(f_ctx, vi, vi_vaddr2(vi), out_size);
+	return call_rw_actor(f_ctx, dli, dli_vaddr(dli), out_sz);
 }
 
 static int import_data_by_vaddr(const struct voluta_file_ctx *f_ctx,
@@ -1683,22 +1752,22 @@ static int stage_by_tree_map(const struct voluta_file_ctx *f_ctx,
 	return -EFSCORRUPTED;
 }
 
-static int do_read_by_copy_from_leaf(struct voluta_file_ctx *f_ctx,
-                                     struct voluta_vnode_info *leaf_vi,
-                                     size_t *out_sz)
+static int do_read_by_copy_from_dleaf(struct voluta_file_ctx *f_ctx,
+                                      struct voluta_dleaf_info *dli,
+                                      size_t *out_sz)
 {
-	return export_data_by_vnode(f_ctx, leaf_vi, out_sz);
+	return export_data_by_dleaf(f_ctx, dli, out_sz);
 }
 
-static int read_leaf_by_copy(struct voluta_file_ctx *f_ctx,
-                             struct voluta_vnode_info *leaf_vi,
-                             size_t *out_sz)
+static int read_dleaf_by_copy(struct voluta_file_ctx *f_ctx,
+                              struct voluta_dleaf_info *dli,
+                              size_t *out_sz)
 {
 	int err;
 
-	vi_incref(leaf_vi);
-	err = do_read_by_copy_from_leaf(f_ctx, leaf_vi, out_sz);
-	vi_decref(leaf_vi);
+	dli_incref(dli);
+	err = do_read_by_copy_from_dleaf(f_ctx, dli, out_sz);
+	dli_decref(dli);
 
 	return err;
 }
@@ -1720,7 +1789,7 @@ static int read_from_leaf(struct voluta_file_ctx *f_ctx,
 {
 	int err;
 	bool unwritten = false;
-	struct voluta_vnode_info *vi = NULL;
+	struct voluta_dleaf_info *dli = NULL;
 
 	*out_len = 0;
 	err = probe_unwritten(fm_ctx, &unwritten);
@@ -1738,11 +1807,11 @@ static int read_from_leaf(struct voluta_file_ctx *f_ctx,
 			return err;
 		}
 	} else {
-		err = stage_data_leaf_at(fm_ctx, &vi);
+		err = stage_dleaf_at(fm_ctx, &dli);
 		if (err && (err != -ENOENT)) {
 			return err;
 		}
-		err = read_leaf_by_copy(f_ctx, vi, out_len);
+		err = read_dleaf_by_copy(f_ctx, dli, out_len);
 		if (err) {
 			return err;
 		}
@@ -1978,15 +2047,15 @@ static int clear_unwritten_at(const struct voluta_file_ctx *f_ctx,
 }
 
 static int clear_unwritten_of(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *vi)
+                              struct voluta_dleaf_info *dli)
 {
 	int err;
 
-	err = clear_unwritten_at(f_ctx, vi_vaddr(vi));
+	err = clear_unwritten_at(f_ctx, dli_vaddr(dli));
 	if (err) {
 		return err;
 	}
-	dirtify_data_leaf(f_ctx, vi);
+	dirtify_dleaf(f_ctx, dli);
 	return 0;
 }
 
@@ -1995,10 +2064,11 @@ static int clear_unwritten_by(const struct voluta_fmap_ctx *fm_ctx)
 	return clear_unwritten_at(fm_ctx->f_ctx, &fm_ctx->vaddr);
 }
 
-static int new_data_vspace(const struct voluta_file_ctx *f_ctx,
-                           enum voluta_vtype vtype, struct voluta_vaddr *out)
+static int claim_data_space(const struct voluta_file_ctx *f_ctx,
+                            enum voluta_vtype vtype,
+                            struct voluta_vaddr *out_vaddr)
 {
-	return voluta_allocate_space(f_ctx->sbi, vtype, out);
+	return voluta_claim_space(f_ctx->sbi, vtype, out_vaddr);
 }
 
 static bool vaddr_isdatabk(const struct voluta_vaddr *vaddr)
@@ -2089,9 +2159,9 @@ static void setup_rtnode(struct voluta_rtnode_info *rtni,
 	rtni_dirtify(rtni);
 }
 
-static int create_radix_tnode(const struct voluta_file_ctx *f_ctx,
-                              loff_t off, size_t height,
-                              struct voluta_rtnode_info **out_rtni)
+static int create_rtnode(const struct voluta_file_ctx *f_ctx,
+                         loff_t off, size_t height,
+                         struct voluta_rtnode_info **out_rtni)
 {
 	int err;
 
@@ -2108,7 +2178,7 @@ static int create_root_node(const struct voluta_file_ctx *f_ctx, size_t height,
 {
 	voluta_assert_gt(height, 0);
 
-	return create_radix_tnode(f_ctx, 0, height, out_rtni);
+	return create_rtnode(f_ctx, 0, height, out_rtni);
 }
 
 static int create_bind_rtnode(const struct voluta_file_ctx *f_ctx,
@@ -2119,7 +2189,7 @@ static int create_bind_rtnode(const struct voluta_file_ctx *f_ctx,
 	const loff_t file_pos = f_ctx->off;
 	const size_t height = rtni_height(parent_rtni);
 
-	err = create_radix_tnode(f_ctx, file_pos, height - 1, out_rtni);
+	err = create_rtnode(f_ctx, file_pos, height - 1, out_rtni);
 	if (err) {
 		return err;
 	}
@@ -2133,7 +2203,7 @@ static int create_data_leaf(const struct voluta_file_ctx *f_ctx,
 {
 	int err;
 
-	err = new_data_vspace(f_ctx, vtype, out_vaddr);
+	err = claim_data_space(f_ctx, vtype, out_vaddr);
 	if (err) {
 		return err;
 	}
@@ -2303,16 +2373,15 @@ static int stage_or_create_tree_map(const struct voluta_file_ctx *f_ctx,
 }
 
 static int do_write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
-                                 struct voluta_vnode_info *leaf_vi,
-                                 size_t *out_sz)
+                                 struct voluta_dleaf_info *dli, size_t *out_sz)
 {
 	int err;
 
-	err = import_data_by_vnode(f_ctx, leaf_vi, out_sz);
+	err = import_data_by_dleaf(f_ctx, dli, out_sz);
 	if (err) {
 		return err;
 	}
-	err = clear_unwritten_of(f_ctx, leaf_vi);
+	err = clear_unwritten_of(f_ctx, dli);
 	if (err) {
 		return err;
 	}
@@ -2320,14 +2389,13 @@ static int do_write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
 }
 
 static int write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_vnode_info *leaf_vi,
-                              size_t *out_sz)
+                              struct voluta_dleaf_info *dli, size_t *out_sz)
 {
 	int err;
 
-	vi_incref(leaf_vi);
-	err = do_write_leaf_by_copy(f_ctx, leaf_vi, out_sz);
-	vi_decref(leaf_vi);
+	dli_incref(dli);
+	err = do_write_leaf_by_copy(f_ctx, dli, out_sz);
+	dli_decref(dli);
 	return err;
 }
 
@@ -2396,7 +2464,7 @@ static int require_tree_leaf(const struct voluta_file_ctx *f_ctx,
 static int write_to_leaf(const struct voluta_fmap_ctx *fm_ctx, size_t *out_len)
 {
 	int err;
-	struct voluta_vnode_info *vi = NULL;
+	struct voluta_dleaf_info *dli = NULL;
 
 	*out_len = 0;
 	err = prepare_unwritten_leaf(fm_ctx);
@@ -2409,11 +2477,11 @@ static int write_to_leaf(const struct voluta_fmap_ctx *fm_ctx, size_t *out_len)
 			return err;
 		}
 	} else {
-		err = stage_data_leaf_at(fm_ctx, &vi);
+		err = stage_dleaf_at(fm_ctx, &dli);
 		if (err) {
 			return err;
 		}
-		err = write_leaf_by_copy(fm_ctx->f_ctx, vi, out_len);
+		err = write_leaf_by_copy(fm_ctx->f_ctx, dli, out_len);
 		if (err) {
 			return err;
 		}
@@ -3870,17 +3938,17 @@ static size_t copy_range_length(const struct voluta_fmap_ctx *fm_ctx_src,
 	return min(len_src, len_dst);
 }
 
-static int resolve_leaf_vnode(const struct voluta_fmap_ctx *fm_ctx,
-                              struct voluta_vnode_info **out_vi,
-                              struct voluta_fiovec *out_fiov)
+static int resolve_dleaf(const struct voluta_fmap_ctx *fm_ctx,
+                         struct voluta_dleaf_info **out_dli,
+                         struct voluta_fiovec *out_fiov)
 {
 	int err;
 
-	err = stage_data_leaf_at(fm_ctx, out_vi);
+	err = stage_dleaf_at(fm_ctx, out_dli);
 	if (err) {
 		return err;
 	}
-	err = fiovec_of_vnode(fm_ctx->f_ctx, *out_vi, out_fiov);
+	err = fiovec_of_dleaf(fm_ctx->f_ctx, *out_dli, out_fiov);
 	if (err) {
 		return err;
 	}
@@ -3909,8 +3977,8 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
                      const struct voluta_fmap_ctx *fm_ctx_dst, size_t len)
 {
 	int err;
-	struct voluta_vnode_info *vi_src = NULL;
-	struct voluta_vnode_info *vi_dst = NULL;
+	struct voluta_dleaf_info *dli_src = NULL;
+	struct voluta_dleaf_info *dli_dst = NULL;
 	struct voluta_fiovec fiov_src = { .fv_off = -1, .fv_fd = -1 };
 	struct voluta_fiovec fiov_dst = { .fv_off = -1, .fv_fd = -1 };
 
@@ -3942,11 +4010,11 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 			return err;
 		}
 	} else {
-		err = resolve_leaf_vnode(fm_ctx_src, &vi_src, &fiov_src);
+		err = resolve_dleaf(fm_ctx_src, &dli_src, &fiov_src);
 		if (err) {
 			return err;
 		}
-		err = resolve_leaf_vnode(fm_ctx_dst, &vi_dst, &fiov_dst);
+		err = resolve_dleaf(fm_ctx_dst, &dli_dst, &fiov_dst);
 		if (err) {
 			return err;
 		}
@@ -3954,7 +4022,7 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 		if (err) {
 			return err;
 		}
-		err = clear_unwritten_of(fm_ctx_dst->f_ctx, vi_dst);
+		err = clear_unwritten_of(fm_ctx_dst->f_ctx, dli_dst);
 		if (err) {
 			return err;
 		}

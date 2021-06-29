@@ -43,27 +43,11 @@ struct voluta_vnode_vtbl {
 	void (*del)(struct voluta_vnode_info *vi, struct voluta_alloc_if *aif);
 };
 
-union voluta_vnode_u {
-	struct voluta_hspace_map        *hsm;
-	struct voluta_agroup_map        *agm;
-	struct voluta_itable_tnode      *itn;
-	struct voluta_inode             *inode;
-	struct voluta_xattr_node        *xan;
-	struct voluta_dir_htnode        *htn;
-	struct voluta_symlnk_value      *lnv;
-	struct voluta_radix_tnode       *rtn;
-	struct voluta_data_block1       *db1;
-	struct voluta_data_block4       *db4;
-	struct voluta_data_block        *db;
-	void *p;
-};
-
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
 	const struct voluta_vnode_vtbl *v_vtbl;
 	struct voluta_cache_elem        v_ce;
-	union voluta_vnode_u            vu;
-	struct voluta_view             *view;
+	union voluta_view             *view;
 	struct voluta_fiovref           v_fir;
 	struct voluta_sb_info          *v_sbi;
 	struct voluta_bksec_info       *v_bsi;
@@ -132,17 +116,26 @@ struct voluta_rtnode_info {
 	struct voluta_radix_tnode      *rtn;
 };
 
+/* dleaf */
+union voluta_dleaf_u {
+	struct voluta_data_block1       *db1;
+	struct voluta_data_block4       *db4;
+	struct voluta_data_block        *db;
+};
+
+struct voluta_dleaf_info {
+	struct voluta_vnode_info        dl_vi;
+	union voluta_dleaf_u            dlu;
+};
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-struct voluta_unode_info *
-voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
-
-struct voluta_vnode_info *
-voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
-
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
+
+struct voluta_hspace_info *
+voluta_hsi_from_vi_rebind(const struct voluta_vnode_info *vi,
+                          voluta_index_t hs_index);
 
 
 struct voluta_agroup_info *
@@ -164,7 +157,8 @@ voluta_itni_from_vi_rebind(struct voluta_vnode_info *vi);
 struct voluta_inode_info *
 voluta_ii_from_vi(const struct voluta_vnode_info *vi);
 
-void voluta_ii_rebind(struct voluta_inode_info *ii, ino_t ino);
+struct voluta_inode_info *
+voluta_ii_from_vi_rebind(struct voluta_vnode_info *vi, ino_t ino);
 
 
 struct voluta_xanode_info *
@@ -195,17 +189,28 @@ struct voluta_rtnode_info *
 voluta_rtni_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
+struct voluta_dleaf_info *
+voluta_dli_from_vi(const struct voluta_vnode_info *vi);
+
+struct voluta_dleaf_info *
+voluta_dli_from_vi_rebind(struct voluta_vnode_info *vi);
+
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
-
-void *voluta_vi_dat_of(const struct voluta_vnode_info *vi);
-
 
 int voluta_vi_verify_meta(const struct voluta_vnode_info *vi);
 
 void voluta_vi_stamp_view(const struct voluta_vnode_info *vi);
 
 void voluta_vi_seal_meta(const struct voluta_vnode_info *vi);
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+struct voluta_unode_info *
+voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
+
+struct voluta_vnode_info *
+voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
 
 
 #endif /* VOLUTA_NODES_H_ */

@@ -79,11 +79,6 @@ int voluta_stage_vnode(struct voluta_sb_info *sbi,
                        struct voluta_inode_info *pii,
                        struct voluta_vnode_info **out_vi);
 
-int voluta_stage_data(struct voluta_sb_info *sbi,
-                      const struct voluta_vaddr *vaddr,
-                      struct voluta_inode_info *pii,
-                      struct voluta_vnode_info **out_vi);
-
 int voluta_spawn_inode(struct voluta_sb_info *sbi,
                        const struct voluta_oper *op,
                        ino_t parent_ino, mode_t parent_mode,
@@ -95,9 +90,9 @@ int voluta_spawn_vnode(struct voluta_sb_info *sbi,
                        enum voluta_vtype vtype,
                        struct voluta_vnode_info **out_vi);
 
-int voluta_allocate_space(struct voluta_sb_info *sbi,
-                          enum voluta_vtype vtype,
-                          struct voluta_vaddr *out_vaddr);
+int voluta_claim_space(struct voluta_sb_info *sbi,
+                       enum voluta_vtype vtype,
+                       struct voluta_vaddr *out_vaddr);
 
 int voluta_remove_inode(struct voluta_sb_info *sbi,
                         struct voluta_inode_info *ii);
@@ -123,9 +118,9 @@ int voluta_refcnt_islast_at(struct voluta_sb_info *sbi,
 int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam);
 
-int voluta_resolve_vnode_vba(struct voluta_sb_info *sbi,
-                             const struct voluta_vaddr *vaddr,
-                             struct voluta_vba *out_vba);
+int voluta_resolve_vba(struct voluta_sb_info *sbi,
+                       const struct voluta_vaddr *vaddr,
+                       struct voluta_vba *out_vba);
 
 int voluta_resolve_baddr_of(struct voluta_sb_info *sbi,
                             const struct voluta_vnode_info *vi,

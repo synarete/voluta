@@ -124,7 +124,6 @@ bool voluta_vtype_isspmap(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_AGBKS:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		ret = false;
@@ -152,7 +151,6 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_HTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_AGBKS:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		ret = false;
@@ -202,9 +200,6 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_DATABK:
 		sz = sizeof(struct voluta_data_block);
 		break;
-	case VOLUTA_VTYPE_AGBKS:
-		sz = VOLUTA_AG_SIZE;
-		break;
 	case VOLUTA_VTYPE_NONE:
 	default:
 		sz = 0;
@@ -248,7 +243,6 @@ enum voluta_agkind voluta_vtype_to_agkind(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_SYMVAL:
 		agkind = VOLUTA_AGKIND_META;
 		break;
-	case VOLUTA_VTYPE_AGBKS:
 	case VOLUTA_VTYPE_NONE:
 	default:
 		agkind = VOLUTA_AGKIND_NONE;
@@ -346,13 +340,6 @@ static void vaddr_of_agmap(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
 	const voluta_lba_t lba = agm_lba_by_index(ag_index);
 
 	vaddr_setup(vaddr, VOLUTA_VTYPE_AGMAP, lba_to_off(lba));
-}
-
-static void vaddr_of_agbks(struct voluta_vaddr *vaddr, voluta_index_t ag_index)
-{
-	const loff_t off = ag_index_to_off(ag_index);
-
-	vaddr_setup(vaddr, VOLUTA_VTYPE_AGBKS, off);
 }
 
 void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
@@ -564,6 +551,11 @@ int voluta_blobid_from_name(struct voluta_blobid *blobid,
 	return 0;
 }
 
+void voluta_blobid_for_agbks(struct voluta_blobid *blobid)
+{
+	blodid_make(blobid, VOLUTA_AG_SIZE);
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_baddr s_baddr_none = {
@@ -646,11 +638,6 @@ static void baddr_for_agmap(struct voluta_baddr *baddr)
 	baddr_make_for(baddr, VOLUTA_VTYPE_HSMAP);
 }
 
-static void baddr_for_agbks(struct voluta_baddr *baddr)
-{
-	baddr_make(baddr, VOLUTA_AG_SIZE);
-}
-
 static void baddr_of_bksec(struct voluta_baddr *baddr, voluta_lba_t lba,
                            const struct voluta_blobid *bid)
 {
@@ -725,12 +712,6 @@ void voluta_vba_for_agmap(struct voluta_vba *vba, voluta_index_t ag_index)
 {
 	vaddr_of_agmap(&vba->vaddr, ag_index);
 	baddr_for_agmap(&vba->baddr);
-}
-
-void voluta_vba_for_agbks(struct voluta_vba *vba, voluta_index_t ag_index)
-{
-	vaddr_of_agbks(&vba->vaddr, ag_index);
-	baddr_for_agbks(&vba->baddr);
 }
 
 void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,

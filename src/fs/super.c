@@ -465,33 +465,32 @@ static int stage_bksec(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static union voluta_view *make_view(const void *p)
+static union voluta_view *make_view(const void *opaque_view)
 {
-	const union voluta_view *view = p;
-
-	return unconst(view);
+	union {
+		const union voluta_view *vp;
+		union voluta_view *vq;
+	} u = {
+		.vp = opaque_view
+	};
+	return u.vq;
 }
 
-static union voluta_view *
-	view_at(const struct voluta_bksec_info *bsi, loff_t off)
+static const void *opaque_view_of(const struct voluta_bksec_info *bsi,
+                                  const struct voluta_vaddr *vaddr)
 {
 	long pos;
 	long kbn;
 	const long kb_size = VOLUTA_KB_SIZE;
 	const long nkb_in_bk = VOLUTA_NKB_IN_BK;
+	const loff_t off = vaddr->off;
 	const struct voluta_block *bk = block_of(bsi, off);
 
 	kbn = ((off / kb_size) % nkb_in_bk);
 	pos = kbn * kb_size;
 	voluta_assert_le(pos + kb_size, sizeof(bk->u.bk));
 
-	return make_view(&bk->u.bk[pos]);
-}
-
-static union voluta_view *
-	view_of(const struct voluta_bksec_info *bsi, const struct voluta_vaddr *vaddr)
-{
-	return view_at(bsi, vaddr->off);
+	return &bk->u.bk[pos];
 }
 
 static int verify_vnode_view(struct voluta_vnode_info *vi)
@@ -742,7 +741,7 @@ static void bind_vnode(struct voluta_sb_info *sbi,
                        struct voluta_bksec_info *bsi)
 {
 	attach_vnode(sbi, vi, bsi);
-	vi->view = view_of(bsi, vi_vaddr(vi));
+	vi->view = make_view(opaque_view_of(bsi, vi_vaddr(vi)));
 }
 
 int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,

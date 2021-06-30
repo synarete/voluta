@@ -47,7 +47,7 @@ struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
 	const struct voluta_vnode_vtbl *v_vtbl;
 	struct voluta_cache_elem        v_ce;
-	union voluta_view             *view;
+	union voluta_view              *view;
 	struct voluta_fiovref           v_fir;
 	struct voluta_sb_info          *v_sbi;
 	struct voluta_bksec_info       *v_bsi;

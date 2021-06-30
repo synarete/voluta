@@ -630,8 +630,8 @@ struct voluta_xattr_entry {
 struct voluta_xattr_ispec {
 	uint16_t                xa_nents;
 	uint8_t                 xa_pad[6];
-	struct voluta_vaddr64   xa_vaddr[5];
-	int64_t                 xa_reserved[2];
+	struct voluta_vaddr64   xa_vaddr[4];
+	int64_t                 xa_reserved[3];
 	struct voluta_xattr_entry xe[VOLUTA_XATTR_INENTS];
 } voluta_packed_aligned64;
 

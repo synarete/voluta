@@ -29,54 +29,72 @@
 #define MPC_TAIL_SIZE           (64)
 #define NOBJ_IN_MPC(t_)         ((MPC_SIZE - MPC_TAIL_SIZE) / sizeof(t_))
 #define NBKI_IN_MPC             NOBJ_IN_MPC(struct voluta_mobj_bsi)
-#define NVI_IN_MPC              NOBJ_IN_MPC(struct voluta_mobj_xxi)
+#define NXUI_IN_MPC             NOBJ_IN_MPC(struct voluta_mobj_xui)
+#define NXVI_IN_MPC             NOBJ_IN_MPC(struct voluta_mobj_xvi)
 #define NII_IN_MPC              NOBJ_IN_MPC(struct voluta_mobj_ii)
 
 
 union voluta_mobj_bsi_u {
-	struct voluta_list_head  lh;
-	struct voluta_bksec_info bsi;
+	struct voluta_list_head         lh;
+	struct voluta_bksec_info        bsi;
 };
 
 struct voluta_mobj_bsi {
-	union voluta_mobj_bsi_u   u;
-	struct voluta_mpool_chnk *p;
+	union voluta_mobj_bsi_u         u;
+	struct voluta_mpool_chnk       *p;
 } voluta_aligned64;
 
-
-union voluta_xxnode_info_u {
-	struct voluta_vnode_info        vi;
+union voluta_xunode_info_u {
 	struct voluta_hspace_info       hsi;
 	struct voluta_agroup_info       agi;
+};
+
+struct voluta_xunode_info {
+	union voluta_xunode_info_u      u;
+};
+
+union voluta_mobj_xui_u {
+	struct voluta_list_head         lh;
+	struct voluta_xunode_info       xui;
+};
+
+struct voluta_mobj_xui {
+	union voluta_mobj_xui_u         u;
+	struct voluta_mpool_chnk       *p;
+} voluta_aligned64;
+
+union voluta_xvnode_info_u {
+	struct voluta_vnode_info        vi;
 	struct voluta_itnode_info       itni;
 	struct voluta_xanode_info       xani;
 	struct voluta_htnode_info       htni;
 	struct voluta_symval_info       symi;
 	struct voluta_rtnode_info       rtni;
+	struct voluta_dleaf_info        dli;
 };
 
-struct voluta_xxnode_info {
-	union voluta_xxnode_info_u u;
+struct voluta_xvnode_info {
+	union voluta_xvnode_info_u      u;
 };
 
-union voluta_mobj_xxi_u {
-	struct voluta_list_head  lh;
-	struct voluta_xxnode_info xxi;
+union voluta_mobj_xvi_u {
+	struct voluta_list_head         lh;
+	struct voluta_xvnode_info       xvi;
 };
 
-struct voluta_mobj_xxi {
-	union voluta_mobj_xxi_u   u;
-	struct voluta_mpool_chnk *p;
+struct voluta_mobj_xvi {
+	union voluta_mobj_xvi_u         u;
+	struct voluta_mpool_chnk       *p;
 } voluta_aligned64;
 
 union voluta_mobj_ii_u {
-	struct voluta_list_head  lh;
-	struct voluta_inode_info ii;
+	struct voluta_list_head         lh;
+	struct voluta_inode_info        ii;
 };
 
 struct voluta_mobj_ii {
-	union voluta_mobj_ii_u    u;
-	struct voluta_mpool_chnk *p;
+	union voluta_mobj_ii_u          u;
+	struct voluta_mpool_chnk       *p;
 } voluta_aligned64;
 
 
@@ -89,7 +107,8 @@ struct voluta_mpc_tail {
 union voluta_mpc_objs {
 	uint8_t d[MPC_SIZE - sizeof(struct voluta_mpc_tail)];
 	struct voluta_mobj_bsi bsi[NBKI_IN_MPC];
-	struct voluta_mobj_xxi  xxi[NVI_IN_MPC];
+	struct voluta_mobj_xui xui[NXUI_IN_MPC];
+	struct voluta_mobj_xvi xvi[NXVI_IN_MPC];
 	struct voluta_mobj_ii  ii[NII_IN_MPC];
 };
 
@@ -142,9 +161,11 @@ void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal)
 {
 	mpool->mp_qal = qal;
 	listq_init(&mpool->mp_bq);
+	listq_init(&mpool->mp_uq);
 	listq_init(&mpool->mp_vq);
 	listq_init(&mpool->mp_iq);
 	mpool_init_alloc_if(mpool);
+	mpool->mp_nbytes_alloc = 0;
 }
 
 void voluta_mpool_fini(struct voluta_mpool *mpool)
@@ -152,6 +173,7 @@ void voluta_mpool_fini(struct voluta_mpool *mpool)
 	mpool_fini_alloc_if(mpool);
 	listq_fini(&mpool->mp_iq);
 	listq_fini(&mpool->mp_vq);
+	listq_fini(&mpool->mp_uq);
 	listq_fini(&mpool->mp_bq);
 	mpool->mp_qal = NULL;
 }
@@ -315,90 +337,225 @@ static void mpool_free_bsi(struct voluta_mpool *mpool,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_xxnode_info *lh_to_xxi(struct voluta_list_head *lh)
+static struct voluta_xunode_info *lh_to_xui(struct voluta_list_head *lh)
 {
-	union voluta_mobj_xxi_u *u;
-	struct voluta_mobj_xxi  *m;
+	union voluta_mobj_xui_u *u;
+	struct voluta_mobj_xui  *m;
 
-	u = container_of(lh, union voluta_mobj_xxi_u, lh);
-	m = container_of(u, struct voluta_mobj_xxi, u);
+	u = container_of(lh, union voluta_mobj_xui_u, lh);
+	m = container_of(u, struct voluta_mobj_xui, u);
 
-	return &m->u.xxi;
+	return &m->u.xui;
 }
 
-static struct voluta_list_head *xxi_to_lh(struct voluta_xxnode_info *xxi)
+static struct voluta_list_head *xui_to_lh(struct voluta_xunode_info *xui)
 {
-	union voluta_mobj_xxi_u *u;
-	struct voluta_mobj_xxi  *m;
+	union voluta_mobj_xui_u *u;
+	struct voluta_mobj_xui  *m;
 
-	u = container_of(xxi, union voluta_mobj_xxi_u, xxi);
-	m = container_of(u, struct voluta_mobj_xxi, u);
+	u = container_of(xui, union voluta_mobj_xui_u, xui);
+	m = container_of(u, struct voluta_mobj_xui, u);
 
 	return &m->u.lh;
 }
 
-static struct voluta_mpool_chnk *xxi_to_mpc(const struct voluta_xxnode_info
-                *xxi)
+static struct voluta_mpool_chnk *
+xui_to_mpc(const struct voluta_xunode_info *xui)
 {
 	struct voluta_mpool_chnk *mpc;
-	const union voluta_mobj_xxi_u *u;
-	const struct voluta_mobj_xxi  *m;
+	const union voluta_mobj_xui_u *u;
+	const struct voluta_mobj_xui  *m;
 
-	u = container_of2(xxi, union voluta_mobj_xxi_u, xxi);
-	m = container_of2(u, struct voluta_mobj_xxi, u);
+	u = container_of2(xui, union voluta_mobj_xui_u, xui);
+	m = container_of2(u, struct voluta_mobj_xui, u);
 
 	mpc = m->p;
 	voluta_assert_not_null(mpc);
-	voluta_assert_le(mpc->tail.nused, ARRAY_SIZE(mpc->objs.xxi));
+	voluta_assert_le(mpc->tail.nused, ARRAY_SIZE(mpc->objs.xui));
 	voluta_assert_eq(mpc->tail.magic, MPC_MAGIC);
 
 	return mpc;
 }
 
-static struct voluta_xxnode_info *mpool_pop_xxi(struct voluta_mpool *mpool)
+static struct voluta_xunode_info *mpool_pop_xui(struct voluta_mpool *mpool)
 {
 	struct voluta_list_head *lh;
-	struct voluta_xxnode_info *xxi = NULL;
+	struct voluta_xunode_info *xui = NULL;
+
+	lh = listq_pop_front(&mpool->mp_uq);
+	if (lh != NULL) {
+		xui = lh_to_xui(lh);
+	}
+	return xui;
+}
+
+static void mpool_push_xui(struct voluta_mpool *mpool,
+                           struct voluta_xunode_info *xui)
+{
+	listq_push_back(&mpool->mp_uq, xui_to_lh(xui));
+}
+
+static void mpool_remove_xui(struct voluta_mpool *mpool,
+                             struct voluta_xunode_info *xui)
+{
+	listq_remove(&mpool->mp_uq, xui_to_lh(xui));
+}
+
+static void mpool_add_ufree_chnk(struct voluta_mpool *mpool,
+                                 struct voluta_mpool_chnk *mpc)
+{
+	struct voluta_mobj_xui *m;
+
+	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xui); ++i) {
+		m = &mpc->objs.xui[i];
+		m->p = mpc;
+		mpool_push_xui(mpool, &m->u.xui);
+	}
+}
+
+static void mpool_remove_ufree_chnk(struct voluta_mpool *mpool,
+                                    struct voluta_mpool_chnk *mpc)
+{
+	struct voluta_mobj_xui *m;
+
+	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xui); ++i) {
+		m = &mpc->objs.xui[i];
+		mpool_remove_xui(mpool, &m->u.xui);
+		m->p = NULL;
+	}
+}
+
+static int mpool_more_ufree(struct voluta_mpool *mpool)
+{
+	struct voluta_mpool_chnk *mpc;
+
+	mpc = mpool_new_mpc(mpool);
+	if (mpc == NULL) {
+		return -ENOMEM;
+	}
+	mpool_add_ufree_chnk(mpool, mpc);
+	return 0;
+}
+
+static void mpool_less_ufree(struct voluta_mpool *mpool,
+                             struct voluta_mpool_chnk *mpc)
+{
+	mpool_remove_ufree_chnk(mpool, mpc);
+	mpool_del_mpc(mpool, mpc);
+}
+
+static struct voluta_xunode_info *mpool_alloc_xui(struct voluta_mpool *mpool)
+{
+	struct voluta_xunode_info *xui;
+	struct voluta_mpool_chnk *mpc;
+
+	xui = mpool_pop_xui(mpool);
+	if (xui != NULL) {
+		mpc = xui_to_mpc(xui);
+		mpc_inc_nused(mpc);
+	}
+	return xui;
+}
+
+static void mpool_free_xui(struct voluta_mpool *mpool,
+                           struct voluta_xunode_info *xui)
+{
+	struct voluta_mpool_chnk *mpc = xui_to_mpc(xui);
+
+	mpc_dec_nused(mpc);
+	mpool_push_xui(mpool, xui);
+
+	if (mpc_is_unused(mpc)) {
+		mpool_less_ufree(mpool, mpc);
+	}
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static struct voluta_xvnode_info *lh_to_xvi(struct voluta_list_head *lh)
+{
+	union voluta_mobj_xvi_u *u;
+	struct voluta_mobj_xvi  *m;
+
+	u = container_of(lh, union voluta_mobj_xvi_u, lh);
+	m = container_of(u, struct voluta_mobj_xvi, u);
+
+	return &m->u.xvi;
+}
+
+static struct voluta_list_head *xvi_to_lh(struct voluta_xvnode_info *xvi)
+{
+	union voluta_mobj_xvi_u *u;
+	struct voluta_mobj_xvi  *m;
+
+	u = container_of(xvi, union voluta_mobj_xvi_u, xvi);
+	m = container_of(u, struct voluta_mobj_xvi, u);
+
+	return &m->u.lh;
+}
+
+static struct voluta_mpool_chnk *
+xvi_to_mpc(const struct voluta_xvnode_info *xvi)
+{
+	struct voluta_mpool_chnk *mpc;
+	const union voluta_mobj_xvi_u *u;
+	const struct voluta_mobj_xvi  *m;
+
+	u = container_of2(xvi, union voluta_mobj_xvi_u, xvi);
+	m = container_of2(u, struct voluta_mobj_xvi, u);
+
+	mpc = m->p;
+	voluta_assert_not_null(mpc);
+	voluta_assert_le(mpc->tail.nused, ARRAY_SIZE(mpc->objs.xvi));
+	voluta_assert_eq(mpc->tail.magic, MPC_MAGIC);
+
+	return mpc;
+}
+
+static struct voluta_xvnode_info *mpool_pop_xvi(struct voluta_mpool *mpool)
+{
+	struct voluta_list_head *lh;
+	struct voluta_xvnode_info *xvi = NULL;
 
 	lh = listq_pop_front(&mpool->mp_vq);
 	if (lh != NULL) {
-		xxi = lh_to_xxi(lh);
+		xvi = lh_to_xvi(lh);
 	}
-	return xxi;
+	return xvi;
 }
 
-static void mpool_push_xxi(struct voluta_mpool *mpool,
-                           struct voluta_xxnode_info *xxi)
+static void mpool_push_xvi(struct voluta_mpool *mpool,
+                           struct voluta_xvnode_info *xvi)
 {
-	listq_push_back(&mpool->mp_vq, xxi_to_lh(xxi));
+	listq_push_back(&mpool->mp_vq, xvi_to_lh(xvi));
 }
 
-static void mpool_remove_xxi(struct voluta_mpool *mpool,
-                             struct voluta_xxnode_info *xxi)
+static void mpool_remove_xvi(struct voluta_mpool *mpool,
+                             struct voluta_xvnode_info *xvi)
 {
-	listq_remove(&mpool->mp_vq, xxi_to_lh(xxi));
+	listq_remove(&mpool->mp_vq, xvi_to_lh(xvi));
 }
 
 static void mpool_add_vfree_chnk(struct voluta_mpool *mpool,
                                  struct voluta_mpool_chnk *mpc)
 {
-	struct voluta_mobj_xxi *m;
+	struct voluta_mobj_xvi *m;
 
-	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xxi); ++i) {
-		m = &mpc->objs.xxi[i];
+	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xvi); ++i) {
+		m = &mpc->objs.xvi[i];
 		m->p = mpc;
-		mpool_push_xxi(mpool, &m->u.xxi);
+		mpool_push_xvi(mpool, &m->u.xvi);
 	}
 }
 
 static void mpool_remove_vfree_chnk(struct voluta_mpool *mpool,
                                     struct voluta_mpool_chnk *mpc)
 {
-	struct voluta_mobj_xxi *m;
+	struct voluta_mobj_xvi *m;
 
-	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xxi); ++i) {
-		m = &mpc->objs.xxi[i];
-		mpool_remove_xxi(mpool, &m->u.xxi);
+	for (size_t i = 0; i < ARRAY_SIZE(mpc->objs.xvi); ++i) {
+		m = &mpc->objs.xvi[i];
+		mpool_remove_xvi(mpool, &m->u.xvi);
 		m->p = NULL;
 	}
 }
@@ -422,26 +579,26 @@ static void mpool_less_vfree(struct voluta_mpool *mpool,
 	mpool_del_mpc(mpool, mpc);
 }
 
-static struct voluta_xxnode_info *mpool_alloc_xxi(struct voluta_mpool *mpool)
+static struct voluta_xvnode_info *mpool_alloc_xvi(struct voluta_mpool *mpool)
 {
-	struct voluta_xxnode_info *xxi;
+	struct voluta_xvnode_info *xvi;
 	struct voluta_mpool_chnk *mpc;
 
-	xxi = mpool_pop_xxi(mpool);
-	if (xxi != NULL) {
-		mpc = xxi_to_mpc(xxi);
+	xvi = mpool_pop_xvi(mpool);
+	if (xvi != NULL) {
+		mpc = xvi_to_mpc(xvi);
 		mpc_inc_nused(mpc);
 	}
-	return xxi;
+	return xvi;
 }
 
-static void mpool_free_xxi(struct voluta_mpool *mpool,
-                           struct voluta_xxnode_info *xxi)
+static void mpool_free_xvi(struct voluta_mpool *mpool,
+                           struct voluta_xvnode_info *xvi)
 {
-	struct voluta_mpool_chnk *mpc = xxi_to_mpc(xxi);
+	struct voluta_mpool_chnk *mpc = xvi_to_mpc(xvi);
 
 	mpc_dec_nused(mpc);
-	mpool_push_xxi(mpool, xxi);
+	mpool_push_xvi(mpool, xvi);
 
 	if (mpc_is_unused(mpc)) {
 		mpool_less_vfree(mpool, mpc);
@@ -604,24 +761,44 @@ static struct voluta_bksec_info *mpool_malloc_bsi(struct voluta_mpool *mpool)
 	return bsi;
 }
 
-static struct voluta_xxnode_info *mpool_malloc_xxi(struct voluta_mpool *mpool)
+static struct voluta_xunode_info *mpool_malloc_xui(struct voluta_mpool *mpool)
 {
 	int err;
-	struct voluta_xxnode_info *xxi;
+	struct voluta_xunode_info *xui;
 
-	xxi = mpool_alloc_xxi(mpool);
-	if (xxi != NULL) {
-		return xxi;
+	xui = mpool_alloc_xui(mpool);
+	if (xui != NULL) {
+		return xui;
+	}
+	err = mpool_more_ufree(mpool);
+	if (err) {
+		return NULL;
+	}
+	xui = mpool_alloc_xui(mpool);
+	if (xui == NULL) {
+		return NULL;
+	}
+	return xui;
+}
+
+static struct voluta_xvnode_info *mpool_malloc_xvi(struct voluta_mpool *mpool)
+{
+	int err;
+	struct voluta_xvnode_info *xvi;
+
+	xvi = mpool_alloc_xvi(mpool);
+	if (xvi != NULL) {
+		return xvi;
 	}
 	err = mpool_more_vfree(mpool);
 	if (err) {
 		return NULL;
 	}
-	xxi = mpool_alloc_xxi(mpool);
-	if (xxi == NULL) {
+	xvi = mpool_alloc_xvi(mpool);
+	if (xvi == NULL) {
 		return NULL;
 	}
-	return xxi;
+	return xvi;
 }
 
 static struct voluta_inode_info *mpool_malloc_ii(struct voluta_mpool *mpool)
@@ -664,15 +841,23 @@ static bool is_ii_size(size_t nbytes)
 	return (nbytes == sizeof(struct voluta_inode_info));
 }
 
-static bool is_xxi_size(size_t nbytes)
+static bool is_xui_size(size_t nbytes)
 {
-	STATICASSERT_GT(sizeof(struct voluta_xxnode_info),
+	STATICASSERT_EQ(sizeof(struct voluta_hspace_info),
+	                sizeof(struct voluta_agroup_info));
+
+	return (nbytes == sizeof(struct voluta_hspace_info));
+}
+
+static bool is_xvi_size(size_t nbytes)
+{
+	STATICASSERT_GT(sizeof(struct voluta_xvnode_info),
 	                sizeof(struct voluta_vnode_info));
 
-	STATICASSERT_LT(sizeof(struct voluta_xxnode_info),
-	                (2 * sizeof(struct voluta_vnode_info)));
+	STATICASSERT_LT(sizeof(struct voluta_xvnode_info),
+	                (5 * sizeof(struct voluta_vnode_info)) / 4);
 
-	return (nbytes <= sizeof(struct voluta_xxnode_info)) &&
+	return (nbytes <= sizeof(struct voluta_xvnode_info)) &&
 	       (nbytes >= sizeof(struct voluta_vnode_info));
 }
 
@@ -685,10 +870,15 @@ static void *mpool_malloc(struct voluta_alloc_if *alif, size_t nbytes)
 		ptr = mpool_malloc_bsi(mpool);
 	} else if (is_ii_size(nbytes)) {
 		ptr = mpool_malloc_ii(mpool);
-	} else if (is_xxi_size(nbytes)) {
-		ptr = mpool_malloc_xxi(mpool);
+	} else if (is_xui_size(nbytes)) {
+		ptr = mpool_malloc_xui(mpool);
+	} else if (is_xvi_size(nbytes)) {
+		ptr = mpool_malloc_xvi(mpool);
 	} else {
 		ptr = voluta_qalloc_malloc(mpool->mp_qal, nbytes);
+	}
+	if (ptr != NULL) {
+		mpool->mp_nbytes_alloc += nbytes;
 	}
 	return ptr;
 }
@@ -697,12 +887,16 @@ static void mpool_free(struct voluta_alloc_if *alif, void *ptr, size_t nbytes)
 {
 	struct voluta_mpool *mpool = aif_to_mpool(alif);
 
+	voluta_assert_ge(mpool->mp_nbytes_alloc, nbytes);
+	mpool->mp_nbytes_alloc -= nbytes;
 	if (is_bsi_size(nbytes)) {
 		mpool_free_bsi(mpool, ptr);
 	} else if (is_ii_size(nbytes)) {
 		mpool_free_ii(mpool, ptr);
-	} else if (is_xxi_size(nbytes)) {
-		mpool_free_xxi(mpool, ptr);
+	} else if (is_xui_size(nbytes)) {
+		mpool_free_xui(mpool, ptr);
+	} else if (is_xvi_size(nbytes)) {
+		mpool_free_xvi(mpool, ptr);
 	} else {
 		voluta_qalloc_free(mpool->mp_qal, ptr, nbytes);
 	}

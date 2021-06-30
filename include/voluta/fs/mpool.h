@@ -23,9 +23,11 @@
 struct voluta_mpool {
 	struct voluta_qalloc   *mp_qal;
 	struct voluta_listq     mp_bq;
+	struct voluta_listq     mp_uq;
 	struct voluta_listq     mp_vq;
 	struct voluta_listq     mp_iq;
 	struct voluta_alloc_if  mp_alif;
+	size_t mp_nbytes_alloc;
 };
 
 void voluta_mpool_init(struct voluta_mpool *mpool, struct voluta_qalloc *qal);

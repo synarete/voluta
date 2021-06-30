@@ -130,6 +130,7 @@ static int fse_init_mpool(struct voluta_fs_env *fse)
 static void fse_fini_mpool(struct voluta_fs_env *fse)
 {
 	if (fse->mpool != NULL) {
+		voluta_assert_eq(fse->mpool->mp_nbytes_alloc, 0);
 		voluta_mpool_fini(fse->mpool);
 		fse->mpool = NULL;
 	}

@@ -274,7 +274,15 @@ enum voluta_endianness {
 	VOLUTA_ENDIANNESS_BE    = 2
 };
 
-/* file-system elements types */
+/* uber-space element-types */
+enum voluta_utype {
+	VOLUTA_UTYPE_NONE       = 0,
+	VOLUTA_UTYPE_SUPER      = 3,
+	VOLUTA_UTYPE_HSMAP      = 5,
+	VOLUTA_UTYPE_AGMAP      = 7,
+};
+
+/* file-system element-types */
 enum voluta_vtype {
 	VOLUTA_VTYPE_NONE       = 0,
 	VOLUTA_VTYPE_DATA1K     = 1,

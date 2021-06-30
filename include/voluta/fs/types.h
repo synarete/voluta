@@ -212,40 +212,46 @@ struct voluta_kivam {
 	unsigned int cipher_mode;
 };
 
-/* logical-address within 1st underlying volume space */
+/* uber-space elements addressing */
 struct voluta_uaddr {
-	loff_t          off;
-	unsigned int    len;
+	loff_t                  off;
+	unsigned int            len;
+	enum voluta_utype       utype;
 };
 
-/* logical-address within 2nd underlying volume space */
+/* file-system elements addressing */
 struct voluta_vaddr {
-	voluta_index_t  hs_index;
-	voluta_index_t  ag_index;
-	voluta_lba_t    lba;
-	loff_t          off;
-	unsigned int    len;
-	enum voluta_vtype vtype;
+	voluta_index_t          hs_index;
+	voluta_index_t          ag_index;
+	voluta_lba_t            lba;
+	loff_t                  off;
+	unsigned int            len;
+	enum voluta_vtype       vtype;
 };
 
 /* object-address within underlying blobs space */
 struct voluta_baddr {
-	struct voluta_blobid bid;
-	uint64_t bid_hkey;
-	size_t len;
-	loff_t off;
+	struct voluta_blobid    bid;
+	size_t                  len;
+	loff_t                  off;
+};
+
+/* uberspace-to-object address mapping */
+struct voluta_uba {
+	struct voluta_uaddr     uaddr;
+	struct voluta_baddr     baddr;
 };
 
 /* logical-to-object address mapping */
 struct voluta_vba {
-	struct voluta_vaddr vaddr;
-	struct voluta_baddr baddr;
+	struct voluta_vaddr     vaddr;
+	struct voluta_baddr     baddr;
 };
 
 /* inode-address */
 struct voluta_iaddr {
-	struct voluta_vaddr vaddr;
-	ino_t ino;
+	struct voluta_vaddr     vaddr;
+	ino_t                   ino;
 };
 
 /* caching-elements */

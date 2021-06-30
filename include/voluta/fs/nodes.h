@@ -207,7 +207,7 @@ void voluta_vi_seal_meta(const struct voluta_vnode_info *vi);
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_unode_info *
-voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba);
+voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_uba *uba);
 
 struct voluta_vnode_info *
 voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba);

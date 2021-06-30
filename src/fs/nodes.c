@@ -1073,12 +1073,23 @@ static const struct voluta_vnode_vtbl *dli_vtbl(void)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 struct voluta_unode_info *
-voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 {
-	/* XXX */
-	voluta_unused(alif);
-	voluta_unused(vba);
-	return NULL;
+	struct voluta_unode_info *ui;
+	const enum voluta_utype utype = uba->uaddr.utype;
+
+	voluta_unused(alif); /* XXX */
+
+	switch (utype) {
+	case VOLUTA_UTYPE_NONE:
+	case VOLUTA_UTYPE_SUPER:
+	case VOLUTA_UTYPE_HSMAP:
+	case VOLUTA_UTYPE_AGMAP:
+	default:
+		ui = NULL;
+		break;
+	}
+	return ui;
 }
 
 struct voluta_vnode_info *

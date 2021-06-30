@@ -146,6 +146,32 @@ void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
                                struct voluta_baddr *baddr);
 
 
+const struct voluta_uaddr *voluta_uaddr_none(void);
+
+void voluta_uaddr_setup(struct voluta_uaddr *uaddr,
+                        enum voluta_utype utype, loff_t off);
+
+void voluta_uaddr_copyto(const struct voluta_uaddr *uaddr,
+                         struct voluta_uaddr *other);
+
+void voluta_uaddr_reset(struct voluta_uaddr *uaddr);
+
+bool voluta_uaddr_isnull(const struct voluta_uaddr *uaddr);
+
+
+void voluta_uba_setup(struct voluta_uba *uba,
+                      const struct voluta_uaddr *uaddr,
+                      const struct voluta_baddr *baddr);
+
+void voluta_uba_setup_by(struct voluta_uba *uba,
+                         const struct voluta_uaddr *uaddr,
+                         const struct voluta_blobid *bid);
+
+void voluta_uba_reset(struct voluta_uba *uba);
+
+void voluta_uba_copyto(const struct voluta_uba *uba, struct voluta_uba *other);
+
+
 void voluta_uuid_generate(struct voluta_uuid *uu);
 
 void voluta_uuid_copyto(const struct voluta_uuid *u1, struct voluta_uuid *u2);

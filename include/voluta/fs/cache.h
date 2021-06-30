@@ -108,7 +108,7 @@ void voluta_ii_undirtify(struct voluta_inode_info *ii);
 
 struct voluta_unode_info *
 voluta_cache_spawn_ui(struct voluta_cache *cache,
-                      const struct voluta_vba *vba);
+                      const struct voluta_uba *uba);
 
 void voulta_cache_forget_ui(struct voluta_cache *cache,
                             struct voluta_unode_info *ui);
@@ -119,5 +119,12 @@ voluta_cache_lookup_ui(struct voluta_cache *cache,
 
 void voluta_ui_attach_to(struct voluta_unode_info *ui,
                          struct voluta_bksec_info *bsi);
+
+
+void voluta_ui_incref(struct voluta_unode_info *ui);
+
+void voluta_ui_decref(struct voluta_unode_info *ui);
+
+bool voluta_ui_isevictable(const struct voluta_unode_info *ui);
 
 #endif /* VOLUTA_CACHE_H_ */

@@ -433,6 +433,25 @@ static void ui_detach_bk(struct voluta_unode_info *ui)
 	}
 }
 
+void voluta_ui_incref(struct voluta_unode_info *ui)
+{
+	if (likely(ui != NULL)) {
+		ce_incref(ui_to_ce(ui));
+	}
+}
+
+void voluta_ui_decref(struct voluta_unode_info *ui)
+{
+	if (likely(ui != NULL)) {
+		ce_decref(ui_to_ce(ui));
+	}
+}
+
+bool voluta_ui_isevictable(const struct voluta_unode_info *ui)
+{
+	return !ui->u_dirty && ce_is_evictable(ui_to_ce(ui));
+}
+
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *vi_from_ce(const struct voluta_cache_elem *ce)
@@ -1542,19 +1561,19 @@ cache_find_evictable_ui(struct voluta_cache *cache)
 }
 
 static struct voluta_unode_info *
-cache_new_ui(const struct voluta_cache *cache, const struct voluta_vba *vba)
+cache_new_ui(const struct voluta_cache *cache, const struct voluta_uba *uba)
 {
-	return voluta_new_ui(cache->c_alif, vba);
+	return voluta_new_ui(cache->c_alif, uba);
 }
 
 static struct voluta_unode_info *
-cache_require_ui(struct voluta_cache *cache, const struct voluta_vba *vba)
+cache_require_ui(struct voluta_cache *cache, const struct voluta_uba *uba)
 {
 	int retry = CACHE_RETRY;
 	struct voluta_unode_info *ui = NULL;
 
 	while (retry-- > 0) {
-		ui = cache_new_ui(cache, vba);
+		ui = cache_new_ui(cache, uba);
 		if (ui != NULL) {
 			break;
 		}
@@ -1565,11 +1584,11 @@ cache_require_ui(struct voluta_cache *cache, const struct voluta_vba *vba)
 
 struct voluta_unode_info *
 voluta_cache_spawn_ui(struct voluta_cache *cache,
-                      const struct voluta_vba *vba)
+                      const struct voluta_uba *uba)
 {
 	struct voluta_unode_info *ui;
 
-	ui = cache_require_ui(cache, vba);
+	ui = cache_require_ui(cache, uba);
 	if (ui != NULL) {
 		cache_store_ui(cache, ui);
 	}

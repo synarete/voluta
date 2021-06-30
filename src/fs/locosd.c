@@ -833,10 +833,11 @@ static int locosd_stage_blob_of(struct voluta_locosd *locosd, bool may_create,
                                 const struct voluta_baddr *baddr,
                                 struct voluta_bref_info **out_bri)
 {
-	return locosd_stage_blob(locosd, may_create,
-	                         &baddr->bid, baddr->bid_hkey, out_bri);
-}
+	const struct voluta_blobid *bid = &baddr->bid;
+	const uint64_t bid_hkey = voluta_blobid_hkey(bid);
 
+	return locosd_stage_blob(locosd, may_create, bid, bid_hkey, out_bri);
+}
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

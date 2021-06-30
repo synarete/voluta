@@ -105,6 +105,40 @@ loff_t voluta_off_in_blob(loff_t off, size_t blob_size)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static size_t utype_size(enum voluta_utype utype)
+{
+	size_t sz;
+
+	switch (utype) {
+	case VOLUTA_UTYPE_SUPER:
+		sz = sizeof(struct voluta_super_block);
+		break;
+	case VOLUTA_UTYPE_HSMAP:
+		sz = sizeof(struct voluta_hspace_map);
+		break;
+	case VOLUTA_UTYPE_AGMAP:
+		sz = sizeof(struct voluta_agroup_map);
+		break;
+	case VOLUTA_UTYPE_NONE:
+	default:
+		sz = 0;
+		break;
+	}
+	return sz;
+}
+
+static bool utype_isequal(enum voluta_utype ut1, enum voluta_utype ut2)
+{
+	return (ut1 == ut2);
+}
+
+static bool utype_isnone(enum voluta_utype utype)
+{
+	return utype_isequal(utype, VOLUTA_UTYPE_NONE);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 bool voluta_vtype_isspmap(enum voluta_vtype vtype)
 {
 	bool ret;
@@ -573,7 +607,6 @@ void voluta_baddr_setup(struct voluta_baddr *baddr,
                         size_t len, loff_t off)
 {
 	voluta_blobid_copyto(bid, &baddr->bid);
-	baddr->bid_hkey = voluta_blobid_hkey(bid);
 	baddr->len = len;
 	baddr->off = blobid_off_within(bid, off);
 }
@@ -587,7 +620,6 @@ void voluta_baddr_assign(struct voluta_baddr *baddr,
 void voluta_baddr_reset(struct voluta_baddr *baddr)
 {
 	memset(baddr->bid.id, 0, sizeof(baddr->bid.id));
-	baddr->bid_hkey = 0;
 	baddr->len = 0;
 	baddr->off = 0;
 }
@@ -596,7 +628,6 @@ void voluta_baddr_copyto(const struct voluta_baddr *baddr,
                          struct voluta_baddr *other)
 {
 	voluta_blobid_copyto(&baddr->bid, &other->bid);
-	other->bid_hkey = baddr->bid_hkey;
 	other->len = baddr->len;
 	other->off = baddr->off;
 }
@@ -606,14 +637,12 @@ bool voluta_baddr_isequal(const struct voluta_baddr *baddr,
 {
 	return ((baddr->len == other->len) &&
 	        (baddr->off == other->off) &&
-	        (baddr->bid_hkey == other->bid_hkey) &&
 	        voluta_blobid_isequal(&baddr->bid, &other->bid));
 }
 
 static void baddr_make(struct voluta_baddr *baddr, size_t size)
 {
 	blodid_make(&baddr->bid, size);
-	baddr->bid_hkey = voluta_blobid_hkey(&baddr->bid);
 	baddr->len = size;
 	baddr->off = 0;
 }
@@ -662,7 +691,6 @@ int voluta_baddr_parse_super(struct voluta_baddr *baddr, const char *name)
 	baddr->off = 0;
 	return 0;
 }
-
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -721,6 +749,79 @@ void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+static const struct voluta_uaddr s_uaddr_none = {
+	.off = VOLUTA_OFF_NULL,
+	.utype = VOLUTA_UTYPE_NONE,
+	.len = 0
+};
+
+const struct voluta_uaddr *voluta_uaddr_none(void)
+{
+	return &s_uaddr_none;
+}
+
+void voluta_uaddr_setup(struct voluta_uaddr *uaddr,
+                        enum voluta_utype utype, loff_t off)
+{
+	uaddr->utype = utype;
+	uaddr->len = (uint32_t)utype_size(utype);
+	uaddr->off = off;
+}
+
+void voluta_uaddr_copyto(const struct voluta_uaddr *uaddr,
+                         struct voluta_uaddr *other)
+{
+	other->off = uaddr->off;
+	other->utype = uaddr->utype;
+	other->len = uaddr->len;
+}
+
+void voluta_uaddr_reset(struct voluta_uaddr *uaddr)
+{
+	uaddr->off = VOLUTA_OFF_NULL;
+	uaddr->utype = VOLUTA_UTYPE_NONE;
+	uaddr->len = 0;
+}
+
+bool voluta_uaddr_isnull(const struct voluta_uaddr *uaddr)
+{
+	return off_isnull(uaddr->off) || utype_isnone(uaddr->utype);
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+void voluta_uba_setup(struct voluta_uba *uba,
+                      const struct voluta_uaddr *uaddr,
+                      const struct voluta_baddr *baddr)
+{
+	voluta_uaddr_copyto(uaddr, &uba->uaddr);
+	voluta_baddr_copyto(baddr, &uba->baddr);
+}
+
+void voluta_uba_setup_by(struct voluta_uba *uba,
+                         const struct voluta_uaddr *uaddr,
+                         const struct voluta_blobid *bid)
+{
+	struct voluta_baddr baddr;
+
+	voluta_baddr_setup(&baddr, bid, uaddr->len, uaddr->off);
+	voluta_uba_setup(uba, uaddr, &baddr);
+}
+
+void voluta_uba_reset(struct voluta_uba *uba)
+{
+	voluta_uaddr_reset(&uba->uaddr);
+	voluta_baddr_reset(&uba->baddr);
+}
+
+void voluta_uba_copyto(const struct voluta_uba *uba, struct voluta_uba *other)
+{
+	voluta_uaddr_copyto(&uba->uaddr, &other->uaddr);
+	voluta_baddr_copyto(&uba->baddr, &other->baddr);
+}
+
+/*: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : : :*/
 
 static bool value_within(long value, long lower_bound, long upper_bound)
 {

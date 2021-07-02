@@ -2995,7 +2995,7 @@ static int pipe_max_size(size_t *out_size)
 
 static size_t fuseq_bufsize_max(const struct voluta_fuseq *fq)
 {
-	const struct voluta_fuseq_worker *fqw = &fq->fq_worker[0];
+	const struct voluta_fuseq_worker *fqw = &fq->fq_ws.fws_worker[0];
 	const size_t inbuf_max = sizeof(*fqw->inb);
 	const size_t outbuf_max = sizeof(*fqw->outb);
 
@@ -3188,29 +3188,33 @@ static int fuseq_init_workers(struct voluta_fuseq *fq)
 	int err;
 	int nprocs;
 	int nworkers;
-	const int nworkers_max = (int)ARRAY_SIZE(fq->fq_worker);
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
+	const int nworkers_max = (int)ARRAY_SIZE(fws->fws_worker);
 
 	nprocs = get_nprocs_conf();
 	nworkers = min32(nprocs, nworkers_max);
 
 	log_dbg("init fuseq workers: nprocs=%d nworkers=%d", nprocs, nworkers);
 
-	fq->fq_nworkers_avail = 0;
-	fq->fq_nworkers_active = 0;
+	fws->fws_nlimit = (short)nworkers;
+	fws->fws_navail = 0;
+	fws->fws_nactive = 0;
 	for (int i = 0; i < nworkers; ++i) {
-		err = fuseq_init_worker(&fq->fq_worker[i], fq, i);
+		err = fuseq_init_worker(&fws->fws_worker[i], fq, i);
 		if (err) {
 			return err;
 		}
-		fq->fq_nworkers_avail++;
+		fws->fws_navail++;
 	}
 	return 0;
 }
 
 static void fuseq_fini_workers(struct voluta_fuseq *fq)
 {
-	for (int i = 0; i < fq->fq_nworkers_avail; ++i) {
-		fuseq_fini_worker(&fq->fq_worker[i]);
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
+
+	for (int i = 0; i < fws->fws_navail; ++i) {
+		fuseq_fini_worker(&fws->fws_worker[i]);
 	}
 }
 
@@ -3243,8 +3247,6 @@ static void fuseq_init_common(struct voluta_fuseq *fq,
 	fq->fq_sbi = sbi;
 	fq->fq_qal = sbi->sb_qalloc;
 	fq->fq_nopers = 0;
-	fq->fq_nworkers_avail = 0;
-	fq->fq_nworkers_active = 0;
 	fq->fq_fuse_fd = -1;
 	fq->fq_got_init = false;
 	fq->fq_got_destroy = false;
@@ -3506,24 +3508,27 @@ static void fuseq_suspend_while_active(const struct voluta_fuseq *fq)
 static int fuseq_start_workers(struct voluta_fuseq *fq)
 {
 	int err;
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
 
 	fq->fq_active = 1;
-	fq->fq_nworkers_active = 0;
-	for (int i = 0; i < fq->fq_nworkers_avail; ++i) {
-		err = fuseq_exec_thread(&fq->fq_worker[i]);
+	fws->fws_nactive = 0;
+	for (int i = 0; i < fws->fws_navail; ++i) {
+		err = fuseq_exec_thread(&fws->fws_worker[i]);
 		if (err) {
 			return err;
 		}
-		fq->fq_nworkers_active++;
+		fws->fws_nactive++;
 	}
 	return 0;
 }
 
 static void fuseq_finish_workers(struct voluta_fuseq *fq)
 {
+	struct voluta_fuseq_workset *fws = &fq->fq_ws;
+
 	fq->fq_active = 0;
-	for (int i = 0; i < fq->fq_nworkers_active; ++i) {
-		fuseq_join_thread(&fq->fq_worker[i]);
+	for (int i = 0; i < fws->fws_nactive; ++i) {
+		fuseq_join_thread(&fws->fws_worker[i]);
 	}
 }
 

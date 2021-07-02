@@ -440,8 +440,15 @@ struct voluta_fuseq_worker {
 	int idx;
 } voluta_aligned64;
 
+struct voluta_fuseq_workset {
+	struct voluta_fuseq_worker      fws_worker[8];
+	short fws_nlimit;
+	short fws_navail;
+	short fws_nactive;
+};
+
 struct voluta_fuseq {
-	struct voluta_fuseq_worker      fq_worker[4];
+	struct voluta_fuseq_workset     fq_ws;
 	struct voluta_fuseq_conn_info   fq_coni;
 	struct voluta_mutex             fq_ch_lock;
 	struct voluta_mutex             fq_fs_lock;
@@ -449,8 +456,6 @@ struct voluta_fuseq {
 	struct voluta_qalloc           *fq_qal;
 	size_t          fq_nopers;
 	time_t          fq_times;
-	int             fq_nworkers_avail;
-	int             fq_nworkers_active;
 	volatile int    fq_active;
 	volatile int    fq_fuse_fd;
 	bool            fq_got_init;

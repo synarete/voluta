@@ -839,7 +839,7 @@ static int dirtyqs_init(struct voluta_dirtyqs *dqs, struct voluta_qalloc *qal)
 		return -ENOMEM;
 	}
 	dq_initn(dqs->dq_bins, nbins);
-	dq_init(&dqs->dq_main);
+	dq_init(&dqs->dq_vi_main);
 	dqs->dq_nbins = nbins;
 	return 0;
 }
@@ -848,7 +848,7 @@ static void dirtyqs_fini(struct voluta_dirtyqs *dqs)
 {
 	const size_t msize = dqs->dq_nbins * sizeof(*dqs->dq_bins);
 
-	dq_fini(&dqs->dq_main);
+	dq_fini(&dqs->dq_vi_main);
 	dq_finin(dqs->dq_bins, dqs->dq_nbins);
 	voluta_qalloc_free(dqs->dq_qalloc, dqs->dq_bins, msize);
 	dqs->dq_qalloc = NULL;
@@ -890,7 +890,7 @@ static void dirtyqs_enq_vi(struct voluta_dirtyqs *dqs,
 		dq = dirtyqs_queue_of_vi(dqs, vi);
 		dq_append(dq, &vi->v_dq_blh, vaddr->len);
 
-		dq = &dqs->dq_main;
+		dq = &dqs->dq_vi_main;
 		dq_append(dq, &vi->v_dq_mlh, vaddr->len);
 
 		vi->v_dirty = 1;
@@ -907,7 +907,7 @@ static void dirtyqs_dec_vi(struct voluta_dirtyqs *dqs,
 		dq = dirtyqs_queue_of_vi(dqs, vi);
 		dq_remove(dq, &vi->v_dq_blh, vaddr->len);
 
-		dq = &dqs->dq_main;
+		dq = &dqs->dq_vi_main;
 		dq_remove(dq, &vi->v_dq_mlh, vaddr->len);
 
 		vi->v_dirty = 0;
@@ -917,7 +917,7 @@ static void dirtyqs_dec_vi(struct voluta_dirtyqs *dqs,
 static struct voluta_vnode_info *
 dirtyqs_front(const struct voluta_dirtyqs *dqs)
 {
-	const struct voluta_dirtyq *dq = &dqs->dq_main;
+	const struct voluta_dirtyq *dq = &dqs->dq_vi_main;
 
 	return dq_mlh_to_vi(dq_front(dq));
 }
@@ -926,7 +926,7 @@ static struct voluta_vnode_info *
 dirtyqs_nextof(const struct voluta_dirtyqs *dqs,
                const struct voluta_vnode_info *vi)
 {
-	const struct voluta_dirtyq *dq = &dqs->dq_main;
+	const struct voluta_dirtyq *dq = &dqs->dq_vi_main;
 
 	return dq_mlh_to_vi(dq_next_of(dq, &vi->v_dq_mlh));
 }
@@ -1529,7 +1529,7 @@ voluta_cache_lookup_ui(struct voluta_cache *cache,
 static void cache_store_ui(struct voluta_cache *cache,
                            struct voluta_unode_info *ui)
 {
-	lrumap_store(&cache->c_ulm, ui_to_ce(ui), &ui->uaddr);
+	lrumap_store(&cache->c_ulm, ui_to_ce(ui), &ui->uba.uaddr);
 }
 
 static int visit_evictable_ui(struct voluta_cache_elem *ce, void *arg)
@@ -1821,7 +1821,7 @@ static bool cache_mem_press_need_flush(const struct voluta_cache *cache)
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags)
 {
-	const struct voluta_dirtyq *dq = &cache->c_dqs.dq_main;
+	const struct voluta_dirtyq *dq = &cache->c_dqs.dq_vi_main;
 
 	return cache_dq_need_flush(cache, dq, flags) ||
 	       cache_mem_press_need_flush(cache);

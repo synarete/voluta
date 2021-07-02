@@ -23,29 +23,30 @@ struct voluta_mpool;
 
 
 /* unode */
-struct voluta_unode_vtbl {
+struct voluta_ui_vtbl {
 	bool (*evictable)(const struct voluta_unode_info *ui);
 	void (*del)(struct voluta_unode_info *ui, struct voluta_alloc_if *aif);
 };
 
 struct voluta_unode_info {
-	struct voluta_uaddr             uaddr;
-	const struct voluta_unode_vtbl *u_vtbl;
+	struct voluta_uba               uba;
+	const struct voluta_ui_vtbl    *u_vtbl;
 	struct voluta_cache_elem        u_ce;
-	struct voluta_baddr             u_baddr;
+	struct voluta_sb_info          *u_sbi;
 	struct voluta_bksec_info       *u_bsi;
+	struct voluta_list_head         u_dq_lh;
 	int  u_dirty;
 };
 
 /* vnode */
-struct voluta_vnode_vtbl {
+struct voluta_vi_vtbl {
 	bool (*evictable)(const struct voluta_vnode_info *vi);
 	void (*del)(struct voluta_vnode_info *vi, struct voluta_alloc_if *aif);
 };
 
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
-	const struct voluta_vnode_vtbl *v_vtbl;
+	const struct voluta_vi_vtbl    *v_vtbl;
 	struct voluta_cache_elem        v_ce;
 	union voluta_view              *view;
 	struct voluta_fiovref           v_fir;
@@ -129,6 +130,10 @@ struct voluta_dleaf_info {
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+
+struct voluta_hspace_info *
+voluta_hsi_from_ui(const struct voluta_unode_info *ui);
 
 struct voluta_hspace_info *
 voluta_hsi_from_vi(const struct voluta_vnode_info *vi);

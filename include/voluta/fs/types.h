@@ -282,7 +282,7 @@ struct voluta_dirtyq {
 struct voluta_dirtyqs {
 	struct voluta_qalloc           *dq_qalloc;
 	struct voluta_dirtyq           *dq_bins;
-	struct voluta_dirtyq            dq_main;
+	struct voluta_dirtyq            dq_vi_main;
 	size_t dq_nbins;
 };
 

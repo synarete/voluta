@@ -471,7 +471,7 @@ const struct voluta_vaddr *hsi_vaddr(const struct voluta_hspace_info *hsi)
 static inline
 const struct voluta_baddr *hsi_baddr(const struct voluta_hspace_info *hsi)
 {
-	return &hsi->hs_ui.u_baddr;
+	return &hsi->hs_ui.uba.baddr;
 }
 
 
@@ -484,7 +484,7 @@ const struct voluta_vaddr *agi_vaddr(const struct voluta_agroup_info *agi)
 static inline
 const struct voluta_baddr *agi_baddr(const struct voluta_agroup_info *agi)
 {
-	return &agi->ag_ui.u_baddr;
+	return &agi->ag_ui.uba.baddr;
 }
 
 static inline

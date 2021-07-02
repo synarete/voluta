@@ -278,7 +278,6 @@ static int fiovec_of_dleaf(const struct voluta_file_ctx *f_ctx,
 	}
 	if (f_ctx->with_backref) {
 		out_fiov->fv_ref = &dli->dl_vi.v_fir;
-		voluta_fiovref_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -303,9 +302,6 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
 	err = fiovec_of_data(f_ctx, vaddr, off_within, len, out_fiov);
 	if (err) {
 		return err;
-	}
-	if (f_ctx->with_backref) {
-		voluta_fiovref_pre(out_fiov->fv_ref);
 	}
 	return 0;
 }
@@ -1660,16 +1656,17 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 	};
 
 	err = resolve_fiovec(f_ctx, dli, vaddr, &fiov);
-	if (err) {
-		return err;
-	}
-	err = f_ctx->rwi_ctx->actor(f_ctx->rwi_ctx, &fiov);
-	if (err) {
-		voluta_fiovref_post(fiov.fv_ref);
-		return err;
+	if (!err) {
+		if (f_ctx->with_backref) {
+			voluta_fiovref_pre(fiov.fv_ref);
+		}
+		err = f_ctx->rwi_ctx->actor(f_ctx->rwi_ctx, &fiov);
+		if (err && f_ctx->with_backref) {
+			voluta_fiovref_post(fiov.fv_ref);
+		}
 	}
 	*out_len = fiov.fv_len;
-	return 0;
+	return err;
 }
 
 static int export_data_by_dleaf(const struct voluta_file_ctx *f_ctx,

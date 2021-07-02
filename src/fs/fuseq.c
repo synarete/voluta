@@ -2877,6 +2877,11 @@ static int fuseq_recv_in_locked(struct voluta_fuseq_worker *fqw)
 				err = fuseq_recv_in(fqw);
 			}
 		}
+
+		if (err == -ENODEV) {
+			/* umount case: set non-active under channel-lock */
+			fqw->fq->fq_active = 0;
+		}
 	}
 	fuseq_unlock_ch(fqw);
 	return err;

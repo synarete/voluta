@@ -2371,7 +2371,7 @@ int voluta_resolve_baddr_of(struct voluta_sb_info *sbi,
 	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_INODE:
 	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_DATABK:

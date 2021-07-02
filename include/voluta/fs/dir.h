@@ -25,7 +25,7 @@ enum voluta_dirf voluta_dir_flags(const struct voluta_inode_info *dir_ii);
 
 int voluta_verify_dir_inode(const struct voluta_inode *inode);
 
-int voluta_verify_dir_htree_node(const struct voluta_dir_htnode *htn);
+int voluta_verify_dir_htree_node(const struct voluta_dir_tnode *htn);
 
 void voluta_setup_dir(struct voluta_inode_info *dir_ii,
                       mode_t parent_mode, nlink_t nlink);

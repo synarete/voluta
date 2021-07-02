@@ -227,46 +227,46 @@ static void inode_set_rdev(struct voluta_inode *inode,
 
 static void inode_btime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.btime, ts);
+	ts_to_cpu(&inode->i_tm.btime, ts);
 }
 
 static void inode_set_btime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.btime);
+	cpu_to_ts(ts, &inode->i_tm.btime);
 }
 
 static void inode_atime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.atime, ts);
+	ts_to_cpu(&inode->i_tm.atime, ts);
 }
 
 static void inode_set_atime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.atime);
+	cpu_to_ts(ts, &inode->i_tm.atime);
 }
 
 static void inode_mtime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.mtime, ts);
+	ts_to_cpu(&inode->i_tm.mtime, ts);
 }
 
 static void inode_set_mtime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.mtime);
+	cpu_to_ts(ts, &inode->i_tm.mtime);
 }
 
 static void inode_ctime(const struct voluta_inode *inode, struct timespec *ts)
 {
-	ts_to_cpu(&inode->i_t.ctime, ts);
+	ts_to_cpu(&inode->i_tm.ctime, ts);
 }
 
 static void inode_set_ctime(struct voluta_inode *inode,
                             const struct timespec *ts)
 {
-	cpu_to_ts(ts, &inode->i_t.ctime);
+	cpu_to_ts(ts, &inode->i_tm.ctime);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

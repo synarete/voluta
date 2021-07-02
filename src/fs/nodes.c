@@ -39,10 +39,10 @@ static const struct voluta_vnode_vtbl *hsi_vtbl(void);
 static const struct voluta_vnode_vtbl *agi_vtbl(void);
 static const struct voluta_vnode_vtbl *itni_vtbl(void);
 static const struct voluta_vnode_vtbl *ii_vtbl(void);
-static const struct voluta_vnode_vtbl *xani_vtbl(void);
-static const struct voluta_vnode_vtbl *symi_vtbl(void);
-static const struct voluta_vnode_vtbl *htni_vtbl(void);
-static const struct voluta_vnode_vtbl *rtni_vtbl(void);
+static const struct voluta_vnode_vtbl *xai_vtbl(void);
+static const struct voluta_vnode_vtbl *syi_vtbl(void);
+static const struct voluta_vnode_vtbl *dti_vtbl(void);
+static const struct voluta_vnode_vtbl *rti_vtbl(void);
 static const struct voluta_vnode_vtbl *dli_vtbl(void);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -572,395 +572,395 @@ static const struct voluta_vnode_vtbl *ii_vtbl(void)
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *
-xani_to_vi(const struct voluta_xanode_info *xani)
+xai_to_vi(const struct voluta_xanode_info *xai)
 {
 	const struct voluta_vnode_info *vi = NULL;
 
-	if (likely(xani != NULL)) {
-		vi = &xani->xan_vi;
+	if (likely(xai != NULL)) {
+		vi = &xai->xa_vi;
 	}
 	return vi_unconst(vi);
 }
 
 struct voluta_xanode_info *
-voluta_xani_from_vi(const struct voluta_vnode_info *vi)
+voluta_xai_from_vi(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_xanode_info *xani = NULL;
+	const struct voluta_xanode_info *xai = NULL;
 
 	if (likely(vi != NULL)) {
 		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_XANODE);
-		xani = container_of2(vi, struct voluta_xanode_info, xan_vi);
+		xai = container_of2(vi, struct voluta_xanode_info, xa_vi);
 	}
-	return unconst(xani);
+	return unconst(xai);
 }
 
 struct voluta_xanode_info *
-voluta_xani_from_vi_rebind(struct voluta_vnode_info *vi)
+voluta_xai_from_vi_rebind(struct voluta_vnode_info *vi)
 {
-	struct voluta_xanode_info *xani = voluta_xani_from_vi(vi);
+	struct voluta_xanode_info *xai = voluta_xai_from_vi(vi);
 
-	xani->xan = &vi->view->xan;
-	return xani;
+	xai->xan = &vi->view->xan;
+	return xai;
 }
 
-static void xani_init(struct voluta_xanode_info *xani,
-                      const struct voluta_vba *vba,
-                      const struct voluta_vnode_vtbl *vtbl)
+static void xai_init(struct voluta_xanode_info *xai,
+                     const struct voluta_vba *vba,
+                     const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&xani->xan_vi, vba, vtbl);
-	xani->xan = NULL;
+	vi_init(&xai->xa_vi, vba, vtbl);
+	xai->xan = NULL;
 }
 
-static void xani_fini(struct voluta_xanode_info *xani)
+static void xai_fini(struct voluta_xanode_info *xai)
 {
-	vi_fini(&xani->xan_vi);
-	xani->xan = NULL;
+	vi_fini(&xai->xa_vi);
+	xai->xan = NULL;
 }
 
-static struct voluta_xanode_info *xani_malloc(struct voluta_alloc_if *alif)
+static struct voluta_xanode_info *xai_malloc(struct voluta_alloc_if *alif)
 {
-	struct voluta_xanode_info *xani;
+	struct voluta_xanode_info *xai;
 
-	xani = voluta_allocate(alif, sizeof(*xani));
-	return xani;
+	xai = voluta_allocate(alif, sizeof(*xai));
+	return xai;
 }
 
-static void xani_free(struct voluta_xanode_info *xani,
-                      struct voluta_alloc_if *alif)
+static void xai_free(struct voluta_xanode_info *xai,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_deallocate(alif, xani, sizeof(*xani));
+	voluta_deallocate(alif, xai, sizeof(*xai));
 }
 
-static void xani_delete(struct voluta_xanode_info *xani,
-                        struct voluta_alloc_if *alif)
+static void xai_delete(struct voluta_xanode_info *xai,
+                       struct voluta_alloc_if *alif)
 {
-	xani_fini(xani);
-	xani_free(xani, alif);
+	xai_fini(xai);
+	xai_free(xai, alif);
 }
 
-static void xani_delete_by(struct voluta_vnode_info *vi,
-                           struct voluta_alloc_if *alif)
+static void xai_delete_by(struct voluta_vnode_info *vi,
+                          struct voluta_alloc_if *alif)
 {
-	xani_delete(voluta_xani_from_vi(vi), alif);
+	xai_delete(voluta_xai_from_vi(vi), alif);
 }
 
 static struct voluta_xanode_info *
-xani_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+xai_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
-	struct voluta_xanode_info *xani;
+	struct voluta_xanode_info *xai;
 
-	xani = xani_malloc(alif);
-	if (xani != NULL) {
-		xani_init(xani, vba, xani_vtbl());
+	xai = xai_malloc(alif);
+	if (xai != NULL) {
+		xai_init(xai, vba, xai_vtbl());
 	}
-	return xani;
+	return xai;
 }
 
-static const struct voluta_vnode_vtbl vtbl_xani = {
+static const struct voluta_vnode_vtbl vtbl_xai = {
 	.evictable = voluta_vi_isevictable,
-	.del = xani_delete_by
+	.del = xai_delete_by
 };
 
-static const struct voluta_vnode_vtbl *xani_vtbl(void)
+static const struct voluta_vnode_vtbl *xai_vtbl(void)
 {
-	return &vtbl_xani;
+	return &vtbl_xai;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *
-symi_to_vi(const struct voluta_symval_info *symi)
+syi_to_vi(const struct voluta_symval_info *syi)
 {
 	const struct voluta_vnode_info *vi = NULL;
 
-	if (likely(symi != NULL)) {
-		vi = &symi->sym_vi;
+	if (likely(syi != NULL)) {
+		vi = &syi->sy_vi;
 	}
 	return vi_unconst(vi);
 }
 
 struct voluta_symval_info *
-voluta_symi_from_vi(const struct voluta_vnode_info *vi)
+voluta_syi_from_vi(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_symval_info *symi = NULL;
+	const struct voluta_symval_info *syi = NULL;
 
 	if (likely(vi != NULL)) {
 		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_SYMVAL);
-		symi = container_of2(vi, struct voluta_symval_info, sym_vi);
+		syi = container_of2(vi, struct voluta_symval_info, sy_vi);
 	}
-	return unconst(symi);
+	return unconst(syi);
 }
 
 struct voluta_symval_info *
-voluta_symi_from_vi_rebind(struct voluta_vnode_info *vi)
+voluta_syi_from_vi_rebind(struct voluta_vnode_info *vi)
 {
-	struct voluta_symval_info *symi = voluta_symi_from_vi(vi);
+	struct voluta_symval_info *syi = voluta_syi_from_vi(vi);
 
-	if (likely(symi != NULL)) {
-		symi->sym = &symi->sym_vi.view->sym;
+	if (likely(syi != NULL)) {
+		syi->syv = &syi->sy_vi.view->sym;
 	}
-	return symi;
+	return syi;
 }
 
-static void symi_init(struct voluta_symval_info *symi,
-                      const struct voluta_vba *vba,
-                      const struct voluta_vnode_vtbl *vtbl)
+static void syi_init(struct voluta_symval_info *syi,
+                     const struct voluta_vba *vba,
+                     const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&symi->sym_vi, vba, vtbl);
-	symi->sym = NULL;
+	vi_init(&syi->sy_vi, vba, vtbl);
+	syi->syv = NULL;
 }
 
-static void symi_fini(struct voluta_symval_info *symi)
+static void syi_fini(struct voluta_symval_info *syi)
 {
-	vi_fini(&symi->sym_vi);
-	symi->sym = NULL;
+	vi_fini(&syi->sy_vi);
+	syi->syv = NULL;
 }
 
-static struct voluta_symval_info *symi_malloc(struct voluta_alloc_if *alif)
+static struct voluta_symval_info *syi_malloc(struct voluta_alloc_if *alif)
 {
-	struct voluta_symval_info *symi;
+	struct voluta_symval_info *syi;
 
-	symi = voluta_allocate(alif, sizeof(*symi));
-	return symi;
+	syi = voluta_allocate(alif, sizeof(*syi));
+	return syi;
 }
 
-static void symi_free(struct voluta_symval_info *symi,
-                      struct voluta_alloc_if *alif)
+static void syi_free(struct voluta_symval_info *syi,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_deallocate(alif, symi, sizeof(*symi));
+	voluta_deallocate(alif, syi, sizeof(*syi));
 }
 
-static void symi_delete(struct voluta_symval_info *symi,
-                        struct voluta_alloc_if *alif)
+static void syi_delete(struct voluta_symval_info *syi,
+                       struct voluta_alloc_if *alif)
 {
-	symi_fini(symi);
-	symi_free(symi, alif);
+	syi_fini(syi);
+	syi_free(syi, alif);
 }
 
-static void symi_delete_by(struct voluta_vnode_info *vi,
-                           struct voluta_alloc_if *alif)
+static void syi_delete_by(struct voluta_vnode_info *vi,
+                          struct voluta_alloc_if *alif)
 {
-	symi_delete(voluta_symi_from_vi(vi), alif);
+	syi_delete(voluta_syi_from_vi(vi), alif);
 }
 
 static struct voluta_symval_info *
-symi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+syi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
-	struct voluta_symval_info *symi;
+	struct voluta_symval_info *syi;
 
-	symi = symi_malloc(alif);
-	if (symi != NULL) {
-		symi_init(symi, vba, symi_vtbl());
+	syi = syi_malloc(alif);
+	if (syi != NULL) {
+		syi_init(syi, vba, syi_vtbl());
 	}
-	return symi;
+	return syi;
 }
 
-static const struct voluta_vnode_vtbl vtbl_symi = {
+static const struct voluta_vnode_vtbl vtbl_syi = {
 	.evictable = voluta_vi_isevictable,
-	.del = symi_delete_by
+	.del = syi_delete_by
 };
 
-static const struct voluta_vnode_vtbl *symi_vtbl(void)
+static const struct voluta_vnode_vtbl *syi_vtbl(void)
 {
-	return &vtbl_symi;
+	return &vtbl_syi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *
-htni_to_vi(const struct voluta_htnode_info *htni)
+dti_to_vi(const struct voluta_dtnode_info *dti)
 {
 	const struct voluta_vnode_info *vi = NULL;
 
-	if (likely(htni != NULL)) {
-		vi = &htni->htn_vi;
+	if (likely(dti != NULL)) {
+		vi = &dti->dt_vi;
 	}
 	return vi_unconst(vi);
 }
 
-struct voluta_htnode_info *
-voluta_htni_from_vi(const struct voluta_vnode_info *vi)
+struct voluta_dtnode_info *
+voluta_dti_from_vi(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_htnode_info *htni = NULL;
+	const struct voluta_dtnode_info *dti = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_HTNODE);
-		htni = container_of2(vi, struct voluta_htnode_info, htn_vi);
+		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_DTNODE);
+		dti = container_of2(vi, struct voluta_dtnode_info, dt_vi);
 	}
-	return unconst(htni);
+	return unconst(dti);
 }
 
-struct voluta_htnode_info *
-voluta_htni_from_vi_rebind(struct voluta_vnode_info *vi)
+struct voluta_dtnode_info *
+voluta_dti_from_vi_rebind(struct voluta_vnode_info *vi)
 {
-	struct voluta_htnode_info *htni = voluta_htni_from_vi(vi);
+	struct voluta_dtnode_info *dti = voluta_dti_from_vi(vi);
 
-	if (likely(htni != NULL)) {
-		htni->htn = &htni->htn_vi.view->htn;
+	if (likely(dti != NULL)) {
+		dti->dtn = &dti->dt_vi.view->htn;
 	}
-	return htni;
+	return dti;
 }
 
-static void htni_init(struct voluta_htnode_info *htni,
-                      const struct voluta_vba *vba,
-                      const struct voluta_vnode_vtbl *vtbl)
+static void dti_init(struct voluta_dtnode_info *dti,
+                     const struct voluta_vba *vba,
+                     const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&htni->htn_vi, vba, vtbl);
-	htni->htn = NULL;
+	vi_init(&dti->dt_vi, vba, vtbl);
+	dti->dtn = NULL;
 }
 
-static void htni_fini(struct voluta_htnode_info *htni)
+static void dti_fini(struct voluta_dtnode_info *dti)
 {
-	vi_fini(&htni->htn_vi);
-	htni->htn = NULL;
+	vi_fini(&dti->dt_vi);
+	dti->dtn = NULL;
 }
 
-static struct voluta_htnode_info *htni_malloc(struct voluta_alloc_if *alif)
+static struct voluta_dtnode_info *dti_malloc(struct voluta_alloc_if *alif)
 {
-	struct voluta_htnode_info *htni;
+	struct voluta_dtnode_info *dti;
 
-	htni = voluta_allocate(alif, sizeof(*htni));
-	return htni;
+	dti = voluta_allocate(alif, sizeof(*dti));
+	return dti;
 }
 
-static void htni_free(struct voluta_htnode_info *htni,
-                      struct voluta_alloc_if *alif)
+static void dti_free(struct voluta_dtnode_info *dti,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_deallocate(alif, htni, sizeof(*htni));
+	voluta_deallocate(alif, dti, sizeof(*dti));
 }
 
-static void htni_delete(struct voluta_htnode_info *htni,
-                        struct voluta_alloc_if *alif)
+static void dti_delete(struct voluta_dtnode_info *dti,
+                       struct voluta_alloc_if *alif)
 {
-	htni_fini(htni);
-	htni_free(htni, alif);
+	dti_fini(dti);
+	dti_free(dti, alif);
 }
 
-static void htni_delete_by(struct voluta_vnode_info *vi,
-                           struct voluta_alloc_if *alif)
+static void dti_delete_by(struct voluta_vnode_info *vi,
+                          struct voluta_alloc_if *alif)
 {
-	htni_delete(voluta_htni_from_vi(vi), alif);
+	dti_delete(voluta_dti_from_vi(vi), alif);
 }
 
-static struct voluta_htnode_info *
-htni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+static struct voluta_dtnode_info *
+dti_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
-	struct voluta_htnode_info *htni;
+	struct voluta_dtnode_info *dti;
 
-	htni = htni_malloc(alif);
-	if (htni != NULL) {
-		htni_init(htni, vba, htni_vtbl());
+	dti = dti_malloc(alif);
+	if (dti != NULL) {
+		dti_init(dti, vba, dti_vtbl());
 	}
-	return htni;
+	return dti;
 }
 
-static const struct voluta_vnode_vtbl vtbl_htni = {
+static const struct voluta_vnode_vtbl vtbl_dti = {
 	.evictable = voluta_vi_isevictable,
-	.del = htni_delete_by
+	.del = dti_delete_by
 };
 
-static const struct voluta_vnode_vtbl *htni_vtbl(void)
+static const struct voluta_vnode_vtbl *dti_vtbl(void)
 {
-	return &vtbl_htni;
+	return &vtbl_dti;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_vnode_info *
-rtni_to_vi(const struct voluta_rtnode_info *rtni)
+rti_to_vi(const struct voluta_rtnode_info *rti)
 {
 	const struct voluta_vnode_info *vi = NULL;
 
-	if (likely(rtni != NULL)) {
-		vi = &rtni->rtn_vi;
+	if (likely(rti != NULL)) {
+		vi = &rti->rt_vi;
 	}
 	return vi_unconst(vi);
 }
 
 struct voluta_rtnode_info *
-voluta_rtni_from_vi(const struct voluta_vnode_info *vi)
+voluta_rti_from_vi(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_rtnode_info *rtni = NULL;
+	const struct voluta_rtnode_info *rti = NULL;
 
 	if (likely(vi != NULL)) {
 		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_RTNODE);
-		rtni = container_of2(vi, struct voluta_rtnode_info, rtn_vi);
+		rti = container_of2(vi, struct voluta_rtnode_info, rt_vi);
 	}
-	return unconst(rtni);
+	return unconst(rti);
 }
 
 struct voluta_rtnode_info *
-voluta_rtni_from_vi_rebind(struct voluta_vnode_info *vi)
+voluta_rti_from_vi_rebind(struct voluta_vnode_info *vi)
 {
-	struct voluta_rtnode_info *rtni = voluta_rtni_from_vi(vi);
+	struct voluta_rtnode_info *rti = voluta_rti_from_vi(vi);
 
-	if (likely(rtni != NULL)) {
-		rtni->rtn = &rtni->rtn_vi.view->rtn;
+	if (likely(rti != NULL)) {
+		rti->rtn = &rti->rt_vi.view->rtn;
 	}
-	return rtni;
+	return rti;
 }
 
-static void rtni_init(struct voluta_rtnode_info *rtni,
-                      const struct voluta_vba *vba,
-                      const struct voluta_vnode_vtbl *vtbl)
+static void rti_init(struct voluta_rtnode_info *rti,
+                     const struct voluta_vba *vba,
+                     const struct voluta_vnode_vtbl *vtbl)
 {
-	vi_init(&rtni->rtn_vi, vba, vtbl);
-	rtni->rtn = NULL;
+	vi_init(&rti->rt_vi, vba, vtbl);
+	rti->rtn = NULL;
 }
 
-static void rtni_fini(struct voluta_rtnode_info *rtni)
+static void rti_fini(struct voluta_rtnode_info *rti)
 {
-	vi_fini(&rtni->rtn_vi);
-	rtni->rtn = NULL;
+	vi_fini(&rti->rt_vi);
+	rti->rtn = NULL;
 }
 
-static struct voluta_rtnode_info *rtni_malloc(struct voluta_alloc_if *alif)
+static struct voluta_rtnode_info *rti_malloc(struct voluta_alloc_if *alif)
 {
-	struct voluta_rtnode_info *rtni;
+	struct voluta_rtnode_info *rti;
 
-	rtni = voluta_allocate(alif, sizeof(*rtni));
-	return rtni;
+	rti = voluta_allocate(alif, sizeof(*rti));
+	return rti;
 }
 
-static void rtni_free(struct voluta_rtnode_info *rtni,
-                      struct voluta_alloc_if *alif)
+static void rti_free(struct voluta_rtnode_info *rti,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_deallocate(alif, rtni, sizeof(*rtni));
+	voluta_deallocate(alif, rti, sizeof(*rti));
 }
 
-static void rtni_delete(struct voluta_rtnode_info *rtni,
-                        struct voluta_alloc_if *alif)
+static void rti_delete(struct voluta_rtnode_info *rti,
+                       struct voluta_alloc_if *alif)
 {
-	rtni_fini(rtni);
-	rtni_free(rtni, alif);
+	rti_fini(rti);
+	rti_free(rti, alif);
 }
 
-static void rtni_delete_by(struct voluta_vnode_info *vi,
-                           struct voluta_alloc_if *alif)
+static void rti_delete_by(struct voluta_vnode_info *vi,
+                          struct voluta_alloc_if *alif)
 {
-	rtni_delete(voluta_rtni_from_vi(vi), alif);
+	rti_delete(voluta_rti_from_vi(vi), alif);
 }
 
 static struct voluta_rtnode_info *
-rtni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
+rti_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
-	struct voluta_rtnode_info *rtni;
+	struct voluta_rtnode_info *rti;
 
-	rtni = rtni_malloc(alif);
-	if (rtni != NULL) {
-		rtni_init(rtni, vba, rtni_vtbl());
+	rti = rti_malloc(alif);
+	if (rti != NULL) {
+		rti_init(rti, vba, rti_vtbl());
 	}
-	return rtni;
+	return rti;
 }
 
-static const struct voluta_vnode_vtbl vtbl_rtni = {
+static const struct voluta_vnode_vtbl vtbl_rti = {
 	.evictable = voluta_vi_isevictable,
-	.del = rtni_delete_by
+	.del = rti_delete_by
 };
 
-static const struct voluta_vnode_vtbl *rtni_vtbl(void)
+static const struct voluta_vnode_vtbl *rti_vtbl(void)
 {
-	return &vtbl_rtni;
+	return &vtbl_rti;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1112,16 +1112,16 @@ voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 		vi = ii_to_vi(ii_new(alif, vba));
 		break;
 	case VOLUTA_VTYPE_XANODE:
-		vi = xani_to_vi(xani_new(alif, vba));
+		vi = xai_to_vi(xai_new(alif, vba));
 		break;
 	case VOLUTA_VTYPE_SYMVAL:
-		vi = symi_to_vi(symi_new(alif, vba));
+		vi = syi_to_vi(syi_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_HTNODE:
-		vi = htni_to_vi(htni_new(alif, vba));
+	case VOLUTA_VTYPE_DTNODE:
+		vi = dti_to_vi(dti_new(alif, vba));
 		break;
 	case VOLUTA_VTYPE_RTNODE:
-		vi = rtni_to_vi(rtni_new(alif, vba));
+		vi = rti_to_vi(rti_new(alif, vba));
 		break;
 	case VOLUTA_VTYPE_DATA1K:
 	case VOLUTA_VTYPE_DATA4K:
@@ -1305,7 +1305,7 @@ static int verify_sub(const union voluta_view *view, enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_XANODE:
 		err = voluta_verify_xattr_node(&view->xan);
 		break;
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 		err = voluta_verify_dir_htree_node(&view->htn);
 		break;
 	case VOLUTA_VTYPE_RTNODE:

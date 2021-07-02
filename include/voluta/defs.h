@@ -293,7 +293,7 @@ enum voluta_vtype {
 	VOLUTA_VTYPE_ITNODE     = 11,
 	VOLUTA_VTYPE_INODE      = 13,
 	VOLUTA_VTYPE_XANODE     = 17,
-	VOLUTA_VTYPE_HTNODE     = 19,
+	VOLUTA_VTYPE_DTNODE     = 19,
 	VOLUTA_VTYPE_RTNODE     = 23,
 	VOLUTA_VTYPE_SYMVAL     = 29,
 	VOLUTA_VTYPE_DATABK     = 64,
@@ -620,7 +620,7 @@ struct voluta_itable_tnode {
 } voluta_packed_aligned64;
 
 
-struct voluta_iattr_times {
+struct voluta_inode_times {
 	struct voluta_timespec  btime;
 	struct voluta_timespec  atime;
 	struct voluta_timespec  ctime;
@@ -635,39 +635,30 @@ struct voluta_xattr_entry {
 } voluta_packed_aligned8;
 
 
-struct voluta_xattr_ispec {
-	uint16_t                xa_nents;
-	uint8_t                 xa_pad[6];
-	struct voluta_vaddr64   xa_vaddr[4];
-	int64_t                 xa_reserved[3];
-	struct voluta_xattr_entry xe[VOLUTA_XATTR_INENTS];
+struct voluta_inode_xattr {
+	uint16_t                ix_nents;
+	uint8_t                 ix_pad[6];
+	struct voluta_vaddr64   ix_vaddr[4];
+	int64_t                 ix_reserved[3];
+	struct voluta_xattr_entry ixe[VOLUTA_XATTR_INENTS];
 } voluta_packed_aligned64;
 
 
-struct voluta_xattr_node {
-	struct voluta_header    xa_hdr;
-	uint64_t                xa_ino;
-	uint16_t                xa_nents;
-	uint8_t                 xa_reserved[38];
-	struct voluta_xattr_entry xe[VOLUTA_XATTR_NENTS];
-} voluta_packed_aligned64;
-
-
-struct voluta_reg_ispec {
-	struct voluta_vaddr64   r_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
-	struct voluta_vaddr64   r_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
-	struct voluta_vaddr64   r_tree_root;
-	uint8_t                 r_reserved[352];
+struct voluta_inode_reg {
+	struct voluta_vaddr64   ir_head1_leaf[VOLUTA_FILE_HEAD1_NLEAVES];
+	struct voluta_vaddr64   ir_head2_leaf[VOLUTA_FILE_HEAD2_NLEAVES];
+	struct voluta_vaddr64   ir_tree_root;
+	uint8_t                 ir_reserved[352];
 } voluta_packed_aligned8;
 
 
-struct voluta_lnk_ispec {
+struct voluta_inode_lnk {
 	uint8_t                 l_head[VOLUTA_SYMLNK_HEAD_MAX];
 	struct voluta_vaddr64   l_tail[VOLUTA_SYMLNK_NPARTS];
 } voluta_packed_aligned64;
 
 
-struct voluta_dir_ispec {
+struct voluta_inode_dir {
 	int64_t                 d_root;
 	uint64_t                d_ndents;
 	uint32_t                d_last_index;
@@ -676,10 +667,10 @@ struct voluta_dir_ispec {
 } voluta_packed_aligned64;
 
 
-union voluta_iattr_specific {
-	struct voluta_dir_ispec d;
-	struct voluta_reg_ispec r;
-	struct voluta_lnk_ispec l;
+union voluta_inode_specific {
+	struct voluta_inode_dir d;
+	struct voluta_inode_reg r;
+	struct voluta_inode_lnk l;
 	uint8_t                 b[512];
 } voluta_packed_aligned64;
 
@@ -701,9 +692,18 @@ struct voluta_inode {
 	uint32_t                i_rdev_minor;
 	uint64_t                i_revision;
 	uint64_t                i_reserved[3];
-	struct voluta_iattr_times   i_t;
-	struct voluta_xattr_ispec   i_x;
-	union voluta_iattr_specific i_s;
+	struct voluta_inode_times   i_tm;
+	struct voluta_inode_xattr   i_xa;
+	union voluta_inode_specific i_sp;
+} voluta_packed_aligned64;
+
+
+struct voluta_xattr_node {
+	struct voluta_header    xa_hdr;
+	uint64_t                xa_ino;
+	uint16_t                xa_nents;
+	uint8_t                 xa_reserved[38];
+	struct voluta_xattr_entry xe[VOLUTA_XATTR_NENTS];
 } voluta_packed_aligned64;
 
 
@@ -739,7 +739,7 @@ struct voluta_dir_entry {
 } voluta_packed_aligned8;
 
 
-struct voluta_dir_htnode {
+struct voluta_dir_tnode {
 	struct voluta_header    dh_hdr;
 	uint64_t                dh_ino;
 	int64_t                 dh_parent;
@@ -800,7 +800,7 @@ union voluta_view {
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_inode             inode;
-	struct voluta_dir_htnode        htn;
+	struct voluta_dir_tnode        htn;
 	struct voluta_radix_tnode       rtn;
 	struct voluta_xattr_node        xan;
 	struct voluta_symlnk_value      sym;

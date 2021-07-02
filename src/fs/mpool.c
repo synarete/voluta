@@ -66,10 +66,10 @@ struct voluta_mobj_xui {
 union voluta_xvnode_info_u {
 	struct voluta_vnode_info        vi;
 	struct voluta_itnode_info       itni;
-	struct voluta_xanode_info       xani;
-	struct voluta_htnode_info       htni;
-	struct voluta_symval_info       symi;
-	struct voluta_rtnode_info       rtni;
+	struct voluta_xanode_info       xai;
+	struct voluta_dtnode_info       dti;
+	struct voluta_symval_info       syi;
+	struct voluta_rtnode_info       rti;
 	struct voluta_dleaf_info        dli;
 };
 

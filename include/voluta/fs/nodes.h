@@ -94,25 +94,25 @@ struct voluta_inode_info {
 
 /* xattr */
 struct voluta_xanode_info {
-	struct voluta_vnode_info        xan_vi;
+	struct voluta_vnode_info        xa_vi;
 	struct voluta_xattr_node       *xan;
 };
 
 /* symval */
 struct voluta_symval_info {
-	struct voluta_vnode_info        sym_vi;
-	struct voluta_symlnk_value     *sym;
+	struct voluta_vnode_info        sy_vi;
+	struct voluta_symlnk_value     *syv;
 };
 
-/* htnode */
-struct voluta_htnode_info {
-	struct voluta_vnode_info        htn_vi;
-	struct voluta_dir_htnode       *htn;
+/* dtnode */
+struct voluta_dtnode_info {
+	struct voluta_vnode_info        dt_vi;
+	struct voluta_dir_tnode        *dtn;
 };
 
 /* rtnode */
 struct voluta_rtnode_info {
-	struct voluta_vnode_info        rtn_vi;
+	struct voluta_vnode_info        rt_vi;
 	struct voluta_radix_tnode      *rtn;
 };
 
@@ -162,31 +162,31 @@ voluta_ii_from_vi_rebind(struct voluta_vnode_info *vi, ino_t ino);
 
 
 struct voluta_xanode_info *
-voluta_xani_from_vi(const struct voluta_vnode_info *vi);
+voluta_xai_from_vi(const struct voluta_vnode_info *vi);
 
 struct voluta_xanode_info *
-voluta_xani_from_vi_rebind(struct voluta_vnode_info *vi);
+voluta_xai_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
 struct voluta_symval_info *
-voluta_symi_from_vi(const struct voluta_vnode_info *vi);
+voluta_syi_from_vi(const struct voluta_vnode_info *vi);
 
 struct voluta_symval_info *
-voluta_symi_from_vi_rebind(struct voluta_vnode_info *vi);
+voluta_syi_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
-struct voluta_htnode_info *
-voluta_htni_from_vi(const struct voluta_vnode_info *vi);
+struct voluta_dtnode_info *
+voluta_dti_from_vi(const struct voluta_vnode_info *vi);
 
-struct voluta_htnode_info *
-voluta_htni_from_vi_rebind(struct voluta_vnode_info *vi);
+struct voluta_dtnode_info *
+voluta_dti_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
 struct voluta_rtnode_info *
-voluta_rtni_from_vi(const struct voluta_vnode_info *vi);
+voluta_rti_from_vi(const struct voluta_vnode_info *vi);
 
 struct voluta_rtnode_info *
-voluta_rtni_from_vi_rebind(struct voluta_vnode_info *vi);
+voluta_rti_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
 struct voluta_dleaf_info *

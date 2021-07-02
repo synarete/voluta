@@ -156,7 +156,7 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF_BK(struct voluta_agroup_map);
 	REQUIRE_SIZEOF_16K(struct voluta_itable_tnode);
 	REQUIRE_SIZEOF_8K(struct voluta_xattr_node);
-	REQUIRE_SIZEOF_8K(struct voluta_dir_htnode);
+	REQUIRE_SIZEOF_8K(struct voluta_dir_tnode);
 	REQUIRE_SIZEOF_8K(struct voluta_radix_tnode);
 	REQUIRE_SIZEOF_BK(struct voluta_data_block);
 	REQUIRE_SIZEOF_BK(union voluta_block_u);
@@ -170,18 +170,18 @@ static void guarantee_persistent_types_size(void)
 	REQUIRE_SIZEOF(struct voluta_itable_entry, 16);
 	REQUIRE_SIZEOF(struct voluta_dir_entry, 16);
 	REQUIRE_SIZEOF(struct voluta_xattr_entry, 8);
-	REQUIRE_SIZEOF(struct voluta_dir_ispec, 64);
-	REQUIRE_SIZEOF(struct voluta_reg_ispec, 512);
-	REQUIRE_SIZEOF(struct voluta_lnk_ispec, 512);
-	REQUIRE_SIZEOF(struct voluta_iattr_times, 64);
-	REQUIRE_SIZEOF(struct voluta_xattr_ispec, 320);
-	REQUIRE_SIZEOF(union voluta_iattr_specific, 512);
+	REQUIRE_SIZEOF(struct voluta_inode_dir, 64);
+	REQUIRE_SIZEOF(struct voluta_inode_reg, 512);
+	REQUIRE_SIZEOF(struct voluta_inode_lnk, 512);
+	REQUIRE_SIZEOF(struct voluta_inode_times, 64);
+	REQUIRE_SIZEOF(struct voluta_inode_xattr, 320);
+	REQUIRE_SIZEOF(union voluta_inode_specific, 512);
 	REQUIRE_SIZEOF(struct voluta_inode, VOLUTA_INODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_symlnk_value, VOLUTA_SYMLNK_VAL_SIZE);
 	REQUIRE_SIZEOF(struct voluta_xattr_node, VOLUTA_XATTR_NODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_radix_tnode, VOLUTA_FILE_RTNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_itable_tnode, VOLUTA_ITNODE_SIZE);
-	REQUIRE_SIZEOF(struct voluta_dir_htnode, VOLUTA_DIR_HTNODE_SIZE);
+	REQUIRE_SIZEOF(struct voluta_dir_tnode, VOLUTA_DIR_HTNODE_SIZE);
 	REQUIRE_SIZEOF(struct voluta_ioc_query, 2048);
 	REQUIRE_SIZEOF_4K(struct voluta_sb_root);
 	REQUIRE_SIZEOF_4K(struct voluta_sb_hash);
@@ -195,9 +195,9 @@ static void guarantee_persistent_types_members(void)
 	REQUIRE_MEMBER_SIZE(struct voluta_itable_tnode, it_child, 1024);
 	REQUIRE_NELEMS(struct voluta_radix_tnode,
 	               r_child, VOLUTA_FILE_TREE_NCHILDS);
-	REQUIRE_NELEMS(struct voluta_dir_htnode,
+	REQUIRE_NELEMS(struct voluta_dir_tnode,
 	               de, VOLUTA_DIR_HTNODE_NENTS);
-	REQUIRE_NELEMS(struct voluta_dir_htnode,
+	REQUIRE_NELEMS(struct voluta_dir_tnode,
 	               dh_child, VOLUTA_DIR_HTNODE_NCHILDS);
 	REQUIRE_NBITS(struct voluta_bksec_info, bks_mask,
 	              VOLUTA_NKB_IN_BK * VOLUTA_NBK_IN_BKSEC);
@@ -235,21 +235,21 @@ static void guarantee_persistent_types_alignment(void)
 	REQUIRE_AOFFSET(struct voluta_inode, i_blocks, 64);
 	REQUIRE_AOFFSET(struct voluta_inode, i_nlink, 72);
 	REQUIRE_AOFFSET(struct voluta_inode, i_attributes, 80);
-	REQUIRE_AOFFSET64(struct voluta_inode, i_t, 128);
-	REQUIRE_AOFFSET64(struct voluta_inode, i_x, 192);
-	REQUIRE_AOFFSET64(struct voluta_inode, i_s, 512);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_tm, 128);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_xa, 192);
+	REQUIRE_AOFFSET64(struct voluta_inode, i_sp, 512);
 	REQUIRE_AOFFSET(struct voluta_dir_entry, de_ino, 0);
 	REQUIRE_AOFFSET(struct voluta_dir_entry, de_nents, 8);
 	REQUIRE_XOFFSET(struct voluta_dir_entry, de_nprev, 10);
 	REQUIRE_XOFFSET(struct voluta_dir_entry, de_name_len, 12);
 	REQUIRE_XOFFSET(struct voluta_dir_entry, de_dt, 14);
-	REQUIRE_AOFFSET(struct voluta_dir_htnode, dh_hdr, 0);
-	REQUIRE_AOFFSET64(struct voluta_dir_htnode, de, 64);
+	REQUIRE_AOFFSET(struct voluta_dir_tnode, dh_hdr, 0);
+	REQUIRE_AOFFSET64(struct voluta_dir_tnode, de, 64);
 	REQUIRE_AOFFSET(struct voluta_radix_tnode, r_hdr, 0);
 	REQUIRE_AOFFSET64(struct voluta_radix_tnode, r_zeros, 64);
 	REQUIRE_AOFFSET64(struct voluta_radix_tnode, r_child, 1024);
-	REQUIRE_AOFFSET(struct voluta_xattr_ispec, xa_nents, 0);
-	REQUIRE_AOFFSET(struct voluta_xattr_ispec, xa_vaddr, 8);
+	REQUIRE_AOFFSET(struct voluta_inode_xattr, ix_nents, 0);
+	REQUIRE_AOFFSET(struct voluta_inode_xattr, ix_vaddr, 8);
 	REQUIRE_AOFFSET(struct voluta_xattr_node, xa_hdr, 0);
 	REQUIRE_AOFFSET(struct voluta_xattr_node, xe, 64);
 	REQUIRE_AOFFSET64(struct voluta_symlnk_value, sy_value, 64);

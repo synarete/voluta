@@ -155,7 +155,7 @@ bool voluta_vtype_isspmap(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_INODE:
 	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_NONE:
@@ -182,7 +182,7 @@ bool voluta_vtype_isdata(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_INODE:
 	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_NONE:
@@ -216,8 +216,8 @@ size_t voluta_vtype_size(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_XANODE:
 		sz = sizeof(struct voluta_xattr_node);
 		break;
-	case VOLUTA_VTYPE_HTNODE:
-		sz = sizeof(struct voluta_dir_htnode);
+	case VOLUTA_VTYPE_DTNODE:
+		sz = sizeof(struct voluta_dir_tnode);
 		break;
 	case VOLUTA_VTYPE_RTNODE:
 		sz = sizeof(struct voluta_radix_tnode);
@@ -272,7 +272,7 @@ enum voluta_agkind voluta_vtype_to_agkind(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_INODE:
 	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
 		agkind = VOLUTA_AGKIND_META;

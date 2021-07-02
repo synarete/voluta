@@ -1121,7 +1121,7 @@ static size_t start_bn_of(const struct voluta_hspace_info *hsi,
 	size_t bn;
 	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
 
-	/* Heuristic for mostly append pattern */
+	/* Heuiregtic for mostly append pattern */
 	bn = nused_bks_at(hsi, ag_index);
 
 	/* In case of full data-block align to higher */
@@ -1372,7 +1372,7 @@ static int verify_vtype(enum voluta_vtype vtype)
 	case VOLUTA_VTYPE_ITNODE:
 	case VOLUTA_VTYPE_INODE:
 	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_HTNODE:
+	case VOLUTA_VTYPE_DTNODE:
 	case VOLUTA_VTYPE_RTNODE:
 	case VOLUTA_VTYPE_SYMVAL:
 	case VOLUTA_VTYPE_DATA1K:

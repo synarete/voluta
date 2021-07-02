@@ -5,7 +5,7 @@
  * Copyright (C) 2020-2021 Shachar Sharon
  *
  * Voluta is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
+ * it under the terms of the GNU General Public License as pubilnhed by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
@@ -122,50 +122,50 @@ static void symv_init(struct voluta_symlnk_value *symv, ino_t parent,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static const void *lis_head_value(const struct voluta_lnk_ispec *lis)
+static const void *iln_head_value(const struct voluta_inode_lnk *iln)
 {
-	return lis->l_head;
+	return iln->l_head;
 }
 
-static void lis_set_head_value(struct voluta_lnk_ispec *lis,
+static void iln_set_head_value(struct voluta_inode_lnk *iln,
                                const void *value, size_t length)
 {
-	voluta_assert_le(length, sizeof(lis->l_head));
-	memcpy(lis->l_head, value, length);
+	voluta_assert_le(length, sizeof(iln->l_head));
+	memcpy(iln->l_head, value, length);
 }
 
-static void lis_tail_part(const struct voluta_lnk_ispec *lis, size_t slot,
+static void iln_tail_part(const struct voluta_inode_lnk *iln, size_t slot,
                           struct voluta_vaddr *out_vaddr)
 {
-	voluta_vaddr64_parse(&lis->l_tail[slot], out_vaddr);
+	voluta_vaddr64_parse(&iln->l_tail[slot], out_vaddr);
 }
 
-static void lis_set_tail_part(struct voluta_lnk_ispec *lis, size_t slot,
+static void iln_set_tail_part(struct voluta_inode_lnk *iln, size_t slot,
                               const struct voluta_vaddr *vaddr)
 {
-	voluta_vaddr64_set(&lis->l_tail[slot], vaddr);
+	voluta_vaddr64_set(&iln->l_tail[slot], vaddr);
 }
 
-static void lis_reset_tail_part(struct voluta_lnk_ispec *lis, size_t slot)
+static void iln_reset_tail_part(struct voluta_inode_lnk *iln, size_t slot)
 {
-	lis_set_tail_part(lis, slot, vaddr_none());
+	iln_set_tail_part(iln, slot, vaddr_none());
 }
 
-static void lis_setup(struct voluta_lnk_ispec *lis)
+static void iln_setup(struct voluta_inode_lnk *iln)
 {
-	memset(lis->l_head, 0, sizeof(lis->l_head));
-	for (size_t slot = 0; slot < ARRAY_SIZE(lis->l_tail); ++slot) {
-		lis_reset_tail_part(lis, slot);
+	memset(iln->l_head, 0, sizeof(iln->l_head));
+	for (size_t slot = 0; slot < ARRAY_SIZE(iln->l_tail); ++slot) {
+		iln_reset_tail_part(iln, slot);
 	}
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_lnk_ispec *lis_of(const struct voluta_inode_info *ii)
+static struct voluta_inode_lnk *iln_of(const struct voluta_inode_info *ii)
 {
 	struct voluta_inode *inode = ii->inode;
 
-	return &inode->i_s.l;
+	return &inode->i_sp.l;
 }
 
 static size_t lnk_value_length(const struct voluta_inode_info *lnk_ii)
@@ -175,34 +175,34 @@ static size_t lnk_value_length(const struct voluta_inode_info *lnk_ii)
 
 static const void *lnk_value_head(const struct voluta_inode_info *lnk_ii)
 {
-	return lis_head_value(lis_of(lnk_ii));
+	return iln_head_value(iln_of(lnk_ii));
 }
 
 static void lnk_assign_value_head(const struct voluta_inode_info *lnk_ii,
                                   const void *val, size_t len)
 {
-	lis_set_head_value(lis_of(lnk_ii), val, len);
+	iln_set_head_value(iln_of(lnk_ii), val, len);
 }
 
 static int lnk_get_value_part(const struct voluta_inode_info *lnk_ii,
                               size_t slot, struct voluta_vaddr *out_vaddr)
 {
-	lis_tail_part(lis_of(lnk_ii), slot, out_vaddr);
+	iln_tail_part(iln_of(lnk_ii), slot, out_vaddr);
 	return !vaddr_isnull(out_vaddr) ? 0 : -ENOENT;
 }
 
 static void lnk_set_value_part(struct voluta_inode_info *lnk_ii, size_t slot,
                                const struct voluta_vaddr *vaddr)
 {
-	lis_set_tail_part(lis_of(lnk_ii), slot, vaddr);
+	iln_set_tail_part(iln_of(lnk_ii), slot, vaddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static const struct voluta_vaddr *
-symi_vaddr(const struct voluta_symval_info *symi)
+syi_vaddr(const struct voluta_symval_info *syi)
 {
-	return vi_vaddr(&symi->sym_vi);
+	return vi_vaddr(&syi->sy_vi);
 }
 
 static int check_symlnk(const struct voluta_symlnk_ctx *sl_ctx)
@@ -225,21 +225,21 @@ static void append_symval(struct voluta_slice *buf, const void *p, size_t n)
 
 static int stage_symval(const struct voluta_symlnk_ctx *sl_ctx,
                         const struct voluta_vaddr *vaddr,
-                        struct voluta_symval_info **out_symi)
+                        struct voluta_symval_info **out_syi)
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
 	err = voluta_stage_cached_vnode(sl_ctx->sbi, vaddr, &vi);
 	if (!err) {
-		*out_symi = voluta_symi_from_vi(vi);
+		*out_syi = voluta_syi_from_vi(vi);
 		return 0;
 	}
 	err = voluta_stage_vnode(sl_ctx->sbi, vaddr, sl_ctx->lnk_ii, &vi);
 	if (err) {
 		return err;
 	}
-	*out_symi = voluta_symi_from_vi_rebind(vi);
+	*out_syi = voluta_syi_from_vi_rebind(vi);
 	return 0;
 }
 
@@ -260,7 +260,7 @@ static int extern_symval_parts(const struct voluta_symlnk_ctx *sl_ctx,
 	int err;
 	size_t len;
 	struct voluta_vaddr vaddr;
-	struct voluta_symval_info *symi = NULL;
+	struct voluta_symval_info *syi = NULL;
 	const struct voluta_inode_info *lnk_ii = sl_ctx->lnk_ii;
 
 	for (size_t i = 0; i < sv_dsc->nparts; ++i) {
@@ -268,12 +268,12 @@ static int extern_symval_parts(const struct voluta_symlnk_ctx *sl_ctx,
 		if (err) {
 			return err;
 		}
-		err = stage_symval(sl_ctx, &vaddr, &symi);
+		err = stage_symval(sl_ctx, &vaddr, &syi);
 		if (err) {
 			return err;
 		}
 		len = sv_dsc->parts[i].len;
-		append_symval(buf, symv_value(symi->sym), len);
+		append_symval(buf, symv_value(syi->syv), len);
 	}
 	return 0;
 }
@@ -343,7 +343,7 @@ int voluta_do_readlink(const struct voluta_oper *op,
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static int spawn_symval(const struct voluta_symlnk_ctx *sl_ctx,
-                        struct voluta_symval_info **out_symi)
+                        struct voluta_symval_info **out_syi)
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
@@ -353,7 +353,7 @@ static int spawn_symval(const struct voluta_symlnk_ctx *sl_ctx,
 	if (err) {
 		return err;
 	}
-	*out_symi = voluta_symi_from_vi_rebind(vi);
+	*out_syi = voluta_syi_from_vi_rebind(vi);
 	return 0;
 }
 
@@ -366,18 +366,18 @@ static int remove_symval_at(const struct voluta_symlnk_ctx *sl_ctx,
 
 static int create_symval(struct voluta_symlnk_ctx *sl_ctx,
                          const struct voluta_str *str,
-                         struct voluta_symval_info **out_symi)
+                         struct voluta_symval_info **out_syi)
 {
 	int err;
-	struct voluta_symval_info *symi = NULL;
+	struct voluta_symval_info *syi = NULL;
 	const ino_t parent = ii_ino(sl_ctx->lnk_ii);
 
-	err = spawn_symval(sl_ctx, &symi);
+	err = spawn_symval(sl_ctx, &syi);
 	if (err) {
 		return err;
 	}
-	symv_init(symi->sym, parent, str->str, str->len);
-	*out_symi = symi;
+	symv_init(syi->syv, parent, str->str, str->len);
+	*out_syi = syi;
 	return 0;
 }
 
@@ -392,10 +392,10 @@ static int assign_symval_head(struct voluta_symlnk_ctx *sl_ctx,
 }
 
 static void bind_symval_part(struct voluta_symlnk_ctx *sl_ctx, size_t slot,
-                             const struct voluta_symval_info *symi)
+                             const struct voluta_symval_info *syi)
 {
 	struct voluta_inode_info *lnk_ii = sl_ctx->lnk_ii;
-	const struct voluta_vaddr *vaddr = symi_vaddr(symi);
+	const struct voluta_vaddr *vaddr = syi_vaddr(syi);
 
 	lnk_set_value_part(lnk_ii, slot, vaddr);
 	update_iblocks(sl_ctx->op, lnk_ii, vaddr->vtype, 1);
@@ -405,14 +405,14 @@ static int assign_symval_parts(struct voluta_symlnk_ctx *sl_ctx,
                                const struct voluta_symval_desc *sv_dsc)
 {
 	int err;
-	struct voluta_symval_info *symi = NULL;
+	struct voluta_symval_info *syi = NULL;
 
 	for (size_t slot = 0; slot < sv_dsc->nparts; ++slot) {
-		err = create_symval(sl_ctx, &sv_dsc->parts[slot], &symi);
+		err = create_symval(sl_ctx, &sv_dsc->parts[slot], &syi);
 		if (err) {
 			return err;
 		}
-		bind_symval_part(sl_ctx, slot, symi);
+		bind_symval_part(sl_ctx, slot, syi);
 	}
 	return 0;
 }
@@ -522,7 +522,7 @@ int voluta_drop_symlink(struct voluta_inode_info *lnk_ii)
 
 void voluta_setup_symlnk(struct voluta_inode_info *lnk_ii)
 {
-	lis_setup(lis_of(lnk_ii));
+	iln_setup(iln_of(lnk_ii));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

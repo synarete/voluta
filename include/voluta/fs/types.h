@@ -371,6 +371,7 @@ struct voluta_oper_stat {
 /* super-block in-memory info */
 struct voluta_sb_info {
 	struct voluta_super_block      *sb;
+	struct voluta_alloc_if         *sb_alif;
 	struct voluta_qalloc           *sb_qalloc;
 	struct voluta_cache            *sb_cache;
 	struct voluta_locosd           *sb_locosd;
@@ -441,7 +442,7 @@ struct voluta_fuseq_worker {
 } voluta_aligned64;
 
 struct voluta_fuseq_workset {
-	struct voluta_fuseq_worker      fws_worker[8];
+	struct voluta_fuseq_worker      *fws_worker;
 	short fws_nlimit;
 	short fws_navail;
 	short fws_nactive;
@@ -453,7 +454,7 @@ struct voluta_fuseq {
 	struct voluta_mutex             fq_ch_lock;
 	struct voluta_mutex             fq_fs_lock;
 	struct voluta_sb_info          *fq_sbi;
-	struct voluta_qalloc           *fq_qal;
+	struct voluta_alloc_if         *fq_alif;
 	size_t          fq_nopers;
 	time_t          fq_times;
 	volatile int    fq_active;

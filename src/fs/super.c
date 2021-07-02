@@ -1452,6 +1452,7 @@ static void sbi_attach_to(struct voluta_sb_info *sbi,
 {
 	sbi->sb_cache = cache;
 	sbi->sb_locosd = locosd;
+	sbi->sb_alif = cache->c_alif;
 	sbi->sb_qalloc = cache->c_qalloc;
 	sbi->sb_ops.op_iopen_max = calc_iopen_limit(cache);
 }

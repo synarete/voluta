@@ -2937,44 +2937,54 @@ static int fuseq_recv_request(struct voluta_fuseq_worker *fqw)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_fuseq_inb *inb_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_inb *inb_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_inb *inb;
 
-	return voluta_qalloc_zmalloc(qal, sizeof(*inb));
+	inb = voluta_allocate(alif, sizeof(*inb));
+	if (inb != NULL) {
+		voluta_memzero(inb, sizeof(*inb));
+	}
+	return inb;
 }
 
-static void inb_del(struct voluta_fuseq_inb *inb, struct voluta_qalloc *qal)
+static void inb_del(struct voluta_fuseq_inb *inb, struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, inb, sizeof(*inb));
+	voluta_deallocate(alif, inb, sizeof(*inb));
 }
 
-static struct voluta_fuseq_outb *outb_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_outb *outb_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_outb *outb;
 
-	outb = voluta_qalloc_zmalloc(qal, sizeof(*outb));
+	outb = voluta_allocate(alif, sizeof(*outb));
+	if (outb != NULL) {
+		voluta_memzero(outb, sizeof(*outb));
+	}
 	return outb;
 }
 
-static void outb_del(struct voluta_fuseq_outb *outb, struct voluta_qalloc *qal)
+static void outb_del(struct voluta_fuseq_outb *outb,
+                     struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, outb, sizeof(*outb));
+	voluta_deallocate(alif, outb, sizeof(*outb));
 }
 
-
-static struct voluta_fuseq_rw_iter *rwi_new(struct voluta_qalloc *qal)
+static struct voluta_fuseq_rw_iter *rwi_new(struct voluta_alloc_if *alif)
 {
 	struct voluta_fuseq_rw_iter *rwi;
 
-	rwi = voluta_qalloc_zmalloc(qal, sizeof(*rwi));
+	rwi = voluta_allocate(alif, sizeof(*rwi));
+	if (rwi != NULL) {
+		voluta_memzero(rwi, sizeof(*rwi));
+	}
 	return rwi;
 }
 
 static void rwi_del(struct voluta_fuseq_rw_iter *rwi,
-                    struct voluta_qalloc *qal)
+                    struct voluta_alloc_if *alif)
 {
-	voluta_qalloc_zfree(qal, rwi, sizeof(*rwi));
+	voluta_deallocate(alif, rwi, sizeof(*rwi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -3085,15 +3095,15 @@ static void fuseq_fini_nullfd(struct voluta_fuseq_worker *fqw)
 
 static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)
 {
-	struct voluta_qalloc *qal = fqw->fq->fq_qal;
+	struct voluta_alloc_if *alif = fqw->fq->fq_alif;
 
-	fqw->inb = inb_new(qal);
+	fqw->inb = inb_new(alif);
 	if (fqw->inb == NULL) {
 		return -ENOMEM;
 	}
-	fqw->outb = outb_new(qal);
+	fqw->outb = outb_new(alif);
 	if (fqw->outb == NULL) {
-		inb_del(fqw->inb, qal);
+		inb_del(fqw->inb, alif);
 		fqw->inb = NULL;
 		return -ENOMEM;
 	}
@@ -3102,24 +3112,24 @@ static int fuseq_init_bufs(struct voluta_fuseq_worker *fqw)
 
 static void fuseq_fini_bufs(struct voluta_fuseq_worker *fqw)
 {
-	struct voluta_qalloc *qal = fqw->fq->fq_qal;
+	struct voluta_alloc_if *alif = fqw->fq->fq_alif;
 
-	outb_del(fqw->outb, qal);
-	inb_del(fqw->inb, qal);
+	outb_del(fqw->outb, alif);
+	inb_del(fqw->inb, alif);
 	fqw->inb = NULL;
 	fqw->outb = NULL;
 }
 
 static int fuseq_init_rwi(struct voluta_fuseq_worker *fqw)
 {
-	fqw->rwi = rwi_new(fqw->fq->fq_qal);
+	fqw->rwi = rwi_new(fqw->fq->fq_alif);
 	return (fqw->rwi != NULL) ? 0 : -ENOMEM;
 }
 
 static void fuseq_fini_rwi(struct voluta_fuseq_worker *fqw)
 {
 	if (fqw->rwi != NULL) {
-		rwi_del(fqw->rwi, fqw->fq->fq_qal);
+		rwi_del(fqw->rwi, fqw->fq->fq_alif);
 		fqw->rwi = NULL;
 	}
 }
@@ -3178,28 +3188,32 @@ static void fuseq_fini_worker(struct voluta_fuseq_worker *fqw)
 	fqw->op = NULL;
 }
 
-static int32_t min32(int32_t x, int32_t y)
+static int32_t clamp32(int32_t x, int32_t x_min, int32_t x_max)
 {
-	return (x < y) ? x : y;
+	return voluta_max32(voluta_min32(x, x_max), x_min);
 }
 
 static int fuseq_init_workers(struct voluta_fuseq *fq)
 {
 	int err;
 	int nprocs;
-	int nworkers;
+	int nlimit;
+	size_t mem_size;
 	struct voluta_fuseq_workset *fws = &fq->fq_ws;
-	const int nworkers_max = (int)ARRAY_SIZE(fws->fws_worker);
 
 	nprocs = get_nprocs_conf();
-	nworkers = min32(nprocs, nworkers_max);
+	nlimit = clamp32(nprocs, 1, 64);
+	log_info("init fuseq workers: nprocs=%d workers=%d", nprocs, nlimit);
 
-	log_dbg("init fuseq workers: nprocs=%d nworkers=%d", nprocs, nworkers);
-
-	fws->fws_nlimit = (short)nworkers;
+	mem_size = (size_t)nlimit * sizeof(*fws->fws_worker);
+	fws->fws_worker = voluta_allocate(fq->fq_alif, mem_size);
+	if (fws->fws_worker == NULL) {
+		return -ENOMEM;
+	}
+	fws->fws_nlimit = (short)nlimit;
 	fws->fws_navail = 0;
 	fws->fws_nactive = 0;
-	for (int i = 0; i < nworkers; ++i) {
+	for (int i = 0; i < nlimit; ++i) {
 		err = fuseq_init_worker(&fws->fws_worker[i], fq, i);
 		if (err) {
 			return err;
@@ -3211,10 +3225,17 @@ static int fuseq_init_workers(struct voluta_fuseq *fq)
 
 static void fuseq_fini_workers(struct voluta_fuseq *fq)
 {
+	size_t mem_size;
 	struct voluta_fuseq_workset *fws = &fq->fq_ws;
 
-	for (int i = 0; i < fws->fws_navail; ++i) {
-		fuseq_fini_worker(&fws->fws_worker[i]);
+	if (fws->fws_worker != NULL) {
+		for (int i = 0; i < fws->fws_navail; ++i) {
+			fuseq_fini_worker(&fws->fws_worker[i]);
+		}
+		mem_size = (size_t)fws->fws_nlimit * sizeof(*fws->fws_worker);
+		voluta_deallocate(fq->fq_alif, fws->fws_worker, mem_size);
+		fws->fws_worker = NULL;
+		fws->fws_nlimit = 0;
 	}
 }
 
@@ -3245,7 +3266,7 @@ static void fuseq_init_common(struct voluta_fuseq *fq,
 {
 	fq->fq_times = 0;
 	fq->fq_sbi = sbi;
-	fq->fq_qal = sbi->sb_qalloc;
+	fq->fq_alif = sbi->sb_alif;
 	fq->fq_nopers = 0;
 	fq->fq_fuse_fd = -1;
 	fq->fq_got_init = false;
@@ -3298,7 +3319,7 @@ void voluta_fuseq_fini(struct voluta_fuseq *fq)
 	fuseq_fini_workers(fq);
 	fuseq_fini_locks(fq);
 
-	fq->fq_qal = NULL;
+	fq->fq_alif = NULL;
 	fq->fq_sbi = NULL;
 }
 

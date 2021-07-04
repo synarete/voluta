@@ -250,11 +250,13 @@ void voluta_ce_init(struct voluta_cache_elem *ce)
 	ce->ce_refcnt = 0;
 	ce->ce_mapped = false;
 	ce->ce_forgot = false;
+	ce->ce_dirty = false;
 }
 
 void voluta_ce_fini(struct voluta_cache_elem *ce)
 {
 	voluta_assert(!ce->ce_mapped);
+	voluta_assert(!ce->ce_dirty);
 
 	list_head_fini(&ce->ce_htb_lh);
 	list_head_fini(&ce->ce_lru_lh);
@@ -331,7 +333,7 @@ static size_t ce_decref(struct voluta_cache_elem *ce)
 
 static bool ce_is_evictable(const struct voluta_cache_elem *ce)
 {
-	return !ce->ce_refcnt;
+	return !ce->ce_refcnt && !ce->ce_dirty;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -393,26 +395,48 @@ static bool bsi_is_evictable(const struct voluta_bksec_info *bsi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_cache *ui_cache(const struct voluta_unode_info *ui)
+static struct voluta_cnode_info *ci_from_ce(const struct voluta_cache_elem *ce)
 {
-	return ui->u_sbi->sb_cache;
+	const struct voluta_cnode_info *ci = NULL;
+
+	if (likely(ce != NULL)) {
+		ci = container_of2(ce, struct voluta_cnode_info, ce);
+	}
+	return unconst(ci);
 }
+
+static struct voluta_cache_elem *ci_to_ce(const struct voluta_cnode_info *ci)
+{
+	const struct voluta_cache_elem *ce = &ci->ce;
+
+	return unconst(ce);
+}
+
+bool voluta_ci_isevictable(const struct voluta_cnode_info *ci)
+{
+	return ce_is_evictable(ci_to_ce(ci));
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
 static struct voluta_unode_info *ui_from_ce(const struct voluta_cache_elem *ce)
 {
 	const struct voluta_unode_info *ui = NULL;
 
 	if (likely(ce != NULL)) {
-		ui = container_of2(ce, struct voluta_unode_info, u_ce);
+		ui = voluta_ui_from_ci(ci_from_ce(ce));
 	}
 	return unconst(ui);
 }
 
 static struct voluta_cache_elem *ui_to_ce(const struct voluta_unode_info *ui)
 {
-	const struct voluta_cache_elem *ce = &ui->u_ce;
+	return ci_to_ce(&ui->u_ci);
+}
 
-	return unconst(ce);
+static struct voluta_cache *ui_cache(const struct voluta_unode_info *ui)
+{
+	return ui->u_sbi->sb_cache;
 }
 
 static void ui_attach_bk(struct voluta_unode_info *ui,
@@ -448,7 +472,7 @@ void voluta_ui_decref(struct voluta_unode_info *ui)
 
 bool voluta_ui_isevictable(const struct voluta_unode_info *ui)
 {
-	return !ui->u_dirty && ce_is_evictable(ui_to_ce(ui));
+	return ce_is_evictable(ui_to_ce(ui));
 }
 
 
@@ -472,16 +496,17 @@ static struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 static struct voluta_vnode_info *vi_from_ce(const struct voluta_cache_elem *ce)
 {
 	const struct voluta_vnode_info *vi = NULL;
+	const struct voluta_cnode_info *ci = ci_from_ce(ce);
 
-	if (likely(ce != NULL)) {
-		vi = container_of2(ce, struct voluta_vnode_info, v_ce);
+	if (likely(ci != NULL)) {
+		vi = container_of2(ci, struct voluta_vnode_info, v_ci);
 	}
 	return unconst(vi);
 }
 
 static struct voluta_cache_elem *vi_to_ce(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_cache_elem *ce = &vi->v_ce;
+	const struct voluta_cache_elem *ce = &vi->v_ci.ce;
 
 	return unconst(ce);
 }
@@ -546,7 +571,7 @@ static void vi_detach_bk(struct voluta_vnode_info *vi)
 
 bool voluta_vi_isevictable(const struct voluta_vnode_info *vi)
 {
-	return !vi->v_dirty && ce_is_evictable(vi_to_ce(vi));
+	return ce_is_evictable(vi_to_ce(vi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -816,7 +841,8 @@ static struct voluta_vnode_info *dq_blh_to_vi(struct voluta_list_head *dq_blh)
 	const struct voluta_vnode_info *vi = NULL;
 
 	if (dq_blh != NULL) {
-		vi = container_of(dq_blh, struct voluta_vnode_info, v_dq_sub_lh);
+		vi = container_of(dq_blh, struct voluta_vnode_info,
+		                  v_dq_sub_lh);
 	}
 	return unconst(vi);
 }
@@ -908,14 +934,14 @@ static void dirtyqs_enq_vi(struct voluta_dirtyqs *dqs,
 	struct voluta_dirtyq *dq;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	if (!vi->v_dirty) {
+	if (!vi->v_ci.ce.ce_dirty) {
 		dq = dirtyqs_queue_of_vi(dqs, vi);
 		dq_append(dq, &vi->v_dq_sub_lh, vaddr->len);
 
 		dq = &dqs->dq_vis_all;
 		dq_append(dq, &vi->v_dq_lh, vaddr->len);
 
-		vi->v_dirty = 1;
+		vi->v_ci.ce.ce_dirty = true;
 	}
 }
 
@@ -925,14 +951,14 @@ static void dirtyqs_dec_vi(struct voluta_dirtyqs *dqs,
 	struct voluta_dirtyq *dq;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	if (vi->v_dirty) {
+	if (vi->v_ci.ce.ce_dirty) {
 		dq = dirtyqs_queue_of_vi(dqs, vi);
 		dq_remove(dq, &vi->v_dq_sub_lh, vaddr->len);
 
 		dq = &dqs->dq_vis_all;
 		dq_remove(dq, &vi->v_dq_lh, vaddr->len);
 
-		vi->v_dirty = 0;
+		vi->v_ci.ce.ce_dirty = false;
 	}
 }
 
@@ -977,10 +1003,10 @@ static void dirtyqs_enq_ui(struct voluta_dirtyqs *dqs,
 	struct voluta_dirtyq *dq;
 	const struct voluta_uaddr *uaddr = ui_uaddr(ui);
 
-	if (!ui->u_dirty) {
+	if (!ui->u_ci.ce.ce_dirty) {
 		dq = &dqs->dq_uis_all;
 		dq_append(dq, &ui->u_dq_lh, uaddr->len);
-		ui->u_dirty = 1;
+		ui->u_ci.ce.ce_dirty = true;
 	}
 }
 
@@ -990,10 +1016,10 @@ static void dirtyqs_dec_ui(struct voluta_dirtyqs *dqs,
 	struct voluta_dirtyq *dq;
 	const struct voluta_uaddr *uaddr = ui_uaddr(ui);
 
-	if (ui->u_dirty) {
+	if (ui->u_ci.ce.ce_dirty) {
 		dq = &dqs->dq_uis_all;
 		dq_remove(dq, &ui->u_dq_lh, uaddr->len);
-		ui->u_dirty = 0;
+		ui->u_ci.ce.ce_dirty = false;
 	}
 }
 
@@ -1322,7 +1348,7 @@ cache_find_vi(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 static void cache_unmap_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	if (vi->v_ce.ce_mapped) {
+	if (vi->v_ci.ce.ce_mapped) {
 		lrumap_remove(&cache->c_vlm, vi_to_ce(vi));
 	}
 }
@@ -1343,7 +1369,7 @@ static void cache_remove_vi(struct voluta_cache *cache,
 static void cache_evict_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	voluta_assert(!vi->v_dirty);
+	voluta_assert(!vi->v_ci.ce.ce_dirty);
 
 	cache_remove_vi(cache, vi);
 	vi_detach_bk(vi);
@@ -1380,7 +1406,7 @@ voluta_cache_lookup_vi(struct voluta_cache *cache,
 static void cache_store_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	lrumap_store(&cache->c_vlm, &vi->v_ce, &vi->vaddr);
+	lrumap_store(&cache->c_vlm, &vi->v_ci.ce, &vi->vaddr);
 }
 
 static int visit_evictable_vi(struct voluta_cache_elem *ce, void *arg)
@@ -1433,7 +1459,7 @@ void voulta_cache_forget_vi(struct voluta_cache *cache,
 	vi_undirtify(vi);
 	if (vi_refcnt(vi) > 0) {
 		cache_unmap_vi(cache, vi);
-		vi->v_ce.ce_forgot = true;
+		vi->v_ci.ce.ce_forgot = true;
 	} else {
 		cache_evict_vi(cache, vi);
 	}
@@ -1555,9 +1581,11 @@ cache_find_ui(struct voluta_cache *cache, const struct voluta_uaddr *uaddr)
 static void cache_evict_ui(struct voluta_cache *cache,
                            struct voluta_unode_info *ui)
 {
-	lrumap_remove(&cache->c_ulm, ui_to_ce(ui));
+	struct voluta_cnode_info *ci = &ui->u_ci;
+
+	lrumap_remove(&cache->c_ulm, ci_to_ce(ci));
 	ui_detach_bk(ui);
-	ui->u_vtbl->del(ui, cache->c_alif);
+	ci->c_vtbl->del(ci, cache->c_alif);
 }
 
 static void cache_promote_lru_ui(struct voluta_cache *cache,
@@ -1597,12 +1625,12 @@ static int visit_evictable_ui(struct voluta_cache_elem *ce, void *arg)
 {
 	int ret = 0;
 	struct voluta_cache_ctx *c_ctx = arg;
-	struct voluta_unode_info *ui = ui_from_ce(ce);
+	struct voluta_cnode_info *ci = ci_from_ce(ce);
 
 	if (c_ctx->count++ >= c_ctx->limit) {
 		ret = 1;
-	} else if (ui->u_vtbl->evictable(ui)) {
-		c_ctx->ui = ui;
+	} else if (ci->c_vtbl->evictable(ci)) {
+		c_ctx->ui = voluta_ui_from_ci(ci);
 		ret = 1;
 	}
 	return ret;
@@ -1675,8 +1703,9 @@ static bool cache_evict_or_relru_ui(struct voluta_cache *cache,
                                     struct voluta_unode_info *ui)
 {
 	bool evicted;
+	struct voluta_cnode_info *ci = &ui->u_ci;
 
-	if (ui->u_vtbl->evictable(ui)) {
+	if (ci->c_vtbl->evictable(ci)) {
 		cache_evict_ui(cache, ui);
 		evicted = true;
 	} else {
@@ -1930,8 +1959,13 @@ static bool cache_evict_by_ui(struct voluta_cache *cache,
                               struct voluta_unode_info *ui)
 {
 	struct voluta_bksec_info *bsi = NULL;
+	struct voluta_cnode_info *ci = NULL;
 
-	if ((ui != NULL) && (ui->u_vtbl->evictable(ui))) {
+	if (ui == NULL) {
+		return false;
+	}
+	ci = &ui->u_ci;
+	if (ci->c_vtbl->evictable(ci)) {
 		bsi = ui->u_bsi;
 		cache_evict_ui(cache, ui);
 	}

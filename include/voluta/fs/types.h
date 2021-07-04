@@ -50,7 +50,8 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_cache;
-struct voluta_bnode_info;
+struct voluta_cnode_info;
+struct voluta_unode_info;
 struct voluta_vnode_info;
 struct voluta_inode_info;
 struct voluta_fuseq;
@@ -260,9 +261,10 @@ struct voluta_cache_elem {
 	struct voluta_list_head ce_lru_lh;
 	const void *ce_key;
 	int  ce_refcnt;
+	bool ce_dirty;
 	bool ce_mapped;
 	bool ce_forgot;
-	char ce_pad[2];
+	char ce_pad;
 };
 
 /* cached blocks-section info */

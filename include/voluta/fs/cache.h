@@ -132,4 +132,7 @@ void voluta_ui_undirtify(struct voluta_unode_info *ui);
 void voluta_dset_inhabit_by_cached_vis(struct voluta_dset *dset,
                                        const struct voluta_cache *cache);
 
+
+bool voluta_ci_isevictable(const struct voluta_cnode_info *ci);
+
 #endif /* VOLUTA_CACHE_H_ */

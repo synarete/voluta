@@ -35,7 +35,7 @@
 
 
 /* local functions forward declarations */
-static const struct voluta_ui_vtbl *hsi_ui_vtbl(void);
+static const struct voluta_ci_vtbl *hsi_ci_vtbl(void);
 static const struct voluta_vi_vtbl *hsi_vi_vtbl(void);
 static const struct voluta_vi_vtbl *agi_vi_vtbl(void);
 static const struct voluta_vi_vtbl *itni_vi_vtbl(void);
@@ -70,6 +70,23 @@ static void an_fini(struct voluta_avl_node *an)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static void ci_init(struct voluta_cnode_info *ci,
+                    const struct voluta_ci_vtbl *vtbl)
+{
+	voluta_ce_init(&ci->ce);
+	ci->c_sbi = NULL;
+	ci->c_vtbl = vtbl;
+}
+
+static void ci_fini(struct voluta_cnode_info *ci)
+{
+	voluta_ce_fini(&ci->ce);
+	ci->c_sbi = NULL;
+	ci->c_vtbl = NULL;
+}
+
+/*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
 static struct voluta_unode_info *ui_unconst(const struct voluta_unode_info *ui)
 {
 	union {
@@ -83,21 +100,19 @@ static struct voluta_unode_info *ui_unconst(const struct voluta_unode_info *ui)
 
 static void ui_init(struct voluta_unode_info *ui,
                     const struct voluta_baddr *baddr,
-                    const struct voluta_ui_vtbl *vtbl)
+                    const struct voluta_ci_vtbl *vtbl)
 {
 	voluta_uba_reset(&ui->uba);
 	baddr_copyto(baddr, &ui->uba.baddr);
-	voluta_ce_init(&ui->u_ce);
+	ci_init(&ui->u_ci, vtbl);
 	lh_init(&ui->u_dq_lh);
 	ui->u_sbi = NULL;
 	ui->u_bsi = NULL;
-	ui->u_dirty = 0;
-	ui->u_vtbl = vtbl;
 }
 
 static void ui_init2(struct voluta_unode_info *ui,
                      const struct voluta_uba *uba,
-                     const struct voluta_ui_vtbl *vtbl)
+                     const struct voluta_ci_vtbl *vtbl)
 {
 	ui_init(ui, &uba->baddr, vtbl);
 	voluta_uba_copyto(uba, &ui->uba);
@@ -106,11 +121,33 @@ static void ui_init2(struct voluta_unode_info *ui,
 static void ui_fini(struct voluta_unode_info *ui)
 {
 	voluta_uba_reset(&ui->uba);
-	voluta_ce_fini(&ui->u_ce);
+	ci_fini(&ui->u_ci);
 	lh_fini(&ui->u_dq_lh);
 	ui->u_sbi = NULL;
 	ui->u_bsi = NULL;
-	ui->u_vtbl = NULL;
+}
+
+struct voluta_unode_info *voluta_ui_from_ci(const struct voluta_cnode_info *ci)
+{
+	const struct voluta_unode_info *ui = NULL;
+
+	if (likely(ci != NULL)) {
+		ui = container_of2(ci, struct voluta_unode_info, u_ci);
+	}
+	return ui_unconst(ui);
+}
+
+static int ui_resolve(const struct voluta_unode_info *ui,
+                      struct voluta_baddr *out_baddr)
+{
+	baddr_copyto(&ui->uba.baddr, out_baddr);
+	return 0;
+}
+
+static int ui_resolve_from_ci(const struct voluta_cnode_info *ci,
+                              struct voluta_baddr *out_baddr)
+{
+	return ui_resolve(voluta_ui_from_ci(ci), out_baddr);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -154,7 +191,7 @@ static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_vba *vba,
                     const struct voluta_vi_vtbl *vtbl)
 {
-	voluta_ce_init(&vi->v_ce);
+	ci_init(&vi->v_ci, NULL);
 	lh_init(&vi->v_dq_sub_lh);
 	lh_init(&vi->v_dq_lh);
 	an_init(&vi->v_ds_an);
@@ -165,14 +202,13 @@ static void vi_init(struct voluta_vnode_info *vi,
 	vi->v_bsi = NULL;
 	vi->v_ds_next = NULL;
 	vi->v_ds_key = 0;
-	vi->v_dirty = 0;
 	vi->v_verify = 0;
 	vi->v_vtbl = vtbl;
 }
 
 static void vi_fini(struct voluta_vnode_info *vi)
 {
-	voluta_ce_fini(&vi->v_ce);
+	ci_fini(&vi->v_ci);
 	lh_fini(&vi->v_dq_sub_lh);
 	lh_fini(&vi->v_dq_lh);
 	an_fini(&vi->v_ds_an);
@@ -182,9 +218,18 @@ static void vi_fini(struct voluta_vnode_info *vi)
 	vi->v_sbi = NULL;
 	vi->v_bsi = NULL;
 	vi->v_ds_next = NULL;
-	vi->v_dirty = -11111;
 	vi->v_verify = 0;
 	vi->v_vtbl = NULL;
+}
+
+struct voluta_vnode_info *voluta_vi_from_ci(const struct voluta_cnode_info *ci)
+{
+	const struct voluta_vnode_info *vi = NULL;
+
+	if (likely(ci != NULL)) {
+		vi = container_of2(ci, struct voluta_vnode_info, v_ci);
+	}
+	return vi_unconst(vi);
 }
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi)
@@ -286,7 +331,7 @@ voluta_hsi_from_vi_rebind(const struct voluta_vnode_info *vi,
 static void hsi_init(struct voluta_hspace_info *hsi,
                      const struct voluta_vba *vba)
 {
-	ui_init(&hsi->hs_ui, &vba->baddr, hsi_ui_vtbl());
+	ui_init(&hsi->hs_ui, &vba->baddr, hsi_ci_vtbl());
 	vi_init(&hsi->hs_vi, vba, hsi_vi_vtbl());
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 	hsi->hsm = NULL;
@@ -298,7 +343,7 @@ static void hsi_init2(struct voluta_hspace_info *hsi,
 	struct voluta_vba vba;
 
 	uba_to_vba(uba, &vba);
-	ui_init2(&hsi->hs_ui, uba, hsi_ui_vtbl());
+	ui_init2(&hsi->hs_ui, uba, hsi_ci_vtbl());
 	vi_init(&hsi->hs_vi, &vba, hsi_vi_vtbl());
 	hsi->hs_index = VOLUTA_HS_INDEX_NULL;
 	hsi->hsm = NULL;
@@ -345,6 +390,12 @@ static void hsi_delete_by_ui(struct voluta_unode_info *ui,
 	hsi_delete(voluta_hsi_from_ui(ui), alif);
 }
 
+static void hsi_delete_by_ci(struct voluta_cnode_info *ci,
+                             struct voluta_alloc_if *alif)
+{
+	hsi_delete_by_ui(voluta_ui_from_ci(ci), alif);
+}
+
 static struct voluta_hspace_info *
 hsi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
@@ -371,7 +422,7 @@ hsi_new2(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 
 static const struct voluta_vi_vtbl vi_vtbl_hsi = {
 	.evictable = voluta_vi_isevictable,
-	.del = hsi_delete_by_vi
+	.del = hsi_delete_by_vi,
 };
 
 static const struct voluta_vi_vtbl *hsi_vi_vtbl(void)
@@ -379,14 +430,15 @@ static const struct voluta_vi_vtbl *hsi_vi_vtbl(void)
 	return &vi_vtbl_hsi;
 }
 
-static const struct voluta_ui_vtbl ui_vtbl_hsi = {
-	.evictable = voluta_ui_isevictable,
-	.del = hsi_delete_by_ui
-};
-
-static const struct voluta_ui_vtbl *hsi_ui_vtbl(void)
+static const struct voluta_ci_vtbl *hsi_ci_vtbl(void)
 {
-	return &ui_vtbl_hsi;
+	static const struct voluta_ci_vtbl vtbl = {
+		.evictable = voluta_ci_isevictable,
+		.del = hsi_delete_by_ci,
+		.resolve = ui_resolve_from_ci,
+	};
+
+	return &vtbl;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -483,14 +535,14 @@ voluta_agi_from_vi_rebind(struct voluta_vnode_info *vi,
 	return agi;
 }
 
-static const struct voluta_vi_vtbl vi_vtbl_agi = {
+static const struct voluta_vi_vtbl yi_vtbl_agi = {
 	.evictable = voluta_vi_isevictable,
 	.del = agi_delete_by_vi
 };
 
 static const struct voluta_vi_vtbl *agi_vi_vtbl(void)
 {
-	return &vi_vtbl_agi;
+	return &yi_vtbl_agi;
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

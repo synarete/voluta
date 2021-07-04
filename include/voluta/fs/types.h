@@ -280,9 +280,9 @@ struct voluta_dirtyq {
 };
 
 struct voluta_dirtyqs {
-	struct voluta_qalloc           *dq_qalloc;
-	struct voluta_dirtyq           *dq_bins;
-	struct voluta_dirtyq            dq_vi_main;
+	struct voluta_dirtyq            dq_uis_all;
+	struct voluta_dirtyq            dq_vis_all;
+	struct voluta_dirtyq           *dq_vis_sub;
 	size_t dq_nbins;
 };
 
@@ -390,12 +390,11 @@ struct voluta_sb_info {
 	time_t                          sb_mntime;
 } voluta_aligned64;
 
-/* de-stage dirty-vnodes set */
+/* dirty-vnodes set */
 typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
                                    struct voluta_vnode_info *vi);
 
 struct voluta_dset {
-	struct voluta_cache            *ds_cache;
 	voluta_dset_add_fn              ds_add_fn;
 	struct voluta_vnode_info       *ds_viq;
 	struct voluta_avl               ds_avl;

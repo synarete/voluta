@@ -43,9 +43,6 @@ bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags);
 bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
                                 const struct voluta_inode_info *ii, int flags);
 
-void voluta_cache_inhabit_dset(const struct voluta_cache *cache,
-                               struct voluta_dset *dset);
-
 
 struct voluta_bksec_info *
 voluta_cache_lookup_bsi(struct voluta_cache *cache,
@@ -126,5 +123,13 @@ void voluta_ui_incref(struct voluta_unode_info *ui);
 void voluta_ui_decref(struct voluta_unode_info *ui);
 
 bool voluta_ui_isevictable(const struct voluta_unode_info *ui);
+
+void voluta_ui_dirtify(struct voluta_unode_info *ui);
+
+void voluta_ui_undirtify(struct voluta_unode_info *ui);
+
+
+void voluta_dset_inhabit_by_cached_vis(struct voluta_dset *dset,
+                                       const struct voluta_cache *cache);
 
 #endif /* VOLUTA_CACHE_H_ */

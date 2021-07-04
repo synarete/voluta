@@ -155,8 +155,8 @@ static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_vi_vtbl *vtbl)
 {
 	voluta_ce_init(&vi->v_ce);
-	lh_init(&vi->v_dq_blh);
-	lh_init(&vi->v_dq_mlh);
+	lh_init(&vi->v_dq_sub_lh);
+	lh_init(&vi->v_dq_lh);
 	an_init(&vi->v_ds_an);
 	vaddr_copyto(&vba->vaddr, &vi->vaddr);
 	voluta_fiovref_init(&vi->v_fir, vi_fiov_pre, vi_fiov_post);
@@ -173,8 +173,8 @@ static void vi_init(struct voluta_vnode_info *vi,
 static void vi_fini(struct voluta_vnode_info *vi)
 {
 	voluta_ce_fini(&vi->v_ce);
-	lh_fini(&vi->v_dq_blh);
-	lh_fini(&vi->v_dq_mlh);
+	lh_fini(&vi->v_dq_sub_lh);
+	lh_fini(&vi->v_dq_lh);
 	an_fini(&vi->v_ds_an);
 	vaddr_reset(&vi->vaddr);
 	voluta_fiovref_fini(&vi->v_fir);
@@ -1194,8 +1194,6 @@ voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 {
 	struct voluta_unode_info *ui;
 	const enum voluta_utype utype = uba->uaddr.utype;
-
-	voluta_unused(alif); /* XXX */
 
 	switch (utype) {
 	case VOLUTA_UTYPE_HSMAP:

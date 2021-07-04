@@ -93,7 +93,11 @@
 #define baddr_copyto(ba1, ba2)          voluta_baddr_copyto(ba1, ba2)
 #define baddr_setup(ba, bid, s, o)      voluta_baddr_setup(ba, bid, s, o)
 
-#define vi_vba(vi, vba)                 voluta_vi_vba(vi, vba)
+#define ui_incref(ui)                   voluta_ui_incref(ui)
+#define ui_decref(ui)                   voluta_ui_decref(ui)
+#define ui_dirtify(ui)                  voluta_ui_dirtify(ui)
+#define ui_undirtify(ui)                voluta_ui_undirtify(ui)
+
 #define vi_refcnt(vi)                   voluta_vi_refcnt(vi)
 #define vi_incref(vi)                   voluta_vi_incref(vi)
 #define vi_decref(vi)                   voluta_vi_decref(vi)
@@ -331,6 +335,15 @@ bool capable_sys_admin(const struct voluta_ucred *ucred)
 	return uid_isroot(ucred->uid);
 }
 
+
+static inline
+const struct voluta_uaddr *ui_uaddr(const struct voluta_unode_info *ui)
+{
+	return &ui->uba.uaddr;
+}
+
+
+
 static inline
 bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
 {
@@ -389,12 +402,6 @@ static inline
 struct voluta_sb_info *vi_sbi(const struct voluta_vnode_info *vi)
 {
 	return vi->v_sbi;
-}
-
-static inline
-struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
-{
-	return vi_sbi(vi)->sb_cache;
 }
 
 static inline

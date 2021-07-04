@@ -1177,12 +1177,6 @@ static void dset_make_fifo(struct voluta_dset *dset)
 	}
 }
 
-static void dset_inhabit(struct voluta_dset *dset,
-                         const struct voluta_cache *cache)
-{
-	voluta_cache_inhabit_dset(cache, dset);
-}
-
 static void dset_seal_meta(const struct voluta_dset *dset)
 {
 	const struct voluta_vnode_info *vi = dset->ds_viq;
@@ -1209,13 +1203,13 @@ static int dset_flush(const struct voluta_dset *dset,
 	return sgvec_flush_dset(&sgv, dset, locosd);
 }
 
-static int dset_collect_flush(struct voluta_dset *dset,
-                              const struct voluta_cache *cache,
-                              struct voluta_locosd *locosd)
+static int dset_collect_flush_vnodes(struct voluta_dset *dset,
+                                     const struct voluta_cache *cache,
+                                     struct voluta_locosd *locosd)
 {
 	int err;
 
-	dset_inhabit(dset, cache);
+	voluta_dset_inhabit_by_cached_vis(dset, cache);
 	dset_make_fifo(dset);
 	dset_seal_meta(dset);
 	err = dset_flush(dset, locosd);
@@ -1230,7 +1224,7 @@ int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
 	struct voluta_dset dset;
 
 	dset_init(&dset, ds_key);
-	err = dset_collect_flush(&dset, cache, locosd);
+	err = dset_collect_flush_vnodes(&dset, cache, locosd);
 	dset_fini(&dset);
 	return err;
 }

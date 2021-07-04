@@ -342,7 +342,7 @@ static size_t total_dirty_size(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_cache *cache = cache_of(sbi);
 
-	return cache->c_dqs.dq_vi_main.dq_accum_nbytes;
+	return cache->c_dqs.dq_vis_all.dq_accum_nbytes;
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi)

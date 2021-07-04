@@ -255,11 +255,17 @@ struct voluta_iaddr {
 	ino_t                   ino;
 };
 
+/* caching-element's 128-bits key */
+struct voluta_ckey {
+	uint64_t k[2];
+	uint64_t h;
+};
+
 /* caching-elements */
 struct voluta_cache_elem {
 	struct voluta_list_head ce_htb_lh;
 	struct voluta_list_head ce_lru_lh;
-	const void *ce_key;
+	struct voluta_ckey ce_ckey;
 	int  ce_refcnt;
 	bool ce_dirty;
 	bool ce_mapped;
@@ -289,12 +295,7 @@ struct voluta_dirtyqs {
 };
 
 /* LRU + hash-map */
-typedef long (*voluta_lrumap_hash_fn)(const void *);
-typedef bool (*voluta_lrumap_equal_fn)(const void *, const void *);
-
 struct voluta_lrumap {
-	voluta_lrumap_hash_fn    hash_fn;
-	voluta_lrumap_equal_fn   equal_fn;
 	struct voluta_listq      lru;
 	struct voluta_list_head *htbl;
 	size_t htbl_nelems;

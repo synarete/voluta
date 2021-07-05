@@ -37,6 +37,7 @@
 /* local functions forward declarations */
 static const struct voluta_ci_vtbl *hsi_ci_vtbl(void);
 static const struct voluta_vi_vtbl *hsi_vi_vtbl(void);
+static const struct voluta_ci_vtbl *agi_ci_vtbl(void);
 static const struct voluta_vi_vtbl *agi_vi_vtbl(void);
 static const struct voluta_vi_vtbl *itni_vi_vtbl(void);
 static const struct voluta_vi_vtbl *ii_vi_vtbl(void);
@@ -443,6 +444,17 @@ static const struct voluta_ci_vtbl *hsi_ci_vtbl(void)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+static struct voluta_unode_info *
+agi_to_ui(const struct voluta_agroup_info *agi)
+{
+	const struct voluta_unode_info *ui = NULL;
+
+	if (likely(agi != NULL)) {
+		ui = &agi->ag_ui;
+	}
+	return ui_unconst(ui);
+}
+
 static struct voluta_vnode_info *
 agi_to_vi(const struct voluta_agroup_info *agi)
 {
@@ -465,11 +477,34 @@ voluta_agi_from_vi(const struct voluta_vnode_info *vi)
 	return unconst(agi);
 }
 
+struct voluta_agroup_info *
+voluta_agi_from_ui(const struct voluta_unode_info *ui)
+{
+	const struct voluta_agroup_info *agi = NULL;
+
+	if (likely(ui != NULL)) {
+		agi = container_of2(ui, struct voluta_agroup_info, ag_ui);
+	}
+	return unconst(agi);
+}
+
 static void agi_init(struct voluta_agroup_info *agi,
                      const struct voluta_vba *vba)
 {
 	ui_init(&agi->ag_ui, &vba->baddr, NULL);
 	vi_init(&agi->ag_vi, vba, agi_vi_vtbl());
+	agi->ag_index = VOLUTA_AG_INDEX_NULL;
+	agi->agm = NULL;
+}
+
+static void agi_init2(struct voluta_agroup_info *agi,
+                      const struct voluta_uba *uba)
+{
+	struct voluta_vba vba;
+
+	uba_to_vba(uba, &vba);
+	ui_init2(&agi->ag_ui, uba, agi_ci_vtbl());
+	vi_init(&agi->ag_vi, &vba, agi_vi_vtbl());
 	agi->ag_index = VOLUTA_AG_INDEX_NULL;
 	agi->agm = NULL;
 }
@@ -509,6 +544,18 @@ static void agi_delete_by_vi(struct voluta_vnode_info *vi,
 	agi_delete(voluta_agi_from_vi(vi), alif);
 }
 
+static void agi_delete_by_ui(struct voluta_unode_info *ui,
+                             struct voluta_alloc_if *alif)
+{
+	agi_delete(voluta_agi_from_ui(ui), alif);
+}
+
+static void agi_delete_by_ci(struct voluta_cnode_info *ci,
+                             struct voluta_alloc_if *alif)
+{
+	agi_delete_by_ui(voluta_ui_from_ci(ci), alif);
+}
+
 static struct voluta_agroup_info *
 agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
@@ -517,6 +564,18 @@ agi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 	agi = agi_malloc(alif);
 	if (agi != NULL) {
 		agi_init(agi, vba);
+	}
+	return agi;
+}
+
+static struct voluta_agroup_info *
+agi_new2(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
+{
+	struct voluta_agroup_info *agi;
+
+	agi = agi_malloc(alif);
+	if (agi != NULL) {
+		agi_init2(agi, uba);
 	}
 	return agi;
 }
@@ -544,6 +603,17 @@ static const struct voluta_vi_vtbl *agi_vi_vtbl(void)
 {
 	return &yi_vtbl_agi;
 }
+
+static const struct voluta_ci_vtbl *agi_ci_vtbl(void)
+{
+	static const struct voluta_ci_vtbl vtbl = {
+		.evictable = voluta_ci_isevictable,
+		.del = agi_delete_by_ci,
+		.resolve = ui_resolve_from_ci,
+	};
+	return &vtbl;
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -1251,9 +1321,11 @@ voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 	case VOLUTA_UTYPE_HSMAP:
 		ui = hsi_to_ui(hsi_new2(alif, uba));
 		break;
+	case VOLUTA_UTYPE_AGMAP:
+		ui = agi_to_ui(agi_new2(alif, uba));
+		break;
 	case VOLUTA_UTYPE_NONE:
 	case VOLUTA_UTYPE_SUPER:
-	case VOLUTA_UTYPE_AGMAP:
 	default:
 		ui = NULL;
 		break;

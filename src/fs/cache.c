@@ -184,15 +184,15 @@ static void ckey_by_lba(struct voluta_ckey *ckey, voluta_lba_t lba)
 	ckey_setup(ckey, (uint64_t)lba, 0);
 }
 
-static inline void ckey_by_uaddr(struct voluta_ckey *ckey,
-                                 const struct voluta_uaddr *uaddr)
+static void ckey_by_uaddr(struct voluta_ckey *ckey,
+                          const struct voluta_uaddr *uaddr)
 {
 	ckey_setup3(ckey, (uint64_t)uaddr->off,
 	            (uint32_t)uaddr->len, (uint32_t)uaddr->utype);
 }
 
-static inline void ckey_by_vaddr(struct voluta_ckey *ckey,
-                                 const struct voluta_vaddr *vaddr)
+static void ckey_by_vaddr(struct voluta_ckey *ckey,
+                          const struct voluta_vaddr *vaddr)
 {
 	ckey_setup3(ckey, (uint64_t)vaddr->off,
 	            (uint32_t)vaddr->vtype, (uint32_t)vaddr->len);

@@ -150,6 +150,9 @@ voluta_hsi_from_vi_rebind(const struct voluta_vnode_info *vi,
 
 
 struct voluta_agroup_info *
+voluta_agi_from_ui(const struct voluta_unode_info *ui);
+
+struct voluta_agroup_info *
 voluta_agi_from_vi(const struct voluta_vnode_info *vi);
 
 

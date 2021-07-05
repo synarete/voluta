@@ -374,23 +374,23 @@ struct voluta_oper_stat {
 /* super-block in-memory info */
 struct voluta_sb_info {
 	struct voluta_super_block      *sb;
-	struct voluta_alloc_if         *sb_alif;
-	struct voluta_qalloc           *sb_qalloc;
-	struct voluta_cache            *sb_cache;
-	struct voluta_locosd           *sb_locosd;
-	struct voluta_vba               sb_vba;
-	struct voluta_uuid              sb_fs_uuid;
-	struct voluta_ucred             sb_owner;
-	struct voluta_space_info        sb_spi;
-	struct voluta_itable_info       sb_itbi;
-	struct voluta_oper_stat         sb_ops;
-	struct voluta_pipe              sb_pipe;
-	struct voluta_nullfd            sb_nullnfd;
-	struct voluta_crypto            sb_crypto;
-	unsigned long                   sb_ctl_flags;
-	unsigned long                   sb_ms_flags;
-	iconv_t                         sb_iconv;
-	time_t                          sb_mntime;
+	struct voluta_alloc_if         *s_alif;
+	struct voluta_qalloc           *s_qalloc;
+	struct voluta_cache            *s_cache;
+	struct voluta_locosd           *s_locosd;
+	struct voluta_vba               s_vba;
+	struct voluta_uuid              s_fs_uuid;
+	struct voluta_ucred             s_owner;
+	struct voluta_space_info        s_spi;
+	struct voluta_itable_info       s_itbi;
+	struct voluta_oper_stat         s_ops;
+	struct voluta_pipe              s_pipe;
+	struct voluta_nullfd            s_nullnfd;
+	struct voluta_crypto            s_crypto;
+	unsigned long                   s_ctl_flags;
+	unsigned long                   s_ms_flags;
+	iconv_t                         s_iconv;
+	time_t                          s_mntime;
 } voluta_aligned64;
 
 /* dirty-vnodes set */

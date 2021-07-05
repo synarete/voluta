@@ -1433,7 +1433,7 @@ static int do_init(struct voluta_fuseq_worker *fqw, ino_t ino,
 	setup_cap_want(coni, FUSE_SPLICE_WRITE);
 
 	/* TODO: let super do his private stuff on init */
-	fqw->sbi->sb_mntime = voluta_time_now();
+	fqw->sbi->s_mntime = voluta_time_now();
 
 	return fuseq_reply_init(fqw, 0);
 }
@@ -2604,7 +2604,7 @@ static int fuseq_resolve_opdesc(struct voluta_fuseq_worker *fqw,
 
 static int fuseq_check_perm(const struct voluta_fuseq_worker *fqw, uid_t opuid)
 {
-	const uid_t owner = fqw->sbi->sb_owner.uid;
+	const uid_t owner = fqw->sbi->s_owner.uid;
 
 	if (!fqw->fq->fq_deny_others) {
 		return 0;
@@ -3271,7 +3271,7 @@ static void fuseq_init_common(struct voluta_fuseq *fq,
 {
 	fq->fq_times = 0;
 	fq->fq_sbi = sbi;
-	fq->fq_alif = sbi->sb_alif;
+	fq->fq_alif = sbi->s_alif;
 	fq->fq_nopers = 0;
 	fq->fq_fuse_fd = -1;
 	fq->fq_got_init = false;
@@ -3301,7 +3301,7 @@ int voluta_fuseq_init(struct voluta_fuseq *fq, struct voluta_sb_info *sbi)
 	if (err) {
 		goto out;
 	}
-	sbi->sb_ctl_flags |= VOLUTA_F_NLOOKUP;
+	sbi->s_ctl_flags |= VOLUTA_F_NLOOKUP;
 out:
 	if (err) {
 		fuseq_fini_workers(fq);
@@ -3334,10 +3334,10 @@ int voluta_fuseq_mount(struct voluta_fuseq *fq, const char *path)
 	int fd = -1;
 	bool allow_other;
 	const struct voluta_sb_info *sbi = fq->fq_sbi;
-	const uid_t uid = sbi->sb_owner.uid;
-	const gid_t gid = sbi->sb_owner.gid;
-	const uint64_t ms_flags = sbi->sb_ms_flags;
-	const uint64_t ctl_flags = sbi->sb_ctl_flags;
+	const uid_t uid = sbi->s_owner.uid;
+	const gid_t gid = sbi->s_owner.gid;
+	const uint64_t ms_flags = sbi->s_ms_flags;
+	const uint64_t ctl_flags = sbi->s_ctl_flags;
 	const size_t max_read = fq->fq_coni.buffsize;
 	const char *sock = VOLUTA_MNTSOCK_NAME;
 

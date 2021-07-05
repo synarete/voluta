@@ -24,11 +24,11 @@ struct voluta_vnode_info;
 /* cached-node */
 struct voluta_cnode_info {
 	struct voluta_cache_elem        ce;
-	const struct voluta_ci_vtbl    *c_vtbl;
+	const struct voluta_cnode_vtbl *c_vtbl;
 	struct voluta_sb_info          *c_sbi;
 };
 
-struct voluta_ci_vtbl {
+struct voluta_cnode_vtbl {
 	bool (*evictable)(const struct voluta_cnode_info *ci);
 	void (*del)(struct voluta_cnode_info *ci, struct voluta_alloc_if *aif);
 	int (*resolve)(const struct voluta_cnode_info *ci,
@@ -39,25 +39,16 @@ struct voluta_ci_vtbl {
 struct voluta_unode_info {
 	struct voluta_uba               uba;
 	struct voluta_cnode_info        u_ci;
-	struct voluta_sb_info          *u_sbi;
 	struct voluta_bksec_info       *u_bsi;
 	struct voluta_list_head         u_dq_lh;
-	int  u_dirty;
 };
 
 /* vnode */
-struct voluta_vi_vtbl {
-	bool (*evictable)(const struct voluta_vnode_info *vi);
-	void (*del)(struct voluta_vnode_info *vi, struct voluta_alloc_if *aif);
-};
-
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
 	struct voluta_cnode_info        v_ci;
-	const struct voluta_vi_vtbl    *v_vtbl;
 	union voluta_view              *view;
 	struct voluta_fiovref           v_fir;
-	struct voluta_sb_info          *v_sbi;
 	struct voluta_bksec_info       *v_bsi;
 	struct voluta_list_head         v_dq_lh;
 	struct voluta_list_head         v_dq_sub_lh;

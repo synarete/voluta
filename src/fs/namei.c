@@ -56,7 +56,7 @@ static bool has_nlookup_mode(const struct voluta_inode_info *ii)
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
-	return ((sbi->sb_ctl_flags & VOLUTA_F_NLOOKUP) != 0);
+	return ((sbi->s_ctl_flags & VOLUTA_F_NLOOKUP) != 0);
 }
 
 static void ii_sub_nlookup(struct voluta_inode_info *ii, long n)
@@ -118,7 +118,7 @@ static int check_open_limit(const struct voluta_inode_info *ii)
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
 	if (!ii->i_nopen &&
-	    !(sbi->sb_ops.op_iopen < sbi->sb_ops.op_iopen_max)) {
+	    !(sbi->s_ops.op_iopen < sbi->s_ops.op_iopen_max)) {
 		return -ENFILE;
 	}
 	if (ii->i_nopen >= i_open_max) {
@@ -135,9 +135,9 @@ static void update_nopen(struct voluta_inode_info *ii, int n)
 	voluta_assert_lt(ii->i_nopen + n, INT_MAX);
 
 	if ((n > 0) && (ii->i_nopen == 0)) {
-		sbi->sb_ops.op_iopen++;
+		sbi->s_ops.op_iopen++;
 	} else if ((n < 0) && (ii->i_nopen == 1)) {
-		sbi->sb_ops.op_iopen--;
+		sbi->s_ops.op_iopen--;
 	}
 	ii->i_nopen += n;
 }
@@ -241,14 +241,14 @@ static int del_inode(struct voluta_inode_info *ii)
 static bool is_fsowner(const struct voluta_sb_info *sbi,
                        const struct voluta_ucred *ucred)
 {
-	return uid_eq(ucred->uid, sbi->sb_owner.uid);
+	return uid_eq(ucred->uid, sbi->s_owner.uid);
 }
 
 static bool has_allow_other(const struct voluta_sb_info *sbi)
 {
 	const unsigned long mask = VOLUTA_F_ALLOWOTHER;
 
-	return ((sbi->sb_ctl_flags & mask) == mask);
+	return ((sbi->s_ctl_flags & mask) == mask);
 }
 
 int voluta_authorize(const struct voluta_sb_info *sbi,
@@ -704,7 +704,7 @@ static int check_mknod(const struct voluta_oper *op,
 		if (rdev == 0) {
 			return -EINVAL;
 		}
-		if (sbi->sb_ms_flags & MS_NODEV) {
+		if (sbi->s_ms_flags & MS_NODEV) {
 			return -EOPNOTSUPP;
 		}
 	} else {
@@ -1962,8 +1962,8 @@ static void fill_query_volume(const struct voluta_inode_info *ii,
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
 	query->u.volume.size = 0; /* XXX FIXME */
-	if (sbi->sb_locosd->lo_basedir != NULL) {
-		strncpy(query->u.volume.path, sbi->sb_locosd->lo_basedir,
+	if (sbi->s_locosd->lo_basedir != NULL) {
+		strncpy(query->u.volume.path, sbi->s_locosd->lo_basedir,
 		        sizeof(query->u.volume.path) - 1);
 	}
 }
@@ -1973,8 +1973,8 @@ static void fill_query_fsinfo(const struct voluta_inode_info *ii,
 {
 	const struct voluta_sb_info *sbi = ii_sbi(ii);
 
-	query->u.fsinfo.uptime = voluta_time_now() - sbi->sb_mntime;
-	query->u.fsinfo.msflags = sbi->sb_ms_flags;
+	query->u.fsinfo.uptime = voluta_time_now() - sbi->s_mntime;
+	query->u.fsinfo.msflags = sbi->s_ms_flags;
 }
 
 static void fill_query_inode(const struct voluta_inode_info *ii,
@@ -2049,7 +2049,7 @@ int voluta_do_query(const struct voluta_oper *op,
 static int check_fsowner(const struct voluta_sb_info *sbi,
                          const struct voluta_oper *op)
 {
-	return uid_eq(op->ucred.uid, sbi->sb_owner.uid) ? 0 : -EPERM;
+	return uid_eq(op->ucred.uid, sbi->s_owner.uid) ? 0 : -EPERM;
 }
 
 static int check_snapable_volume(const struct voluta_sb_info *sbi)
@@ -2172,7 +2172,7 @@ static int check_utf8_name(const struct voluta_sb_info *sbi,
 	size_t datlen;
 	size_t ret;
 
-	ret = iconv(sbi->sb_iconv, &in, &len, &out, &outlen);
+	ret = iconv(sbi->s_iconv, &in, &len, &out, &outlen);
 	if ((ret != 0) || len || (outlen % 4)) {
 		return errno ? -errno : -EINVAL;
 	}
@@ -2306,7 +2306,7 @@ static int try_forget_cached_ii(struct voluta_inode_info *ii)
 	struct voluta_sb_info *sbi = ii_sbi(ii);
 
 	if ((ii->i_nlookup <= 0) && ii_isevictable(ii)) {
-		voulta_cache_forget_vi(sbi->sb_cache, ii_to_vi(ii));
+		voulta_cache_forget_vi(sbi->s_cache, ii_to_vi(ii));
 	}
 	return 0;
 }

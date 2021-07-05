@@ -310,8 +310,8 @@ static void fse_update_mount_flags(struct voluta_fs_env *fse,
 	} else {
 		ms_flag_dont |= MS_RDONLY;
 	}
-	sbi->sb_ms_flags |= ms_flag_with;
-	sbi->sb_ms_flags &= ~ms_flag_dont;
+	sbi->s_ms_flags |= ms_flag_with;
+	sbi->s_ms_flags &= ~ms_flag_dont;
 }
 
 static int fse_check_args(const struct voluta_fs_args *args)
@@ -568,7 +568,7 @@ static int commit_dirty_now(struct voluta_sb_info *sbi, bool drop_caches)
 
 	err = voluta_flush_dirty(sbi, VOLUTA_F_NOW);
 	if (!err && drop_caches) {
-		voluta_cache_drop(sbi->sb_cache);
+		voluta_cache_drop(sbi->s_cache);
 	}
 	return err;
 }
@@ -662,7 +662,7 @@ int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz)
 	int err;
 	size_t len = 0;
 	const struct voluta_sb_info *sbi = fse->sbi;
-	const struct voluta_blobid *root_bid = &sbi->sb_vba.baddr.bid;
+	const struct voluta_blobid *root_bid = &sbi->s_vba.baddr.bid;
 
 	if (bsz <= (2 * VOLUTA_BLOBID_LEN)) {
 		return -EINVAL;
@@ -679,7 +679,7 @@ int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz)
 
 static const struct voluta_crypto *fse_crypto(const struct voluta_fs_env *fse)
 {
-	return &fse->sbi->sb_crypto;
+	return &fse->sbi->s_crypto;
 }
 
 static const struct voluta_cipher *fse_cipher(const struct voluta_fs_env *fse)

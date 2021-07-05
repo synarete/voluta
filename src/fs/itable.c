@@ -484,7 +484,7 @@ static void itc_remove(const struct voluta_itcache *itc, ino_t ino)
 
 static struct voluta_itable_info *itbi_of(const struct voluta_sb_info *sbi)
 {
-	const struct voluta_itable_info *itbi = &sbi->sb_itbi;
+	const struct voluta_itable_info *itbi = &sbi->s_itbi;
 
 	return unconst(itbi);
 }
@@ -1395,12 +1395,12 @@ static int scan_root_inode(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_ino_set *ino_set;
 
-	ino_set = ino_set_new(sbi->sb_qalloc);
+	ino_set = ino_set_new(sbi->s_qalloc);
 	if (ino_set == NULL) {
 		return -ENOMEM;
 	}
 	err = do_scan_root_inode(sbi, ino_set, out_root_ii);
-	ino_set_del(ino_set, sbi->sb_qalloc);
+	ino_set_del(ino_set, sbi->s_qalloc);
 	return err;
 }
 

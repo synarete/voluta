@@ -88,8 +88,6 @@ void voluta_vi_incref(struct voluta_vnode_info *vi);
 
 void voluta_vi_decref(struct voluta_vnode_info *vi);
 
-bool voluta_vi_isevictable(const struct voluta_vnode_info *vi);
-
 size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi);
 
 size_t voluta_ii_refcnt(const struct voluta_inode_info *ii);
@@ -121,8 +119,6 @@ void voluta_ui_attach_to(struct voluta_unode_info *ui,
 void voluta_ui_incref(struct voluta_unode_info *ui);
 
 void voluta_ui_decref(struct voluta_unode_info *ui);
-
-bool voluta_ui_isevictable(const struct voluta_unode_info *ui);
 
 void voluta_ui_dirtify(struct voluta_unode_info *ui);
 

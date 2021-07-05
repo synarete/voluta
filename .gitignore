@@ -3,7 +3,7 @@
 # Global excludes
 Makefile
 Makefile.in
-*.o
+*.[oa]
 lib*.lo
 lib*.la
 .deps

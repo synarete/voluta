@@ -159,9 +159,8 @@ static void bsi_free(struct voluta_bksec_info *bsi,
 
 static uint64_t ckey_make_hash(const struct voluta_ckey *ckey)
 {
-	const uint32_t nr = (uint32_t)(ckey->k[0] >> 11) % 61;
 	const uint64_t h1 = twang_mix64(ckey->k[0]);
-	const uint64_t h2 = rotate64(ckey->k[1], nr);
+	const uint64_t h2 = rotate64(ckey->k[1], h1 % 61);
 
 	return h1 ^ h2;
 }
@@ -402,6 +401,11 @@ static struct voluta_cache_elem *ci_to_ce(const struct voluta_cnode_info *ci)
 	return unconst(ce);
 }
 
+static struct voluta_cache *ci_cache(const struct voluta_cnode_info *ci)
+{
+	return ci->c_sbi->s_cache;
+}
+
 bool voluta_ci_isevictable(const struct voluta_cnode_info *ci)
 {
 	return ce_is_evictable(ci_to_ce(ci));
@@ -426,7 +430,7 @@ static struct voluta_cache_elem *ui_to_ce(const struct voluta_unode_info *ui)
 
 static struct voluta_cache *ui_cache(const struct voluta_unode_info *ui)
 {
-	return ui->u_sbi->sb_cache;
+	return ci_cache(&ui->u_ci);
 }
 
 static void ui_attach_bk(struct voluta_unode_info *ui,
@@ -460,12 +464,6 @@ void voluta_ui_decref(struct voluta_unode_info *ui)
 	}
 }
 
-bool voluta_ui_isevictable(const struct voluta_unode_info *ui)
-{
-	return ce_is_evictable(ui_to_ce(ui));
-}
-
-
 void voluta_ui_dirtify(struct voluta_unode_info *ui)
 {
 	cache_dirtify_ui(ui_cache(ui), ui);
@@ -480,7 +478,7 @@ void voluta_ui_undirtify(struct voluta_unode_info *ui)
 
 static struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 {
-	return vi_sbi(vi)->sb_cache;
+	return vi_sbi(vi)->s_cache;
 }
 
 static struct voluta_vnode_info *vi_from_ce(const struct voluta_cache_elem *ce)
@@ -499,6 +497,16 @@ static struct voluta_cache_elem *vi_to_ce(const struct voluta_vnode_info *vi)
 	const struct voluta_cache_elem *ce = &vi->v_ci.ce;
 
 	return unconst(ce);
+}
+
+static struct voluta_cnode_info *vi_to_ci(const struct voluta_vnode_info *vi)
+{
+	const struct voluta_cnode_info *ci = NULL;
+
+	if (likely(vi != NULL)) {
+		ci = &vi->v_ci;
+	}
+	return unconst(ci);
 }
 
 size_t voluta_vi_refcnt(const struct voluta_vnode_info *vi)
@@ -557,11 +565,6 @@ static void vi_detach_bk(struct voluta_vnode_info *vi)
 		vi->v_bsi = NULL;
 		vi->view = NULL;
 	}
-}
-
-bool voluta_vi_isevictable(const struct voluta_vnode_info *vi)
-{
-	return ce_is_evictable(vi_to_ce(vi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1356,11 +1359,13 @@ static void cache_remove_vi(struct voluta_cache *cache,
 static void cache_evict_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	voluta_assert(!vi->v_ci.ce.ce_dirty);
+	struct voluta_cnode_info *ci = &vi->v_ci;
+
+	voluta_assert(!ci->ce.ce_dirty);
 
 	cache_remove_vi(cache, vi);
 	vi_detach_bk(vi);
-	vi->v_vtbl->del(vi, cache->c_alif);
+	ci->c_vtbl->del(ci, cache->c_alif);
 }
 
 static void cache_promote_lru_vi(struct voluta_cache *cache,
@@ -1404,10 +1409,11 @@ static int visit_evictable_vi(struct voluta_cache_elem *ce, void *arg)
 	int ret = 0;
 	struct voluta_cache_ctx *c_ctx = arg;
 	struct voluta_vnode_info *vi = vi_from_ce(ce);
+	struct voluta_cnode_info *ci = ci_from_ce(ce);
 
 	if (c_ctx->count++ >= c_ctx->limit) {
 		ret = 1;
-	} else if (vi->v_vtbl->evictable(vi)) {
+	} else if (ci->c_vtbl->evictable(ci)) {
 		c_ctx->vi = vi;
 		ret = 1;
 	}
@@ -1471,8 +1477,9 @@ static bool cache_evict_or_relru_vi(struct voluta_cache *cache,
                                     struct voluta_vnode_info *vi)
 {
 	bool evicted;
+	struct voluta_cnode_info *ci = vi_to_ci(vi);
 
-	if (vi->v_vtbl->evictable(vi)) {
+	if (ci->c_vtbl->evictable(ci)) {
 		cache_evict_vi(cache, vi);
 		evicted = true;
 	} else {
@@ -1941,8 +1948,9 @@ static bool cache_evict_by_vi(struct voluta_cache *cache,
                               struct voluta_vnode_info *vi)
 {
 	struct voluta_bksec_info *bsi = NULL;
+	struct voluta_cnode_info *ci = vi_to_ci(vi);
 
-	if ((vi != NULL) && (vi->v_vtbl->evictable(vi))) {
+	if ((ci != NULL) && (ci->c_vtbl->evictable(ci))) {
 		bsi = vi->v_bsi;
 		cache_evict_vi(cache, vi);
 	}

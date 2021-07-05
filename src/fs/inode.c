@@ -360,7 +360,7 @@ bool voluta_ii_issock(const struct voluta_inode_info *ii)
 
 static ino_t rootd_ino(const struct voluta_sb_info *sbi)
 {
-	return sbi->sb_itbi.it_rootdir.ino;
+	return sbi->s_itbi.it_rootdir.ino;
 }
 
 bool voluta_ii_isrootd(const struct voluta_inode_info *ii)
@@ -402,8 +402,9 @@ static void voluta_ii_times(const struct voluta_inode_info *ii,
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 {
-	return !ii->i_pinned && !ii->i_nopen &&
-	       voluta_vi_isevictable(ii_to_vi(ii));
+	const struct voluta_cnode_info *ci = &ii->i_vi.v_ci;
+
+	return !ii->i_pinned && !ii->i_nopen && voluta_ci_isevictable(ci);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

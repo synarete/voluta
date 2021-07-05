@@ -229,7 +229,7 @@ static size_t fli_len_within(const struct voluta_fleaf_info *fli,
 
 static void *nil_bk_buf_of(const struct voluta_file_ctx *f_ctx)
 {
-	struct voluta_block *nil_bk = f_ctx->sbi->sb_cache->c_nil_bk;
+	struct voluta_block *nil_bk = f_ctx->sbi->s_cache->c_nil_bk;
 
 	return nil_bk->u.bk;
 }
@@ -239,7 +239,7 @@ static int fiovec_by_qalloc(const struct voluta_file_ctx *f_ctx,
                             struct voluta_fiovec *out_fiov)
 {
 	uint8_t *qamem = (uint8_t *)bk_start + off_in_bk;
-	const struct voluta_qalloc *qalloc = f_ctx->sbi->sb_qalloc;
+	const struct voluta_qalloc *qalloc = f_ctx->sbi->s_qalloc;
 
 	return voluta_qalloc_fiovec(qalloc, qamem, len, out_fiov);
 }
@@ -256,7 +256,7 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	if (err) {
 		return err;
 	}
-	err = voluta_locosd_resolve(f_ctx->sbi->sb_locosd, &vba.baddr,
+	err = voluta_locosd_resolve(f_ctx->sbi->s_locosd, &vba.baddr,
 	                            off_within, len, out_fiov);
 	if (err) {
 		return err;
@@ -1223,7 +1223,7 @@ static int seek_tree_recursive(struct voluta_file_ctx *f_ctx,
 
 static bool kcopy_mode(const struct voluta_file_ctx *f_ctx)
 {
-	return ((f_ctx->sbi->sb_ctl_flags & VOLUTA_F_KCOPY) > 0);
+	return ((f_ctx->sbi->s_ctl_flags & VOLUTA_F_KCOPY) > 0);
 }
 
 static bool is_mapping_boundaries(const struct voluta_file_ctx *f_ctx)
@@ -3962,12 +3962,12 @@ static int resolve_leaf_vaddr(const struct voluta_fmap_ctx *fm_ctx,
 
 static struct voluta_pipe *pipe_of(const struct voluta_fmap_ctx *fm_ctx)
 {
-	return & fm_ctx->f_ctx->sbi->sb_pipe;
+	return & fm_ctx->f_ctx->sbi->s_pipe;
 }
 
 static struct voluta_nullfd *nullfd_of(const struct voluta_fmap_ctx *fm_ctx)
 {
-	return & fm_ctx->f_ctx->sbi->sb_nullnfd;
+	return & fm_ctx->f_ctx->sbi->s_nullnfd;
 }
 
 static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,

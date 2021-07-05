@@ -45,12 +45,12 @@ static int op_start(struct voluta_sb_info *sbi, const struct voluta_oper *op)
 {
 	int err;
 
-	sbi->sb_ops.op_time = op->xtime.tv_sec;
-	sbi->sb_ops.op_count++;
+	sbi->s_ops.op_time = op->xtime.tv_sec;
+	sbi->s_ops.op_count++;
 
 	err = voluta_flush_dirty(sbi, 0);
 	if (!err) {
-		voluta_cache_relax(sbi->sb_cache, VOLUTA_F_OPSTART);
+		voluta_cache_relax(sbi->s_cache, VOLUTA_F_OPSTART);
 	}
 	return err;
 }
@@ -64,7 +64,7 @@ static int op_finish(struct voluta_sb_info *sbi,
 
 	if ((beg < now) && (dif > 30)) {
 		log_warn("slow-oper: id=%ld code=%d duration=%ld status=%d",
-		         sbi->sb_ops.op_count, op->opcode, dif, err);
+		         sbi->s_ops.op_count, op->opcode, dif, err);
 	}
 	/* TODO: maybe extra flush-relax? */
 	return err;
@@ -1167,6 +1167,6 @@ int voluta_fs_timedout(struct voluta_sb_info *sbi, int flags)
 	if (err) {
 		return err;
 	}
-	voluta_cache_relax(sbi->sb_cache, flags);
+	voluta_cache_relax(sbi->s_cache, flags);
 	return 0;
 }

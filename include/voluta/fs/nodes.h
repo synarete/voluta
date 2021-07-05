@@ -123,16 +123,16 @@ struct voluta_rtnode_info {
 	struct voluta_radix_tnode      *rtn;
 };
 
-/* dleaf */
-union voluta_dleaf_u {
+/* fleaf */
+union voluta_fleaf_u {
 	struct voluta_data_block1       *db1;
 	struct voluta_data_block4       *db4;
 	struct voluta_data_block        *db;
 };
 
-struct voluta_dleaf_info {
-	struct voluta_vnode_info        dl_vi;
-	union voluta_dleaf_u            dlu;
+struct voluta_fleaf_info {
+	struct voluta_vnode_info        fl_vi;
+	union voluta_fleaf_u            flu;
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -203,11 +203,11 @@ struct voluta_rtnode_info *
 voluta_rti_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
-struct voluta_dleaf_info *
-voluta_dli_from_vi(const struct voluta_vnode_info *vi);
+struct voluta_fleaf_info *
+voluta_fli_from_vi(const struct voluta_vnode_info *vi);
 
-struct voluta_dleaf_info *
-voluta_dli_from_vi_rebind(struct voluta_vnode_info *vi);
+struct voluta_fleaf_info *
+voluta_fli_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
 struct voluta_vnode_info *

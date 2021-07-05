@@ -70,7 +70,7 @@ union voluta_xvnode_info_u {
 	struct voluta_dtnode_info       dti;
 	struct voluta_symval_info       syi;
 	struct voluta_rtnode_info       rti;
-	struct voluta_dleaf_info        dli;
+	struct voluta_fleaf_info        fli;
 };
 
 struct voluta_xvnode_info {

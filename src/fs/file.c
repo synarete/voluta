@@ -172,57 +172,57 @@ static void vaddr_of_databk_leaf(struct voluta_vaddr *vaddr, loff_t off)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void dli_dirtify(struct voluta_dleaf_info *dli)
+static void fli_dirtify(struct voluta_fleaf_info *fli)
 {
-	vi_dirtify(&dli->dl_vi);
+	vi_dirtify(&fli->fl_vi);
 }
 
-static void dli_incref(struct voluta_dleaf_info *dli)
+static void fli_incref(struct voluta_fleaf_info *fli)
 {
-	vi_incref(&dli->dl_vi);
+	vi_incref(&fli->fl_vi);
 }
 
-static void dli_decref(struct voluta_dleaf_info *dli)
+static void fli_decref(struct voluta_fleaf_info *fli)
 {
-	vi_decref(&dli->dl_vi);
+	vi_decref(&fli->fl_vi);
 }
 
 static const struct voluta_vaddr *
-dli_vaddr(const struct voluta_dleaf_info *dli)
+fli_vaddr(const struct voluta_fleaf_info *fli)
 {
-	return (dli != NULL) ? vi_vaddr(&dli->dl_vi) : NULL;
+	return (fli != NULL) ? vi_vaddr(&fli->fl_vi) : NULL;
 }
 
-static enum voluta_vtype dli_vtype(const struct voluta_dleaf_info *dli)
+static enum voluta_vtype fli_vtype(const struct voluta_fleaf_info *fli)
 {
-	return vi_vtype(&dli->dl_vi);
+	return vi_vtype(&fli->fl_vi);
 }
 
-static void *dli_data(const struct voluta_dleaf_info *dli)
+static void *fli_data(const struct voluta_fleaf_info *fli)
 {
 	void *dat = NULL;
-	const enum voluta_vtype vtype = dli_vtype(dli);
+	const enum voluta_vtype vtype = fli_vtype(fli);
 
 	if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA1K)) {
-		dat = dli->dlu.db1;
+		dat = fli->flu.db1;
 	} else if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA4K)) {
-		dat = dli->dlu.db4;
+		dat = fli->flu.db4;
 	} else {
 		voluta_assert_eq(vtype, VOLUTA_VTYPE_DATABK);
-		dat = dli->dlu.db;
+		dat = fli->flu.db;
 	}
 	return dat;
 }
 
-static loff_t dli_off_within(const struct voluta_dleaf_info *dli, loff_t off)
+static loff_t fli_off_within(const struct voluta_fleaf_info *fli, loff_t off)
 {
-	return off_in_data(off, dli_vtype(dli));
+	return off_in_data(off, fli_vtype(fli));
 }
 
-static size_t dli_len_within(const struct voluta_dleaf_info *dli,
+static size_t fli_len_within(const struct voluta_fleaf_info *fli,
                              loff_t off, loff_t end)
 {
-	return len_of_data(off, end, dli_vtype(dli));
+	return len_of_data(off, end, fli_vtype(fli));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -264,20 +264,20 @@ static int fiovec_by_blob(const struct voluta_file_ctx *f_ctx,
 	return 0;
 }
 
-static int fiovec_of_dleaf(const struct voluta_file_ctx *f_ctx,
-                           struct voluta_dleaf_info *dli,
+static int fiovec_of_fleaf(const struct voluta_file_ctx *f_ctx,
+                           struct voluta_fleaf_info *fli,
                            struct voluta_fiovec *out_fiov)
 {
 	int err;
-	const loff_t doff = dli_off_within(dli, f_ctx->off);
-	const size_t dlen = dli_len_within(dli, f_ctx->off, f_ctx->end);
+	const loff_t doff = fli_off_within(fli, f_ctx->off);
+	const size_t dlen = fli_len_within(fli, f_ctx->off, f_ctx->end);
 
-	err = fiovec_by_qalloc(f_ctx, dli_data(dli), doff, dlen, out_fiov);
+	err = fiovec_by_qalloc(f_ctx, fli_data(fli), doff, dlen, out_fiov);
 	if (err) {
 		return err;
 	}
 	if (f_ctx->with_backref) {
-		out_fiov->fv_ref = &dli->dl_vi.v_fir;
+		out_fiov->fv_ref = &fli->fl_vi.v_fir;
 	}
 	return 0;
 }
@@ -1300,10 +1300,10 @@ static int probe_unwritten(const struct voluta_fmap_ctx *fm_ctx, bool *out_res)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int stage_dleaf(struct voluta_sb_info *sbi,
+static int stage_fleaf(struct voluta_sb_info *sbi,
                        const struct voluta_vaddr *vaddr,
                        struct voluta_inode_info *pii,
-                       struct voluta_dleaf_info **out_dli)
+                       struct voluta_fleaf_info **out_fli)
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
@@ -1313,39 +1313,39 @@ static int stage_dleaf(struct voluta_sb_info *sbi,
 
 	err = voluta_stage_cached_vnode(sbi, vaddr, &vi);
 	if (!err) {
-		*out_dli = voluta_dli_from_vi(vi);
+		*out_fli = voluta_fli_from_vi(vi);
 		return 0;
 	}
 	err = voluta_stage_vnode(sbi, vaddr, pii, &vi);
 	if (err) {
 		return err;
 	}
-	*out_dli = voluta_dli_from_vi_rebind(vi);
+	*out_fli = voluta_fli_from_vi_rebind(vi);
 	return 0;
 }
 
-static void dirtify_dleaf(const struct voluta_file_ctx *f_ctx,
-                          struct voluta_dleaf_info *dli)
+static void dirtify_fleaf(const struct voluta_file_ctx *f_ctx,
+                          struct voluta_fleaf_info *fli)
 {
-	dli_dirtify(dli);
+	fli_dirtify(fli);
 	if (!kcopy_mode(f_ctx)) {
 		/* for data checksum, need to do:  */
 		/* vi_dirtify(agi); */
 	}
 }
 
-static void zero_dleaf_sub(const struct voluta_file_ctx *f_ctx,
-                           struct voluta_dleaf_info *dli,
+static void zero_fleaf_sub(const struct voluta_file_ctx *f_ctx,
+                           struct voluta_fleaf_info *fli,
                            loff_t off_in_db, size_t len)
 {
-	struct voluta_data_block *db = dli->dlu.db;
+	struct voluta_data_block *db = fli->flu.db;
 
 	voluta_assert_ge(off_in_db, 0);
 	voluta_assert_lt(off_in_db, sizeof(db->dat));
 	voluta_assert_le(off_in_db + (long)len, sizeof(db->dat));
 
 	voluta_memzero(&db->dat[off_in_db], len);
-	dirtify_dleaf(f_ctx, dli);
+	dirtify_fleaf(f_ctx, fli);
 }
 
 static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
@@ -1353,7 +1353,7 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
                                 loff_t off_in_bk, size_t len)
 {
 	int err;
-	struct voluta_dleaf_info *dli = NULL;
+	struct voluta_fleaf_info *fli = NULL;
 	struct voluta_fiovec fiov = { .fv_base = NULL };
 
 	if (kcopy_mode(f_ctx)) {
@@ -1366,11 +1366,11 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
 			return err;
 		}
 	} else {
-		err = stage_dleaf(f_ctx->sbi, vaddr, f_ctx->ii, &dli);
+		err = stage_fleaf(f_ctx->sbi, vaddr, f_ctx->ii, &fli);
 		if (err) {
 			return err;
 		}
-		zero_dleaf_sub(f_ctx, dli, off_in_bk, len);
+		zero_fleaf_sub(f_ctx, fli, off_in_bk, len);
 	}
 	return 0;
 }
@@ -1383,8 +1383,8 @@ static int zero_data_leaf_at(const struct voluta_file_ctx *f_ctx,
 	return zero_data_leaf_range(f_ctx, vaddr, 0, (size_t)len);
 }
 
-static int stage_dleaf_at(const struct voluta_fmap_ctx *fm_ctx,
-                          struct voluta_dleaf_info **out_dli)
+static int stage_fleaf_at(const struct voluta_fmap_ctx *fm_ctx,
+                          struct voluta_fleaf_info **out_fli)
 {
 	int err;
 	struct voluta_sb_info *sbi = fm_ctx->f_ctx->sbi;
@@ -1392,11 +1392,11 @@ static int stage_dleaf_at(const struct voluta_fmap_ctx *fm_ctx,
 
 	voluta_assert(!kcopy_mode(fm_ctx->f_ctx));
 
-	*out_dli = NULL;
+	*out_fli = NULL;
 	if (!fm_ctx->has_data) {
 		return -ENOENT;
 	}
-	err = stage_dleaf(sbi, &fm_ctx->vaddr, ii, out_dli);
+	err = stage_fleaf(sbi, &fm_ctx->vaddr, ii, out_fli);
 	if (err) {
 		return err;
 	}
@@ -1623,15 +1623,15 @@ static int seek_hole_by_head_leaves(struct voluta_file_ctx *f_ctx,
 }
 
 static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
-                          struct voluta_dleaf_info *dli,
+                          struct voluta_fleaf_info *fli,
                           const struct voluta_vaddr *vaddr,
                           struct voluta_fiovec *out_fiov)
 {
 	int err;
 	enum voluta_vtype vtype;
 
-	if (dli != NULL) {
-		err = fiovec_of_dleaf(f_ctx, dli, out_fiov);
+	if (fli != NULL) {
+		err = fiovec_of_fleaf(f_ctx, fli, out_fiov);
 	} else if ((vaddr != NULL) && !vaddr_isnull(vaddr)) {
 		err = fiovec_of_vaddr(f_ctx, vaddr, out_fiov);
 	} else {
@@ -1642,7 +1642,7 @@ static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
 }
 
 static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
-                         struct voluta_dleaf_info *dli,
+                         struct voluta_fleaf_info *fli,
                          const struct voluta_vaddr *vaddr,
                          size_t *out_len)
 {
@@ -1655,7 +1655,7 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 		.fv_ref = NULL,
 	};
 
-	err = resolve_fiovec(f_ctx, dli, vaddr, &fiov);
+	err = resolve_fiovec(f_ctx, fli, vaddr, &fiov);
 	if (!err) {
 		if (f_ctx->with_backref) {
 			voluta_fiovref_pre(fiov.fv_ref);
@@ -1669,10 +1669,10 @@ static int call_rw_actor(const struct voluta_file_ctx *f_ctx,
 	return err;
 }
 
-static int export_data_by_dleaf(const struct voluta_file_ctx *f_ctx,
-                                struct voluta_dleaf_info *dli, size_t *out_sz)
+static int export_data_by_fleaf(const struct voluta_file_ctx *f_ctx,
+                                struct voluta_fleaf_info *fli, size_t *out_sz)
 {
-	return call_rw_actor(f_ctx, dli, dli_vaddr(dli), out_sz);
+	return call_rw_actor(f_ctx, fli, fli_vaddr(fli), out_sz);
 }
 
 static int export_data_by_vaddr(struct voluta_file_ctx *f_ctx,
@@ -1682,10 +1682,10 @@ static int export_data_by_vaddr(struct voluta_file_ctx *f_ctx,
 	return call_rw_actor(f_ctx, NULL, vaddr, out_size);
 }
 
-static int import_data_by_dleaf(const struct voluta_file_ctx *f_ctx,
-                                struct voluta_dleaf_info *dli, size_t *out_sz)
+static int import_data_by_fleaf(const struct voluta_file_ctx *f_ctx,
+                                struct voluta_fleaf_info *fli, size_t *out_sz)
 {
-	return call_rw_actor(f_ctx, dli, dli_vaddr(dli), out_sz);
+	return call_rw_actor(f_ctx, fli, fli_vaddr(fli), out_sz);
 }
 
 static int import_data_by_vaddr(const struct voluta_file_ctx *f_ctx,
@@ -1749,22 +1749,22 @@ static int stage_by_tree_map(const struct voluta_file_ctx *f_ctx,
 	return -EFSCORRUPTED;
 }
 
-static int do_read_by_copy_from_dleaf(struct voluta_file_ctx *f_ctx,
-                                      struct voluta_dleaf_info *dli,
+static int do_read_by_copy_from_fleaf(struct voluta_file_ctx *f_ctx,
+                                      struct voluta_fleaf_info *fli,
                                       size_t *out_sz)
 {
-	return export_data_by_dleaf(f_ctx, dli, out_sz);
+	return export_data_by_fleaf(f_ctx, fli, out_sz);
 }
 
-static int read_dleaf_by_copy(struct voluta_file_ctx *f_ctx,
-                              struct voluta_dleaf_info *dli,
+static int read_fleaf_by_copy(struct voluta_file_ctx *f_ctx,
+                              struct voluta_fleaf_info *fli,
                               size_t *out_sz)
 {
 	int err;
 
-	dli_incref(dli);
-	err = do_read_by_copy_from_dleaf(f_ctx, dli, out_sz);
-	dli_decref(dli);
+	fli_incref(fli);
+	err = do_read_by_copy_from_fleaf(f_ctx, fli, out_sz);
+	fli_decref(fli);
 
 	return err;
 }
@@ -1786,7 +1786,7 @@ static int read_from_leaf(struct voluta_file_ctx *f_ctx,
 {
 	int err;
 	bool unwritten = false;
-	struct voluta_dleaf_info *dli = NULL;
+	struct voluta_fleaf_info *fli = NULL;
 
 	*out_len = 0;
 	err = probe_unwritten(fm_ctx, &unwritten);
@@ -1804,11 +1804,11 @@ static int read_from_leaf(struct voluta_file_ctx *f_ctx,
 			return err;
 		}
 	} else {
-		err = stage_dleaf_at(fm_ctx, &dli);
+		err = stage_fleaf_at(fm_ctx, &fli);
 		if (err && (err != -ENOENT)) {
 			return err;
 		}
-		err = read_dleaf_by_copy(f_ctx, dli, out_len);
+		err = read_fleaf_by_copy(f_ctx, fli, out_len);
 		if (err) {
 			return err;
 		}
@@ -2044,15 +2044,15 @@ static int clear_unwritten_at(const struct voluta_file_ctx *f_ctx,
 }
 
 static int clear_unwritten_of(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_dleaf_info *dli)
+                              struct voluta_fleaf_info *fli)
 {
 	int err;
 
-	err = clear_unwritten_at(f_ctx, dli_vaddr(dli));
+	err = clear_unwritten_at(f_ctx, fli_vaddr(fli));
 	if (err) {
 		return err;
 	}
-	dirtify_dleaf(f_ctx, dli);
+	dirtify_fleaf(f_ctx, fli);
 	return 0;
 }
 
@@ -2370,15 +2370,15 @@ static int stage_or_create_tree_map(const struct voluta_file_ctx *f_ctx,
 }
 
 static int do_write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
-                                 struct voluta_dleaf_info *dli, size_t *out_sz)
+                                 struct voluta_fleaf_info *fli, size_t *out_sz)
 {
 	int err;
 
-	err = import_data_by_dleaf(f_ctx, dli, out_sz);
+	err = import_data_by_fleaf(f_ctx, fli, out_sz);
 	if (err) {
 		return err;
 	}
-	err = clear_unwritten_of(f_ctx, dli);
+	err = clear_unwritten_of(f_ctx, fli);
 	if (err) {
 		return err;
 	}
@@ -2386,13 +2386,13 @@ static int do_write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
 }
 
 static int write_leaf_by_copy(const struct voluta_file_ctx *f_ctx,
-                              struct voluta_dleaf_info *dli, size_t *out_sz)
+                              struct voluta_fleaf_info *fli, size_t *out_sz)
 {
 	int err;
 
-	dli_incref(dli);
-	err = do_write_leaf_by_copy(f_ctx, dli, out_sz);
-	dli_decref(dli);
+	fli_incref(fli);
+	err = do_write_leaf_by_copy(f_ctx, fli, out_sz);
+	fli_decref(fli);
 	return err;
 }
 
@@ -2461,7 +2461,7 @@ static int require_tree_leaf(const struct voluta_file_ctx *f_ctx,
 static int write_to_leaf(const struct voluta_fmap_ctx *fm_ctx, size_t *out_len)
 {
 	int err;
-	struct voluta_dleaf_info *dli = NULL;
+	struct voluta_fleaf_info *fli = NULL;
 
 	*out_len = 0;
 	err = prepare_unwritten_leaf(fm_ctx);
@@ -2474,11 +2474,11 @@ static int write_to_leaf(const struct voluta_fmap_ctx *fm_ctx, size_t *out_len)
 			return err;
 		}
 	} else {
-		err = stage_dleaf_at(fm_ctx, &dli);
+		err = stage_fleaf_at(fm_ctx, &fli);
 		if (err) {
 			return err;
 		}
-		err = write_leaf_by_copy(fm_ctx->f_ctx, dli, out_len);
+		err = write_leaf_by_copy(fm_ctx->f_ctx, fli, out_len);
 		if (err) {
 			return err;
 		}
@@ -3377,7 +3377,7 @@ static bool fl_zero_range(const struct voluta_file_ctx *f_ctx)
 }
 
 /*
- * TODO-0012: Proper handling for FALLOC_FL_KEEP_SIZE beyond file size
+ * TODO-0012: Proper hanfling for FALLOC_FL_KEEP_SIZE beyond file size
  *
  * See 'man 2 fallocate' for semantics details of FALLOC_FL_KEEP_SIZE
  * beyond end-of-file.
@@ -3935,17 +3935,17 @@ static size_t copy_range_length(const struct voluta_fmap_ctx *fm_ctx_src,
 	return min(len_src, len_dst);
 }
 
-static int resolve_dleaf(const struct voluta_fmap_ctx *fm_ctx,
-                         struct voluta_dleaf_info **out_dli,
+static int resolve_fleaf(const struct voluta_fmap_ctx *fm_ctx,
+                         struct voluta_fleaf_info **out_fli,
                          struct voluta_fiovec *out_fiov)
 {
 	int err;
 
-	err = stage_dleaf_at(fm_ctx, out_dli);
+	err = stage_fleaf_at(fm_ctx, out_fli);
 	if (err) {
 		return err;
 	}
-	err = fiovec_of_dleaf(fm_ctx->f_ctx, *out_dli, out_fiov);
+	err = fiovec_of_fleaf(fm_ctx->f_ctx, *out_fli, out_fiov);
 	if (err) {
 		return err;
 	}
@@ -3974,8 +3974,8 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
                      const struct voluta_fmap_ctx *fm_ctx_dst, size_t len)
 {
 	int err;
-	struct voluta_dleaf_info *dli_src = NULL;
-	struct voluta_dleaf_info *dli_dst = NULL;
+	struct voluta_fleaf_info *fli_src = NULL;
+	struct voluta_fleaf_info *fli_dst = NULL;
 	struct voluta_fiovec fiov_src = { .fv_off = -1, .fv_fd = -1 };
 	struct voluta_fiovec fiov_dst = { .fv_off = -1, .fv_fd = -1 };
 
@@ -4007,11 +4007,11 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 			return err;
 		}
 	} else {
-		err = resolve_dleaf(fm_ctx_src, &dli_src, &fiov_src);
+		err = resolve_fleaf(fm_ctx_src, &fli_src, &fiov_src);
 		if (err) {
 			return err;
 		}
-		err = resolve_dleaf(fm_ctx_dst, &dli_dst, &fiov_dst);
+		err = resolve_fleaf(fm_ctx_dst, &fli_dst, &fiov_dst);
 		if (err) {
 			return err;
 		}
@@ -4019,7 +4019,7 @@ static int copy_leaf(const struct voluta_fmap_ctx *fm_ctx_src,
 		if (err) {
 			return err;
 		}
-		err = clear_unwritten_of(fm_ctx_dst->f_ctx, dli_dst);
+		err = clear_unwritten_of(fm_ctx_dst->f_ctx, fli_dst);
 		if (err) {
 			return err;
 		}

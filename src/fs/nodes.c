@@ -79,6 +79,7 @@ static void ci_init(struct voluta_cnode_info *ci,
 	ci->c_ds_next = NULL;
 	ci->c_sbi = NULL;
 	ci->c_xref = NULL;
+	ci->c_xref_len = 0;
 	ci->c_vtbl = vtbl;
 }
 
@@ -92,6 +93,12 @@ static void ci_fini(struct voluta_cnode_info *ci)
 	ci->c_xref = NULL;
 	ci->c_vtbl = NULL;
 }
+
+static void ci_seal_noop(struct voluta_cnode_info *ci)
+{
+	voluta_unused(ci);
+}
+
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
@@ -201,11 +208,6 @@ static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_cnode_vtbl *ci_vtbl)
 {
 	ci_init(&vi->v_ci, ci_vtbl);
-
-	lh_init(&vi->v_dq_lh);
-	an_init(&vi->v_ds_an);
-	vi->v_ds_next = NULL;
-
 	vaddr_copyto(&vba->vaddr, &vi->vaddr);
 	voluta_fiovref_init(&vi->v_fir, vi_fiov_pre, vi_fiov_post);
 	vi->view = NULL;
@@ -217,13 +219,10 @@ static void vi_init(struct voluta_vnode_info *vi,
 static void vi_fini(struct voluta_vnode_info *vi)
 {
 	ci_fini(&vi->v_ci);
-	lh_fini(&vi->v_dq_lh);
-	an_fini(&vi->v_ds_an);
 	vaddr_reset(&vi->vaddr);
 	voluta_fiovref_fini(&vi->v_fir);
 	vi->view = NULL;
 	vi->v_bsi = NULL;
-	vi->v_ds_next = NULL;
 	vi->v_verify = 0;
 }
 
@@ -254,6 +253,13 @@ static int vi_resolve_as_ci(const struct voluta_cnode_info *ci,
 	const struct voluta_vnode_info *vi = voluta_vi_from_ci(ci);
 
 	return (likely(vi != NULL)) ? vi_resolve(vi, out_baddr) : -ENOENT;
+}
+
+static void vi_seal_as_ci(struct voluta_cnode_info *ci)
+{
+	struct voluta_vnode_info *vi = voluta_vi_from_ci(ci);
+
+	voluta_vi_seal_meta(vi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -446,8 +452,9 @@ hsi_new2(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 static const struct voluta_cnode_vtbl *hsi_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = hsi_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 
@@ -612,8 +619,9 @@ voluta_agi_from_vi_rebind(struct voluta_vnode_info *vi,
 static const struct voluta_cnode_vtbl *agi_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = agi_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -716,8 +724,9 @@ itni_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *itni_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = itni_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -827,8 +836,9 @@ static bool ii_evictable_as_ci(const struct voluta_cnode_info *ci)
 static const struct voluta_cnode_vtbl *ii_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = ii_evictable_as_ci,
 		.del = ii_delete_as_ci,
+		.evictable = ii_evictable_as_ci,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -929,8 +939,9 @@ xai_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *xai_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = xai_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -1033,8 +1044,9 @@ syi_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *syi_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = syi_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -1137,8 +1149,9 @@ dti_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *dti_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = dti_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -1241,8 +1254,9 @@ rti_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *rti_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = rti_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = vi_seal_as_ci,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;
@@ -1353,8 +1367,9 @@ fli_new(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 static const struct voluta_cnode_vtbl *fli_vtbl(void)
 {
 	static const struct voluta_cnode_vtbl vtbl = {
-		.evictable = voluta_ci_isevictable,
 		.del = fli_delete_as_ci,
+		.evictable = voluta_ci_isevictable,
+		.seal = ci_seal_noop,
 		.resolve = vi_resolve_as_ci,
 	};
 	return &vtbl;

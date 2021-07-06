@@ -21,6 +21,9 @@
 #include <voluta/fs/types.h>
 
 
+int voluta_ckey_compare(const struct voluta_ckey *ckey1,
+                        const struct voluta_ckey *ckey2);
+
 void voluta_ce_init(struct voluta_cache_elem *ce);
 
 void voluta_ce_fini(struct voluta_cache_elem *ce);
@@ -40,6 +43,11 @@ void voluta_cache_shrink_once(struct voluta_cache *cache);
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags);
 
+void voluta_cache_fill_into_dset(const struct voluta_cache *cache,
+                                 struct voluta_dset *dset);
+
+void voluta_cache_undirtify_by_dset(struct voluta_cache *cache,
+                                    const struct voluta_dset *dset);
 
 struct voluta_bksec_info *
 voluta_cache_lookup_bsi(struct voluta_cache *cache,
@@ -73,6 +81,7 @@ voluta_cache_spawn_vi(struct voluta_cache *cache,
 
 void voulta_cache_forget_vi(struct voluta_cache *cache,
                             struct voluta_vnode_info *vi);
+
 
 void voluta_vi_dirtify(struct voluta_vnode_info *vi);
 
@@ -121,11 +130,7 @@ void voluta_ui_dirtify(struct voluta_unode_info *ui);
 
 void voluta_ui_undirtify(struct voluta_unode_info *ui);
 
-
-void voluta_dset_inhabit_by_cached_vis(struct voluta_dset *dset,
-                                       const struct voluta_cache *cache);
-
-
 bool voluta_ci_isevictable(const struct voluta_cnode_info *ci);
+
 
 #endif /* VOLUTA_CACHE_H_ */

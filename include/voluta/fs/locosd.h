@@ -58,8 +58,8 @@ int voluta_locosd_resolve(struct voluta_locosd *locosd,
                           loff_t off_within, size_t len,
                           struct voluta_fiovec *out_fiov);
 
-int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
-                              struct voluta_locosd *locosd, long ds_key);
+int voluta_collect_flush_dirty(struct voluta_cache *cache,
+                               struct voluta_locosd *locosd);
 
 int voluta_resolve_sb_path(const char *id, struct voluta_namebuf *out_nb);
 

@@ -739,9 +739,11 @@ static void bind_vnode(struct voluta_sb_info *sbi,
                        struct voluta_bksec_info *bsi)
 {
 	struct voluta_cnode_info *ci = &vi->v_ci;
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
 	attach_vnode(sbi, vi, bsi);
-	ci->c_xref = opaque_view_of(bsi, vi_vaddr(vi));
+	ci->c_xref = opaque_view_of(bsi, vaddr);
+	ci->c_xref_len = vaddr->len;
 	vi->view = make_view(ci->c_xref);
 }
 
@@ -1565,7 +1567,7 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
 	if (!need_flush) {
 		return 0;
 	}
-	err = voluta_flush_dirty_vnodes(sbi->s_cache, sbi->s_locosd, 0);
+	err = voluta_collect_flush_dirty(sbi->s_cache, sbi->s_locosd);
 	if (err) {
 		return err;
 	}

@@ -1022,16 +1022,14 @@ static int sgvec_append(struct voluta_sgvec *sgv,
 }
 
 static int sgvec_populate(struct voluta_sgvec *sgv,
-                          struct voluta_vnode_info **viq)
+                          struct voluta_cnode_info **ciq)
 {
 	int err;
 	struct voluta_baddr baddr;
-	struct voluta_vnode_info *vi;
 	struct voluta_cnode_info *ci;
 
-	while (*viq != NULL) {
-		vi = *viq;
-		ci = &vi->v_ci;
+	while (*ciq != NULL) {
+		ci = *ciq;
 		err = ci->c_vtbl->resolve(ci, &baddr);
 		if (err) {
 			return err;
@@ -1043,7 +1041,7 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
 		if (err) {
 			return err;
 		}
-		*viq = vi->v_ds_next;
+		*ciq = ci->c_ds_next;
 	}
 	return 0;
 }
@@ -1063,11 +1061,11 @@ static int sgvec_flush_dset(struct voluta_sgvec *sgv,
                             struct voluta_locosd *locosd)
 {
 	int err;
-	struct voluta_vnode_info *viq = dset->ds_viq;
+	struct voluta_cnode_info *ciq = dset->ds_ciq;
 
-	while (viq != NULL) {
+	while (ciq != NULL) {
 		sgvec_setup(sgv);
-		err = sgvec_populate(sgv, &viq);
+		err = sgvec_populate(sgv, &ciq);
 		if (err) {
 			return err;
 		}
@@ -1081,120 +1079,95 @@ static int sgvec_flush_dset(struct voluta_sgvec *sgv,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static long off_compare(const void *x, const void *y)
+static long ckey_compare(const void *x, const void *y)
 {
-	const long x_off = *((const loff_t *)x);
-	const long y_off = *((const loff_t *)y);
+	const struct voluta_ckey *ckey_x = x;
+	const struct voluta_ckey *ckey_y = y;
 
-	return y_off - x_off;
+	return voluta_ckey_compare(ckey_x, ckey_y);
 }
 
-static struct voluta_vnode_info *
-avl_node_to_vi(const struct voluta_avl_node *an)
+static struct voluta_cnode_info *
+avl_node_to_ci(const struct voluta_avl_node *an)
 {
-	const struct voluta_vnode_info *vi;
+	const struct voluta_cnode_info *ci;
 
-	vi = container_of2(an, struct voluta_vnode_info, v_ds_an);
-	return unconst(vi);
+	ci = container_of2(an, struct voluta_cnode_info, c_ds_an);
+	return unconst(ci);
 }
 
-static const void *vi_getkey(const struct voluta_avl_node *an)
+static const void *ci_getkey(const struct voluta_avl_node *an)
 {
-	const struct voluta_vnode_info *vi = avl_node_to_vi(an);
+	const struct voluta_cnode_info *ci = avl_node_to_ci(an);
 
-	return &vi->vaddr.off;
+	return &ci->ce.ce_ckey;
 }
 
-static void vi_visit_reinit(struct voluta_avl_node *an, void *p)
+static void ci_visit_reinit(struct voluta_avl_node *an, void *p)
 {
-	struct voluta_vnode_info *vi = avl_node_to_vi(an);
+	struct voluta_cnode_info *ci = avl_node_to_ci(an);
 
-	voluta_avl_node_init(&vi->v_ds_an);
+	voluta_avl_node_init(&ci->c_ds_an);
 	unused(p);
 }
 
 static void dset_clear_map(struct voluta_dset *dset)
 {
-	voluta_avl_clear(&dset->ds_avl, vi_visit_reinit, NULL);
+	voluta_avl_clear(&dset->ds_avl, ci_visit_reinit, NULL);
 }
 
 static void dset_add_dirty(struct voluta_dset *dset,
-                           struct voluta_vnode_info *vi)
+                           struct voluta_cnode_info *ci)
 {
-	voluta_avl_insert(&dset->ds_avl, &vi->v_ds_an);
+	voluta_avl_insert(&dset->ds_avl, &ci->c_ds_an);
 }
 
-static void dset_init(struct voluta_dset *dset, long key)
+static void dset_init(struct voluta_dset *dset)
 {
-	voluta_avl_init(&dset->ds_avl, vi_getkey, off_compare, dset);
-	dset->ds_viq = NULL;
-	dset->ds_key = key;
+	voluta_avl_init(&dset->ds_avl, ci_getkey, ckey_compare, dset);
+	dset->ds_ciq = NULL;
 	dset->ds_add_fn = dset_add_dirty;
 }
 
 static void dset_fini(struct voluta_dset *dset)
 {
 	voluta_avl_fini(&dset->ds_avl);
-	dset->ds_viq = NULL;
+	dset->ds_ciq = NULL;
 	dset->ds_add_fn = NULL;
 }
 
-static void dset_purge(const struct voluta_dset *dset)
+static void dset_push_front_ciq(struct voluta_dset *dset,
+                                struct voluta_cnode_info *ci)
 {
-	struct voluta_vnode_info *vi;
-	struct voluta_vnode_info *next;
-
-	vi = dset->ds_viq;
-	while (vi != NULL) {
-		next = vi->v_ds_next;
-
-		vi_undirtify(vi);
-		vi->v_ds_next = NULL;
-
-		vi = next;
-	}
-}
-
-static void dset_push_front_viq(struct voluta_dset *dset,
-                                struct voluta_vnode_info *vi)
-{
-	vi->v_ds_next = dset->ds_viq;
-	dset->ds_viq = vi;
+	ci->c_ds_next = dset->ds_ciq;
+	dset->ds_ciq = ci;
 }
 
 static void dset_make_fifo(struct voluta_dset *dset)
 {
-	struct voluta_vnode_info *vi;
+	struct voluta_cnode_info *ci;
 	const struct voluta_avl_node *end;
 	const struct voluta_avl_node *itr;
 	const struct voluta_avl *avl = &dset->ds_avl;
 
-	dset->ds_viq = NULL;
+	dset->ds_ciq = NULL;
 	end = voluta_avl_end(avl);
 	itr = voluta_avl_rbegin(avl);
 	while (itr != end) {
-		vi = avl_node_to_vi(itr);
-		dset_push_front_viq(dset, vi);
+		ci = avl_node_to_ci(itr);
+		dset_push_front_ciq(dset, ci);
 		itr = voluta_avl_prev(avl, itr);
 	}
 }
 
-static void dset_seal_meta(const struct voluta_dset *dset)
+static void dset_seal_all(const struct voluta_dset *dset)
 {
-	const struct voluta_vnode_info *vi = dset->ds_viq;
+	struct voluta_cnode_info *ci = dset->ds_ciq;
 
-	while (vi != NULL) {
-		if (!vi_isdata(vi)) {
-			voluta_vi_seal_meta(vi);
-		}
-		vi = vi->v_ds_next;
+	while (ci != NULL) {
+		ci->c_vtbl->seal(ci);
+		ci = ci->c_ds_next;
 	}
-}
-
-static void dset_cleanup(struct voluta_dset *dset)
-{
-	dset_clear_map(dset);
-	dset_purge(dset);
 }
 
 static int dset_flush(const struct voluta_dset *dset,
@@ -1206,26 +1179,29 @@ static int dset_flush(const struct voluta_dset *dset,
 }
 
 static int dset_collect_flush_vnodes(struct voluta_dset *dset,
-                                     const struct voluta_cache *cache,
+                                     struct voluta_cache *cache,
                                      struct voluta_locosd *locosd)
 {
 	int err;
 
-	voluta_dset_inhabit_by_cached_vis(dset, cache);
+	voluta_cache_fill_into_dset(cache, dset);
 	dset_make_fifo(dset);
-	dset_seal_meta(dset);
+	dset_seal_all(dset);
 	err = dset_flush(dset, locosd);
-	dset_cleanup(dset);
+	if (!err) {
+		voluta_cache_undirtify_by_dset(cache, dset);
+	}
+	dset_clear_map(dset);
 	return err;
 }
 
-int voluta_flush_dirty_vnodes(const struct voluta_cache *cache,
-                              struct voluta_locosd *locosd, long ds_key)
+int voluta_collect_flush_dirty(struct voluta_cache *cache,
+                               struct voluta_locosd *locosd)
 {
 	int err;
 	struct voluta_dset dset;
 
-	dset_init(&dset, ds_key);
+	dset_init(&dset);
 	err = dset_collect_flush_vnodes(&dset, cache, locosd);
 	dset_fini(&dset);
 	return err;

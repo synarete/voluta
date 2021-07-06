@@ -28,13 +28,15 @@ struct voluta_cnode_info {
 	struct voluta_sb_info          *c_sbi;
 	struct voluta_list_head         c_dq_lh;
 	struct voluta_avl_node          c_ds_an;
-	struct voluta_vnode_info       *c_ds_next;
+	struct voluta_cnode_info       *c_ds_next;
 	const void *c_xref;
+	size_t c_xref_len;
 };
 
 struct voluta_cnode_vtbl {
-	bool (*evictable)(const struct voluta_cnode_info *ci);
 	void (*del)(struct voluta_cnode_info *ci, struct voluta_alloc_if *aif);
+	bool (*evictable)(const struct voluta_cnode_info *ci);
+	void (*seal)(struct voluta_cnode_info *ci);
 	int (*resolve)(const struct voluta_cnode_info *ci,
 	               struct voluta_baddr *out_baddr);
 };
@@ -54,9 +56,6 @@ struct voluta_vnode_info {
 	union voluta_view              *view;
 	struct voluta_fiovref           v_fir;
 	struct voluta_bksec_info       *v_bsi;
-	struct voluta_list_head         v_dq_lh;
-	struct voluta_avl_node          v_ds_an;
-	struct voluta_vnode_info       *v_ds_next;
 	ino_t v_iowner;
 	int  v_verify;
 };

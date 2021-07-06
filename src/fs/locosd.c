@@ -1027,17 +1027,19 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
 	int err;
 	struct voluta_baddr baddr;
 	struct voluta_vnode_info *vi;
+	struct voluta_cnode_info *ci;
 
 	while (*viq != NULL) {
 		vi = *viq;
-		err = voluta_resolve_baddr_of(vi_sbi(vi), vi, &baddr);
+		ci = &vi->v_ci;
+		err = ci->c_vtbl->resolve(ci, &baddr);
 		if (err) {
 			return err;
 		}
 		if (!sgvec_isappendable(sgv, &baddr)) {
 			break;
 		}
-		err = sgvec_append(sgv, &baddr, vi->view);
+		err = sgvec_append(sgv, &baddr, ci->c_xref);
 		if (err) {
 			return err;
 		}
@@ -1116,8 +1118,8 @@ static void dset_clear_map(struct voluta_dset *dset)
 	voluta_avl_clear(&dset->ds_avl, vi_visit_reinit, NULL);
 }
 
-static void dset_add_dirty_vi(struct voluta_dset *dset,
-                              struct voluta_vnode_info *vi)
+static void dset_add_dirty(struct voluta_dset *dset,
+                           struct voluta_vnode_info *vi)
 {
 	voluta_avl_insert(&dset->ds_avl, &vi->v_ds_an);
 }
@@ -1127,7 +1129,7 @@ static void dset_init(struct voluta_dset *dset, long key)
 	voluta_avl_init(&dset->ds_avl, vi_getkey, off_compare, dset);
 	dset->ds_viq = NULL;
 	dset->ds_key = key;
-	dset->ds_add_fn = dset_add_dirty_vi;
+	dset->ds_add_fn = dset_add_dirty;
 }
 
 static void dset_fini(struct voluta_dset *dset)

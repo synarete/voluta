@@ -74,14 +74,22 @@ static void ci_init(struct voluta_cnode_info *ci,
                     const struct voluta_cnode_vtbl *vtbl)
 {
 	voluta_ce_init(&ci->ce);
+	lh_init(&ci->c_dq_lh);
+	an_init(&ci->c_ds_an);
+	ci->c_ds_next = NULL;
 	ci->c_sbi = NULL;
+	ci->c_xref = NULL;
 	ci->c_vtbl = vtbl;
 }
 
 static void ci_fini(struct voluta_cnode_info *ci)
 {
 	voluta_ce_fini(&ci->ce);
+	lh_fini(&ci->c_dq_lh);
+	an_fini(&ci->c_ds_an);
+	ci->c_ds_next = NULL;
 	ci->c_sbi = NULL;
+	ci->c_xref = NULL;
 	ci->c_vtbl = NULL;
 }
 
@@ -193,22 +201,22 @@ static void vi_init(struct voluta_vnode_info *vi,
                     const struct voluta_cnode_vtbl *ci_vtbl)
 {
 	ci_init(&vi->v_ci, ci_vtbl);
-	lh_init(&vi->v_dq_sub_lh);
+
 	lh_init(&vi->v_dq_lh);
 	an_init(&vi->v_ds_an);
+	vi->v_ds_next = NULL;
+
 	vaddr_copyto(&vba->vaddr, &vi->vaddr);
 	voluta_fiovref_init(&vi->v_fir, vi_fiov_pre, vi_fiov_post);
 	vi->view = NULL;
 	vi->v_bsi = NULL;
-	vi->v_ds_next = NULL;
-	vi->v_ds_key = 0;
+	vi->v_iowner = VOLUTA_INO_NULL;
 	vi->v_verify = 0;
 }
 
 static void vi_fini(struct voluta_vnode_info *vi)
 {
 	ci_fini(&vi->v_ci);
-	lh_fini(&vi->v_dq_sub_lh);
 	lh_fini(&vi->v_dq_lh);
 	an_fini(&vi->v_ds_an);
 	vaddr_reset(&vi->vaddr);

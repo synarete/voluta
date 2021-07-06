@@ -342,7 +342,7 @@ static size_t total_dirty_size(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_cache *cache = cache_of(sbi);
 
-	return cache->c_dqs.dq_vis_all.dq_accum_nbytes;
+	return cache->c_vdq.dq_accum_nbytes + cache->c_udq.dq_accum_nbytes;
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi)
@@ -714,13 +714,11 @@ static int find_unallocated_space(struct voluta_sb_info *sbi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void update_dskey(struct voluta_vnode_info *vi,
-                         const struct voluta_inode_info *parent_ii)
+static void update_iowner(struct voluta_vnode_info *vi,
+                          const struct voluta_inode_info *ii)
 {
-	if (parent_ii != NULL) {
-		vi->v_ds_key = (long)ii_ino(parent_ii);
-	} else {
-		vi->v_ds_key = 0;
+	if (ii != NULL) {
+		vi->v_iowner = ii_ino(ii);
 	}
 }
 
@@ -740,8 +738,11 @@ static void bind_vnode(struct voluta_sb_info *sbi,
                        struct voluta_vnode_info *vi,
                        struct voluta_bksec_info *bsi)
 {
+	struct voluta_cnode_info *ci = &vi->v_ci;
+
 	attach_vnode(sbi, vi, bsi);
-	vi->view = make_view(opaque_view_of(bsi, vi_vaddr(vi)));
+	ci->c_xref = opaque_view_of(bsi, vi_vaddr(vi));
+	vi->view = make_view(ci->c_xref);
 }
 
 int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,
@@ -1577,20 +1578,7 @@ int voluta_flush_dirty(struct voluta_sb_info *sbi, int flags)
 
 int voluta_flush_dirty_of(const struct voluta_inode_info *ii, int flags)
 {
-	int err;
-	bool need_flush;
-	struct voluta_sb_info *sbi = ii_sbi(ii);
-	const long ds_key = ii->i_vi.v_ds_key;
-
-	need_flush = voluta_cache_need_flush_of(sbi->s_cache, ii, flags);
-	if (!need_flush) {
-		return 0;
-	}
-	err = voluta_flush_dirty_vnodes(sbi->s_cache, sbi->s_locosd, ds_key);
-	if (err) {
-		return err;
-	}
-	return 0;
+	return voluta_flush_dirty(ii_sbi(ii), flags);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1941,7 +1929,7 @@ static int stage_vnode_at(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	update_dskey(*out_vi, pii);
+	update_iowner(*out_vi, pii);
 	return 0;
 }
 
@@ -2043,7 +2031,7 @@ static int acquire_ino_at(struct voluta_sb_info *sbi,
 static void setup_vnode(struct voluta_vnode_info *vi,
                         const struct voluta_inode_info *parent_ii)
 {
-	update_dskey(vi, parent_ii);
+	update_iowner(vi, parent_ii);
 	vi_stamp_mark_visible(vi);
 }
 

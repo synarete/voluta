@@ -287,13 +287,6 @@ struct voluta_dirtyq {
 	size_t dq_accum_nbytes;
 };
 
-struct voluta_dirtyqs {
-	struct voluta_dirtyq            dq_uis_all;
-	struct voluta_dirtyq            dq_vis_all;
-	struct voluta_dirtyq           *dq_vis_sub;
-	size_t dq_nbins;
-};
-
 /* LRU + hash-map */
 struct voluta_lrumap {
 	struct voluta_listq      lru;
@@ -306,11 +299,12 @@ struct voluta_lrumap {
 struct voluta_cache {
 	struct voluta_qalloc   *c_qalloc;
 	struct voluta_alloc_if *c_alif;
-	struct voluta_dirtyqs   c_dqs;
+	struct voluta_block    *c_nil_bk;
 	struct voluta_lrumap    c_blm;
 	struct voluta_lrumap    c_ulm;
 	struct voluta_lrumap    c_vlm;
-	struct voluta_block    *c_nil_bk;
+	struct voluta_dirtyq    c_udq;
+	struct voluta_dirtyq    c_vdq;
 };
 
 /* space accounting */

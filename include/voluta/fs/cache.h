@@ -40,9 +40,6 @@ void voluta_cache_shrink_once(struct voluta_cache *cache);
 
 bool voluta_cache_need_flush(const struct voluta_cache *cache, int flags);
 
-bool voluta_cache_need_flush_of(const struct voluta_cache *cache,
-                                const struct voluta_inode_info *ii, int flags);
-
 
 struct voluta_bksec_info *
 voluta_cache_lookup_bsi(struct voluta_cache *cache,

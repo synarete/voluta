@@ -26,6 +26,10 @@ struct voluta_cnode_info {
 	struct voluta_cache_elem        ce;
 	const struct voluta_cnode_vtbl *c_vtbl;
 	struct voluta_sb_info          *c_sbi;
+	struct voluta_list_head         c_dq_lh;
+	struct voluta_avl_node          c_ds_an;
+	struct voluta_vnode_info       *c_ds_next;
+	const void *c_xref;
 };
 
 struct voluta_cnode_vtbl {
@@ -51,10 +55,9 @@ struct voluta_vnode_info {
 	struct voluta_fiovref           v_fir;
 	struct voluta_bksec_info       *v_bsi;
 	struct voluta_list_head         v_dq_lh;
-	struct voluta_list_head         v_dq_sub_lh;
 	struct voluta_avl_node          v_ds_an;
 	struct voluta_vnode_info       *v_ds_next;
-	long v_ds_key;
+	ino_t v_iowner;
 	int  v_verify;
 };
 

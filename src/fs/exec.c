@@ -107,6 +107,7 @@ static int fse_init_qalloc(struct voluta_fs_env *fse)
 		return err;
 	}
 	fse->qalloc = qalloc;
+	fse->alif = &qalloc->alif;
 	return 0;
 }
 
@@ -115,6 +116,7 @@ static void fse_fini_qalloc(struct voluta_fs_env *fse)
 	if (fse->qalloc != NULL) {
 		voluta_qalloc_fini(fse->qalloc);
 		fse->qalloc = NULL;
+		fse->alif = NULL;
 	}
 }
 
@@ -647,14 +649,14 @@ int voluta_fse_sync_drop(struct voluta_fs_env *fse)
 void voluta_fse_stats(const struct voluta_fs_env *fse,
                       struct voluta_fs_stats *st)
 {
-	struct voluta_alloc_stat alloc_stat;
+	struct voluta_alloc_stat alst = { .nbytes_used = 0 };
 	const struct voluta_cache *cache = fse->cache;
+	const size_t nbk_in_bksec = VOLUTA_NBK_IN_BKSEC;
 
-	voluta_qalloc_stat(fse->qalloc, &alloc_stat);
-	st->nalloc_bytes = alloc_stat.nbytes_used;
-	st->ncache_blocks = cache->c_blm.htbl_size;
-	st->ncache_inodes = cache->c_ulm.htbl_size;
-	st->ncache_vnodes = cache->c_vlm.htbl_size;
+	voluta_allocstat(fse->alif, &alst);
+	st->nalloc_bytes = alst.nbytes_used;
+	st->ncache_blocks = cache->c_bsi_lm.htbl_size * nbk_in_bksec;
+	st->ncache_cnodes = cache->c_ci_lm.htbl_size;
 }
 
 int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz)

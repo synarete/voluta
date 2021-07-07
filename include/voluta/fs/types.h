@@ -300,9 +300,8 @@ struct voluta_cache {
 	struct voluta_qalloc   *c_qalloc;
 	struct voluta_alloc_if *c_alif;
 	struct voluta_block    *c_nil_bk;
-	struct voluta_lrumap    c_blm;
-	struct voluta_lrumap    c_ulm;
-	struct voluta_lrumap    c_vlm;
+	struct voluta_lrumap    c_bsi_lm;
+	struct voluta_lrumap    c_ci_lm;
 	struct voluta_dirtyq    c_dq;
 };
 
@@ -492,6 +491,7 @@ struct voluta_fs_env {
 	struct voluta_passphrase        passph;
 	struct voluta_kivam             kivam;
 	struct voluta_qalloc           *qalloc;
+	struct voluta_alloc_if         *alif;
 	struct voluta_mpool            *mpool;
 	struct voluta_cache            *cache;
 	struct voluta_locosd           *locosd;

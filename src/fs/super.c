@@ -757,7 +757,7 @@ static int spawn_vi(struct voluta_sb_info *sbi,
                     const struct voluta_vba *vba,
                     struct voluta_vnode_info **out_vi)
 {
-	int err = -ENOMEM;
+	int err;
 	int retry = 2;
 	struct voluta_cache *cache = cache_of(sbi);
 
@@ -768,12 +768,12 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 		}
 		err = commit_dirty_now(sbi);
 		if (err) {
-			break;
+			return err;
 		}
 	}
 	log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
-	        cache->c_vlm.htbl_size, total_dirty_size(sbi));
-	return err;
+	        cache->c_ci_lm.htbl_size, total_dirty_size(sbi));
+	return -ENOMEM;
 }
 
 static int spawn_vi_bind(struct voluta_sb_info *sbi,
@@ -2107,6 +2107,7 @@ static int spawn_vnode(struct voluta_sb_info *sbi,
 		.first_alloc = false
 	};
 
+	*out_vi = NULL;
 	err = claim_space(sbi, &spa);
 	if (err) {
 		return err;

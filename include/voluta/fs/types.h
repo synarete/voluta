@@ -281,9 +281,9 @@ struct voluta_bksec_info {
 	voluta_lba_t    bks_lba;
 };
 
-/* dirty-queues of cached-elements */
+/* dirty-queue of cached-elements */
 struct voluta_dirtyq {
-	struct voluta_listq             dq_list;
+	struct voluta_listq      dq_list;
 	size_t dq_accum_nbytes;
 };
 
@@ -303,8 +303,7 @@ struct voluta_cache {
 	struct voluta_lrumap    c_blm;
 	struct voluta_lrumap    c_ulm;
 	struct voluta_lrumap    c_vlm;
-	struct voluta_dirtyq    c_udq;
-	struct voluta_dirtyq    c_vdq;
+	struct voluta_dirtyq    c_dq;
 };
 
 /* space accounting */

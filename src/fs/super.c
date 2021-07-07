@@ -190,12 +190,12 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 
 static bool vi_isvisible(const struct voluta_vnode_info *vi)
 {
-	return voluta_bsi_is_visible_at(vi->v_bsi, vi_vaddr(vi));
+	return voluta_bsi_is_visible_at(vi->v_ci.c_bsi, vi_vaddr(vi));
 }
 
 static void vi_mark_visible(const struct voluta_vnode_info *vi)
 {
-	voluta_bsi_mark_visible_at(vi->v_bsi, vi_vaddr(vi));
+	voluta_bsi_mark_visible_at(vi->v_ci.c_bsi, vi_vaddr(vi));
 }
 
 static void vi_stamp_mark_visible(struct voluta_vnode_info *vi)
@@ -204,7 +204,6 @@ static void vi_stamp_mark_visible(struct voluta_vnode_info *vi)
 	vi_mark_visible(vi);
 	vi_dirtify(vi);
 }
-
 
 static void hsi_incref(struct voluta_hspace_info *hsi)
 {
@@ -342,7 +341,7 @@ static size_t total_dirty_size(const struct voluta_sb_info *sbi)
 {
 	const struct voluta_cache *cache = cache_of(sbi);
 
-	return cache->c_vdq.dq_accum_nbytes + cache->c_udq.dq_accum_nbytes;
+	return cache->c_dq.dq_accum_nbytes;
 }
 
 static int commit_dirty_now(struct voluta_sb_info *sbi)
@@ -722,26 +721,15 @@ static void update_iowner(struct voluta_vnode_info *vi,
 	}
 }
 
-static void attach_vnode(struct voluta_sb_info *sbi,
-                         struct voluta_vnode_info *vi,
-                         struct voluta_bksec_info *bsi)
-{
-	voluta_assert_not_null(vi);
-
-	if (likely(vi != NULL)) { /* make clang-scan happy */
-		vi->v_ci.c_sbi = sbi;
-		voluta_vi_attach_to(vi, bsi);
-	}
-}
-
-static void bind_vnode(struct voluta_sb_info *sbi,
-                       struct voluta_vnode_info *vi,
-                       struct voluta_bksec_info *bsi)
+static void bind_vi(struct voluta_sb_info *sbi,
+                    struct voluta_vnode_info *vi,
+                    struct voluta_bksec_info *bsi)
 {
 	struct voluta_cnode_info *ci = &vi->v_ci;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	attach_vnode(sbi, vi, bsi);
+	voluta_vi_attach_to(vi, bsi);
+	ci->c_sbi = sbi;
 	ci->c_xref = opaque_view_of(bsi, vaddr);
 	ci->c_xref_len = vaddr->len;
 	vi->view = make_view(ci->c_xref);
@@ -788,6 +776,21 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 	return err;
 }
 
+static int spawn_vi_bind(struct voluta_sb_info *sbi,
+                         const struct voluta_vba *vba,
+                         struct voluta_bksec_info *bsi,
+                         struct voluta_vnode_info **out_vi)
+{
+	int err;
+
+	err = spawn_vi(sbi, vba, out_vi);
+	if (err) {
+		return err;
+	}
+	bind_vi(sbi, *out_vi, bsi);
+	return 0;
+}
+
 static int spawn_bind_vnode(struct voluta_sb_info *sbi,
                             const struct voluta_vba *vba,
                             struct voluta_vnode_info **out_vi)
@@ -802,11 +805,10 @@ static int spawn_bind_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi(sbi, vba, out_vi);
+	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
-	bind_vnode(sbi, *out_vi, bsi);
 	return 0;
 }
 
@@ -855,11 +857,10 @@ static int spawn_spmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi(sbi, vba, out_vi);
+	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
-	bind_vnode(sbi, *out_vi, bsi);
 	vi_stamp_mark_visible(*out_vi);
 	return 0;
 }
@@ -1621,11 +1622,10 @@ static int stage_bind_spmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi(sbi, vba, out_vi);
+	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
-	bind_vnode(sbi, *out_vi, bsi);
 	return 0;
 }
 
@@ -1787,7 +1787,7 @@ static int review_inode(struct voluta_inode_info *ii)
 	return review_vnode(ii_to_vi(ii));
 }
 
-static int fetch_inode_at(struct voluta_sb_info *sbi,
+static int stage_inode_at(struct voluta_sb_info *sbi,
                           const struct voluta_iaddr *iaddr,
                           struct voluta_inode_info **out_ii)
 {
@@ -1810,8 +1810,8 @@ static int fetch_inode_at(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int fetch_inode(struct voluta_sb_info *sbi, ino_t ino,
-                       struct voluta_inode_info **out_ii)
+static int resolve_stage_inode(struct voluta_sb_info *sbi, ino_t ino,
+                               struct voluta_inode_info **out_ii)
 {
 	int err;
 	struct voluta_vba vba;
@@ -1825,7 +1825,7 @@ static int fetch_inode(struct voluta_sb_info *sbi, ino_t ino,
 	if (err) {
 		return err;
 	}
-	err = fetch_inode_at(sbi, &iaddr, out_ii);
+	err = stage_inode_at(sbi, &iaddr, out_ii);
 	if (err) {
 		return err;
 	}
@@ -1854,7 +1854,7 @@ static int stage_inode(struct voluta_sb_info *sbi, ino_t ino,
 	if (err) {
 		return err;
 	}
-	err = fetch_inode(sbi, ino, out_ii);
+	err = resolve_stage_inode(sbi, ino, out_ii);
 	if (err) {
 		return err;
 	}
@@ -1874,7 +1874,7 @@ int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
 	if (err) {
 		return err;
 	}
-	err = fetch_inode(sbi, ino, out_ii);
+	err = resolve_stage_inode(sbi, ino, out_ii);
 	if (err) {
 		return err;
 	}

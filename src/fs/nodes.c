@@ -78,6 +78,7 @@ static void ci_init(struct voluta_cnode_info *ci,
 	an_init(&ci->c_ds_an);
 	ci->c_ds_next = NULL;
 	ci->c_sbi = NULL;
+	ci->c_bsi = NULL;
 	ci->c_xref = NULL;
 	ci->c_xref_len = 0;
 	ci->c_vtbl = vtbl;
@@ -90,6 +91,7 @@ static void ci_fini(struct voluta_cnode_info *ci)
 	an_fini(&ci->c_ds_an);
 	ci->c_ds_next = NULL;
 	ci->c_sbi = NULL;
+	ci->c_bsi = NULL;
 	ci->c_xref = NULL;
 	ci->c_vtbl = NULL;
 }
@@ -120,8 +122,6 @@ static void ui_init(struct voluta_unode_info *ui,
 	voluta_uba_reset(&ui->uba);
 	baddr_copyto(baddr, &ui->uba.baddr);
 	ci_init(&ui->u_ci, vtbl);
-	lh_init(&ui->u_dq_lh);
-	ui->u_bsi = NULL;
 }
 
 static void ui_init2(struct voluta_unode_info *ui,
@@ -136,8 +136,6 @@ static void ui_fini(struct voluta_unode_info *ui)
 {
 	voluta_uba_reset(&ui->uba);
 	ci_fini(&ui->u_ci);
-	lh_fini(&ui->u_dq_lh);
-	ui->u_bsi = NULL;
 }
 
 struct voluta_unode_info *voluta_ui_from_ci(const struct voluta_cnode_info *ci)
@@ -211,7 +209,6 @@ static void vi_init(struct voluta_vnode_info *vi,
 	vaddr_copyto(&vba->vaddr, &vi->vaddr);
 	voluta_fiovref_init(&vi->v_fir, vi_fiov_pre, vi_fiov_post);
 	vi->view = NULL;
-	vi->v_bsi = NULL;
 	vi->v_iowner = VOLUTA_INO_NULL;
 	vi->v_verify = 0;
 }
@@ -222,7 +219,6 @@ static void vi_fini(struct voluta_vnode_info *vi)
 	vaddr_reset(&vi->vaddr);
 	voluta_fiovref_fini(&vi->v_fir);
 	vi->view = NULL;
-	vi->v_bsi = NULL;
 	vi->v_verify = 0;
 }
 
@@ -264,10 +260,9 @@ static void vi_seal_as_ci(struct voluta_cnode_info *ci)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* XXX: this code seg must die */
-static enum voluta_vtype uba_to_vtype(const struct voluta_uba *uba)
+static enum voluta_vtype utype_to_vtype(enum voluta_utype utype)
 {
 	enum voluta_vtype vtype;
-	const enum voluta_utype utype = uba->uaddr.utype;
 
 	switch (utype) {
 	case VOLUTA_UTYPE_SUPER:
@@ -288,10 +283,52 @@ static enum voluta_vtype uba_to_vtype(const struct voluta_uba *uba)
 	return vtype;
 }
 
+static enum voluta_utype vtype_to_utype(enum voluta_vtype vtype)
+{
+	enum voluta_utype utype;
+
+	switch (vtype) {
+	case VOLUTA_VTYPE_SUPER:
+		utype = VOLUTA_UTYPE_SUPER;
+		break;
+	case VOLUTA_VTYPE_HSMAP:
+		utype = VOLUTA_UTYPE_HSMAP;
+		break;
+	case VOLUTA_VTYPE_AGMAP:
+		utype = VOLUTA_UTYPE_AGMAP;
+		break;
+	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_VTYPE_DATA1K:
+	case VOLUTA_VTYPE_DATA4K:
+	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_VTYPE_DTNODE:
+	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_VTYPE_DATABK:
+	default:
+		utype = VOLUTA_UTYPE_NONE;
+		break;
+	}
+	voluta_assert_ne(utype, VOLUTA_UTYPE_NONE);
+	return utype;
+}
+
 static void uba_to_vba(const struct voluta_uba *uba, struct voluta_vba *vba)
 {
+	const enum voluta_vtype vtype = utype_to_vtype(uba->uaddr.utype);
+
 	voluta_baddr_copyto(&uba->baddr, &vba->baddr);
-	voluta_vaddr_setup(&vba->vaddr, uba_to_vtype(uba), uba->uaddr.off);
+	voluta_vaddr_setup(&vba->vaddr, vtype, uba->uaddr.off);
+}
+
+void voluta_vba_to_uba(const struct voluta_vba *vba, struct voluta_uba *uba)
+{
+	const enum voluta_utype utype = vtype_to_utype(vba->vaddr.vtype);
+
+	voluta_baddr_copyto(&vba->baddr, &uba->baddr);
+	voluta_uaddr_setup(&uba->uaddr, utype, vba->vaddr.off);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

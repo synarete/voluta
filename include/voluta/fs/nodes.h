@@ -26,6 +26,7 @@ struct voluta_cnode_info {
 	struct voluta_cache_elem        ce;
 	const struct voluta_cnode_vtbl *c_vtbl;
 	struct voluta_sb_info          *c_sbi;
+	struct voluta_bksec_info       *c_bsi;
 	struct voluta_list_head         c_dq_lh;
 	struct voluta_avl_node          c_ds_an;
 	struct voluta_cnode_info       *c_ds_next;
@@ -45,17 +46,14 @@ struct voluta_cnode_vtbl {
 struct voluta_unode_info {
 	struct voluta_uba               uba;
 	struct voluta_cnode_info        u_ci;
-	struct voluta_bksec_info       *u_bsi;
-	struct voluta_list_head         u_dq_lh;
 };
 
 /* vnode */
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
-	struct voluta_cnode_info        v_ci;
 	union voluta_view              *view;
+	struct voluta_cnode_info        v_ci;
 	struct voluta_fiovref           v_fir;
-	struct voluta_bksec_info       *v_bsi;
 	ino_t v_iowner;
 	int  v_verify;
 };
@@ -129,6 +127,9 @@ struct voluta_fleaf_info {
 };
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
+
+
+void voluta_vba_to_uba(const struct voluta_vba *vba, struct voluta_uba *uba);
 
 
 struct voluta_hspace_info *

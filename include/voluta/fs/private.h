@@ -457,12 +457,6 @@ const struct voluta_vaddr *ii_vaddr(const struct voluta_inode_info *ii)
 }
 
 static inline
-struct voluta_bksec_info *ii_bsi(const struct voluta_inode_info *ii)
-{
-	return ii_to_vi(ii)->v_bsi;
-}
-
-static inline
 struct voluta_sb_info *ii_sbi(const struct voluta_inode_info *ii)
 {
 	return vi_sbi(ii_to_vi(ii));

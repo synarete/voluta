@@ -406,7 +406,7 @@ static void mntmsg_init(struct voluta_mntmsg *mmsg, int cmd)
 
 	voluta_memzero(mmsg, sizeof(*mmsg));
 	mntmsg_set_status(mmsg, 0);
-	mmsg->mn_magic = VOLUTA_VTYPE_MAGIC;
+	mmsg->mn_magic = VOLUTA_ZTYPE_MAGIC;
 	mmsg->mn_version_major = (uint16_t)voluta_version.major;
 	mmsg->mn_version_minor = (uint16_t)voluta_version.minor;
 	mmsg->mn_cmd = (uint32_t)cmd;
@@ -498,7 +498,7 @@ static enum voluta_mntcmd mntmsg_cmd(const struct voluta_mntmsg *mmsg)
 
 static int mntmsg_check(const struct voluta_mntmsg *mmsg)
 {
-	if (mmsg->mn_magic != VOLUTA_VTYPE_MAGIC) {
+	if (mmsg->mn_magic != VOLUTA_ZTYPE_MAGIC) {
 		return -EINVAL;
 	}
 	if (mmsg->mn_version_major != voluta_version.major) {

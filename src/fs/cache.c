@@ -191,14 +191,14 @@ static void ckey_by_uaddr(struct voluta_ckey *ckey,
                           const struct voluta_uaddr *uaddr)
 {
 	ckey_setup3(ckey, (uint64_t)uaddr->off | (1UL << 63),
-	            (uint32_t)uaddr->utype | (1U << 31), (uint32_t)uaddr->len);
+	            (uint32_t)uaddr->ztype | (1U << 31), (uint32_t)uaddr->len);
 }
 
 static void ckey_by_vaddr(struct voluta_ckey *ckey,
                           const struct voluta_vaddr *vaddr)
 {
 	ckey_setup3(ckey, (uint64_t)vaddr->off,
-	            (uint32_t)vaddr->vtype, (uint32_t)vaddr->len);
+	            (uint32_t)vaddr->ztype, (uint32_t)vaddr->len);
 }
 
 static void ckey_reset(struct voluta_ckey *ckey)
@@ -560,7 +560,7 @@ void voluta_vi_decref(struct voluta_vnode_info *vi)
 
 static size_t vaddr_nkbs(const struct voluta_vaddr *vaddr)
 {
-	return voluta_vtype_nkbs(vaddr->vtype);
+	return voluta_ztype_nkbs(vaddr->ztype);
 }
 
 static size_t vaddr_kb_index(const struct voluta_vaddr *vaddr)

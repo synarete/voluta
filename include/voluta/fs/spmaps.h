@@ -76,11 +76,11 @@ void voluta_hsi_bind_to_kindof(struct voluta_hspace_info *hsi,
                                const struct voluta_vaddr *vaddr);
 
 int voluta_hsi_check_cap_alloc(const struct voluta_hspace_info *hsi,
-                               const enum voluta_vtype vtype);
+                               const enum voluta_ztype ztype);
 
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
-                               enum voluta_vtype vtype,
+                               enum voluta_ztype ztype,
                                voluta_index_t *out_ag_index,
                                size_t *out_bn_within_ag);
 
@@ -101,7 +101,7 @@ void voluta_agi_resolve_bks(const struct voluta_agroup_info *agi,
                             struct voluta_vba *out_vba);
 
 int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
-                               enum voluta_vtype vtype, size_t bn_start_hint,
+                               enum voluta_ztype ztype, size_t bn_start_hint,
                                struct voluta_vba *out_vba);
 
 void voluta_agi_mark_allocated_space(struct voluta_agroup_info *agi,

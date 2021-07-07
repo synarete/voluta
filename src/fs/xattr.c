@@ -786,9 +786,9 @@ static int spawn_xanode(const struct voluta_xattr_ctx *xa_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = VOLUTA_VTYPE_XANODE;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_XANODE;
 
-	err = voluta_spawn_vnode(xa_ctx->sbi, xa_ctx->ii, vtype, &vi);
+	err = voluta_spawn_vnode(xa_ctx->sbi, xa_ctx->ii, ztype, &vi);
 	if (err) {
 		return err;
 	}

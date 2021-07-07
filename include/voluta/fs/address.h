@@ -34,19 +34,19 @@ voluta_index_t voluta_ag_index_by_hs(voluta_index_t hs_index, size_t ag_slot);
 loff_t voluta_off_in_blob(loff_t off, size_t blob_size);
 
 
-bool voluta_vtype_isspmap(enum voluta_vtype vtype);
+bool voluta_ztype_isspmap(enum voluta_ztype ztype);
 
-bool voluta_vtype_isdata(enum voluta_vtype vtype);
+bool voluta_ztype_isdata(enum voluta_ztype ztype);
 
-bool voluta_vtype_ismeta(enum voluta_vtype vtype);
+bool voluta_ztype_ismeta(enum voluta_ztype ztype);
 
-size_t voluta_vtype_size(enum voluta_vtype vtype);
+size_t voluta_ztype_size(enum voluta_ztype ztype);
 
-ssize_t voluta_vtype_ssize(enum voluta_vtype vtype);
+ssize_t voluta_ztype_ssize(enum voluta_ztype ztype);
 
-size_t voluta_vtype_nkbs(enum voluta_vtype vtype);
+size_t voluta_ztype_nkbs(enum voluta_ztype ztype);
 
-enum voluta_agkind voluta_vtype_to_agkind(enum voluta_vtype vtype);
+enum voluta_agkind voluta_ztype_to_agkind(enum voluta_ztype ztype);
 
 
 const struct voluta_vaddr *voluta_vaddr_none(void);
@@ -55,7 +55,7 @@ void voluta_vaddr_copyto(const struct voluta_vaddr *vaddr,
                          struct voluta_vaddr *other);
 
 void voluta_vaddr_setup(struct voluta_vaddr *vaddr,
-                        enum voluta_vtype vtype, loff_t off);
+                        enum voluta_ztype ztype, loff_t off);
 
 void voluta_vaddr_reset(struct voluta_vaddr *vaddr);
 
@@ -66,7 +66,7 @@ bool voluta_vaddr_isdata(const struct voluta_vaddr *vaddr);
 bool voluta_vaddr_isspmap(const struct voluta_vaddr *vaddr);
 
 
-void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_vtype vtype,
+void voluta_vaddr_by_ag(struct voluta_vaddr *vaddr, enum voluta_ztype ztype,
                         voluta_index_t ag_index, size_t bn, size_t kbn);
 
 
@@ -149,7 +149,7 @@ void voluta_vba_to_bksec_baddr(const struct voluta_vba *vba,
 const struct voluta_uaddr *voluta_uaddr_none(void);
 
 void voluta_uaddr_setup(struct voluta_uaddr *uaddr,
-                        enum voluta_utype utype, loff_t off);
+                        enum voluta_ztype ztype, loff_t off);
 
 void voluta_uaddr_copyto(const struct voluta_uaddr *uaddr,
                          struct voluta_uaddr *other);

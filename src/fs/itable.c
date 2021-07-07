@@ -459,7 +459,7 @@ static int itc_lookup(const struct voluta_itcache *itc, ino_t ino,
 	if (itc_ent->ino != ino) {
 		return -ENOENT;
 	}
-	vaddr_setup(&vaddr, VOLUTA_VTYPE_INODE, itc_ent->off);
+	vaddr_setup(&vaddr, VOLUTA_ZTYPE_INODE, itc_ent->off);
 	iaddr_setup(out_iaddr, itc_ent->ino, &vaddr);
 	return 0;
 }
@@ -702,9 +702,9 @@ static int spawn_itnode(struct voluta_sb_info *sbi,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = VOLUTA_VTYPE_ITNODE;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_ITNODE;
 
-	err = voluta_spawn_vnode(sbi, NULL, vtype, &vi);
+	err = voluta_spawn_vnode(sbi, NULL, ztype, &vi);
 	if (err) {
 		return err;
 	}
@@ -1428,7 +1428,7 @@ static int reload_scan_itable(struct voluta_sb_info *sbi,
 static bool vaddr_isitnode(const struct voluta_vaddr *vaddr)
 {
 	return !vaddr_isnull(vaddr) &&
-	       vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_ITNODE);
+	       ztype_isequal(vaddr->ztype, VOLUTA_ZTYPE_ITNODE);
 }
 
 static int resolve_itroot(struct voluta_sb_info *sbi,
@@ -1436,8 +1436,8 @@ static int resolve_itroot(struct voluta_sb_info *sbi,
 {
 	voluta_sb_itable_root(sbi->sb, out_vaddr);
 	if (!vaddr_isitnode(out_vaddr)) {
-		log_err("non valid itable-root: off=0x%lx vtype=%d",
-		        out_vaddr->off, out_vaddr->vtype);
+		log_err("non valid itable-root: off=0x%lx ztype=%d",
+		        out_vaddr->off, out_vaddr->ztype);
 		return -EFSCORRUPTED;
 	}
 	return 0;
@@ -1501,12 +1501,12 @@ static int verify_itable_entry(const struct voluta_itable_entry *ite)
 	if (err) {
 		return err;
 	}
-	if (vtype_isnone(vaddr.vtype)) {
+	if (ztype_isnone(vaddr.ztype)) {
 		if (!ino_isnull(ino)) {
 			return -EFSCORRUPTED;
 		}
 	} else {
-		if (!vtype_isinode(vaddr.vtype)) {
+		if (!ztype_isinode(vaddr.ztype)) {
 			return -EFSCORRUPTED;
 		}
 	}
@@ -1556,7 +1556,7 @@ static int verify_itnode_childs(const struct voluta_itable_tnode *itn)
 		if (err) {
 			return err;
 		}
-		if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_ITNODE)) {
+		if (!ztype_isequal(vaddr.ztype, VOLUTA_ZTYPE_ITNODE)) {
 			return -EFSCORRUPTED;
 		}
 		nchilds++;
@@ -1577,7 +1577,7 @@ static int verify_itnode_parent(const struct voluta_itable_tnode *itn)
 	if (err) {
 		return err;
 	}
-	if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_ITNODE)) {
+	if (!ztype_isequal(vaddr.ztype, VOLUTA_ZTYPE_ITNODE)) {
 		return -EFSCORRUPTED;
 	}
 	return 0;

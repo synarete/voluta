@@ -217,7 +217,7 @@ struct voluta_kivam {
 struct voluta_uaddr {
 	loff_t                  off;
 	unsigned int            len;
-	enum voluta_utype       utype;
+	enum voluta_ztype       ztype;
 };
 
 /* file-system elements addressing */
@@ -227,7 +227,7 @@ struct voluta_vaddr {
 	voluta_lba_t            lba;
 	loff_t                  off;
 	unsigned int            len;
-	enum voluta_vtype       vtype;
+	enum voluta_ztype       ztype;
 };
 
 /* object-address within underlying blobs space */

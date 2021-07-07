@@ -1180,10 +1180,10 @@ void voluta_refresh_atime(struct voluta_inode_info *ii, bool to_volatile)
 }
 
 static blkcnt_t recalc_iblocks(const struct voluta_inode_info *ii,
-                               enum voluta_vtype vtype, long dif)
+                               enum voluta_ztype ztype, long dif)
 {
 	blkcnt_t cnt;
-	const size_t nkbs = vtype_nkbs(vtype);
+	const size_t nkbs = ztype_nkbs(ztype);
 	const blkcnt_t blocks = ii_blocks(ii);
 
 	if (dif > 0) {
@@ -1198,12 +1198,12 @@ static blkcnt_t recalc_iblocks(const struct voluta_inode_info *ii,
 
 void voluta_update_iblocks(const struct voluta_oper *op,
                            struct voluta_inode_info *ii,
-                           enum voluta_vtype vtype, long dif)
+                           enum voluta_ztype ztype, long dif)
 {
 	struct voluta_iattr iattr;
 
 	iattr_setup(&iattr, ii_ino(ii));
-	iattr.ia_blocks = recalc_iblocks(ii, vtype, dif);
+	iattr.ia_blocks = recalc_iblocks(ii, ztype, dif);
 	iattr.ia_flags = VOLUTA_IATTR_BLOCKS;
 
 	update_iattrs(op, ii, &iattr);

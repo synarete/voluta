@@ -29,7 +29,7 @@
 #define VOLUTA_SUPER_MAGIC              (0x544C5640U)
 
 /* magic numbers at meta-objects start (ASCII: "#VLT") */
-#define VOLUTA_VTYPE_MAGIC              (0x544C5623U)
+#define VOLUTA_ZTYPE_MAGIC              (0x544C5623U)
 
 /* max length of encryption pass-phrase */
 #define VOLUTA_PASSPHRASE_MAX           (255)
@@ -274,29 +274,21 @@ enum voluta_endianness {
 	VOLUTA_ENDIANNESS_BE    = 2
 };
 
-/* uber-space element-types */
-enum voluta_utype {
-	VOLUTA_UTYPE_NONE       = 0,
-	VOLUTA_UTYPE_SUPER      = 3,
-	VOLUTA_UTYPE_HSMAP      = 5,
-	VOLUTA_UTYPE_AGMAP      = 7,
-};
-
-/* file-system element-types */
-enum voluta_vtype {
-	VOLUTA_VTYPE_NONE       = 0,
-	VOLUTA_VTYPE_DATA1K     = 1,
-	VOLUTA_VTYPE_SUPER      = 3,
-	VOLUTA_VTYPE_DATA4K     = 4,
-	VOLUTA_VTYPE_HSMAP      = 5,
-	VOLUTA_VTYPE_AGMAP      = 7,
-	VOLUTA_VTYPE_ITNODE     = 11,
-	VOLUTA_VTYPE_INODE      = 13,
-	VOLUTA_VTYPE_XANODE     = 17,
-	VOLUTA_VTYPE_DTNODE     = 19,
-	VOLUTA_VTYPE_RTNODE     = 23,
-	VOLUTA_VTYPE_SYMVAL     = 29,
-	VOLUTA_VTYPE_DATABK     = 64,
+/* file-system complex-elements type-names */
+enum voluta_ztype {
+	VOLUTA_ZTYPE_NONE       = 0,
+	VOLUTA_ZTYPE_DATA1K     = 1,
+	VOLUTA_ZTYPE_SUPER      = 3,
+	VOLUTA_ZTYPE_DATA4K     = 4,
+	VOLUTA_ZTYPE_HSMAP      = 5,
+	VOLUTA_ZTYPE_AGMAP      = 7,
+	VOLUTA_ZTYPE_ITNODE     = 11,
+	VOLUTA_ZTYPE_INODE      = 13,
+	VOLUTA_ZTYPE_XANODE     = 17,
+	VOLUTA_ZTYPE_DTNODE     = 19,
+	VOLUTA_ZTYPE_RTNODE     = 23,
+	VOLUTA_ZTYPE_SYMVAL     = 29,
+	VOLUTA_ZTYPE_DATABK     = 64,
 };
 
 /* allocation-groups flags */
@@ -451,7 +443,7 @@ struct voluta_vaddr56 {
 
 
 struct voluta_vaddr64 {
-	uint64_t off_vtype;
+	uint64_t off_ztype;
 } voluta_packed_aligned8;
 
 
@@ -473,7 +465,7 @@ struct voluta_blobspec {
 
 struct voluta_header {
 	uint32_t                h_magic;
-	uint8_t                 h_vtype;
+	uint8_t                 h_ztype;
 	uint8_t                 h_flags;
 	uint16_t                h_reserved;
 	uint32_t                h_size;
@@ -579,7 +571,7 @@ struct voluta_hspace_map {
 
 
 struct voluta_bk_rec {
-	uint8_t                 bk_vtype;
+	uint8_t                 bk_ztype;
 	uint8_t                 bk_reserved1[3];
 	uint32_t                bk_flags;
 	uint64_t                bk_allocated;
@@ -793,14 +785,14 @@ struct voluta_blocks_sec {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-/* semantic "view" into meta elements */
+/* semantic "view" into meta vnodes' element */
 union voluta_view {
 	struct voluta_header            hdr;
 	struct voluta_super_block       sb;
 	struct voluta_hspace_map        hsm;
 	struct voluta_agroup_map        agm;
 	struct voluta_inode             inode;
-	struct voluta_dir_tnode        htn;
+	struct voluta_dir_tnode         htn;
 	struct voluta_radix_tnode       rtn;
 	struct voluta_xattr_node        xan;
 	struct voluta_symlnk_value      sym;

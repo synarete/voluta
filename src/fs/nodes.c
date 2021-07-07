@@ -234,7 +234,7 @@ struct voluta_vnode_info *voluta_vi_from_ci(const struct voluta_cnode_info *ci)
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi)
 {
-	return voluta_vtype_isdata(vi_vtype(vi));
+	return voluta_ztype_isdata(vi_ztype(vi));
 }
 
 static int vi_resolve(const struct voluta_vnode_info *vi,
@@ -260,75 +260,21 @@ static void vi_seal_as_ci(struct voluta_cnode_info *ci)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 /* XXX: this code seg must die */
-static enum voluta_vtype utype_to_vtype(enum voluta_utype utype)
-{
-	enum voluta_vtype vtype;
-
-	switch (utype) {
-	case VOLUTA_UTYPE_SUPER:
-		vtype = VOLUTA_VTYPE_SUPER;
-		break;
-	case VOLUTA_UTYPE_HSMAP:
-		vtype = VOLUTA_VTYPE_HSMAP;
-		break;
-	case VOLUTA_UTYPE_AGMAP:
-		vtype = VOLUTA_VTYPE_AGMAP;
-		break;
-	case VOLUTA_UTYPE_NONE:
-	default:
-		vtype = VOLUTA_VTYPE_NONE;
-		break;
-	}
-	voluta_assert_ne(vtype, VOLUTA_VTYPE_NONE);
-	return vtype;
-}
-
-static enum voluta_utype vtype_to_utype(enum voluta_vtype vtype)
-{
-	enum voluta_utype utype;
-
-	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
-		utype = VOLUTA_UTYPE_SUPER;
-		break;
-	case VOLUTA_VTYPE_HSMAP:
-		utype = VOLUTA_UTYPE_HSMAP;
-		break;
-	case VOLUTA_VTYPE_AGMAP:
-		utype = VOLUTA_UTYPE_AGMAP;
-		break;
-	case VOLUTA_VTYPE_NONE:
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_ITNODE:
-	case VOLUTA_VTYPE_INODE:
-	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_DTNODE:
-	case VOLUTA_VTYPE_RTNODE:
-	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_DATABK:
-	default:
-		utype = VOLUTA_UTYPE_NONE;
-		break;
-	}
-	voluta_assert_ne(utype, VOLUTA_UTYPE_NONE);
-	return utype;
-}
 
 static void uba_to_vba(const struct voluta_uba *uba, struct voluta_vba *vba)
 {
-	const enum voluta_vtype vtype = utype_to_vtype(uba->uaddr.utype);
+	const enum voluta_ztype ztype = uba->uaddr.ztype;
 
 	voluta_baddr_copyto(&uba->baddr, &vba->baddr);
-	voluta_vaddr_setup(&vba->vaddr, vtype, uba->uaddr.off);
+	voluta_vaddr_setup(&vba->vaddr, ztype, uba->uaddr.off);
 }
 
 void voluta_vba_to_uba(const struct voluta_vba *vba, struct voluta_uba *uba)
 {
-	const enum voluta_utype utype = vtype_to_utype(vba->vaddr.vtype);
+	const enum voluta_ztype ztype = vba->vaddr.ztype;
 
 	voluta_baddr_copyto(&vba->baddr, &uba->baddr);
-	voluta_uaddr_setup(&uba->uaddr, utype, vba->vaddr.off);
+	voluta_uaddr_setup(&uba->uaddr, ztype, vba->vaddr.off);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -683,7 +629,7 @@ voluta_itni_from_vi(const struct voluta_vnode_info *vi)
 	const struct voluta_itnode_info *itni = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_ITNODE);
+		voluta_assert_eq(vi->vaddr.ztype, VOLUTA_ZTYPE_ITNODE);
 		itni = container_of2(vi, struct voluta_itnode_info, itn_vi);
 	}
 	return unconst(itni);
@@ -900,7 +846,7 @@ voluta_xai_from_vi(const struct voluta_vnode_info *vi)
 	const struct voluta_xanode_info *xai = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_XANODE);
+		voluta_assert_eq(vi->vaddr.ztype, VOLUTA_ZTYPE_XANODE);
 		xai = container_of2(vi, struct voluta_xanode_info, xa_vi);
 	}
 	return unconst(xai);
@@ -1003,7 +949,7 @@ voluta_syi_from_vi(const struct voluta_vnode_info *vi)
 	const struct voluta_symval_info *syi = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_SYMVAL);
+		voluta_assert_eq(vi->vaddr.ztype, VOLUTA_ZTYPE_SYMVAL);
 		syi = container_of2(vi, struct voluta_symval_info, sy_vi);
 	}
 	return unconst(syi);
@@ -1108,7 +1054,7 @@ voluta_dti_from_vi(const struct voluta_vnode_info *vi)
 	const struct voluta_dtnode_info *dti = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_DTNODE);
+		voluta_assert_eq(vi->vaddr.ztype, VOLUTA_ZTYPE_DTNODE);
 		dti = container_of2(vi, struct voluta_dtnode_info, dt_vi);
 	}
 	return unconst(dti);
@@ -1213,7 +1159,7 @@ voluta_rti_from_vi(const struct voluta_vnode_info *vi)
 	const struct voluta_rtnode_info *rti = NULL;
 
 	if (likely(vi != NULL)) {
-		voluta_assert_eq(vi->vaddr.vtype, VOLUTA_VTYPE_RTNODE);
+		voluta_assert_eq(vi->vaddr.ztype, VOLUTA_ZTYPE_RTNODE);
 		rti = container_of2(vi, struct voluta_rtnode_info, rt_vi);
 	}
 	return unconst(rti);
@@ -1326,17 +1272,17 @@ voluta_fli_from_vi(const struct voluta_vnode_info *vi)
 struct voluta_fleaf_info *
 voluta_fli_from_vi_rebind(struct voluta_vnode_info *vi)
 {
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 	struct voluta_fleaf_info *fli = voluta_fli_from_vi(vi);
 
 	if (likely(fli != NULL)) {
-		vtype = vi_vtype(vi);
-		if (vtype == VOLUTA_VTYPE_DATA1K) {
+		ztype = vi_ztype(vi);
+		if (ztype == VOLUTA_ZTYPE_DATA1K) {
 			fli->flu.db1 = &fli->fl_vi.view->db1;
-		} else if (vtype == VOLUTA_VTYPE_DATA4K) {
+		} else if (ztype == VOLUTA_ZTYPE_DATA4K) {
 			fli->flu.db4 = &fli->fl_vi.view->db4;
 		} else {
-			voluta_assert_eq(vtype, VOLUTA_VTYPE_DATABK);
+			voluta_assert_eq(ztype, VOLUTA_ZTYPE_DATABK);
 			fli->flu.db = &fli->fl_vi.view->db;
 		}
 	}
@@ -1418,17 +1364,26 @@ struct voluta_unode_info *
 voluta_new_ui(struct voluta_alloc_if *alif, const struct voluta_uba *uba)
 {
 	struct voluta_unode_info *ui;
-	const enum voluta_utype utype = uba->uaddr.utype;
+	const enum voluta_ztype ztype = uba->uaddr.ztype;
 
-	switch (utype) {
-	case VOLUTA_UTYPE_HSMAP:
+	switch (ztype) {
+	case VOLUTA_ZTYPE_HSMAP:
 		ui = hsi_to_ui(hsi_new2(alif, uba));
 		break;
-	case VOLUTA_UTYPE_AGMAP:
+	case VOLUTA_ZTYPE_AGMAP:
 		ui = agi_to_ui(agi_new2(alif, uba));
 		break;
-	case VOLUTA_UTYPE_NONE:
-	case VOLUTA_UTYPE_SUPER:
+	case VOLUTA_ZTYPE_ITNODE:
+	case VOLUTA_ZTYPE_INODE:
+	case VOLUTA_ZTYPE_XANODE:
+	case VOLUTA_ZTYPE_SYMVAL:
+	case VOLUTA_ZTYPE_DTNODE:
+	case VOLUTA_ZTYPE_RTNODE:
+	case VOLUTA_ZTYPE_DATA1K:
+	case VOLUTA_ZTYPE_DATA4K:
+	case VOLUTA_ZTYPE_DATABK:
+	case VOLUTA_ZTYPE_SUPER:
+	case VOLUTA_ZTYPE_NONE:
 	default:
 		ui = NULL;
 		break;
@@ -1440,40 +1395,40 @@ struct voluta_vnode_info *
 voluta_new_vi(struct voluta_alloc_if *alif, const struct voluta_vba *vba)
 {
 	struct voluta_vnode_info *vi;
-	const enum voluta_vtype vtype = vba->vaddr.vtype;
+	const enum voluta_ztype ztype = vba->vaddr.ztype;
 
-	switch (vtype) {
-	case VOLUTA_VTYPE_HSMAP:
+	switch (ztype) {
+	case VOLUTA_ZTYPE_HSMAP:
 		vi = hsi_to_vi(hsi_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_ZTYPE_AGMAP:
 		vi = agi_to_vi(agi_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_ZTYPE_ITNODE:
 		vi = itni_to_vi(itni_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_ZTYPE_INODE:
 		vi = ii_to_vi(ii_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_ZTYPE_XANODE:
 		vi = xai_to_vi(xai_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_ZTYPE_SYMVAL:
 		vi = syi_to_vi(syi_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_DTNODE:
+	case VOLUTA_ZTYPE_DTNODE:
 		vi = dti_to_vi(dti_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_ZTYPE_RTNODE:
 		vi = rti_to_vi(rti_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_ZTYPE_DATA1K:
+	case VOLUTA_ZTYPE_DATA4K:
+	case VOLUTA_ZTYPE_DATABK:
 		vi = fli_to_vi(fli_new(alif, vba));
 		break;
-	case VOLUTA_VTYPE_NONE:
-	case VOLUTA_VTYPE_SUPER:
+	case VOLUTA_ZTYPE_SUPER:
+	case VOLUTA_ZTYPE_NONE:
 	default:
 		vi = NULL;
 	}
@@ -1507,14 +1462,14 @@ static void hdr_set_size(struct voluta_header *hdr, size_t size)
 	hdr->h_size = voluta_cpu_to_le32((uint32_t)size);
 }
 
-static enum voluta_vtype hdr_vtype(const struct voluta_header *hdr)
+static enum voluta_ztype hdr_ztype(const struct voluta_header *hdr)
 {
-	return (enum voluta_vtype)(hdr->h_vtype);
+	return (enum voluta_ztype)(hdr->h_ztype);
 }
 
-static void hdr_set_vtype(struct voluta_header *hdr, enum voluta_vtype vtype)
+static void hdr_set_ztype(struct voluta_header *hdr, enum voluta_ztype ztype)
 {
-	hdr->h_vtype = (uint8_t)vtype;
+	hdr->h_ztype = (uint8_t)ztype;
 }
 
 static uint32_t hdr_csum(const struct voluta_header *hdr)
@@ -1540,11 +1495,11 @@ static struct voluta_header *hdr_of(const union voluta_view *view)
 }
 
 static void hdr_stamp(struct voluta_header *hdr,
-                      enum voluta_vtype vtype, size_t size)
+                      enum voluta_ztype ztype, size_t size)
 {
-	hdr_set_magic(hdr, VOLUTA_VTYPE_MAGIC);
+	hdr_set_magic(hdr, VOLUTA_ZTYPE_MAGIC);
 	hdr_set_size(hdr, size);
-	hdr_set_vtype(hdr, vtype);
+	hdr_set_ztype(hdr, ztype);
 	hdr_set_csum(hdr, 0);
 	hdr->h_flags = 0;
 	hdr->h_reserved = 0;
@@ -1597,19 +1552,19 @@ static uint32_t calc_chekcsum_of(const struct voluta_vnode_info *vi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int verify_hdr(const union voluta_view *view, enum voluta_vtype vtype)
+static int verify_hdr(const union voluta_view *view, enum voluta_ztype ztype)
 {
 	const struct voluta_header *hdr = hdr_of(view);
 	const size_t hsz = hdr_size(hdr);
-	const size_t psz = vtype_size(vtype);
+	const size_t psz = ztype_size(ztype);
 
-	if (vtype_isdata(vtype)) {
+	if (ztype_isdata(ztype)) {
 		return 0;
 	}
-	if (hdr_magic(hdr) != VOLUTA_VTYPE_MAGIC) {
+	if (hdr_magic(hdr) != VOLUTA_ZTYPE_MAGIC) {
 		return -EFSCORRUPTED;
 	}
-	if (hdr_vtype(hdr) != vtype) {
+	if (hdr_ztype(hdr) != ztype) {
 		return -EFSCORRUPTED;
 	}
 	if (hsz != psz) {
@@ -1629,42 +1584,42 @@ static int verify_checksum(const union voluta_view *view,
 	return (csum == hdr_csum(hdr)) ? 0 : -EFSCORRUPTED;
 }
 
-static int verify_sub(const union voluta_view *view, enum voluta_vtype vtype)
+static int verify_sub(const union voluta_view *view, enum voluta_ztype ztype)
 {
 	int err;
 
-	switch (vtype) {
-	case VOLUTA_VTYPE_HSMAP:
+	switch (ztype) {
+	case VOLUTA_ZTYPE_HSMAP:
 		err = voluta_verify_hspace_map(&view->hsm);
 		break;
-	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_ZTYPE_AGMAP:
 		err = voluta_verify_agroup_map(&view->agm);
 		break;
-	case VOLUTA_VTYPE_ITNODE:
+	case VOLUTA_ZTYPE_ITNODE:
 		err = voluta_verify_itnode(&view->itn);
 		break;
-	case VOLUTA_VTYPE_INODE:
+	case VOLUTA_ZTYPE_INODE:
 		err = voluta_verify_inode(&view->inode);
 		break;
-	case VOLUTA_VTYPE_XANODE:
+	case VOLUTA_ZTYPE_XANODE:
 		err = voluta_verify_xattr_node(&view->xan);
 		break;
-	case VOLUTA_VTYPE_DTNODE:
+	case VOLUTA_ZTYPE_DTNODE:
 		err = voluta_verify_dir_htree_node(&view->htn);
 		break;
-	case VOLUTA_VTYPE_RTNODE:
+	case VOLUTA_ZTYPE_RTNODE:
 		err = voluta_verify_radix_tnode(&view->rtn);
 		break;
-	case VOLUTA_VTYPE_SYMVAL:
+	case VOLUTA_ZTYPE_SYMVAL:
 		err = voluta_verify_lnk_value(&view->sym);
 		break;
-	case VOLUTA_VTYPE_SUPER:
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_ZTYPE_SUPER:
+	case VOLUTA_ZTYPE_DATA1K:
+	case VOLUTA_ZTYPE_DATA4K:
+	case VOLUTA_ZTYPE_DATABK:
 		err = 0;
 		break;
-	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_ZTYPE_NONE:
 	default:
 		err = -EFSCORRUPTED;
 		break;
@@ -1673,15 +1628,15 @@ static int verify_sub(const union voluta_view *view, enum voluta_vtype vtype)
 }
 
 static int verify_view(const union voluta_view *view,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        const struct voluta_mdigest *md)
 {
 	int err;
 
-	if (vtype_isdata(vtype)) {
+	if (ztype_isdata(ztype)) {
 		return 0;
 	}
-	err = verify_hdr(view, vtype);
+	err = verify_hdr(view, ztype);
 	if (err) {
 		return err;
 	}
@@ -1689,7 +1644,7 @@ static int verify_view(const union voluta_view *view,
 	if (err) {
 		return err;
 	}
-	err = verify_sub(view, vtype);
+	err = verify_sub(view, ztype);
 	if (err) {
 		return err;
 	}
@@ -1700,7 +1655,7 @@ int voluta_vi_verify_meta(const struct voluta_vnode_info *vi)
 {
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
-	return verify_view(vi->view, vaddr->vtype, vi_mdigest(vi));
+	return verify_view(vi->view, vaddr->ztype, vi_mdigest(vi));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1711,7 +1666,7 @@ static void stamp_view(union voluta_view *view,
 	struct voluta_header *hdr = hdr_of(view);
 
 	voluta_memzero(view, vaddr->len);
-	hdr_stamp(hdr, vaddr->vtype, vaddr->len);
+	hdr_stamp(hdr, vaddr->ztype, vaddr->len);
 }
 
 void voluta_vi_stamp_view(const struct voluta_vnode_info *vi)

@@ -68,10 +68,10 @@
 #define log_err(fmt, ...)               voluta_log_error(fmt, __VA_ARGS__)
 #define log_crit(fmt, ...)              voluta_log_crit(fmt, __VA_ARGS__)
 
-#define vtype_nkbs(vt)                  voluta_vtype_nkbs(vt)
-#define vtype_size(vt)                  voluta_vtype_size(vt)
-#define vtype_ssize(vt)                 voluta_vtype_ssize(vt)
-#define vtype_isdata(vt)                voluta_vtype_isdata(vt)
+#define ztype_nkbs(vt)                  voluta_ztype_nkbs(vt)
+#define ztype_size(vt)                  voluta_ztype_size(vt)
+#define ztype_ssize(vt)                 voluta_ztype_ssize(vt)
+#define ztype_isdata(vt)                voluta_ztype_isdata(vt)
 
 #define vaddr_none()                    voluta_vaddr_none()
 #define vaddr_isnull(va)                voluta_vaddr_isnull(va)
@@ -345,33 +345,33 @@ const struct voluta_uaddr *ui_uaddr(const struct voluta_unode_info *ui)
 
 
 static inline
-bool vtype_isequal(enum voluta_vtype vt1, enum voluta_vtype vt2)
+bool ztype_isequal(enum voluta_ztype vt1, enum voluta_ztype vt2)
 {
 	return (vt1 == vt2);
 }
 
 static inline
-bool vtype_isnone(enum voluta_vtype vtype)
+bool ztype_isnone(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_NONE);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_NONE);
 }
 
 static inline
-bool vtype_ishsmap(enum voluta_vtype vtype)
+bool ztype_ishsmap(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_HSMAP);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_HSMAP);
 }
 
 static inline
-bool vtype_isagmap(enum voluta_vtype vtype)
+bool ztype_isagmap(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_AGMAP);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_AGMAP);
 }
 
 static inline
-bool vtype_isinode(enum voluta_vtype vtype)
+bool ztype_isinode(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_INODE);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_INODE);
 }
 
 static inline
@@ -381,9 +381,9 @@ const struct voluta_vaddr *vi_vaddr(const struct voluta_vnode_info *vi)
 }
 
 static inline
-enum voluta_vtype vi_vtype(const struct voluta_vnode_info *vi)
+enum voluta_ztype vi_ztype(const struct voluta_vnode_info *vi)
 {
-	return (vi != NULL) ? vi_vaddr(vi)->vtype : VOLUTA_VTYPE_NONE;
+	return (vi != NULL) ? vi_vaddr(vi)->ztype : VOLUTA_ZTYPE_NONE;
 }
 
 static inline

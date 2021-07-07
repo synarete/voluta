@@ -347,9 +347,9 @@ static int spawn_symval(const struct voluta_symlnk_ctx *sl_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = VOLUTA_VTYPE_SYMVAL;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_SYMVAL;
 
-	err = voluta_spawn_vnode(sl_ctx->sbi, sl_ctx->lnk_ii, vtype, &vi);
+	err = voluta_spawn_vnode(sl_ctx->sbi, sl_ctx->lnk_ii, ztype, &vi);
 	if (err) {
 		return err;
 	}
@@ -398,7 +398,7 @@ static void bind_symval_part(struct voluta_symlnk_ctx *sl_ctx, size_t slot,
 	const struct voluta_vaddr *vaddr = syi_vaddr(syi);
 
 	lnk_set_value_part(lnk_ii, slot, vaddr);
-	update_iblocks(sl_ctx->op, lnk_ii, vaddr->vtype, 1);
+	update_iblocks(sl_ctx->op, lnk_ii, vaddr->ztype, 1);
 }
 
 static int assign_symval_parts(struct voluta_symlnk_ctx *sl_ctx,

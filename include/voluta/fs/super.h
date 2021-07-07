@@ -87,11 +87,11 @@ int voluta_spawn_inode(struct voluta_sb_info *sbi,
 
 int voluta_spawn_vnode(struct voluta_sb_info *sbi,
                        struct voluta_inode_info *pii,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        struct voluta_vnode_info **out_vi);
 
 int voluta_claim_space(struct voluta_sb_info *sbi,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        struct voluta_vaddr *out_vaddr);
 
 int voluta_remove_inode(struct voluta_sb_info *sbi,

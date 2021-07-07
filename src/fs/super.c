@@ -37,7 +37,7 @@ struct voluta_spalloc_ctx {
 	struct voluta_hspace_info *hsi;
 	struct voluta_agroup_info *agi;
 	struct voluta_vba vba;
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 	bool first_alloc;
 };
 
@@ -252,27 +252,27 @@ static void calc_stat_change(const struct voluta_vaddr *vaddr, int take,
                              struct voluta_space_stat *sp_st)
 {
 	const ssize_t nbytes = (ssize_t)vaddr->len;
-	const enum voluta_vtype vtype = vaddr->vtype;
+	const enum voluta_ztype ztype = vaddr->ztype;
 
 	sp_st->ndata = 0;
 	sp_st->nmeta = 0;
 	sp_st->nfiles = 0;
 	if (take > 0) {
-		if (vtype_isdata(vtype)) {
+		if (ztype_isdata(ztype)) {
 			sp_st->ndata = nbytes;
 		} else {
 			sp_st->nmeta = nbytes;
 		}
-		if (vtype_isinode(vtype)) {
+		if (ztype_isinode(ztype)) {
 			sp_st->nfiles = 1;
 		}
 	} else if (take < 0) {
-		if (vtype_isdata(vtype)) {
+		if (ztype_isdata(ztype)) {
 			sp_st->ndata = -nbytes;
 		} else {
 			sp_st->nmeta = -nbytes;
 		}
-		if (vtype_isinode(vtype)) {
+		if (ztype_isinode(ztype)) {
 			sp_st->nfiles = -1;
 		}
 	}
@@ -307,7 +307,7 @@ static void mark_unallocate_at(struct voluta_sb_info *sbi,
                                struct voluta_agroup_info *agi,
                                const struct voluta_vaddr *vaddr)
 {
-	const size_t nkbs = vtype_nkbs(vaddr->vtype);
+	const size_t nkbs = ztype_nkbs(vaddr->ztype);
 	const voluta_index_t ag_index = vaddr->ag_index;
 
 	voluta_agi_clear_allocated_space(agi, vaddr);
@@ -519,13 +519,13 @@ static int find_free_space_at(struct voluta_sb_info *sbi,
 {
 	int err;
 	struct voluta_agroup_info *agi = NULL;
-	const enum voluta_vtype vtype = spa->vtype;
+	const enum voluta_ztype ztype = spa->ztype;
 
 	err = stage_agmap(sbi, ag_index, &agi);
 	if (err) {
 		return err;
 	}
-	err = voluta_agi_find_free_space(agi, vtype, bn_start, &spa->vba);
+	err = voluta_agi_find_free_space(agi, ztype, bn_start, &spa->vba);
 	if (err) {
 		return err;
 	}
@@ -534,9 +534,9 @@ static int find_free_space_at(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static bool is_sub_bk(enum voluta_vtype vtype)
+static bool is_sub_bk(enum voluta_ztype ztype)
 {
-	return (vtype_size(vtype) < VOLUTA_BK_SIZE);
+	return (ztype_size(ztype) < VOLUTA_BK_SIZE);
 }
 
 static bool range_is_empty(const struct voluta_index_range *range)
@@ -551,11 +551,11 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 	int err;
 	size_t bn_start;
 	voluta_index_t ag_index;
-	const enum voluta_vtype vtype = spa->vtype;
+	const enum voluta_ztype ztype = spa->ztype;
 
 	while (!range_is_empty(ag_range)) {
 		err = voluta_hsi_search_avail_ag(spa->hsi, ag_range,
-		                                 vtype, &ag_index, &bn_start);
+		                                 ztype, &ag_index, &bn_start);
 		if (err) {
 			return err;
 		}
@@ -563,7 +563,7 @@ static int find_free_space_within(struct voluta_sb_info *sbi,
 		if (err != -ENOSPC) {
 			return err;
 		}
-		if ((err == -ENOSPC) && is_sub_bk(spa->vtype)) {
+		if ((err == -ENOSPC) && is_sub_bk(spa->ztype)) {
 			voluta_hsi_mark_fragmented(spa->hsi, ag_index);
 		}
 		ag_range->beg = ag_index + 1;
@@ -603,7 +603,7 @@ static int try_find_free_space(struct voluta_sb_info *sbi,
 {
 	int err;
 
-	err = voluta_hsi_check_cap_alloc(spa->hsi, spa->vtype);
+	err = voluta_hsi_check_cap_alloc(spa->hsi, spa->ztype);
 	if (err) {
 		return err;
 	}
@@ -771,12 +771,12 @@ static int spawn_vi(struct voluta_sb_info *sbi,
 			return err;
 		}
 	}
-	log_dbg("can not spawn vi: nvi=%lu dirty=%lu",
+	log_dbg("can not spawn vi: nodes=%lu dirty=%lu",
 	        cache->c_ci_lm.htbl_size, total_dirty_size(sbi));
 	return -ENOMEM;
 }
 
-static int spawn_vi_bind(struct voluta_sb_info *sbi,
+static int spawn_bind_vi(struct voluta_sb_info *sbi,
                          const struct voluta_vba *vba,
                          struct voluta_bksec_info *bsi,
                          struct voluta_vnode_info **out_vi)
@@ -791,7 +791,7 @@ static int spawn_vi_bind(struct voluta_sb_info *sbi,
 	return 0;
 }
 
-static int spawn_bind_vnode(struct voluta_sb_info *sbi,
+static int spawn_bind_vi_at(struct voluta_sb_info *sbi,
                             const struct voluta_vba *vba,
                             struct voluta_vnode_info **out_vi)
 {
@@ -805,7 +805,7 @@ static int spawn_bind_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
+	err = spawn_bind_vi(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
@@ -832,7 +832,7 @@ static int spawn_bind_inode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_vnode(sbi, &vba, &vi);
+	err = spawn_bind_vi_at(sbi, &vba, &vi);
 	if (err) {
 		return err;
 	}
@@ -857,7 +857,7 @@ static int spawn_spmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
+	err = spawn_bind_vi(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
@@ -891,7 +891,7 @@ static int stage_vnode(struct voluta_sb_info *sbi,
 	if (!err) {
 		return 0; /* Cache hit */
 	}
-	err = spawn_bind_vnode(sbi, vba, &vi);
+	err = spawn_bind_vi_at(sbi, vba, &vi);
 	if (err) {
 		goto out_err;
 	}
@@ -965,14 +965,14 @@ static void update_spi_by_hsm(struct voluta_sb_info *sbi,
 
 static void update_spi_on_hsm(struct voluta_sb_info *sbi)
 {
-	const ssize_t hsm_size = vtype_ssize(VOLUTA_VTYPE_HSMAP);
+	const ssize_t hsm_size = ztype_ssize(VOLUTA_ZTYPE_HSMAP);
 
 	spi_update_meta(&sbi->s_spi, hsm_size);
 }
 
 static void update_spi_on_agm(struct voluta_sb_info *sbi, size_t nags)
 {
-	const ssize_t agm_size = vtype_ssize(VOLUTA_VTYPE_AGMAP);
+	const ssize_t agm_size = ztype_ssize(VOLUTA_ZTYPE_AGMAP);
 
 	STATICASSERT_EQ(sizeof(struct voluta_bk_rec), 56);
 	STATICASSERT_EQ(sizeof(struct voluta_agroup_map), VOLUTA_BK_SIZE);
@@ -1601,7 +1601,7 @@ static int try_stage_cached_hsmap(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
-	voluta_assert_eq(vba->vaddr.vtype, VOLUTA_VTYPE_HSMAP);
+	voluta_assert_eq(vba->vaddr.ztype, VOLUTA_ZTYPE_HSMAP);
 
 	err = voluta_stage_cached_vnode(sbi, &vba->vaddr, &vi);
 	if (err) {
@@ -1622,7 +1622,7 @@ static int stage_bind_spmap(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_vi_bind(sbi, vba, bsi, out_vi);
+	err = spawn_bind_vi(sbi, vba, bsi, out_vi);
 	if (err) {
 		return err;
 	}
@@ -1697,7 +1697,7 @@ static int try_stage_cached_agmap(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_vnode_info *vi = NULL;
 
-	voluta_assert_eq(vba->vaddr.vtype, VOLUTA_VTYPE_AGMAP);
+	voluta_assert_eq(vba->vaddr.ztype, VOLUTA_ZTYPE_AGMAP);
 
 	err = voluta_stage_cached_vnode(sbi, &vba->vaddr, &vi);
 	if (err) {
@@ -1949,13 +1949,13 @@ int voluta_stage_vnode(struct voluta_sb_info *sbi,
 }
 
 static int check_avail_space(const struct voluta_sb_info *sbi,
-                             enum voluta_vtype vtype)
+                             enum voluta_ztype ztype)
 {
 	bool ok;
-	const bool new_file = vtype_isinode(vtype);
-	const size_t nbytes = vtype_size(vtype);
+	const bool new_file = ztype_isinode(ztype);
+	const size_t nbytes = ztype_size(ztype);
 
-	if (vtype_isdata(vtype)) {
+	if (ztype_isdata(ztype)) {
 		ok = spi_may_alloc_data(&sbi->s_spi, nbytes);
 	} else {
 		ok = spi_may_alloc_meta(&sbi->s_spi, nbytes, new_file);
@@ -1968,7 +1968,7 @@ static int claim_space(struct voluta_sb_info *sbi,
 {
 	int err;
 
-	err = check_avail_space(sbi, spa->vtype);
+	err = check_avail_space(sbi, spa->ztype);
 	if (err) {
 		return err;
 	}
@@ -1982,12 +1982,12 @@ static int claim_space(struct voluta_sb_info *sbi,
 }
 
 int voluta_claim_space(struct voluta_sb_info *sbi,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        struct voluta_vaddr *out_vaddr)
 {
 	int err;
 	struct voluta_spalloc_ctx spa = {
-		.vtype = vtype,
+		.ztype = ztype,
 		.first_alloc = false
 	};
 
@@ -2055,7 +2055,7 @@ static int spawn_inode(struct voluta_sb_info *sbi,
 	int err;
 	struct voluta_iaddr iaddr;
 	struct voluta_spalloc_ctx spa = {
-		.vtype = VOLUTA_VTYPE_INODE,
+		.ztype = VOLUTA_ZTYPE_INODE,
 		.first_alloc = false
 	};
 
@@ -2098,12 +2098,12 @@ int voluta_spawn_inode(struct voluta_sb_info *sbi,
 /* TODO: cleanups and resource reclaim upon failure in every path */
 static int spawn_vnode(struct voluta_sb_info *sbi,
                        struct voluta_inode_info *pii,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        struct voluta_vnode_info **out_vi)
 {
 	int err;
 	struct voluta_spalloc_ctx spa = {
-		.vtype = vtype,
+		.ztype = ztype,
 		.first_alloc = false
 	};
 
@@ -2112,7 +2112,7 @@ static int spawn_vnode(struct voluta_sb_info *sbi,
 	if (err) {
 		return err;
 	}
-	err = spawn_bind_vnode(sbi, &spa.vba, out_vi);
+	err = spawn_bind_vi_at(sbi, &spa.vba, out_vi);
 	if (err) {
 		/* TODO: spfree inode from ag */
 		return err;
@@ -2123,13 +2123,13 @@ static int spawn_vnode(struct voluta_sb_info *sbi,
 
 int voluta_spawn_vnode(struct voluta_sb_info *sbi,
                        struct voluta_inode_info *pii,
-                       enum voluta_vtype vtype,
+                       enum voluta_ztype ztype,
                        struct voluta_vnode_info **out_vi)
 {
 	int err;
 
 	ii_incref(pii);
-	err = spawn_vnode(sbi, pii, vtype, out_vi);
+	err = spawn_vnode(sbi, pii, ztype, out_vi);
 	ii_decref(pii);
 	return err;
 }
@@ -2346,30 +2346,30 @@ int voluta_resolve_baddr_of(struct voluta_sb_info *sbi,
 {
 	int err = 0;
 	struct voluta_vba vba = { .baddr.len = 0 };
-	const enum voluta_vtype vtype = vi_vtype(vi);
+	const enum voluta_ztype ztype = vi_ztype(vi);
 
-	switch (vtype) {
-	case VOLUTA_VTYPE_SUPER:
+	switch (ztype) {
+	case VOLUTA_ZTYPE_SUPER:
 		voluta_sbi_vba(sbi, &vba);
 		break;
-	case VOLUTA_VTYPE_HSMAP:
+	case VOLUTA_ZTYPE_HSMAP:
 		voluta_hsi_vba(voluta_hsi_from_vi(vi), &vba);
 		break;
-	case VOLUTA_VTYPE_AGMAP:
+	case VOLUTA_ZTYPE_AGMAP:
 		voluta_agi_vba(voluta_agi_from_vi(vi), &vba);
 		break;
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_ITNODE:
-	case VOLUTA_VTYPE_INODE:
-	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_DTNODE:
-	case VOLUTA_VTYPE_RTNODE:
-	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_DATABK:
+	case VOLUTA_ZTYPE_DATA1K:
+	case VOLUTA_ZTYPE_DATA4K:
+	case VOLUTA_ZTYPE_ITNODE:
+	case VOLUTA_ZTYPE_INODE:
+	case VOLUTA_ZTYPE_XANODE:
+	case VOLUTA_ZTYPE_DTNODE:
+	case VOLUTA_ZTYPE_RTNODE:
+	case VOLUTA_ZTYPE_SYMVAL:
+	case VOLUTA_ZTYPE_DATABK:
 		err = voluta_resolve_vba(sbi, vi_vaddr(vi), &vba);
 		break;
-	case VOLUTA_VTYPE_NONE:
+	case VOLUTA_ZTYPE_NONE:
 	default:
 		err = -EINVAL;
 		break;

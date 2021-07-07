@@ -39,14 +39,14 @@ static uint64_t cpu_to_index(voluta_index_t index)
 	return voluta_cpu_to_le64(index);
 }
 
-static bool vtype_isdatabk(enum voluta_vtype vtype)
+static bool ztype_isdatabk(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_DATABK);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_DATABK);
 }
 
-static enum voluta_agkind vtype_to_agkind(enum voluta_vtype vtype)
+static enum voluta_agkind ztype_to_agkind(enum voluta_ztype ztype)
 {
-	return voluta_vtype_to_agkind(vtype);
+	return voluta_ztype_to_agkind(ztype);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -58,7 +58,7 @@ static bool ag_index_isnull(voluta_index_t ag_index)
 
 static size_t nkb_of(const struct voluta_vaddr *vaddr)
 {
-	return vtype_nkbs(vaddr->vtype);
+	return ztype_nkbs(vaddr->ztype);
 }
 
 static size_t kbn_of(const struct voluta_vaddr *vaddr)
@@ -257,18 +257,18 @@ static void agr_unset_fragmented(struct voluta_ag_rec *agr)
 }
 
 static void agr_bind_to_kind(struct voluta_ag_rec *agr,
-                             enum voluta_vtype vtype)
+                             enum voluta_ztype ztype)
 {
-	agr_set_kind(agr, vtype_to_agkind(vtype));
+	agr_set_kind(agr, ztype_to_agkind(ztype));
 }
 
-static bool agr_kind_fits_vtype(const struct voluta_ag_rec *agr,
-                                enum voluta_vtype vtype)
+static bool agr_kind_fits_ztype(const struct voluta_ag_rec *agr,
+                                enum voluta_ztype ztype)
 {
 	const enum voluta_agkind agkind = agr_kind(agr);
 
 	return (agkind == VOLUTA_AGKIND_NONE) ||
-	       (agkind == vtype_to_agkind(vtype));
+	       (agkind == ztype_to_agkind(ztype));
 }
 
 static void agr_init(struct voluta_ag_rec *agr)
@@ -321,10 +321,10 @@ static bool agr_has_nfree(const struct voluta_ag_rec *agr, size_t nbytes)
 }
 
 static bool agr_may_alloc(const struct voluta_ag_rec *agr,
-                          enum voluta_vtype vtype)
+                          enum voluta_ztype ztype)
 {
 	const size_t bk_size = VOLUTA_BK_SIZE;
-	const size_t nbytes = vtype_size(vtype);
+	const size_t nbytes = ztype_size(ztype);
 
 	if (!agr_is_formatted(agr)) {
 		return false;
@@ -338,10 +338,10 @@ static bool agr_may_alloc(const struct voluta_ag_rec *agr,
 	return true;
 }
 
-static bool agr_may_alloc_vtype(const struct voluta_ag_rec *agr,
-                                enum voluta_vtype vtype)
+static bool agr_may_alloc_ztype(const struct voluta_ag_rec *agr,
+                                enum voluta_ztype ztype)
 {
-	return agr_kind_fits_vtype(agr, vtype) && agr_may_alloc(agr, vtype);
+	return agr_kind_fits_ztype(agr, ztype) && agr_may_alloc(agr, ztype);
 }
 
 static void agr_agm_vba(const struct voluta_ag_rec *agr,
@@ -573,9 +573,9 @@ static void hsm_clear_fragmented(struct voluta_hspace_map *hsm,
 }
 
 static void hsm_bind_to_kind(struct voluta_hspace_map *hsm,
-                             voluta_index_t ag_index, enum voluta_vtype vtype)
+                             voluta_index_t ag_index, enum voluta_ztype ztype)
 {
-	agr_bind_to_kind(hsm_ag_rec_of(hsm, ag_index), vtype);
+	agr_bind_to_kind(hsm_ag_rec_of(hsm, ag_index), ztype);
 }
 
 static size_t hsm_ag_index_tip(const struct voluta_hspace_map *hsm)
@@ -598,7 +598,7 @@ hsm_used_space_of(const struct voluta_hspace_map *hsm, voluta_index_t ag_index)
 static voluta_index_t
 hsm_find_avail(const struct voluta_hspace_map *hsm,
                const struct voluta_index_range *range,
-               enum voluta_vtype vtype)
+               enum voluta_ztype ztype)
 {
 	size_t nags_iter;
 	voluta_index_t ag_index;
@@ -612,7 +612,7 @@ hsm_find_avail(const struct voluta_hspace_map *hsm,
 		if (!agr_is_formatted(agr)) {
 			break;
 		}
-		if (agr_may_alloc_vtype(agr, vtype)) {
+		if (agr_may_alloc_ztype(agr, ztype)) {
 			return ag_index;
 		}
 		ag_index++;
@@ -637,22 +637,22 @@ static uint64_t mask_of(size_t kbn, size_t nkb)
 	return mask;
 }
 
-static enum voluta_vtype bkr_vtype(const struct voluta_bk_rec *bkr)
+static enum voluta_ztype bkr_ztype(const struct voluta_bk_rec *bkr)
 {
-	return (enum voluta_vtype)(bkr->bk_vtype);
+	return (enum voluta_ztype)(bkr->bk_ztype);
 }
 
-static void bkr_set_vtype(struct voluta_bk_rec *bkr, enum voluta_vtype vtype)
+static void bkr_set_ztype(struct voluta_bk_rec *bkr, enum voluta_ztype ztype)
 {
-	bkr->bk_vtype = (uint8_t)vtype;
+	bkr->bk_ztype = (uint8_t)ztype;
 }
 
-static bool bkr_has_vtype_or_none(const struct voluta_bk_rec *bkr,
-                                  enum voluta_vtype vtype)
+static bool bkr_has_ztype_or_none(const struct voluta_bk_rec *bkr,
+                                  enum voluta_ztype ztype)
 {
-	const enum voluta_vtype vt = bkr_vtype(bkr);
+	const enum voluta_ztype vt = bkr_ztype(bkr);
 
-	return vtype_isnone(vt) || vtype_isequal(vt, vtype);
+	return ztype_isnone(vt) || ztype_isequal(vt, ztype);
 }
 
 static void bkr_set_flags(struct voluta_bk_rec *bkr, uint32_t f)
@@ -796,7 +796,7 @@ static void bkr_clear_unwritten_at(struct voluta_bk_rec *bkr,
 
 static void bkr_init(struct voluta_bk_rec *bkr)
 {
-	bkr_set_vtype(bkr, VOLUTA_VTYPE_NONE);
+	bkr_set_ztype(bkr, VOLUTA_ZTYPE_NONE);
 	bkr_set_refcnt(bkr, 0);
 	bkr_set_flags(bkr, 0);
 	bkr_set_allocated(bkr, 0);
@@ -817,12 +817,12 @@ static void bkr_renew(struct voluta_bk_rec *bkr)
 }
 
 static bool bkr_may_alloc(const struct voluta_bk_rec *bkr,
-                          enum voluta_vtype vtype, size_t nkb)
+                          enum voluta_ztype ztype, size_t nkb)
 {
 	bool ret = false;
 
 	if (!bkr_isfull(bkr) && (bkr_freecnt(bkr) >= nkb)) {
-		ret = bkr_has_vtype_or_none(bkr, vtype);
+		ret = bkr_has_ztype_or_none(bkr, ztype);
 	}
 	return ret;
 }
@@ -912,7 +912,7 @@ agm_bkr_by_vaddr(const struct voluta_agroup_map *agm,
 	return agm_bkr_by_lba(agm, vaddr->lba);
 }
 
-static enum voluta_vtype agm_vtype_at(const struct voluta_agroup_map *agm,
+static enum voluta_ztype agm_ztype_at(const struct voluta_agroup_map *agm,
                                       const struct voluta_vaddr *vaddr)
 {
 	const size_t kbn = kbn_of(vaddr);
@@ -920,7 +920,7 @@ static enum voluta_vtype agm_vtype_at(const struct voluta_agroup_map *agm,
 	const struct voluta_bk_rec *bkr = agm_bkr_by_lba(agm, vaddr->lba);
 
 	return bkr_test_allocated_at(bkr, kbn, nkb) ?
-	       bkr_vtype(bkr) : VOLUTA_VTYPE_NONE;
+	       bkr_ztype(bkr) : VOLUTA_ZTYPE_NONE;
 }
 
 static bool agm_test_unwritten_at(const struct voluta_agroup_map *agm,
@@ -972,7 +972,7 @@ static void agm_set_allocated_at(struct voluta_agroup_map *agm,
 
 	bkr_inc_refcnt(bkr, nkb);
 	bkr_set_allocated_at(bkr, kbn, nkb);
-	bkr_set_vtype(bkr, vaddr->vtype);
+	bkr_set_ztype(bkr, vaddr->ztype);
 }
 
 static void agm_clear_allocated_at(struct voluta_agroup_map *agm,
@@ -989,7 +989,7 @@ static void agm_clear_allocated_at(struct voluta_agroup_map *agm,
 	}
 	if (!bkr_allocated(bkr)) {
 		voluta_assert_eq(bkr_refcnt(bkr), 0);
-		bkr_set_vtype(bkr, VOLUTA_VTYPE_NONE);
+		bkr_set_ztype(bkr, VOLUTA_ZTYPE_NONE);
 	}
 }
 
@@ -1004,21 +1004,21 @@ static void agm_renew_if_unused(struct voluta_agroup_map *agm,
 }
 
 static int agm_find_nfree_at(const struct voluta_agroup_map *agm,
-                             enum voluta_vtype vtype, size_t bn,
+                             enum voluta_ztype ztype, size_t bn,
                              size_t *out_kbn)
 {
 	int err = -ENOSPC;
-	const size_t nkb = vtype_nkbs(vtype);
+	const size_t nkb = ztype_nkbs(ztype);
 	const struct voluta_bk_rec *bkr = agm_bkr_at(agm, bn);
 
-	if (bkr_may_alloc(bkr, vtype, nkb)) {
+	if (bkr_may_alloc(bkr, ztype, nkb)) {
 		err = bkr_find_free(bkr, nkb, out_kbn);
 	}
 	return err;
 }
 
 static int agm_find_free(const struct voluta_agroup_map *agm,
-                         enum voluta_vtype vtype, size_t start_bn,
+                         enum voluta_ztype ztype, size_t start_bn,
                          size_t *out_bn, size_t *out_kbn)
 {
 	int err;
@@ -1026,7 +1026,7 @@ static int agm_find_free(const struct voluta_agroup_map *agm,
 
 	for (size_t i = 0; i < nbkrs; ++i) {
 		*out_bn = (start_bn + i) % nbkrs;
-		err = agm_find_nfree_at(agm, vtype, *out_bn, out_kbn);
+		err = agm_find_nfree_at(agm, ztype, *out_bn, out_kbn);
 		if (!err) {
 			return 0;
 		}
@@ -1035,7 +1035,7 @@ static int agm_find_free(const struct voluta_agroup_map *agm,
 }
 
 static int agm_find_free_space(const struct voluta_agroup_map *agm,
-                               enum voluta_vtype vtype, size_t start_bn,
+                               enum voluta_ztype ztype, size_t start_bn,
                                struct voluta_vaddr *out_vaddr)
 {
 	int err;
@@ -1043,12 +1043,12 @@ static int agm_find_free_space(const struct voluta_agroup_map *agm,
 	size_t kbn;
 	voluta_index_t ag_index;
 
-	err = agm_find_free(agm, vtype, start_bn, &bn, &kbn);
+	err = agm_find_free(agm, ztype, start_bn, &bn, &kbn);
 	if (err) {
 		return err;
 	}
 	ag_index = agm_index(agm);
-	vaddr_by_ag(out_vaddr, vtype, ag_index, bn, kbn);
+	vaddr_by_ag(out_vaddr, ztype, ag_index, bn, kbn);
 	return 0;
 }
 
@@ -1056,7 +1056,7 @@ static void agm_calc_space_stat(const struct voluta_agroup_map *agm,
                                 struct voluta_space_stat *sp_st)
 {
 	ssize_t usecnt;
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 	const struct voluta_bk_rec *bkr;
 	const size_t nslots = agm_nslots(agm);
 	const ssize_t kb_size = (ssize_t)(VOLUTA_KB_SIZE);
@@ -1065,17 +1065,17 @@ static void agm_calc_space_stat(const struct voluta_agroup_map *agm,
 	for (size_t slot = 0; slot < nslots; ++slot) {
 		bkr = agm_bkr_at(agm, slot);
 
-		vtype = bkr_vtype(bkr);
-		if (vtype_isnone(vtype)) {
+		ztype = bkr_ztype(bkr);
+		if (ztype_isnone(ztype)) {
 			continue;
 		}
 		usecnt = (ssize_t)bkr_usecnt(bkr);
 		voluta_assert_gt(usecnt, 0);
-		if (vtype_isdata(vtype)) {
+		if (ztype_isdata(ztype)) {
 			sp_st->ndata += (usecnt * kb_size);
 		} else {
 			sp_st->nmeta += (usecnt * kb_size);
-			if (vtype_isinode(vtype)) {
+			if (ztype_isinode(ztype)) {
 				sp_st->nfiles += usecnt;
 			}
 		}
@@ -1116,7 +1116,7 @@ nused_bks_at(const struct voluta_hspace_info *hsi, size_t ag_index)
 }
 
 static size_t start_bn_of(const struct voluta_hspace_info *hsi,
-                          voluta_index_t ag_index, enum voluta_vtype vtype)
+                          voluta_index_t ag_index, enum voluta_ztype ztype)
 {
 	size_t bn;
 	const size_t nbk_in_ag = VOLUTA_NBK_IN_AG;
@@ -1125,7 +1125,7 @@ static size_t start_bn_of(const struct voluta_hspace_info *hsi,
 	bn = nused_bks_at(hsi, ag_index);
 
 	/* In case of full data-block align to higher */
-	if (bn && vtype_isdatabk(vtype)) {
+	if (bn && ztype_isdatabk(ztype)) {
 		bn = voluta_min(bn + 1, nbk_in_ag - 1);
 	}
 	return bn;
@@ -1133,18 +1133,18 @@ static size_t start_bn_of(const struct voluta_hspace_info *hsi,
 
 int voluta_hsi_search_avail_ag(const struct voluta_hspace_info *hsi,
                                const struct voluta_index_range *range,
-                               enum voluta_vtype vtype,
+                               enum voluta_ztype ztype,
                                voluta_index_t *out_ag_index,
                                size_t *out_bn_within_ag)
 {
 	size_t ag_index;
 
-	ag_index = hsm_find_avail(hsi->hsm, range, vtype);
+	ag_index = hsm_find_avail(hsi->hsm, range, ztype);
 	if (ag_index_isnull(ag_index)) {
 		return -ENOSPC;
 	}
 	*out_ag_index = ag_index;
-	*out_bn_within_ag = start_bn_of(hsi, ag_index, vtype);
+	*out_bn_within_ag = start_bn_of(hsi, ag_index, ztype);
 	return 0;
 }
 
@@ -1221,14 +1221,14 @@ bool voluta_hsi_is_fragmented(const struct voluta_hspace_info *hsi,
 void voluta_hsi_bind_to_kindof(struct voluta_hspace_info *hsi,
                                const struct voluta_vaddr *vaddr)
 {
-	hsm_bind_to_kind(hsi->hsm, vaddr->ag_index, vaddr->vtype);
+	hsm_bind_to_kind(hsi->hsm, vaddr->ag_index, vaddr->ztype);
 	hsi_dirtify(hsi);
 }
 
 int voluta_hsi_check_cap_alloc(const struct voluta_hspace_info *hsi,
-                               const enum voluta_vtype vtype)
+                               const enum voluta_ztype ztype)
 {
-	const size_t nbytes = vtype_size(vtype);
+	const size_t nbytes = ztype_size(ztype);
 
 	return hsm_may_alloc(hsi->hsm, nbytes) ? 0 : -ENOSPC;
 }
@@ -1275,13 +1275,13 @@ void voluta_agi_resolve_bks(const struct voluta_agroup_info *agi,
 }
 
 int voluta_agi_find_free_space(const struct voluta_agroup_info *agi,
-                               enum voluta_vtype vtype, size_t bn_start_hint,
+                               enum voluta_ztype ztype, size_t bn_start_hint,
                                struct voluta_vba *out_vba)
 {
 	int err;
 	struct voluta_vaddr vaddr;
 
-	err = agm_find_free_space(agi->agm, vtype, bn_start_hint, &vaddr);
+	err = agm_find_free_space(agi->agm, ztype, bn_start_hint, &vaddr);
 	if (err) {
 		return err;
 	}
@@ -1330,10 +1330,10 @@ void voluta_calc_space_stat_of(const struct voluta_agroup_info *agi,
 bool voluta_agi_is_allocated_with(const struct voluta_agroup_info *agi,
                                   const struct voluta_vaddr *vaddr)
 {
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 
-	vtype = agm_vtype_at(agi->agm, vaddr);
-	return vtype_isequal(vtype, vaddr->vtype);
+	ztype = agm_ztype_at(agi->agm, vaddr);
+	return ztype_isequal(ztype, vaddr->ztype);
 }
 
 bool voluta_agi_has_unwritten_at(const struct voluta_agroup_info *agi,
@@ -1362,22 +1362,22 @@ void voluta_agi_mark_unwritten_at(struct voluta_agroup_info *agi,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static int verify_vtype(enum voluta_vtype vtype)
+static int verify_ztype(enum voluta_ztype ztype)
 {
-	switch (vtype) {
-	case VOLUTA_VTYPE_NONE:
-	case VOLUTA_VTYPE_SUPER:
-	case VOLUTA_VTYPE_HSMAP:
-	case VOLUTA_VTYPE_AGMAP:
-	case VOLUTA_VTYPE_ITNODE:
-	case VOLUTA_VTYPE_INODE:
-	case VOLUTA_VTYPE_XANODE:
-	case VOLUTA_VTYPE_DTNODE:
-	case VOLUTA_VTYPE_RTNODE:
-	case VOLUTA_VTYPE_SYMVAL:
-	case VOLUTA_VTYPE_DATA1K:
-	case VOLUTA_VTYPE_DATA4K:
-	case VOLUTA_VTYPE_DATABK:
+	switch (ztype) {
+	case VOLUTA_ZTYPE_NONE:
+	case VOLUTA_ZTYPE_SUPER:
+	case VOLUTA_ZTYPE_HSMAP:
+	case VOLUTA_ZTYPE_AGMAP:
+	case VOLUTA_ZTYPE_ITNODE:
+	case VOLUTA_ZTYPE_INODE:
+	case VOLUTA_ZTYPE_XANODE:
+	case VOLUTA_ZTYPE_DTNODE:
+	case VOLUTA_ZTYPE_RTNODE:
+	case VOLUTA_ZTYPE_SYMVAL:
+	case VOLUTA_ZTYPE_DATA1K:
+	case VOLUTA_ZTYPE_DATA4K:
+	case VOLUTA_ZTYPE_DATABK:
 		return 0;
 	default:
 		break;
@@ -1389,7 +1389,7 @@ static int verify_bkr(const struct voluta_bk_rec *bkr)
 {
 	int err;
 
-	err = verify_vtype(bkr_vtype(bkr));
+	err = verify_ztype(bkr_ztype(bkr));
 	if (err) {
 		return err;
 	}

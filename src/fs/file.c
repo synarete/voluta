@@ -90,9 +90,9 @@ static bool fl_zero_range(const struct voluta_file_ctx *f_ctx);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static ssize_t data_size_of(enum voluta_vtype vtype)
+static ssize_t data_size_of(enum voluta_ztype ztype)
 {
-	return vtype_ssize(vtype);
+	return ztype_ssize(ztype);
 }
 
 static loff_t off_to_bk(loff_t off)
@@ -105,9 +105,9 @@ static bool off_isaligned(loff_t off)
 	return (off % VOLUTA_BK_SIZE) == 0;
 }
 
-static loff_t off_in_data(loff_t off, enum voluta_vtype vtype)
+static loff_t off_in_data(loff_t off, enum voluta_ztype ztype)
 {
-	const ssize_t len = data_size_of(vtype);
+	const ssize_t len = data_size_of(ztype);
 
 	return off % len;
 }
@@ -117,17 +117,17 @@ static loff_t off_max3(loff_t off1, loff_t off2, loff_t off3)
 	return off_max(off_max(off1, off2), off3);
 }
 
-static size_t len_to_next(loff_t off, enum voluta_vtype vtype)
+static size_t len_to_next(loff_t off, enum voluta_ztype ztype)
 {
-	const ssize_t len = data_size_of(vtype);
+	const ssize_t len = data_size_of(ztype);
 	const loff_t next = off_next(off, len);
 
 	return off_ulen(off, next);
 }
 
-static size_t len_of_data(loff_t off, loff_t end, enum voluta_vtype vtype)
+static size_t len_of_data(loff_t off, loff_t end, enum voluta_ztype ztype)
 {
-	const ssize_t len = data_size_of(vtype);
+	const ssize_t len = data_size_of(ztype);
 	const loff_t next = off_next(off, len);
 
 	return (next < end) ? off_ulen(off, next) : off_ulen(off, end);
@@ -138,9 +138,9 @@ static bool off_is_inrange(loff_t off, loff_t beg, loff_t end)
 	return (beg <= off) && (off < end);
 }
 
-static bool off_is_partial(loff_t off, loff_t end, enum voluta_vtype vtype)
+static bool off_is_partial(loff_t off, loff_t end, enum voluta_ztype ztype)
 {
-	const ssize_t len = data_size_of(vtype);
+	const ssize_t len = data_size_of(ztype);
 	const ssize_t io_len = off_len(off, end);
 	const loff_t off_start = off_align(off, len);
 
@@ -149,24 +149,24 @@ static bool off_is_partial(loff_t off, loff_t end, enum voluta_vtype vtype)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static bool vtype_isrtnode(enum voluta_vtype vtype)
+static bool ztype_isrtnode(enum voluta_ztype ztype)
 {
-	return vtype_isequal(vtype, VOLUTA_VTYPE_RTNODE);
+	return ztype_isequal(ztype, VOLUTA_ZTYPE_RTNODE);
 }
 
 static bool vaddr_isrtnode(const struct voluta_vaddr *vaddr)
 {
-	return vtype_isrtnode(vaddr->vtype);
+	return ztype_isrtnode(vaddr->ztype);
 }
 
 static void vaddr_of_rtnode(struct voluta_vaddr *vaddr, loff_t off)
 {
-	vaddr_setup(vaddr, VOLUTA_VTYPE_RTNODE, off);
+	vaddr_setup(vaddr, VOLUTA_ZTYPE_RTNODE, off);
 }
 
 static void vaddr_of_databk_leaf(struct voluta_vaddr *vaddr, loff_t off)
 {
-	vaddr_setup(vaddr, VOLUTA_VTYPE_DATABK, off);
+	vaddr_setup(vaddr, VOLUTA_ZTYPE_DATABK, off);
 }
 
 
@@ -193,22 +193,22 @@ fli_vaddr(const struct voluta_fleaf_info *fli)
 	return (fli != NULL) ? vi_vaddr(&fli->fl_vi) : NULL;
 }
 
-static enum voluta_vtype fli_vtype(const struct voluta_fleaf_info *fli)
+static enum voluta_ztype fli_ztype(const struct voluta_fleaf_info *fli)
 {
-	return vi_vtype(&fli->fl_vi);
+	return vi_ztype(&fli->fl_vi);
 }
 
 static void *fli_data(const struct voluta_fleaf_info *fli)
 {
 	void *dat = NULL;
-	const enum voluta_vtype vtype = fli_vtype(fli);
+	const enum voluta_ztype ztype = fli_ztype(fli);
 
-	if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA1K)) {
+	if (ztype_isequal(ztype, VOLUTA_ZTYPE_DATA1K)) {
 		dat = fli->flu.db1;
-	} else if (vtype_isequal(vtype, VOLUTA_VTYPE_DATA4K)) {
+	} else if (ztype_isequal(ztype, VOLUTA_ZTYPE_DATA4K)) {
 		dat = fli->flu.db4;
 	} else {
-		voluta_assert_eq(vtype, VOLUTA_VTYPE_DATABK);
+		voluta_assert_eq(ztype, VOLUTA_ZTYPE_DATABK);
 		dat = fli->flu.db;
 	}
 	return dat;
@@ -216,13 +216,13 @@ static void *fli_data(const struct voluta_fleaf_info *fli)
 
 static loff_t fli_off_within(const struct voluta_fleaf_info *fli, loff_t off)
 {
-	return off_in_data(off, fli_vtype(fli));
+	return off_in_data(off, fli_ztype(fli));
 }
 
 static size_t fli_len_within(const struct voluta_fleaf_info *fli,
                              loff_t off, loff_t end)
 {
-	return len_of_data(off, end, fli_vtype(fli));
+	return len_of_data(off, end, fli_ztype(fli));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -295,9 +295,9 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
                            struct voluta_fiovec *out_fiov)
 {
 	int err;
-	const enum voluta_vtype vtype = vaddr->vtype;
-	const loff_t off_within = off_in_data(f_ctx->off, vtype);
-	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
+	const enum voluta_ztype ztype = vaddr->ztype;
+	const loff_t off_within = off_in_data(f_ctx->off, ztype);
+	const size_t len = len_of_data(f_ctx->off, f_ctx->end, ztype);
 
 	err = fiovec_of_data(f_ctx, vaddr, off_within, len, out_fiov);
 	if (err) {
@@ -307,11 +307,11 @@ static int fiovec_of_vaddr(const struct voluta_file_ctx *f_ctx,
 }
 
 static int fiovec_of_zeros(const struct voluta_file_ctx *f_ctx,
-                           const enum voluta_vtype vtype,
+                           const enum voluta_ztype ztype,
                            struct voluta_fiovec *out_fiov)
 {
 	void *buf = nil_bk_buf_of(f_ctx);
-	const size_t len = len_of_data(f_ctx->off, f_ctx->end, vtype);
+	const size_t len = len_of_data(f_ctx->off, f_ctx->end, ztype);
 
 	voluta_assert_le(len, VOLUTA_BK_SIZE);
 	return fiovec_by_qalloc(f_ctx, buf, 0, len, out_fiov);
@@ -917,7 +917,7 @@ static bool has_head2_leaves_io(const struct voluta_file_ctx *f_ctx)
 static bool has_partial_write_at(const struct voluta_file_ctx *f_ctx,
                                  const struct voluta_vaddr *vaddr)
 {
-	return off_is_partial(f_ctx->off, f_ctx->end, vaddr->vtype);
+	return off_is_partial(f_ctx->off, f_ctx->end, vaddr->ztype);
 }
 
 static bool has_partial_write(const struct voluta_fmap_ctx *fm_ctx)
@@ -925,23 +925,23 @@ static bool has_partial_write(const struct voluta_fmap_ctx *fm_ctx)
 	return has_partial_write_at(fm_ctx->f_ctx, &fm_ctx->vaddr);
 }
 
-static enum voluta_vtype off_to_data_vtype(loff_t off)
+static enum voluta_ztype off_to_data_ztype(loff_t off)
 {
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 
 	if (off < head1_off_max()) {
-		vtype = VOLUTA_VTYPE_DATA1K;
+		ztype = VOLUTA_ZTYPE_DATA1K;
 	} else if (off < head2_off_max()) {
-		vtype = VOLUTA_VTYPE_DATA4K;
+		ztype = VOLUTA_ZTYPE_DATA4K;
 	} else {
-		vtype = VOLUTA_VTYPE_DATABK;
+		ztype = VOLUTA_ZTYPE_DATABK;
 	}
-	return vtype;
+	return ztype;
 }
 
 static size_t off_to_data_size(loff_t off)
 {
-	return (size_t)data_size_of(off_to_data_vtype(off));
+	return (size_t)data_size_of(off_to_data_ztype(off));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1082,9 +1082,9 @@ static void set_tree_root_of(const struct voluta_file_ctx *f_ctx,
 
 static size_t distance_to_next(const struct voluta_file_ctx *f_ctx)
 {
-	const enum voluta_vtype vtype = off_to_data_vtype(f_ctx->off);
+	const enum voluta_ztype ztype = off_to_data_ztype(f_ctx->off);
 
-	return len_to_next(f_ctx->off, vtype);
+	return len_to_next(f_ctx->off, ztype);
 }
 
 static void advance_to(struct voluta_file_ctx *f_ctx, loff_t off)
@@ -1378,7 +1378,7 @@ static int zero_data_leaf_range(const struct voluta_file_ctx *f_ctx,
 static int zero_data_leaf_at(const struct voluta_file_ctx *f_ctx,
                              const struct voluta_vaddr *vaddr)
 {
-	const ssize_t len = data_size_of(vaddr->vtype);
+	const ssize_t len = data_size_of(vaddr->ztype);
 
 	return zero_data_leaf_range(f_ctx, vaddr, 0, (size_t)len);
 }
@@ -1628,15 +1628,15 @@ static int resolve_fiovec(const struct voluta_file_ctx *f_ctx,
                           struct voluta_fiovec *out_fiov)
 {
 	int err;
-	enum voluta_vtype vtype;
+	enum voluta_ztype ztype;
 
 	if (fli != NULL) {
 		err = fiovec_of_fleaf(f_ctx, fli, out_fiov);
 	} else if ((vaddr != NULL) && !vaddr_isnull(vaddr)) {
 		err = fiovec_of_vaddr(f_ctx, vaddr, out_fiov);
 	} else {
-		vtype = off_to_data_vtype(f_ctx->off);
-		err = fiovec_of_zeros(f_ctx, vtype, out_fiov);
+		ztype = off_to_data_ztype(f_ctx->off);
+		err = fiovec_of_zeros(f_ctx, ztype, out_fiov);
 	}
 	return err;
 }
@@ -2062,15 +2062,15 @@ static int clear_unwritten_by(const struct voluta_fmap_ctx *fm_ctx)
 }
 
 static int claim_data_space(const struct voluta_file_ctx *f_ctx,
-                            enum voluta_vtype vtype,
+                            enum voluta_ztype ztype,
                             struct voluta_vaddr *out_vaddr)
 {
-	return voluta_claim_space(f_ctx->sbi, vtype, out_vaddr);
+	return voluta_claim_space(f_ctx->sbi, ztype, out_vaddr);
 }
 
 static bool vaddr_isdatabk(const struct voluta_vaddr *vaddr)
 {
-	return vtype_isequal(vaddr->vtype, VOLUTA_VTYPE_DATABK);
+	return ztype_isequal(vaddr->ztype, VOLUTA_ZTYPE_DATABK);
 }
 
 static int del_data_vspace(const struct voluta_file_ctx *f_ctx,
@@ -2103,9 +2103,9 @@ static int spawn_rtnode(const struct voluta_file_ctx *f_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = VOLUTA_VTYPE_RTNODE;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_RTNODE;
 
-	err = voluta_spawn_vnode(f_ctx->sbi, f_ctx->ii, vtype, &vi);
+	err = voluta_spawn_vnode(f_ctx->sbi, f_ctx->ii, ztype, &vi);
 	if (err) {
 		return err;
 	}
@@ -2116,7 +2116,7 @@ static int spawn_rtnode(const struct voluta_file_ctx *f_ctx,
 static int remove_rtnode(const struct voluta_file_ctx *f_ctx,
                          struct voluta_rtnode_info *rti)
 {
-	voluta_assert_eq(rti->rt_vi.vaddr.vtype, VOLUTA_VTYPE_RTNODE);
+	voluta_assert_eq(rti->rt_vi.vaddr.ztype, VOLUTA_ZTYPE_RTNODE);
 
 	return voluta_remove_vnode(f_ctx->sbi, &rti->rt_vi);
 }
@@ -2145,7 +2145,7 @@ static void update_tree_root(const struct voluta_file_ctx *f_ctx,
 static void update_iattr_blocks(const struct voluta_file_ctx *f_ctx,
                                 const struct voluta_vaddr *vaddr, long dif)
 {
-	update_iblocks(f_ctx->op, f_ctx->ii, vaddr->vtype, dif);
+	update_iblocks(f_ctx->op, f_ctx->ii, vaddr->ztype, dif);
 }
 
 static void setup_rtnode(struct voluta_rtnode_info *rti,
@@ -2195,12 +2195,12 @@ static int create_bind_rtnode(const struct voluta_file_ctx *f_ctx,
 }
 
 static int create_data_leaf(const struct voluta_file_ctx *f_ctx,
-                            enum voluta_vtype vtype,
+                            enum voluta_ztype ztype,
                             struct voluta_vaddr *out_vaddr)
 {
 	int err;
 
-	err = claim_data_space(f_ctx, vtype, out_vaddr);
+	err = claim_data_space(f_ctx, ztype, out_vaddr);
 	if (err) {
 		return err;
 	}
@@ -2215,7 +2215,7 @@ static int create_head1_leaf_space(const struct voluta_file_ctx *f_ctx,
 	struct voluta_vaddr vaddr;
 	const size_t slot = head1_leaf_slot_of(f_ctx);
 
-	err = create_data_leaf(f_ctx, VOLUTA_VTYPE_DATA1K, &vaddr);
+	err = create_data_leaf(f_ctx, VOLUTA_ZTYPE_DATA1K, &vaddr);
 	if (err) {
 		return err;
 	}
@@ -2231,7 +2231,7 @@ static int create_head2_leaf_space(const struct voluta_file_ctx *f_ctx,
 	struct voluta_vaddr vaddr;
 	const size_t slot = head2_leaf_slot_of(f_ctx);
 
-	err = create_data_leaf(f_ctx, VOLUTA_VTYPE_DATA4K, &vaddr);
+	err = create_data_leaf(f_ctx, VOLUTA_ZTYPE_DATA4K, &vaddr);
 	if (err) {
 		return err;
 	}
@@ -2247,7 +2247,7 @@ static int create_tree_leaf_space(const struct voluta_file_ctx *f_ctx,
 	int err;
 
 	rti_incref(parent_rti);
-	err = create_data_leaf(f_ctx, VOLUTA_VTYPE_DATABK, out_vaddr);
+	err = create_data_leaf(f_ctx, VOLUTA_ZTYPE_DATABK, out_vaddr);
 	if (!err) {
 		bind_child(parent_rti, f_ctx->off, out_vaddr);
 	}
@@ -2974,8 +2974,8 @@ static int do_discard_partial(const struct voluta_fmap_ctx *fm_ctx)
 {
 	const struct voluta_vaddr *vaddr = &fm_ctx->vaddr;
 	const loff_t off = fm_ctx->file_pos;
-	const loff_t oid = off_in_data(off, vaddr->vtype);
-	const size_t len = len_of_data(off, fm_ctx->f_ctx->end, vaddr->vtype);
+	const loff_t oid = off_in_data(off, vaddr->ztype);
+	const size_t len = len_of_data(off, fm_ctx->f_ctx->end, vaddr->ztype);
 
 	return zero_data_leaf_range(fm_ctx->f_ctx, vaddr, oid, len);
 }
@@ -3040,11 +3040,11 @@ static int discard_data_at(const struct voluta_fmap_ctx *fm_ctx)
 	int err = 0;
 	bool partial;
 	const loff_t end = fm_ctx->f_ctx->end;
-	const enum voluta_vtype vtype = fm_ctx->vaddr.vtype;
+	const enum voluta_ztype ztype = fm_ctx->vaddr.ztype;
 
 	voluta_assert_lt(fm_ctx->file_pos, end);
 	if (fm_ctx->has_data) {
-		partial = off_is_partial(fm_ctx->file_pos, end, vtype);
+		partial = off_is_partial(fm_ctx->file_pos, end, ztype);
 		if (partial) {
 			err = discard_partial(fm_ctx);
 		} else if (fl_zero_range(fm_ctx->f_ctx)) {
@@ -3411,7 +3411,7 @@ static int create_bind_tree_leaf(const struct voluta_file_ctx *f_ctx,
 	if (fm_ctx.has_data) {
 		return 0;
 	}
-	err = create_data_leaf(f_ctx, VOLUTA_VTYPE_DATABK, &fm_ctx.vaddr);
+	err = create_data_leaf(f_ctx, VOLUTA_ZTYPE_DATABK, &fm_ctx.vaddr);
 	if (err) {
 		return err;
 	}
@@ -3613,7 +3613,7 @@ static bool emit_fiemap_ext(struct voluta_file_ctx *f_ctx,
 	struct fiemap *fm = f_ctx->fm;
 
 	end = off_min(off_end(f_ctx->off, vaddr->len), f_ctx->end);
-	len = len_of_data(f_ctx->off, end, vaddr->vtype);
+	len = len_of_data(f_ctx->off, end, vaddr->ztype);
 	if (len == 0) {
 		return false;
 	}

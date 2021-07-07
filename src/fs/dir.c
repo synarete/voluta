@@ -101,7 +101,7 @@ static mode_t dttoif(mode_t dt)
 
 static void vaddr_of_htnode(struct voluta_vaddr *vaddr, loff_t off)
 {
-	vaddr_setup(vaddr, VOLUTA_VTYPE_DTNODE, off);
+	vaddr_setup(vaddr, VOLUTA_ZTYPE_DTNODE, off);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1026,9 +1026,9 @@ static int spawn_htnode(const struct voluta_dir_ctx *d_ctx,
 {
 	int err;
 	struct voluta_vnode_info *vi = NULL;
-	const enum voluta_vtype vtype = VOLUTA_VTYPE_DTNODE;
+	const enum voluta_ztype ztype = VOLUTA_ZTYPE_DTNODE;
 
-	err = voluta_spawn_vnode(d_ctx->sbi, d_ctx->dir_ii, vtype, &vi);
+	err = voluta_spawn_vnode(d_ctx->sbi, d_ctx->dir_ii, ztype, &vi);
 	if (err) {
 		return err;
 	}
@@ -1065,7 +1065,7 @@ static void update_isizeblocks(const struct voluta_dir_ctx *d_ctx,
 	last_index = dir_last_index(dir_ii);
 
 	update_isize(d_ctx->op, dir_ii, calc_d_isize(last_index));
-	update_iblocks(d_ctx->op, dir_ii, VOLUTA_VTYPE_DTNODE, dif);
+	update_iblocks(d_ctx->op, dir_ii, VOLUTA_ZTYPE_DTNODE, dif);
 }
 
 static void setup_htnode(struct voluta_dtnode_info *dti, ino_t ino,
@@ -2175,7 +2175,7 @@ static int verify_childs_of(const struct voluta_dir_tnode *htn)
 		if (err) {
 			return err;
 		}
-		if (!vtype_isequal(vaddr.vtype, VOLUTA_VTYPE_DTNODE)) {
+		if (!ztype_isequal(vaddr.ztype, VOLUTA_ZTYPE_DTNODE)) {
 			return -EFSCORRUPTED;
 		}
 	}

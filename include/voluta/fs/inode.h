@@ -87,7 +87,7 @@ void voluta_update_itimes(const struct voluta_oper *op,
 
 void voluta_update_iblocks(const struct voluta_oper *op,
                            struct voluta_inode_info *ii,
-                           enum voluta_vtype vtype, long dif);
+                           enum voluta_ztype ztype, long dif);
 
 void voluta_update_isize(const struct voluta_oper *op,
                          struct voluta_inode_info *ii, loff_t size);

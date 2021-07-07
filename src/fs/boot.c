@@ -189,7 +189,7 @@ static void guarantee_persistent_types_size(void)
 
 static void guarantee_persistent_types_members(void)
 {
-	REQUIRE_NBITS(struct voluta_header, h_vtype, 8);
+	REQUIRE_NBITS(struct voluta_header, h_ztype, 8);
 	REQUIRE_NBITS(struct voluta_bk_rec, bk_allocated, VOLUTA_NKB_IN_BK);
 	REQUIRE_NBITS(struct voluta_bk_rec, bk_unwritten, VOLUTA_NKB_IN_BK);
 	REQUIRE_MEMBER_SIZE(struct voluta_itable_tnode, it_child, 1024);
@@ -346,7 +346,7 @@ static int check_endianess(void)
 	if (err) {
 		return err;
 	}
-	err = check_endianess32(VOLUTA_VTYPE_MAGIC, "#VLT");
+	err = check_endianess32(VOLUTA_ZTYPE_MAGIC, "#VLT");
 	if (err) {
 		return err;
 	}

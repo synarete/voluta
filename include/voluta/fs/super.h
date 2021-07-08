@@ -65,6 +65,10 @@ int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,
                               const struct voluta_vaddr *vaddr,
                               struct voluta_vnode_info **out_vi);
 
+int voluta_stage_cached_unode(struct voluta_sb_info *sbi,
+                              const struct voluta_uaddr *uaddr,
+                              struct voluta_unode_info **out_ui);
+
 int voluta_fetch_inode(struct voluta_sb_info *sbi, ino_t xino,
                        struct voluta_inode_info **out_ii);
 

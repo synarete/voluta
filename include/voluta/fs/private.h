@@ -47,6 +47,7 @@
 #define STATICASSERT_LT(a_, b_)         VOLUTA_STATICASSERT_LT(a_, b_)
 #define STATICASSERT_LE(a_, b_)         VOLUTA_STATICASSERT_LE(a_, b_)
 #define STATICASSERT_GT(a_, b_)         VOLUTA_STATICASSERT_GT(a_, b_)
+#define STATICASSERT_GE(a_, b_)         VOLUTA_STATICASSERT_GE(a_, b_)
 #define STATICASSERT_SIZEOF(t_, s_)     VOLUTA_STATICASSERT_EQ(sizeof(t_), s_)
 
 /* aliases */
@@ -68,10 +69,10 @@
 #define log_err(fmt, ...)               voluta_log_error(fmt, __VA_ARGS__)
 #define log_crit(fmt, ...)              voluta_log_crit(fmt, __VA_ARGS__)
 
-#define ztype_nkbs(vt)                  voluta_ztype_nkbs(vt)
-#define ztype_size(vt)                  voluta_ztype_size(vt)
-#define ztype_ssize(vt)                 voluta_ztype_ssize(vt)
-#define ztype_isdata(vt)                voluta_ztype_isdata(vt)
+#define ztype_nkbs(zt)                  voluta_ztype_nkbs(zt)
+#define ztype_size(zt)                  voluta_ztype_size(zt)
+#define ztype_ssize(zt)                 voluta_ztype_ssize(zt)
+#define ztype_isdata(zt)                voluta_ztype_isdata(zt)
 
 #define vaddr_none()                    voluta_vaddr_none()
 #define vaddr_isnull(va)                voluta_vaddr_isnull(va)
@@ -335,15 +336,6 @@ bool capable_sys_admin(const struct voluta_ucred *ucred)
 	return uid_isroot(ucred->uid);
 }
 
-
-static inline
-const struct voluta_uaddr *ui_uaddr(const struct voluta_unode_info *ui)
-{
-	return &ui->uba.uaddr;
-}
-
-
-
 static inline
 bool ztype_isequal(enum voluta_ztype vt1, enum voluta_ztype vt2)
 {
@@ -372,6 +364,18 @@ static inline
 bool ztype_isinode(enum voluta_ztype ztype)
 {
 	return ztype_isequal(ztype, VOLUTA_ZTYPE_INODE);
+}
+
+static inline
+const struct voluta_uaddr *ui_uaddr(const struct voluta_unode_info *ui)
+{
+	return &ui->uba.uaddr;
+}
+
+static inline
+enum voluta_ztype ui_ztype(const struct voluta_unode_info *ui)
+{
+	return (ui != NULL) ? ui_uaddr(ui)->ztype : VOLUTA_ZTYPE_NONE;
 }
 
 static inline
@@ -411,17 +415,17 @@ const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 }
 
 static inline
-struct voluta_vnode_info *hsi_vi(const struct voluta_hspace_info *hsi)
+struct voluta_unode_info *hsi_ui(const struct voluta_hsmap_info *hsi)
 {
 	return voluta_likely(hsi != NULL) ?
-	       voluta_unconst(&hsi->hs_vi) : NULL;
+	       voluta_unconst(&hsi->hs_ui) : NULL;
 }
 
 static inline
-struct voluta_vnode_info *agi_vi(const struct voluta_agroup_info *agi)
+struct voluta_unode_info *agi_ui(const struct voluta_agmap_info *agi)
 {
 	return voluta_likely(agi != NULL) ?
-	       voluta_unconst(&agi->ag_vi) : NULL;
+	       voluta_unconst(&agi->ag_ui) : NULL;
 }
 
 
@@ -464,34 +468,16 @@ struct voluta_sb_info *ii_sbi(const struct voluta_inode_info *ii)
 
 
 static inline
-const struct voluta_vaddr *hsi_vaddr(const struct voluta_hspace_info *hsi)
-{
-	return vi_vaddr(hsi_vi(hsi));
-}
-
-static inline
-const struct voluta_baddr *hsi_baddr(const struct voluta_hspace_info *hsi)
+const struct voluta_baddr *hsi_baddr(const struct voluta_hsmap_info *hsi)
 {
 	return &hsi->hs_ui.uba.baddr;
 }
 
 
 static inline
-const struct voluta_vaddr *agi_vaddr(const struct voluta_agroup_info *agi)
-{
-	return vi_vaddr(agi_vi(agi));
-}
-
-static inline
-const struct voluta_baddr *agi_baddr(const struct voluta_agroup_info *agi)
+const struct voluta_baddr *agi_baddr(const struct voluta_agmap_info *agi)
 {
 	return &agi->ag_ui.uba.baddr;
-}
-
-static inline
-struct voluta_sb_info *agi_sbi(const struct voluta_agroup_info *agi)
-{
-	return vi_sbi(agi_vi(agi));
 }
 
 #endif /* VOLUTA_PRIVATE_H_ */

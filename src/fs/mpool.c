@@ -45,8 +45,8 @@ struct voluta_mobj_bsi {
 } voluta_aligned64;
 
 union voluta_xunode_info_u {
-	struct voluta_hspace_info       hsi;
-	struct voluta_agroup_info       agi;
+	struct voluta_hsmap_info       hsi;
+	struct voluta_agmap_info       agi;
 };
 
 struct voluta_xunode_info {
@@ -843,10 +843,13 @@ static bool is_ii_size(size_t nbytes)
 
 static bool is_xui_size(size_t nbytes)
 {
-	STATICASSERT_EQ(sizeof(struct voluta_hspace_info),
-	                sizeof(struct voluta_agroup_info));
+	STATICASSERT_LE(sizeof(struct voluta_hsmap_info),
+	                sizeof(struct voluta_agmap_info));
+	STATICASSERT_GE(sizeof(struct voluta_hsmap_info) + 16,
+	                sizeof(struct voluta_agmap_info));
 
-	return (nbytes == sizeof(struct voluta_hspace_info));
+	return ((nbytes == sizeof(struct voluta_hsmap_info)) ||
+	        (nbytes == sizeof(struct voluta_agmap_info)));
 }
 
 static bool is_xvi_size(size_t nbytes)

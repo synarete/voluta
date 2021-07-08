@@ -291,6 +291,11 @@ enum voluta_ztype {
 	VOLUTA_ZTYPE_DATABK     = 64,
 };
 
+/* common-header flags */
+enum voluta_hdrf {
+	VOLUTA_HDRF_CSUM        = (1 << 0),
+};
+
 /* allocation-groups flags */
 enum voluta_agf {
 	VOLUTA_AGF_FORMATTED    = (1 << 0),
@@ -785,7 +790,7 @@ struct voluta_blocks_sec {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-/* semantic "view" into meta vnodes' element */
+/* semantic "view" into meta elements */
 union voluta_view {
 	struct voluta_header            hdr;
 	struct voluta_super_block       sb;

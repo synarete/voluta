@@ -70,6 +70,8 @@ void voluta_bsi_mark_opaque_at(struct voluta_bksec_info *bsi,
 bool voluta_bsi_is_visible_at(struct voluta_bksec_info *bsi,
                               const struct voluta_vaddr *vaddr);
 
+void voluta_bsi_mark_visible(struct voluta_bksec_info *bsi);
+
 
 struct voluta_vnode_info *
 voluta_cache_lookup_vi(struct voluta_cache *cache,

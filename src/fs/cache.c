@@ -599,6 +599,15 @@ void voluta_bsi_mark_visible_at(struct voluta_bksec_info *bsi,
 	bsi->bks_mask[slot] |= view_mask_of(vaddr);
 }
 
+void voluta_bsi_mark_visible(struct voluta_bksec_info *bsi)
+{
+	const uint64_t zero = 0;
+
+	for (size_t slot = 0; slot < ARRAY_SIZE(bsi->bks_mask); ++slot) {
+		bsi->bks_mask[slot] |= ~zero;
+	}
+}
+
 void voluta_bsi_mark_opaque_at(struct voluta_bksec_info *bsi,
                                const struct voluta_vaddr *vaddr)
 {
@@ -813,7 +822,7 @@ static void cache_dq_enq_zi(struct voluta_cache *cache,
 	struct voluta_dirtyq *dq = &cache->c_dq;
 
 	if (!zi->z_ce.ce_dirty) {
-		dq_append(dq, &zi->z_dq_lh, zi->z_xref_len);
+		dq_append(dq, &zi->z_dq_lh, zi->z_view_len);
 		zi->z_ce.ce_dirty = true;
 	}
 }
@@ -824,7 +833,7 @@ static void cache_dq_dec_zi(struct voluta_cache *cache,
 	struct voluta_dirtyq *dq = &cache->c_dq;
 
 	if (zi->z_ce.ce_dirty) {
-		dq_remove(dq, &zi->z_dq_lh, zi->z_xref_len);
+		dq_remove(dq, &zi->z_dq_lh, zi->z_view_len);
 		zi->z_ce.ce_dirty = false;
 	}
 }

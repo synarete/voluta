@@ -1037,7 +1037,7 @@ static int sgvec_populate(struct voluta_sgvec *sgv,
 		if (!sgvec_isappendable(sgv, &baddr)) {
 			break;
 		}
-		err = sgvec_append(sgv, &baddr, zi->z_xref);
+		err = sgvec_append(sgv, &baddr, zi->z_view);
 		if (err) {
 			return err;
 		}

@@ -30,8 +30,8 @@ struct voluta_znode_info {
 	struct voluta_list_head         z_dq_lh;
 	struct voluta_avl_node          z_ds_an;
 	struct voluta_znode_info       *z_ds_next;
-	const void *z_xref;
-	size_t z_xref_len;
+	union voluta_view              *z_view;
+	size_t z_view_len;
 };
 
 struct voluta_znode_vtbl {
@@ -51,26 +51,25 @@ struct voluta_unode_info {
 /* vnode */
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
-	union voluta_view              *view;
 	struct voluta_znode_info        v_zi;
 	struct voluta_fiovref           v_fir;
 	ino_t v_iowner;
 	int  v_verify;
 };
 
-/* space-maps */
-struct voluta_hspace_info {
+/* hsmap */
+struct voluta_hsmap_info {
 	struct voluta_unode_info        hs_ui;
-	struct voluta_vnode_info        hs_vi;
 	voluta_index_t                  hs_index;
 	struct voluta_hspace_map       *hsm;
 };
 
-struct voluta_agroup_info {
+/* agmap */
+struct voluta_agmap_info {
 	struct voluta_unode_info        ag_ui;
-	struct voluta_vnode_info        ag_vi;
-	voluta_index_t                  ag_index;
 	struct voluta_agroup_map       *agm;
+	voluta_index_t                  ag_index;
+	int ag_verify;
 };
 
 /* itable */
@@ -128,30 +127,24 @@ struct voluta_fleaf_info {
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
+void voluta_uba_to_vba(const struct voluta_uba *uba, struct voluta_vba *vba);
 
 void voluta_vba_to_uba(const struct voluta_vba *vba, struct voluta_uba *uba);
 
 
-struct voluta_hspace_info *
+struct voluta_hsmap_info *
 voluta_hsi_from_ui(const struct voluta_unode_info *ui);
 
-struct voluta_hspace_info *
-voluta_hsi_from_vi(const struct voluta_vnode_info *vi);
-
-struct voluta_hspace_info *
-voluta_hsi_from_vi_rebind(const struct voluta_vnode_info *vi,
+struct voluta_hsmap_info *
+voluta_hsi_from_ui_rebind(const struct voluta_unode_info *ui,
                           voluta_index_t hs_index);
 
 
-struct voluta_agroup_info *
+struct voluta_agmap_info *
 voluta_agi_from_ui(const struct voluta_unode_info *ui);
 
-struct voluta_agroup_info *
-voluta_agi_from_vi(const struct voluta_vnode_info *vi);
-
-
-struct voluta_agroup_info *
-voluta_agi_from_vi_rebind(struct voluta_vnode_info *vi,
+struct voluta_agmap_info *
+voluta_agi_from_ui_rebind(struct voluta_unode_info *ui,
                           voluta_index_t ag_index);
 
 
@@ -211,13 +204,14 @@ bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
 
 int voluta_vi_verify_meta(const struct voluta_vnode_info *vi);
 
-void voluta_vi_stamp_view(const struct voluta_vnode_info *vi);
-
 void voluta_vi_seal_meta(const struct voluta_vnode_info *vi);
 
 
 struct voluta_unode_info *
 voluta_ui_from_zi(const struct voluta_znode_info *zi);
+
+
+void voluta_zero_stamp_view(union voluta_view *view, enum voluta_ztype ztype);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

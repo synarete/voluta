@@ -1487,13 +1487,6 @@ static const void *hdr_payload(const struct voluta_header *hdr)
 	return hdr + 1;
 }
 
-static struct voluta_header *hdr_of(const union voluta_view *view)
-{
-	const struct voluta_header *hdr = &view->hdr;
-
-	return unconst(hdr);
-}
-
 static void hdr_stamp(struct voluta_header *hdr,
                       enum voluta_ztype ztype, size_t size)
 {
@@ -1506,13 +1499,6 @@ static void hdr_stamp(struct voluta_header *hdr,
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
-
-static const struct voluta_header *
-vi_hdr_of(const struct voluta_vnode_info *vi)
-{
-	return hdr_of(vi->view);
-}
-
 
 static uint32_t calc_meta_chekcsum(const struct voluta_header *hdr,
                                    const struct voluta_mdigest *md)
@@ -1545,7 +1531,7 @@ static uint32_t calc_chekcsum_of(const struct voluta_vnode_info *vi)
 	if (vaddr_isdata(vaddr)) {
 		csum = calc_data_checksum(vi->view, vaddr->len, md);
 	} else {
-		csum = calc_meta_chekcsum(vi_hdr_of(vi), md);
+		csum = calc_meta_chekcsum(&vi->view->hdr, md);
 	}
 	return csum;
 }
@@ -1554,7 +1540,7 @@ static uint32_t calc_chekcsum_of(const struct voluta_vnode_info *vi)
 
 static int verify_hdr(const union voluta_view *view, enum voluta_ztype ztype)
 {
-	const struct voluta_header *hdr = hdr_of(view);
+	const struct voluta_header *hdr = &view->hdr;
 	const size_t hsz = hdr_size(hdr);
 	const size_t psz = ztype_size(ztype);
 
@@ -1578,7 +1564,7 @@ static int verify_checksum(const union voluta_view *view,
                            const struct voluta_mdigest *md)
 {
 	uint32_t csum;
-	const struct voluta_header *hdr = hdr_of(view);
+	const struct voluta_header *hdr = &view->hdr;
 
 	csum = calc_meta_chekcsum(hdr, md);
 	return (csum == hdr_csum(hdr)) ? 0 : -EFSCORRUPTED;
@@ -1660,19 +1646,19 @@ int voluta_vi_verify_meta(const struct voluta_vnode_info *vi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static void stamp_view(union voluta_view *view,
-                       const struct voluta_vaddr *vaddr)
+static void stamp_meta(struct voluta_header *hdr,
+                       enum voluta_ztype ztype, size_t len)
 {
-	struct voluta_header *hdr = hdr_of(view);
-
-	voluta_memzero(view, vaddr->len);
-	hdr_stamp(hdr, vaddr->ztype, vaddr->len);
+	voluta_memzero(hdr, len);
+	hdr_stamp(hdr, ztype, len);
 }
 
 void voluta_vi_stamp_view(const struct voluta_vnode_info *vi)
 {
+	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
+
 	if (!vi_isdata(vi)) {
-		stamp_view(vi->view, vi_vaddr(vi));
+		stamp_meta(&vi->view->hdr, vaddr->ztype, vaddr->len);
 	}
 }
 
@@ -1682,7 +1668,7 @@ void voluta_vi_seal_meta(const struct voluta_vnode_info *vi)
 
 	if (!vi_isdata(vi)) {
 		csum = calc_chekcsum_of(vi);
-		hdr_set_csum(hdr_of(vi->view), csum);
+		hdr_set_csum(&vi->view->hdr, csum);
 	}
 }
 

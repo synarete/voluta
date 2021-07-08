@@ -190,12 +190,12 @@ static void spi_update_meta(struct voluta_space_info *spi, ssize_t nmeta)
 
 static bool vi_isvisible(const struct voluta_vnode_info *vi)
 {
-	return voluta_bsi_is_visible_at(vi->v_ci.c_bsi, vi_vaddr(vi));
+	return voluta_bsi_is_visible_at(vi->v_zi.z_bsi, vi_vaddr(vi));
 }
 
 static void vi_mark_visible(const struct voluta_vnode_info *vi)
 {
-	voluta_bsi_mark_visible_at(vi->v_ci.c_bsi, vi_vaddr(vi));
+	voluta_bsi_mark_visible_at(vi->v_zi.z_bsi, vi_vaddr(vi));
 }
 
 static void vi_stamp_mark_visible(struct voluta_vnode_info *vi)
@@ -725,14 +725,14 @@ static void bind_vi(struct voluta_sb_info *sbi,
                     struct voluta_vnode_info *vi,
                     struct voluta_bksec_info *bsi)
 {
-	struct voluta_cnode_info *ci = &vi->v_ci;
+	struct voluta_znode_info *zi = &vi->v_zi;
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
 
 	voluta_vi_attach_to(vi, bsi);
-	ci->c_sbi = sbi;
-	ci->c_xref = opaque_view_of(bsi, vaddr);
-	ci->c_xref_len = vaddr->len;
-	vi->view = make_view(ci->c_xref);
+	zi->z_sbi = sbi;
+	zi->z_xref = opaque_view_of(bsi, vaddr);
+	zi->z_xref_len = vaddr->len;
+	vi->view = make_view(zi->z_xref);
 }
 
 int voluta_stage_cached_vnode(struct voluta_sb_info *sbi,
@@ -2387,7 +2387,7 @@ int voluta_kivam_of(const struct voluta_vnode_info *vi,
                     struct voluta_kivam *out_kivam)
 {
 	const struct voluta_vaddr *vaddr = vi_vaddr(vi);
-	const struct voluta_super_block *sb = vi->v_ci.c_sbi->sb;
+	const struct voluta_super_block *sb = vi->v_zi.z_sbi->sb;
 
 	voluta_sb_kivam_of(sb, vaddr, out_kivam);
 	return 0;

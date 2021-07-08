@@ -401,13 +401,13 @@ loff_t vi_offset(const struct voluta_vnode_info *vi)
 static inline
 struct voluta_sb_info *vi_sbi(const struct voluta_vnode_info *vi)
 {
-	return vi->v_ci.c_sbi;
+	return vi->v_zi.z_sbi;
 }
 
 static inline
 const struct voluta_mdigest *vi_mdigest(const struct voluta_vnode_info *vi)
 {
-	return &vi->v_ci.c_sbi->s_crypto.md;
+	return &vi->v_zi.z_sbi->s_crypto.md;
 }
 
 static inline

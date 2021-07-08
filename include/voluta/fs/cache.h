@@ -130,7 +130,7 @@ void voluta_ui_dirtify(struct voluta_unode_info *ui);
 
 void voluta_ui_undirtify(struct voluta_unode_info *ui);
 
-bool voluta_ci_isevictable(const struct voluta_cnode_info *ci);
+bool voluta_zi_isevictable(const struct voluta_znode_info *zi);
 
 
 #endif /* VOLUTA_CACHE_H_ */

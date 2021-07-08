@@ -21,38 +21,38 @@ struct voluta_unode_info;
 struct voluta_vnode_info;
 
 
-/* cached-node */
-struct voluta_cnode_info {
-	struct voluta_cache_elem        ce;
-	const struct voluta_cnode_vtbl *c_vtbl;
-	struct voluta_sb_info          *c_sbi;
-	struct voluta_bksec_info       *c_bsi;
-	struct voluta_list_head         c_dq_lh;
-	struct voluta_avl_node          c_ds_an;
-	struct voluta_cnode_info       *c_ds_next;
-	const void *c_xref;
-	size_t c_xref_len;
+/* znode */
+struct voluta_znode_info {
+	struct voluta_cache_elem        z_ce;
+	const struct voluta_znode_vtbl *z_vtbl;
+	struct voluta_sb_info          *z_sbi;
+	struct voluta_bksec_info       *z_bsi;
+	struct voluta_list_head         z_dq_lh;
+	struct voluta_avl_node          z_ds_an;
+	struct voluta_znode_info       *z_ds_next;
+	const void *z_xref;
+	size_t z_xref_len;
 };
 
-struct voluta_cnode_vtbl {
-	void (*del)(struct voluta_cnode_info *ci, struct voluta_alloc_if *aif);
-	bool (*evictable)(const struct voluta_cnode_info *ci);
-	void (*seal)(struct voluta_cnode_info *ci);
-	int (*resolve)(const struct voluta_cnode_info *ci,
+struct voluta_znode_vtbl {
+	void (*del)(struct voluta_znode_info *zi, struct voluta_alloc_if *aif);
+	bool (*evictable)(const struct voluta_znode_info *zi);
+	void (*seal)(struct voluta_znode_info *zi);
+	int (*resolve)(const struct voluta_znode_info *zi,
 	               struct voluta_baddr *out_baddr);
 };
 
 /* unode */
 struct voluta_unode_info {
 	struct voluta_uba               uba;
-	struct voluta_cnode_info        u_ci;
+	struct voluta_znode_info        u_zi;
 };
 
 /* vnode */
 struct voluta_vnode_info {
 	struct voluta_vaddr             vaddr;
 	union voluta_view              *view;
-	struct voluta_cnode_info        v_ci;
+	struct voluta_znode_info        v_zi;
 	struct voluta_fiovref           v_fir;
 	ino_t v_iowner;
 	int  v_verify;
@@ -205,7 +205,7 @@ voluta_fli_from_vi_rebind(struct voluta_vnode_info *vi);
 
 
 struct voluta_vnode_info *
-voluta_vi_from_ci(const struct voluta_cnode_info *ci);
+voluta_vi_from_zi(const struct voluta_znode_info *zi);
 
 bool voluta_vi_isdata(const struct voluta_vnode_info *vi);
 
@@ -217,7 +217,7 @@ void voluta_vi_seal_meta(const struct voluta_vnode_info *vi);
 
 
 struct voluta_unode_info *
-voluta_ui_from_ci(const struct voluta_cnode_info *ci);
+voluta_ui_from_zi(const struct voluta_znode_info *zi);
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 

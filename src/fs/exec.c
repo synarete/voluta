@@ -656,7 +656,7 @@ void voluta_fse_stats(const struct voluta_fs_env *fse,
 	voluta_allocstat(fse->alif, &alst);
 	st->nalloc_bytes = alst.nbytes_used;
 	st->ncache_blocks = cache->c_bsi_lm.htbl_size * nbk_in_bksec;
-	st->ncache_cnodes = cache->c_ci_lm.htbl_size;
+	st->ncache_znodes = cache->c_ci_lm.htbl_size;
 }
 
 int voluta_fse_rootid(const struct voluta_fs_env *fse, char *buf, size_t bsz)

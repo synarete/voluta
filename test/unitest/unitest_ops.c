@@ -1432,7 +1432,7 @@ void ut_drop_caches_fully(struct ut_env *ute)
 	ut_sync_drop(ute);
 	voluta_fse_stats(ute->fse, &st);
 	ut_expect_eq(st.ncache_blocks, 0);
-	ut_expect_eq(st.ncache_cnodes, 0);
+	ut_expect_eq(st.ncache_znodes, 0);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

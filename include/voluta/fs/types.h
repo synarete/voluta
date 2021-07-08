@@ -50,7 +50,7 @@ struct voluta_thread;
 struct voluta_mutex;
 struct voluta_qalloc;
 struct voluta_cache;
-struct voluta_cnode_info;
+struct voluta_znode_info;
 struct voluta_unode_info;
 struct voluta_vnode_info;
 struct voluta_inode_info;
@@ -387,11 +387,11 @@ struct voluta_sb_info {
 
 /* dirty-vnodes set */
 typedef void (*voluta_dset_add_fn)(struct voluta_dset *dset,
-                                   struct voluta_cnode_info *ci);
+                                   struct voluta_znode_info *zi);
 
 struct voluta_dset {
 	voluta_dset_add_fn              ds_add_fn;
-	struct voluta_cnode_info       *ds_ciq;
+	struct voluta_znode_info       *ds_ziq;
 	struct voluta_avl               ds_avl;
 };
 

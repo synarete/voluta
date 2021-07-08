@@ -42,7 +42,7 @@ typedef int (*voluta_cache_elem_fn)(struct voluta_cache_elem *, void *);
 struct voluta_cache_ctx {
 	struct voluta_cache *cache;
 	struct voluta_bksec_info *bsi;
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 	size_t limit;
 	size_t count;
 };
@@ -400,71 +400,70 @@ static bool bsi_is_evictable(const struct voluta_bksec_info *bsi)
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_cnode_info *ci_from_ce(const struct voluta_cache_elem *ce)
+static struct voluta_znode_info *zi_from_ce(const struct voluta_cache_elem *ce)
 {
-	const struct voluta_cnode_info *ci = NULL;
+	const struct voluta_znode_info *zi = NULL;
 
 	if (likely(ce != NULL)) {
-		ci = container_of2(ce, struct voluta_cnode_info, ce);
+		zi = container_of2(ce, struct voluta_znode_info, z_ce);
 	}
-	return unconst(ci);
+	return unconst(zi);
 }
 
-static struct voluta_cache_elem *ci_to_ce(const struct voluta_cnode_info *ci)
+static struct voluta_cache_elem *zi_to_ce(const struct voluta_znode_info *zi)
 {
-	const struct voluta_cache_elem *ce = &ci->ce;
+	const struct voluta_cache_elem *ce = &zi->z_ce;
 
 	return unconst(ce);
 }
 
-static struct voluta_cache *ci_cache(const struct voluta_cnode_info *ci)
+static struct voluta_cache *zi_cache(const struct voluta_znode_info *zi)
 {
-	return ci->c_sbi->s_cache;
+	return zi->z_sbi->s_cache;
 }
 
-bool voluta_ci_isevictable(const struct voluta_cnode_info *ci)
+bool voluta_zi_isevictable(const struct voluta_znode_info *zi)
 {
-	return ce_is_evictable(ci_to_ce(ci));
+	return ce_is_evictable(zi_to_ce(zi));
 }
 
-static void ci_attach_bk(struct voluta_cnode_info *ci,
+static void zi_attach_bk(struct voluta_znode_info *zi,
                          struct voluta_bksec_info *bsi)
 {
-	voluta_assert_null(ci->c_bsi);
+	voluta_assert_null(zi->z_bsi);
 
 	bsi_incref(bsi);
-	ci->c_bsi = bsi;
+	zi->z_bsi = bsi;
 }
 
-static void ci_detach_bk(struct voluta_cnode_info *ci)
+static void zi_detach_bk(struct voluta_znode_info *zi)
 {
-	if (ci->c_bsi != NULL) {
-		bsi_decref(ci->c_bsi);
-		ci->c_bsi = NULL;
+	if (zi->z_bsi != NULL) {
+		bsi_decref(zi->z_bsi);
+		zi->z_bsi = NULL;
 	}
 }
 
-static size_t ci_incref(struct voluta_cnode_info *ci)
+static size_t zi_incref(struct voluta_znode_info *zi)
 {
-	return ce_incref(&ci->ce);
+	return ce_incref(&zi->z_ce);
 }
 
-static size_t ci_decref(struct voluta_cnode_info *ci)
+static size_t zi_decref(struct voluta_znode_info *zi)
 {
-	return ce_decref(&ci->ce);
+	return ce_decref(&zi->z_ce);
 }
 
-
-static int visit_evictable_ci(struct voluta_cache_elem *ce, void *arg)
+static int visit_evictable_zi(struct voluta_cache_elem *ce, void *arg)
 {
 	int ret;
 	struct voluta_cache_ctx *c_ctx = arg;
-	struct voluta_cnode_info *ci = ci_from_ce(ce);
+	struct voluta_znode_info *zi = zi_from_ce(ce);
 
 	if (c_ctx->count++ >= c_ctx->limit) {
 		ret = 1;
-	} else if (ci->c_vtbl->evictable(ci)) {
-		c_ctx->ci = ci;
+	} else if (zi->z_vtbl->evictable(zi)) {
+		c_ctx->zi = zi;
 		ret = 1;
 	} else {
 		ret = 0;
@@ -476,20 +475,20 @@ static int visit_evictable_ci(struct voluta_cache_elem *ce, void *arg)
 
 static struct voluta_cache *ui_cache(const struct voluta_unode_info *ui)
 {
-	return ci_cache(&ui->u_ci);
+	return zi_cache(&ui->u_zi);
 }
 
 void voluta_ui_incref(struct voluta_unode_info *ui)
 {
 	if (likely(ui != NULL)) {
-		ci_incref(&ui->u_ci);
+		zi_incref(&ui->u_zi);
 	}
 }
 
 void voluta_ui_decref(struct voluta_unode_info *ui)
 {
 	if (likely(ui != NULL)) {
-		ci_decref(&ui->u_ci);
+		zi_decref(&ui->u_zi);
 	}
 }
 
@@ -512,7 +511,7 @@ static struct voluta_cache *vi_cache(const struct voluta_vnode_info *vi)
 
 static struct voluta_cache_elem *vi_to_ce(const struct voluta_vnode_info *vi)
 {
-	const struct voluta_cache_elem *ce = &vi->v_ci.ce;
+	const struct voluta_cache_elem *ce = &vi->v_zi.z_ce;
 
 	return unconst(ce);
 }
@@ -798,53 +797,53 @@ dq_next_of(const struct voluta_dirtyq *dq,
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
-static struct voluta_cnode_info *dq_lh_to_ci(struct voluta_list_head *dq_lh)
+static struct voluta_znode_info *dq_lh_to_zi(struct voluta_list_head *dq_lh)
 {
-	const struct voluta_cnode_info *ci = NULL;
+	const struct voluta_znode_info *zi = NULL;
 
 	if (dq_lh != NULL) {
-		ci = container_of(dq_lh, struct voluta_cnode_info, c_dq_lh);
+		zi = container_of(dq_lh, struct voluta_znode_info, z_dq_lh);
 	}
-	return unconst(ci);
+	return unconst(zi);
 }
 
-static void cache_dq_enq_ci(struct voluta_cache *cache,
-                            struct voluta_cnode_info *ci)
+static void cache_dq_enq_zi(struct voluta_cache *cache,
+                            struct voluta_znode_info *zi)
 {
 	struct voluta_dirtyq *dq = &cache->c_dq;
 
-	if (!ci->ce.ce_dirty) {
-		dq_append(dq, &ci->c_dq_lh, ci->c_xref_len);
-		ci->ce.ce_dirty = true;
+	if (!zi->z_ce.ce_dirty) {
+		dq_append(dq, &zi->z_dq_lh, zi->z_xref_len);
+		zi->z_ce.ce_dirty = true;
 	}
 }
 
-static void cache_dq_dec_ci(struct voluta_cache *cache,
-                            struct voluta_cnode_info *ci)
+static void cache_dq_dec_zi(struct voluta_cache *cache,
+                            struct voluta_znode_info *zi)
 {
 	struct voluta_dirtyq *dq = &cache->c_dq;
 
-	if (ci->ce.ce_dirty) {
-		dq_remove(dq, &ci->c_dq_lh, ci->c_xref_len);
-		ci->ce.ce_dirty = false;
+	if (zi->z_ce.ce_dirty) {
+		dq_remove(dq, &zi->z_dq_lh, zi->z_xref_len);
+		zi->z_ce.ce_dirty = false;
 	}
 }
 
-static struct voluta_cnode_info *
-cache_dq_front_ci(const struct voluta_cache *cache)
+static struct voluta_znode_info *
+cache_dq_front_zi(const struct voluta_cache *cache)
 {
 	const struct voluta_dirtyq *dq = &cache->c_dq;
 
-	return dq_lh_to_ci(dq_front(dq));
+	return dq_lh_to_zi(dq_front(dq));
 }
 
-static struct voluta_cnode_info *
-cache_dq_next_ci(const struct voluta_cache *cache,
-                 const struct voluta_cnode_info *ci)
+static struct voluta_znode_info *
+cache_dq_next_zi(const struct voluta_cache *cache,
+                 const struct voluta_znode_info *zi)
 {
 	const struct voluta_dirtyq *dq = &cache->c_dq;
 
-	return dq_lh_to_ci(dq_next_of(dq, &ci->c_dq_lh));
+	return dq_lh_to_zi(dq_next_of(dq, &zi->z_dq_lh));
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -852,25 +851,25 @@ cache_dq_next_ci(const struct voluta_cache *cache,
 static void cache_dirtify_ui(struct voluta_cache *cache,
                              struct voluta_unode_info *ui)
 {
-	cache_dq_enq_ci(cache, &ui->u_ci);
+	cache_dq_enq_zi(cache, &ui->u_zi);
 }
 
 static void cache_undirtify_ui(struct voluta_cache *cache,
                                struct voluta_unode_info *ui)
 {
-	cache_dq_dec_ci(cache, &ui->u_ci);
+	cache_dq_dec_zi(cache, &ui->u_zi);
 }
 
 static void cache_dirtify_vi(struct voluta_cache *cache,
                              struct voluta_vnode_info *vi)
 {
-	cache_dq_enq_ci(cache, &vi->v_ci);
+	cache_dq_enq_zi(cache, &vi->v_zi);
 }
 
 static void cache_undirtify_vi(struct voluta_cache *cache,
                                struct voluta_vnode_info *vi)
 {
-	cache_dq_dec_ci(cache, &vi->v_ci);
+	cache_dq_dec_zi(cache, &vi->v_zi);
 }
 
 static struct voluta_bksec_info *
@@ -1145,32 +1144,32 @@ static void cache_fini_ci_lm(struct voluta_cache *cache)
 	lrumap_fini(&cache->c_ci_lm, cache->c_alif);
 }
 
-static struct voluta_cnode_info *
+static struct voluta_znode_info *
 cache_find_evictable_ci(struct voluta_cache *cache)
 {
 	struct voluta_cache_ctx c_ctx = {
 		.cache = cache,
-		.ci = NULL,
+		.zi = NULL,
 		.limit = calc_search_evictable_max(&cache->c_ci_lm)
 	};
 
-	lrumap_foreach_backward(&cache->c_ci_lm, visit_evictable_ci, &c_ctx);
-	return c_ctx.ci;
+	lrumap_foreach_backward(&cache->c_ci_lm, visit_evictable_zi, &c_ctx);
+	return c_ctx.zi;
 }
 
-static struct voluta_cnode_info *
-cache_find_ci(struct voluta_cache *cache, const struct voluta_ckey *ckey)
+static struct voluta_znode_info *
+cache_find_zi(struct voluta_cache *cache, const struct voluta_ckey *ckey)
 {
 	struct voluta_cache_elem *ce = lrumap_find(&cache->c_ci_lm, ckey);
 
-	return ci_from_ce(ce);
+	return zi_from_ce(ce);
 }
 
 static void cache_remove_ci(struct voluta_cache *cache,
-                            struct voluta_cnode_info *ci)
+                            struct voluta_znode_info *zi)
 {
 	struct voluta_lrumap *lm = &cache->c_ci_lm;
-	struct voluta_cache_elem *ce = &ci->ce;
+	struct voluta_cache_elem *ce = &zi->z_ce;
 
 	if (ce->ce_mapped) {
 		lrumap_remove(lm, ce);
@@ -1180,58 +1179,58 @@ static void cache_remove_ci(struct voluta_cache *cache,
 }
 
 static void cache_evict_ci(struct voluta_cache *cache,
-                           struct voluta_cnode_info *ci)
+                           struct voluta_znode_info *zi)
 {
-	voluta_assert(!ci->ce.ce_dirty);
+	voluta_assert(!zi->z_ce.ce_dirty);
 
-	cache_remove_ci(cache, ci);
-	ci_detach_bk(ci);
-	ci->c_vtbl->del(ci, cache->c_alif);
+	cache_remove_ci(cache, zi);
+	zi_detach_bk(zi);
+	zi->z_vtbl->del(zi, cache->c_alif);
 }
 
 static void cache_promote_lru_ci(struct voluta_cache *cache,
-                                 struct voluta_cnode_info *ci)
+                                 struct voluta_znode_info *zi)
 {
-	lrumap_promote_lru(&cache->c_ci_lm, ci_to_ce(ci));
+	lrumap_promote_lru(&cache->c_ci_lm, zi_to_ce(zi));
 }
 
-static struct voluta_cnode_info *
-cache_find_relru_ci(struct voluta_cache *cache, const struct voluta_ckey *ckey)
+static struct voluta_znode_info *
+cache_find_relru_zi(struct voluta_cache *cache, const struct voluta_ckey *ckey)
 {
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 
-	ci = cache_find_ci(cache, ckey);
-	if (ci != NULL) {
-		cache_promote_lru_ci(cache, ci);
-		cache_promote_lru_bsi(cache, ci->c_bsi);
+	zi = cache_find_zi(cache, ckey);
+	if (zi != NULL) {
+		cache_promote_lru_ci(cache, zi);
+		cache_promote_lru_bsi(cache, zi->z_bsi);
 	}
-	return ci;
+	return zi;
 }
 
-static void cache_store_ci(struct voluta_cache *cache,
-                           struct voluta_cnode_info *ci)
+static void cache_store_zi(struct voluta_cache *cache,
+                           struct voluta_znode_info *zi)
 {
-	lrumap_store(&cache->c_ci_lm, &ci->ce);
+	lrumap_store(&cache->c_ci_lm, &zi->z_ce);
 }
 
-static struct voluta_cnode_info *cache_get_lru_ci(struct voluta_cache *cache)
+static struct voluta_znode_info *cache_get_lru_zi(struct voluta_cache *cache)
 {
 	struct voluta_cache_elem *ce;
 
 	ce = lrumap_get_lru(&cache->c_ci_lm);
-	return (ce != NULL) ? ci_from_ce(ce) : NULL;
+	return (ce != NULL) ? zi_from_ce(ce) : NULL;
 }
 
-static bool cache_evict_or_relru_ci(struct voluta_cache *cache,
-                                    struct voluta_cnode_info *ci)
+static bool cache_evict_or_relru_zi(struct voluta_cache *cache,
+                                    struct voluta_znode_info *zi)
 {
 	bool evicted;
 
-	if (ci->c_vtbl->evictable(ci)) {
-		cache_evict_ci(cache, ci);
+	if (zi->z_vtbl->evictable(zi)) {
+		cache_evict_ci(cache, zi);
 		evicted = true;
 	} else {
-		cache_promote_lru_ci(cache, ci);
+		cache_promote_lru_ci(cache, zi);
 		evicted = false;
 	}
 	return evicted;
@@ -1241,15 +1240,15 @@ static size_t cache_shrink_or_relru_cis(struct voluta_cache *cache, size_t cnt)
 {
 	bool ok;
 	size_t evicted = 0;
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 	const size_t n = min(cnt, cache->c_ci_lm.lru.sz);
 
 	for (size_t i = 0; i < n; ++i) {
-		ci = cache_get_lru_ci(cache);
-		if (ci == NULL) {
+		zi = cache_get_lru_zi(cache);
+		if (zi == NULL) {
 			break;
 		}
-		ok = cache_evict_or_relru_ci(cache, ci);
+		ok = cache_evict_or_relru_zi(cache, zi);
 		if (!ok) {
 			break;
 		}
@@ -1261,9 +1260,9 @@ static size_t cache_shrink_or_relru_cis(struct voluta_cache *cache, size_t cnt)
 static int try_evict_ci(struct voluta_cache_elem *ce, void *arg)
 {
 	struct voluta_cache *cache = arg;
-	struct voluta_cnode_info *ci = ci_from_ce(ce);
+	struct voluta_znode_info *zi = zi_from_ce(ce);
 
-	cache_evict_or_relru_ci(cache, ci);
+	cache_evict_or_relru_zi(cache, zi);
 	return 0;
 }
 
@@ -1286,15 +1285,15 @@ cache_find_vi(struct voluta_cache *cache, const struct voluta_vaddr *vaddr)
 	struct voluta_ckey ckey;
 
 	ckey_by_vaddr(&ckey, vaddr);
-	return voluta_vi_from_ci(cache_find_ci(cache, &ckey));
+	return voluta_vi_from_zi(cache_find_zi(cache, &ckey));
 }
 
 static void cache_evict_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	voluta_assert(!vi->v_ci.ce.ce_dirty);
+	voluta_assert(!vi->v_zi.z_ce.ce_dirty);
 
-	cache_evict_ci(cache, &vi->v_ci);
+	cache_evict_ci(cache, &vi->v_zi);
 }
 
 static void cache_promote_lru_vi(struct voluta_cache *cache,
@@ -1312,7 +1311,7 @@ cache_find_relru_vi(struct voluta_cache *cache,
 	vi = cache_find_vi(cache, vaddr);
 	if (vi != NULL) {
 		cache_promote_lru_vi(cache, vi);
-		cache_promote_lru_bsi(cache, vi->v_ci.c_bsi);
+		cache_promote_lru_bsi(cache, vi->v_zi.z_bsi);
 	}
 	return vi;
 }
@@ -1327,10 +1326,10 @@ voluta_cache_lookup_vi(struct voluta_cache *cache,
 static void cache_store_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	struct voluta_cnode_info *ci = &vi->v_ci;
+	struct voluta_znode_info *zi = &vi->v_zi;
 
-	ckey_by_vaddr(&ci->ce.ce_ckey, &vi->vaddr);
-	lrumap_store(&cache->c_ci_lm, &ci->ce);
+	ckey_by_vaddr(&zi->z_ce.ce_ckey, &vi->vaddr);
+	lrumap_store(&cache->c_ci_lm, &zi->z_ce);
 }
 
 static struct voluta_vnode_info *
@@ -1352,7 +1351,7 @@ cache_require_vi(struct voluta_cache *cache, const struct voluta_vba *vba)
 static void cache_unmap_vi(struct voluta_cache *cache,
                            struct voluta_vnode_info *vi)
 {
-	if (vi->v_ci.ce.ce_mapped) {
+	if (vi->v_zi.z_ce.ce_mapped) {
 		lrumap_remove(&cache->c_ci_lm, vi_to_ce(vi));
 	}
 }
@@ -1363,7 +1362,7 @@ void voulta_cache_forget_vi(struct voluta_cache *cache,
 	vi_undirtify(vi);
 	if (vi_refcnt(vi) > 0) {
 		cache_unmap_vi(cache, vi);
-		vi->v_ci.ce.ce_forgot = true;
+		vi->v_zi.z_ce.ce_forgot = true;
 	} else {
 		cache_evict_vi(cache, vi);
 	}
@@ -1372,7 +1371,7 @@ void voulta_cache_forget_vi(struct voluta_cache *cache,
 void voluta_vi_attach_to(struct voluta_vnode_info *vi,
                          struct voluta_bksec_info *bsi)
 {
-	ci_attach_bk(&vi->v_ci, bsi);
+	zi_attach_bk(&vi->v_zi, bsi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1395,7 +1394,7 @@ voluta_cache_spawn_vi(struct voluta_cache *cache,
 static void cache_evict_ui(struct voluta_cache *cache,
                            struct voluta_unode_info *ui)
 {
-	cache_evict_ci(cache, &ui->u_ci);
+	cache_evict_ci(cache, &ui->u_zi);
 }
 
 static struct voluta_unode_info *
@@ -1403,11 +1402,11 @@ cache_find_relru_ui(struct voluta_cache *cache,
                     const struct voluta_uaddr *uaddr)
 {
 	struct voluta_ckey ckey;
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 
 	ckey_by_uaddr(&ckey, uaddr);
-	ci = cache_find_relru_ci(cache, &ckey);
-	return voluta_ui_from_ci(ci);
+	zi = cache_find_relru_zi(cache, &ckey);
+	return voluta_ui_from_zi(zi);
 }
 
 struct voluta_unode_info *
@@ -1420,10 +1419,10 @@ voluta_cache_lookup_ui(struct voluta_cache *cache,
 static void cache_store_ui(struct voluta_cache *cache,
                            struct voluta_unode_info *ui)
 {
-	struct voluta_cnode_info *ci = &ui->u_ci;
+	struct voluta_znode_info *zi = &ui->u_zi;
 
-	ckey_by_uaddr(&ci->ce.ce_ckey, &ui->uba.uaddr);
-	cache_store_ci(cache, ci);
+	ckey_by_uaddr(&zi->z_ce.ce_ckey, &ui->uba.uaddr);
+	cache_store_zi(cache, zi);
 }
 
 static struct voluta_unode_info *
@@ -1471,9 +1470,7 @@ void voulta_cache_forget_ui(struct voluta_cache *cache,
 void voluta_ui_attach_to(struct voluta_unode_info *ui,
                          struct voluta_bksec_info *bsi)
 {
-	struct voluta_cnode_info *ci = &ui->u_ci;
-
-	ci_attach_bk(ci, bsi);
+	zi_attach_bk(&ui->u_zi, bsi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1639,14 +1636,14 @@ static bool cache_evict_by_bsi(struct voluta_cache *cache,
 	return ret;
 }
 
-static bool cache_evict_by_ci(struct voluta_cache *cache,
-                              struct voluta_cnode_info *ci)
+static bool cache_evict_by_zi(struct voluta_cache *cache,
+                              struct voluta_znode_info *zi)
 {
 	struct voluta_bksec_info *bsi = NULL;
 
-	if ((ci != NULL) && (ci->c_vtbl->evictable(ci))) {
-		bsi = ci->c_bsi;
-		cache_evict_ci(cache, ci);
+	if ((zi != NULL) && (zi->z_vtbl->evictable(zi))) {
+		bsi = zi->z_bsi;
+		cache_evict_ci(cache, zi);
 	}
 	return cache_evict_by_bsi(cache, bsi);
 }
@@ -1654,11 +1651,11 @@ static bool cache_evict_by_ci(struct voluta_cache *cache,
 static void cache_evict_some(struct voluta_cache *cache)
 {
 	bool ok = false;
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 	struct voluta_bksec_info *bsi;
 
-	ci = cache_find_evictable_ci(cache);
-	if (cache_evict_by_ci(cache, ci)) {
+	zi = cache_find_evictable_ci(cache);
+	if (cache_evict_by_zi(cache, zi)) {
 		ok = true;
 	}
 	bsi = cache_find_evictable_bsi(cache);
@@ -1803,28 +1800,28 @@ void voluta_ii_decref(struct voluta_inode_info *ii)
 void voluta_cache_fill_into_dset(const struct voluta_cache *cache,
                                  struct voluta_dset *dset)
 {
-	struct voluta_cnode_info *ci = NULL;
+	struct voluta_znode_info *zi = NULL;
 
-	ci = cache_dq_front_ci(cache);
-	while (ci != NULL) {
-		dset->ds_add_fn(dset, ci);
-		ci = cache_dq_next_ci(cache, ci);
+	zi = cache_dq_front_zi(cache);
+	while (zi != NULL) {
+		dset->ds_add_fn(dset, zi);
+		zi = cache_dq_next_zi(cache, zi);
 	}
 }
 
 void voluta_cache_undirtify_by_dset(struct voluta_cache *cache,
                                     const struct voluta_dset *dset)
 {
-	struct voluta_cnode_info *next = NULL;
-	struct voluta_cnode_info *ci = dset->ds_ciq;
+	struct voluta_znode_info *next = NULL;
+	struct voluta_znode_info *zi = dset->ds_ziq;
 
-	while (ci != NULL) {
-		next = ci->c_ds_next;
+	while (zi != NULL) {
+		next = zi->z_ds_next;
 
 		/* XXX CRAP */
-		cache_undirtify_vi(cache, voluta_vi_from_ci(ci));
+		cache_undirtify_vi(cache, voluta_vi_from_zi(zi));
 
-		ci->c_ds_next = NULL;
-		ci = next;
+		zi->z_ds_next = NULL;
+		zi = next;
 	}
 }

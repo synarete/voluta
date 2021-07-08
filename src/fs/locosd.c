@@ -1022,26 +1022,26 @@ static int sgvec_append(struct voluta_sgvec *sgv,
 }
 
 static int sgvec_populate(struct voluta_sgvec *sgv,
-                          struct voluta_cnode_info **ciq)
+                          struct voluta_znode_info **ziq)
 {
 	int err;
 	struct voluta_baddr baddr;
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 
-	while (*ciq != NULL) {
-		ci = *ciq;
-		err = ci->c_vtbl->resolve(ci, &baddr);
+	while (*ziq != NULL) {
+		zi = *ziq;
+		err = zi->z_vtbl->resolve(zi, &baddr);
 		if (err) {
 			return err;
 		}
 		if (!sgvec_isappendable(sgv, &baddr)) {
 			break;
 		}
-		err = sgvec_append(sgv, &baddr, ci->c_xref);
+		err = sgvec_append(sgv, &baddr, zi->z_xref);
 		if (err) {
 			return err;
 		}
-		*ciq = ci->c_ds_next;
+		*ziq = zi->z_ds_next;
 	}
 	return 0;
 }
@@ -1061,11 +1061,11 @@ static int sgvec_flush_dset(struct voluta_sgvec *sgv,
                             struct voluta_locosd *locosd)
 {
 	int err;
-	struct voluta_cnode_info *ciq = dset->ds_ciq;
+	struct voluta_znode_info *ziq = dset->ds_ziq;
 
-	while (ciq != NULL) {
+	while (ziq != NULL) {
 		sgvec_setup(sgv);
-		err = sgvec_populate(sgv, &ciq);
+		err = sgvec_populate(sgv, &ziq);
 		if (err) {
 			return err;
 		}
@@ -1087,86 +1087,86 @@ static long ckey_compare(const void *x, const void *y)
 	return voluta_ckey_compare(ckey_x, ckey_y);
 }
 
-static struct voluta_cnode_info *
-avl_node_to_ci(const struct voluta_avl_node *an)
+static struct voluta_znode_info *
+avl_node_to_zi(const struct voluta_avl_node *an)
 {
-	const struct voluta_cnode_info *ci;
+	const struct voluta_znode_info *zi;
 
-	ci = container_of2(an, struct voluta_cnode_info, c_ds_an);
-	return unconst(ci);
+	zi = container_of2(an, struct voluta_znode_info, z_ds_an);
+	return unconst(zi);
 }
 
-static const void *ci_getkey(const struct voluta_avl_node *an)
+static const void *zi_getkey(const struct voluta_avl_node *an)
 {
-	const struct voluta_cnode_info *ci = avl_node_to_ci(an);
+	const struct voluta_znode_info *zi = avl_node_to_zi(an);
 
-	return &ci->ce.ce_ckey;
+	return &zi->z_ce.ce_ckey;
 }
 
-static void ci_visit_reinit(struct voluta_avl_node *an, void *p)
+static void zi_visit_reinit(struct voluta_avl_node *an, void *p)
 {
-	struct voluta_cnode_info *ci = avl_node_to_ci(an);
+	struct voluta_znode_info *zi = avl_node_to_zi(an);
 
-	voluta_avl_node_init(&ci->c_ds_an);
+	voluta_avl_node_init(&zi->z_ds_an);
 	unused(p);
 }
 
 static void dset_clear_map(struct voluta_dset *dset)
 {
-	voluta_avl_clear(&dset->ds_avl, ci_visit_reinit, NULL);
+	voluta_avl_clear(&dset->ds_avl, zi_visit_reinit, NULL);
 }
 
 static void dset_add_dirty(struct voluta_dset *dset,
-                           struct voluta_cnode_info *ci)
+                           struct voluta_znode_info *zi)
 {
-	voluta_avl_insert(&dset->ds_avl, &ci->c_ds_an);
+	voluta_avl_insert(&dset->ds_avl, &zi->z_ds_an);
 }
 
 static void dset_init(struct voluta_dset *dset)
 {
-	voluta_avl_init(&dset->ds_avl, ci_getkey, ckey_compare, dset);
-	dset->ds_ciq = NULL;
+	voluta_avl_init(&dset->ds_avl, zi_getkey, ckey_compare, dset);
+	dset->ds_ziq = NULL;
 	dset->ds_add_fn = dset_add_dirty;
 }
 
 static void dset_fini(struct voluta_dset *dset)
 {
 	voluta_avl_fini(&dset->ds_avl);
-	dset->ds_ciq = NULL;
+	dset->ds_ziq = NULL;
 	dset->ds_add_fn = NULL;
 }
 
-static void dset_push_front_ciq(struct voluta_dset *dset,
-                                struct voluta_cnode_info *ci)
+static void dset_push_front_ziq(struct voluta_dset *dset,
+                                struct voluta_znode_info *zi)
 {
-	ci->c_ds_next = dset->ds_ciq;
-	dset->ds_ciq = ci;
+	zi->z_ds_next = dset->ds_ziq;
+	dset->ds_ziq = zi;
 }
 
 static void dset_make_fifo(struct voluta_dset *dset)
 {
-	struct voluta_cnode_info *ci;
+	struct voluta_znode_info *zi;
 	const struct voluta_avl_node *end;
 	const struct voluta_avl_node *itr;
 	const struct voluta_avl *avl = &dset->ds_avl;
 
-	dset->ds_ciq = NULL;
+	dset->ds_ziq = NULL;
 	end = voluta_avl_end(avl);
 	itr = voluta_avl_rbegin(avl);
 	while (itr != end) {
-		ci = avl_node_to_ci(itr);
-		dset_push_front_ciq(dset, ci);
+		zi = avl_node_to_zi(itr);
+		dset_push_front_ziq(dset, zi);
 		itr = voluta_avl_prev(avl, itr);
 	}
 }
 
 static void dset_seal_all(const struct voluta_dset *dset)
 {
-	struct voluta_cnode_info *ci = dset->ds_ciq;
+	struct voluta_znode_info *zi = dset->ds_ziq;
 
-	while (ci != NULL) {
-		ci->c_vtbl->seal(ci);
-		ci = ci->c_ds_next;
+	while (zi != NULL) {
+		zi->z_vtbl->seal(zi);
+		zi = zi->z_ds_next;
 	}
 }
 

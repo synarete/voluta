@@ -21,7 +21,7 @@
 struct voluta_fs_stats {
 	size_t nalloc_bytes;
 	size_t ncache_blocks;
-	size_t ncache_cnodes;
+	size_t ncache_znodes;
 };
 
 

@@ -402,9 +402,9 @@ static void voluta_ii_times(const struct voluta_inode_info *ii,
 
 bool voluta_ii_isevictable(const struct voluta_inode_info *ii)
 {
-	const struct voluta_cnode_info *ci = &ii->i_vi.v_ci;
+	const struct voluta_znode_info *zi = &ii->i_vi.v_zi;
 
-	return !ii->i_pinned && !ii->i_nopen && voluta_ci_isevictable(ci);
+	return !ii->i_pinned && !ii->i_nopen && voluta_zi_isevictable(zi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/

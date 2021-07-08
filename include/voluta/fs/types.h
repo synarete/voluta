@@ -82,6 +82,7 @@ enum voluta_flags {
 	VOLUTA_F_TIMEOUT        = VOLUTA_BIT(9),
 	VOLUTA_F_SLUGGISH       = VOLUTA_BIT(10),
 	VOLUTA_F_IDLE           = VOLUTA_BIT(11),
+	VOLUTA_F_SEAL           = VOLUTA_BIT(12),
 };
 
 

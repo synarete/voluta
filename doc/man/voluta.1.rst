@@ -29,9 +29,6 @@ DESCRIPTION
 **voluta** is a user-space file-system that allows you to easily archive and
 restore a point-in-time snapshot to/from the cloud.
 
-**voluta** is an encrypted file-system in user-space, encapsulated within a
-regular file.
-
 The layout of the underlying volume is arranged as packed archive, which may be
 easily converted to objects representation.
 

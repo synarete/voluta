@@ -252,9 +252,7 @@ static void vi_seal_as_zi(struct voluta_znode_info *zi)
 {
 	struct voluta_vnode_info *vi = voluta_vi_from_zi(zi);
 
-	if (!vi_isdata(vi)) {
-		voluta_vi_seal_meta(vi);
-	}
+	voluta_vi_seal_meta(vi);
 }
 
 /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
@@ -1460,8 +1458,9 @@ static int verify_checksum(const union voluta_view *view,
 
 	if (hdr_has_csum(hdr)) {
 		csum = calc_meta_chekcsum(hdr, md);
-		if (csum != hdr_csum(hdr))
-		{ return -EFSCORRUPTED; }
+		if (csum != hdr_csum(hdr)) {
+			return -EFSCORRUPTED;
+		}
 	}
 	return 0;
 }
@@ -1544,9 +1543,11 @@ int voluta_vi_verify_meta(const struct voluta_vnode_info *vi)
 
 void voluta_vi_seal_meta(const struct voluta_vnode_info *vi)
 {
-	const uint32_t csum = calc_chekcsum_of(vi);
+	const struct voluta_sb_info *sbi = vi_sbi(vi);
 
-	hdr_set_csum(&vi->v_zi.z_view->hdr, csum);
+	if ((sbi->s_ctl_flags & VOLUTA_F_SEAL) && !vi_isdata(vi)) {
+		hdr_set_csum(&vi->v_zi.z_view->hdr, calc_chekcsum_of(vi));
+	}
 }
 
 void voluta_zero_stamp_view(union voluta_view *view, enum voluta_ztype ztype)
